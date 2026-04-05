@@ -3,7 +3,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
 import { net } from 'electron'
-import { JSDOM } from 'jsdom'
+import { parse } from 'node-html-parser'
 import TurndownService from 'turndown'
 import * as z from 'zod'
 
@@ -72,15 +72,12 @@ export class Fetcher {
       const response = await this._fetch(requestPayload)
       const html = await response.text()
 
-      const dom = new JSDOM(html)
-      const document = dom.window.document
+      const dom = parse(html)
 
-      const scripts = document.getElementsByTagName('script')
-      const styles = document.getElementsByTagName('style')
-      Array.from(scripts).forEach((script: any) => script.remove())
-      Array.from(styles).forEach((style: any) => style.remove())
+      // Remove script and style elements
+      dom.querySelectorAll('script, style').forEach((el) => el.remove())
 
-      const text = document.body.textContent || ''
+      const text = dom.querySelector('body')?.text ?? dom.text
 
       const normalizedText = text.replace(/\s+/g, ' ').trim()
 
