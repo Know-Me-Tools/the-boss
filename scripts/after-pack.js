@@ -7,9 +7,12 @@ const {
 
 exports.default = async function (context) {
   const platform = context.packager.platform.name
-  const legacyStartupModulesDir = path.join(context.appOutDir, 'Contents', 'Resources', 'startup-node-modules')
-
-  fs.rmSync(legacyStartupModulesDir, { force: true, recursive: true })
+  for (const legacyStartupModulesDir of [
+    path.join(context.appOutDir, 'Contents', 'Resources', 'startup-node-modules'),
+    path.join(context.appOutDir, 'resources', 'startup-node-modules')
+  ]) {
+    fs.rmSync(legacyStartupModulesDir, { force: true, recursive: true })
+  }
 
   const { copiedPackages } = copyMissingStartupRuntimeDependencies(context.appOutDir)
   if (copiedPackages.length > 0) {

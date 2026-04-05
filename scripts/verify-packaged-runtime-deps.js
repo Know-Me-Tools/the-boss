@@ -317,6 +317,12 @@ const resolveResourcesDir = (appOutDir) => {
     return directResourcesDir
   }
 
+  // Linux and Windows (electron-builder): app.asar lives under `resources/`
+  const electronResourcesDir = path.join(appOutDir, 'resources')
+  if (fs.existsSync(electronResourcesDir)) {
+    return electronResourcesDir
+  }
+
   if (!fs.existsSync(appOutDir) || !fs.statSync(appOutDir).isDirectory()) {
     throw new Error(`Unable to locate packaged app output at ${appOutDir}`)
   }
@@ -326,7 +332,9 @@ const resolveResourcesDir = (appOutDir) => {
     .find((entry) => entry.isDirectory() && entry.name.endsWith('.app'))
 
   if (!appBundle) {
-    throw new Error(`Unable to locate macOS app bundle inside ${appOutDir}`)
+    throw new Error(
+      `Unable to locate app resources inside ${appOutDir} (expected Contents/Resources, resources/, or *.app/Contents/Resources)`
+    )
   }
 
   const bundledResourcesDir = path.join(appOutDir, appBundle.name, 'Contents/Resources')
