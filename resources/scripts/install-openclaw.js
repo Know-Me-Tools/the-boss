@@ -5,6 +5,7 @@ const https = require('https')
 const { execSync } = require('child_process')
 const StreamZip = require('node-stream-zip')
 const { downloadWithRedirects } = require('./download')
+const APP_HOME_DIR = process.env.APP_HOME_DIR || '.the-boss'
 
 // Download sources
 const GITCODE_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/openclaw-releases/releases/download'
@@ -135,7 +136,7 @@ async function downloadOpenClawBinary(platform, arch, version = DEFAULT_VERSION,
     return 101
   }
 
-  const binDir = path.join(os.homedir(), '.theboss', 'bin')
+  const binDir = path.join(os.homedir(), APP_HOME_DIR, 'bin')
   fs.mkdirSync(binDir, { recursive: true })
 
   const tempdir = os.tmpdir()

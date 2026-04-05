@@ -1,12 +1,11 @@
 import crypto from 'node:crypto'
-import os from 'node:os'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
 import { getMCPServersFromRedux } from '@main/apiServer/utils/mcp'
 import { createInMemoryMCPServer } from '@main/mcpServers/factory'
 import { makeSureDirExists, removeEnvProxy } from '@main/utils'
-import { findCommandInShellEnv, getBinaryName, getBinaryPath, isBinaryExists } from '@main/utils/process'
+import { findCommandInShellEnv, getBinaryPath, isBinaryExists } from '@main/utils/process'
 import getLoginShellEnvironment from '@main/utils/shell-env'
 import { TraceMethod, withSpanFunc } from '@mcp-trace/trace-core'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
@@ -32,7 +31,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { nanoid } from '@reduxjs/toolkit'
 import { APP_NAME } from '@shared/config/branding'
-import { HOME_CHERRY_DIR } from '@shared/config/constant'
 import type { MCPProgressEvent } from '@shared/config/types'
 import type { MCPServerLogEntry } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
@@ -987,11 +985,11 @@ class McpService {
   }
 
   public async getInstallInfo() {
-    const dir = path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
-    const uvName = await getBinaryName('uv')
-    const bunName = await getBinaryName('bun')
-    const uvPath = path.join(dir, uvName)
-    const bunPath = path.join(dir, bunName)
+    const uvPath = await getBinaryPath('uv')
+    const bunPath = await getBinaryPath('bun')
+    const uvInstalled = await isBinaryExists('uv')
+    const bunInstalled = await isBinaryExists('bun')
+    const dir = path.dirname(uvInstalled ? uvPath : bunInstalled ? bunPath : uvPath)
     return { dir, uvPath, bunPath }
   }
 

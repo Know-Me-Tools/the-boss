@@ -14,6 +14,15 @@ import { getResourcePath } from '.'
 import getShellEnv, { refreshShellEnv } from './shell-env'
 
 const logger = loggerService.withContext('Utils:Process')
+const LEGACY_HOME_CHERRY_DIR = '.theboss'
+
+function getPrimaryBinariesDir() {
+  return path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
+}
+
+function getLegacyBinariesDir() {
+  return path.join(os.homedir(), LEGACY_HOME_CHERRY_DIR, 'bin')
+}
 
 export function runInstallScript(scriptPath: string, extraEnv?: Record<string, string>): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -21,7 +30,12 @@ export function runInstallScript(scriptPath: string, extraEnv?: Record<string, s
     logger.info(`Running script at: ${installScriptPath}`)
 
     const nodeProcess = spawn(process.execPath, [installScriptPath], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', ...extraEnv }
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+        APP_HOME_DIR: HOME_CHERRY_DIR,
+        ...extraEnv
+      }
     })
 
     nodeProcess.stdout.on('data', (data) => {
@@ -53,18 +67,25 @@ export async function getBinaryName(name: string): Promise<string> {
 
 export async function getBinaryPath(name?: string): Promise<string> {
   if (!name) {
-    return path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
+    return getPrimaryBinariesDir()
   }
 
   const binaryName = await getBinaryName(name)
-  const binariesDir = path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
-  const binariesDirExists = fs.existsSync(binariesDir)
-  return binariesDirExists ? path.join(binariesDir, binaryName) : binaryName
+  const primaryPath = path.join(getPrimaryBinariesDir(), binaryName)
+  if (fs.existsSync(primaryPath)) {
+    return primaryPath
+  }
+
+  const legacyPath = path.join(getLegacyBinariesDir(), binaryName)
+  if (fs.existsSync(legacyPath)) {
+    return legacyPath
+  }
+
+  return primaryPath
 }
 
 export async function isBinaryExists(name: string): Promise<boolean> {
-  const cmd = await getBinaryPath(name)
-  return fs.existsSync(cmd)
+  return fs.existsSync(await getBinaryPath(name))
 }
 
 // Timeout for command lookup operations (in milliseconds)

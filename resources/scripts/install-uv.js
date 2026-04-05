@@ -4,6 +4,7 @@ const os = require('os')
 const { execSync } = require('child_process')
 const StreamZip = require('node-stream-zip')
 const { downloadWithRedirects } = require('./download')
+const APP_HOME_DIR = process.env.APP_HOME_DIR || '.the-boss'
 
 // Base URL for downloading uv binaries
 const UV_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/uv/releases/download'
@@ -49,7 +50,7 @@ async function downloadUvBinary(platform, arch, version = DEFAULT_UV_VERSION, is
   }
 
   // Create output directory structure
-  const binDir = path.join(os.homedir(), '.theboss', 'bin')
+  const binDir = path.join(os.homedir(), APP_HOME_DIR, 'bin')
   // Ensure directories exist
   fs.mkdirSync(binDir, { recursive: true })
 

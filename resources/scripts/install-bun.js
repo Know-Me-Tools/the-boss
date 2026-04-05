@@ -4,6 +4,7 @@ const os = require('os')
 const { execSync } = require('child_process')
 const StreamZip = require('node-stream-zip')
 const { downloadWithRedirects } = require('./download')
+const APP_HOME_DIR = process.env.APP_HOME_DIR || '.the-boss'
 
 // Base URL for downloading bun binaries
 const BUN_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/bun/releases/download'
@@ -47,7 +48,7 @@ async function downloadBunBinary(platform, arch, version = DEFAULT_BUN_VERSION, 
   }
 
   // Create output directory structure
-  const binDir = path.join(os.homedir(), '.theboss', 'bin')
+  const binDir = path.join(os.homedir(), APP_HOME_DIR, 'bin')
   // Ensure directories exist
   fs.mkdirSync(binDir, { recursive: true })
 
