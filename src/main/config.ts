@@ -1,10 +1,18 @@
-import { isDev, isWin } from '@main/constant'
+import path from 'node:path'
+
+import { isDev, isPortable, isWin } from '@main/constant'
 import { app } from 'electron'
 
 import { getDataPath } from './utils'
 
+const DEV_USER_DATA_CONTAINER = 'CherryStudioDev20260405'
+const PACKAGED_USER_DATA_CONTAINER = 'CherryStudioBuild20260403'
+
 if (isDev) {
-  app.setPath('userData', app.getPath('userData') + 'Dev')
+  app.setPath('userData', path.join(app.getPath('appData'), DEV_USER_DATA_CONTAINER))
+} else if (app.isPackaged && !isPortable) {
+  // Force this build onto a fresh storage container instead of reusing prior installed app data.
+  app.setPath('userData', path.join(app.getPath('appData'), PACKAGED_USER_DATA_CONTAINER))
 }
 
 export const DATA_PATH = getDataPath()
