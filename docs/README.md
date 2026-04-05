@@ -1,4 +1,4 @@
-# Cherry Studio Documentation / 文档
+# The Boss Documentation / 文档
 
 This directory contains the project documentation in multiple languages.
 

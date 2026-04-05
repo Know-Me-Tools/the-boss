@@ -1,5 +1,5 @@
 export { default as UserAvatar } from '@renderer/assets/images/avatar.png'
-export { default as AppLogo } from '@renderer/assets/images/logo.png'
+export { AppIcon as AppLogo } from '@renderer/config/brand'
+export { APP_NAME } from '@shared/config/branding'
 
-export const APP_NAME = 'Cherry Studio'
 export const isLocalAi = false

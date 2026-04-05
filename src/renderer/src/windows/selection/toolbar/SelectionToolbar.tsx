@@ -1,7 +1,7 @@
 import '@renderer/assets/styles/selection-toolbar.css'
 
 import { loggerService } from '@logger'
-import { AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useSelectionAssistant } from '@renderer/hooks/useSelectionAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
@@ -115,6 +115,7 @@ const ActionIcons: FC<{
  */
 const SelectionToolbar: FC<{ demo?: boolean }> = ({ demo = false }) => {
   const { language, customCss } = useSettings()
+  const { icon } = useBrandAssets()
   const { isCompact, actionItems } = useSelectionAssistant()
   const [animateKey, setAnimateKey] = useState(0)
   const [copyIconStatus, setCopyIconStatus] = useState<'normal' | 'success' | 'fail'>('normal')
@@ -308,7 +309,7 @@ const SelectionToolbar: FC<{ demo?: boolean }> = ({ demo = false }) => {
   return (
     <Container>
       <LogoWrapper $draggable={!demo}>
-        <Logo src={AppLogo} key={animateKey} className="animate" draggable={false} />
+        <Logo src={icon} key={animateKey} className="animate" draggable={false} />
       </LogoWrapper>
       <ActionWrapper>
         <ActionIcons

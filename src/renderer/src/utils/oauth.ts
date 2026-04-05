@@ -62,7 +62,7 @@ export const oauthWithAihubmix = async (setKey) => {
 }
 
 export const oauthWithPPIO = async (setKey) => {
-  const redirectUri = 'cherrystudio://'
+  const redirectUri = 'theboss://'
   const authUrl = `https://ppio.com/oauth/authorize?invited_by=JYT9GD&client_id=${PPIO_CLIENT_ID}&scope=api%20openid&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`
 
   window.open(
@@ -152,7 +152,7 @@ export const oauthWithTokenFlux = async () => {
   )
 }
 export const oauthWith302AI = async (setKey) => {
-  const authUrl = 'https://dash.302.ai/sso/login?app=cherry-ai.com&name=Cherry%20Studio'
+  const authUrl = 'https://dash.302.ai/sso/login?app=cherry-ai.com&name=The%20Boss'
 
   const popup = window.open(
     authUrl,

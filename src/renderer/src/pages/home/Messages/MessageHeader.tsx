@@ -1,7 +1,8 @@
 import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
 import { HStack } from '@renderer/components/Layout'
 import UserPopup from '@renderer/components/Popups/UserPopup'
-import { APP_NAME, AppLogo, isLocalAi } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
+import { APP_NAME, isLocalAi } from '@renderer/config/env'
 import { getModelLogoById } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useAgent } from '@renderer/hooks/agents/useAgent'
@@ -33,14 +34,10 @@ interface Props {
   isGroupContextMessage?: boolean
 }
 
-const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
-  if (isLocalAi) return AppLogo
-  return modelId ? getModelLogoById(modelId) : undefined
-}
-
 const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGroupContextMessage }) => {
   const avatar = useAvatar()
   const { theme } = useTheme()
+  const { icon: brandIcon } = useBrandAssets()
   const { userName, sidebarIcons } = useSettings()
   const { chat } = useRuntime()
   const { activeAgentId } = chat
@@ -54,7 +51,14 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGro
 
   const isSelected = selectedMessageIds?.includes(message.id)
 
-  const avatarSource = useMemo(() => getAvatarSource(isLocalAi, getMessageModelId(message)), [message])
+  const avatarSource = useMemo(() => {
+    if (isLocalAi) {
+      return brandIcon
+    }
+
+    const modelId = getMessageModelId(message)
+    return modelId ? getModelLogoById(modelId) : undefined
+  }, [brandIcon, message])
 
   const getUserName = useCallback(() => {
     if (isLocalAi && message.role !== 'user') {
@@ -100,8 +104,7 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGro
           style={{
             borderRadius: '25%',
             cursor: showMinappIcon ? 'pointer' : 'default',
-            border: isLocalAi ? '1px solid var(--color-border-soft)' : 'none',
-            filter: theme === 'dark' ? 'invert(0.05)' : undefined
+            border: isLocalAi ? '1px solid var(--color-border-soft)' : 'none'
           }}
           onClick={showMiniApp}>
           {avatarName}

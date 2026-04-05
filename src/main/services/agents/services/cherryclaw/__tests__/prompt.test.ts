@@ -117,13 +117,13 @@ describe('PromptBuilder', () => {
 
   it('includes memory/FACT.md in memories section', async () => {
     setupFiles({
-      '/workspace/memory/FACT.md': '# Active Projects\n\n- Cherry Studio'
+      '/workspace/memory/FACT.md': '# Active Projects\n\n- The Boss'
     })
 
     const result = await builder.buildSystemPrompt('/workspace')
 
     expect(result).toContain('<facts>')
-    expect(result).toContain('Cherry Studio')
+    expect(result).toContain('The Boss')
     expect(result).toContain('</facts>')
     expect(result).toContain('WHAT you know')
   })

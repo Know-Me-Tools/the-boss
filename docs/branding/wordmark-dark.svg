@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 75" role="img" aria-label="The Boss wordmark — dark">
+  <text x="4" y="22" font-family="'Space Grotesk',sans-serif" font-weight="500" font-size="12" fill="#A7B0BC" letter-spacing="0.28em">THE</text>
+  <text x="0" y="62" font-family="'Space Grotesk',sans-serif" font-weight="700" font-size="54" fill="#F1F3F6" letter-spacing="-0.03em">BOSS</text>
+  <rect x="0" y="66" width="6" height="4" fill="#FF6A3D" rx="1"/>
+  <rect x="10" y="67" width="218" height="2.5" fill="#FF6A3D" rx="1.25"/>
+</svg>

@@ -905,7 +905,7 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
       official: 'https://ppio.com/user/register?invited_by=JYT9GD&utm_source=github_cherry-studio&redirect=/',
       apiKey:
         'https://ppio.com/user/register?invited_by=JYT9GD&utm_source=github_cherry-studio&redirect=/settings/key-management',
-      docs: 'https://docs.cherry-ai.com/pre-basic/providers/ppio?invited_by=JYT9GD&utm_source=github_cherry-studio',
+      docs: 'https://the-boss.know-me.tools/docs/pre-basic/providers/ppio?invited_by=JYT9GD&utm_source=github_cherry-studio',
       models: 'https://ppio.com/model-api/product/llm-api?invited_by=JYT9GD&utm_source=github_cherry-studio'
     }
   },
@@ -1150,10 +1150,10 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
       url: 'https://deepseek.alayanew.com'
     },
     websites: {
-      official: 'https://www.alayanew.com/backend/register?id=cherrystudio',
-      apiKey: ' https://www.alayanew.com/backend/register?id=cherrystudio',
-      docs: 'https://docs.alayanew.com/docs/modelService/interview?utm_source=cherrystudio',
-      models: 'https://www.alayanew.com/product/deepseek?id=cherrystudio'
+      official: 'https://www.alayanew.com/backend/register?id=theboss',
+      apiKey: ' https://www.alayanew.com/backend/register?id=theboss',
+      docs: 'https://docs.alayanew.com/docs/modelService/interview?utm_source=theboss',
+      models: 'https://www.alayanew.com/product/deepseek?id=theboss'
     }
   },
   openrouter: {

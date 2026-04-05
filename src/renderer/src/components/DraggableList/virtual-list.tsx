@@ -213,7 +213,11 @@ const VirtualRow = memo(
         {(provided) => {
           const setDragRefs = (el: HTMLElement | null) => {
             provided.innerRef(el)
-            virtualizer.measureElement(el)
+            if (el) {
+              requestAnimationFrame(() => {
+                virtualizer.measureElement(el)
+              })
+            }
           }
 
           const dndStyle = provided.draggableProps.style

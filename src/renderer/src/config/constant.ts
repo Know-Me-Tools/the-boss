@@ -1,3 +1,10 @@
+import {
+  BRAND_PASSIVE_DARK,
+  BRAND_PASSIVE_LIGHT,
+  BRAND_PRIMARY_DARK,
+  BRAND_PRIMARY_LIGHT
+} from '@shared/config/brandTheme'
+
 export const DEFAULT_TEMPERATURE = 1.0
 export const DEFAULT_CONTEXTCOUNT = 5
 export const DEFAULT_MAX_TOKENS = 4096
@@ -27,19 +34,17 @@ export const TOKENFLUX_HOST = 'https://tokenflux.ai'
 export const INITIAL_MESSAGES_COUNT = 20
 export const LOAD_MORE_COUNT = 20
 
-export const DEFAULT_COLOR_PRIMARY = '#00b96b'
+export const DEFAULT_COLOR_PRIMARY = BRAND_PRIMARY_DARK
 export const THEME_COLOR_PRESETS = [
   DEFAULT_COLOR_PRIMARY,
-  '#FF5470', // Coral Pink
-  '#14B8A6', // Teal
-  '#6366F1', // Indigo
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#3B82F6', // Blue
-  '#F59E0B', // Amber
-  '#6D28D9', // Violet
-  '#0EA5E9', // Sky Blue
-  '#0284C7' // Light Blue
+  BRAND_PRIMARY_LIGHT,
+  BRAND_PASSIVE_DARK,
+  BRAND_PASSIVE_LIGHT,
+  '#FF8A55',
+  '#F59E0B',
+  '#22C55E',
+  '#8B5CF6',
+  '#0EA5E9'
 ]
 
 export const MAX_CONTEXT_COUNT = 100

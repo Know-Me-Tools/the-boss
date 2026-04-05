@@ -8,6 +8,7 @@ import '@main/config'
 import { loggerService } from '@logger'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { replaceDevtoolsFont } from '@main/utils/windowUtil'
+import { APP_BUNDLE_ID, APP_NAME, APP_RUNTIME_NAME } from '@shared/config/branding'
 import { app, crashReporter } from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer'
 import { isDev, isLinux, isWin } from './constant'
@@ -50,11 +51,13 @@ const logger = loggerService.withContext('MainEntry')
 
 // enable local crash reports
 crashReporter.start({
-  companyName: 'CherryHQ',
-  productName: 'CherryStudio',
+  companyName: 'Know Me Tools',
+  productName: APP_RUNTIME_NAME,
   submitURL: '',
   uploadToServer: false
 })
+
+app.setName(APP_NAME)
 
 /**
  * Disable hardware acceleration if setting is enabled
@@ -87,8 +90,8 @@ if (isLinux && process.env.XDG_SESSION_TYPE === 'wayland') {
  * This ensures the window manager identifies the app correctly on both X11 and Wayland
  */
 if (isLinux) {
-  app.commandLine.appendSwitch('class', 'CherryStudio')
-  app.commandLine.appendSwitch('name', 'CherryStudio')
+  app.commandLine.appendSwitch('class', APP_RUNTIME_NAME)
+  app.commandLine.appendSwitch('name', APP_RUNTIME_NAME)
 }
 
 // DocumentPolicyIncludeJSCallStacksInCrashReports: Enable features for unresponsive renderer js call stacks
@@ -146,7 +149,7 @@ if (!app.requestSingleInstanceLock()) {
 
     initWebviewHotkeys()
     // Set app user model id for windows
-    electronApp.setAppUserModelId(import.meta.env.VITE_MAIN_BUNDLE_ID || 'com.kangfenmao.CherryStudio')
+    electronApp.setAppUserModelId(import.meta.env.VITE_MAIN_BUNDLE_ID || APP_BUNDLE_ID)
 
     // Mac: Hide dock icon before window creation when launch to tray is set
     const isLaunchToTray = configManager.getLaunchToTray()
@@ -169,7 +172,7 @@ if (!app.requestSingleInstanceLock()) {
     powerMonitorService.init()
     analyticsService.init()
 
-    // Extract bundled rtk binary to ~/.cherrystudio/bin/ on first run
+    // Extract bundled rtk binary to ~/.theboss/bin/ on first run
     extractRtkBinaries().catch((error) => {
       logger.warn('Failed to extract rtk binaries (non-fatal)', {
         error: error instanceof Error ? error.message : String(error)

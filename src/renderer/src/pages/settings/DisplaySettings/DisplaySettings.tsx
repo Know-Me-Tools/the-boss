@@ -2,6 +2,7 @@ import CodeEditor from '@renderer/components/CodeEditor'
 import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import TextBadge from '@renderer/components/TextBadge'
+import { resolveBrandPrimary, resolveBrandTheme } from '@renderer/config/brand'
 import { isLinux, isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
 import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import { useTheme } from '@renderer/context/ThemeProvider'
@@ -84,6 +85,7 @@ const DisplaySettings: FC = () => {
   const [visibleIcons, setVisibleIcons] = useState(sidebarIcons?.visible || DEFAULT_SIDEBAR_ICONS)
   const [disabledIcons, setDisabledIcons] = useState(sidebarIcons?.disabled || [])
   const [fontList, setFontList] = useState<string[]>([])
+  const resolvedPrimaryColor = resolveBrandPrimary(resolveBrandTheme(theme), userTheme.colorPrimary)
 
   const handleWindowStyleChange = useCallback(
     (checked: boolean) => {
@@ -253,7 +255,7 @@ const DisplaySettings: FC = () => {
                 <ColorCircleWrapper key={color}>
                   <ColorCircle
                     color={color}
-                    isActive={userTheme.colorPrimary === color}
+                    isActive={resolvedPrimaryColor === color}
                     onClick={() => handleColorPrimaryChange(color)}
                   />
                 </ColorCircleWrapper>
@@ -262,7 +264,7 @@ const DisplaySettings: FC = () => {
             <ColorPicker
               style={{ fontFamily: 'inherit' }}
               className="color-picker"
-              value={userTheme.colorPrimary}
+              value={resolvedPrimaryColor}
               onChange={(color) => handleColorPrimaryChange(color.toHexString())}
               showText
               size="small"
@@ -345,7 +347,7 @@ const DisplaySettings: FC = () => {
               options={[
                 {
                   label: (
-                    <span style={{ fontFamily: 'Ubuntu, -apple-system, system-ui, Arial, sans-serif' }}>
+                    <span style={{ fontFamily: 'Inter, -apple-system, system-ui, Arial, sans-serif' }}>
                       {t('settings.display.font.default')}
                     </span>
                   ),
@@ -377,7 +379,7 @@ const DisplaySettings: FC = () => {
               options={[
                 {
                   label: (
-                    <span style={{ fontFamily: 'Ubuntu, -apple-system, system-ui, Arial, sans-serif' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace' }}>
                       {t('settings.display.font.default')}
                     </span>
                   ),

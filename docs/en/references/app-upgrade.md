@@ -40,13 +40,13 @@ The `x-files/app-upgrade-config/app-upgrade-config.json` file is synchronized by
 3. **Install toolchain** – Node.js 22, Corepack, and frozen pnpm dependencies are installed inside `main/`.
 4. **Run the update script** – `pnpm tsx scripts/update-app-upgrade-config.ts --tag <tag> --config ../cs/app-upgrade-config.json --is-prerelease <flag>` updates the JSON in-place.  
    - The script normalizes the tag (e.g., strips `v` prefix), detects the release channel (`latest`, `rc`, `beta`), and loads segment rules from `config/app-upgrade-segments.json`.  
-   - It validates that prerelease flags and semantic suffixes agree, enforces locked segments, builds mirror feed URLs, and performs release-availability checks (GitHub HEAD request for every channel; GitCode GET for latest channels, falling back to `https://releases.cherry-ai.com` when gitcode is delayed).  
+   - It validates that prerelease flags and semantic suffixes agree, enforces locked segments, builds mirror feed URLs, and performs release-availability checks (GitHub HEAD request for every channel; GitCode GET for latest channels, falling back to `https://the-boss.know-me.tools/releases/latest/download` when gitcode is delayed).  
    - After updating the relevant channel entry, the script rewrites the config with semver-sort order and a new `lastUpdated` timestamp.
 5. **Detect changes + create PR** – if `cs/app-upgrade-config.json` changed, the workflow opens a PR `chore/update-app-upgrade-config/<safe_tag>` against `x-files/app-upgrade-config` with a commit message `🤖 chore: sync app-upgrade-config for <tag>`. Otherwise it logs that no update is required.
 
 ### Manual Trigger Guide
 
-1. Open the Cherry Studio repository on GitHub → **Actions** tab → select **Update App Upgrade Config**.
+1. Open the The Boss repository on GitHub → **Actions** tab → select **Update App Upgrade Config**.
 2. Click **Run workflow**, choose the default branch (usually `main`), and fill in the `tag` input (e.g., `v2.1.0`).  
 3. Toggle `is_prerelease` only when the tag carries a prerelease suffix (`-beta`, `-rc`). Leave it unchecked for stable releases.  
 4. Start the run and wait for it to finish. Check the generated PR in the `x-files/app-upgrade-config` branch, verify the diff in `app-upgrade-config.json`, and merge once validated.
@@ -55,8 +55,8 @@ The `x-files/app-upgrade-config/app-upgrade-config.json` file is synchronized by
 
 ### File Location
 
-- **GitHub**: `https://raw.githubusercontent.com/CherryHQ/cherry-studio/refs/heads/x-files/app-upgrade-config/app-upgrade-config.json`
-- **GitCode**: `https://gitcode.com/CherryHQ/cherry-studio/raw/x-files/app-upgrade-config/app-upgrade-config.json`
+- **GitHub**: `https://raw.githubusercontent.com/Know-Me-Tools/the-boss/refs/heads/x-files/app-upgrade-config/app-upgrade-config.json`
+- **GitCode**: `https://gitcode.com/Know-Me-Tools/the-boss/raw/x-files/app-upgrade-config/app-upgrade-config.json`
 
 **Note**: Both mirrors provide the same configuration file hosted on the `x-files/app-upgrade-config` branch. The client automatically selects the optimal mirror based on IP geolocation.
 
@@ -73,22 +73,22 @@ The `x-files/app-upgrade-config/app-upgrade-config.json` file is synchronized by
         "latest": {
           "version": "1.6.7",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.7",
-            "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v1.6.7"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.6.7",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.6.7"
           }
         },
         "rc": {
           "version": "1.6.0-rc.5",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.0-rc.5",
-            "gitcode": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.0-rc.5"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.6.0-rc.5",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.6.0-rc.5"
           }
         },
         "beta": {
           "version": "1.6.7-beta.3",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.7.0-beta.3",
-            "gitcode": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.7.0-beta.3"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.7.0-beta.3",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.7.0-beta.3"
           }
         }
       }
@@ -119,8 +119,8 @@ When releasing v3.0, if users need to first upgrade to v2.8, you can add:
       "latest": {
         "version": "2.8.0",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v2.8.0",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v2.8.0"
+          "github": "https://the-boss.know-me.tools/releases/download/v2.8.0",
+          "gitcode": "https://the-boss.know-me.tools/releases/download/v2.8.0"
         }
       },
       "rc": null,
@@ -134,15 +134,15 @@ When releasing v3.0, if users need to first upgrade to v2.8, you can add:
       "latest": {
         "version": "3.0.0",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/latest",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/latest"
+          "github": "https://github.com/Know-Me-Tools/the-boss/releases/latest",
+          "gitcode": "https://gitcode.com/Know-Me-Tools/the-boss/releases/latest"
         }
       },
       "rc": {
         "version": "3.0.0-rc.1",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v3.0.0-rc.1",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v3.0.0-rc.1"
+          "github": "https://the-boss.know-me.tools/releases/download/v3.0.0-rc.1",
+          "gitcode": "https://the-boss.know-me.tools/releases/download/v3.0.0-rc.1"
         }
       },
       "beta": null

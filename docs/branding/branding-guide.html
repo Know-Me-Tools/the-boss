@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Boss — Brand Guide v2.2 · travisjames.ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Roboto:wght@300;400;500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0B0F14;--fg:#E8EDF3;--card:#0F1620;--muted:#141C26;--muted-fg:#A7B0BC;--border:#233041;--ember:#FF6A3D;--ember-dk:#E04E28;--navy:#4A8EC7;--success:#22C55E}
+[data-mode=light]{--bg:#F7F7F8;--fg:#0B0F14;--card:#FFFFFF;--muted:#EEF0F3;--muted-fg:#4B5563;--border:#D8DEE6;--ember:#E04E28;--ember-dk:#C94220;--navy:#2563EB;--success:#16A34A}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+.nav{position:sticky;top:0;z-index:100;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:.75rem 2.5rem;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:-.02em;color:var(--fg)}
+.nav-brand em{font-style:normal;color:var(--ember)}
+.mode-btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .7rem;cursor:pointer}
+.mode-btn:hover{border-color:var(--ember);color:var(--ember)}
+.wrap{max-width:1100px;margin:0 auto;padding:3rem 2.5rem 6rem}
+.section{margin-bottom:5rem}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.4rem}
+h2{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.025em;margin-bottom:1.5rem}
+h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.75rem}
+.rule{border:none;border-top:1px solid var(--border);margin-bottom:2.5rem}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+.label{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.5rem}
+.chip{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.chip-sw{height:52px}
+.chip-info{padding:.4rem .65rem;background:var(--card);border-top:1px solid var(--border)}
+.chip-name{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;color:var(--fg);display:block}
+.chip-hex{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted-fg)}
+.type-row{display:grid;grid-template-columns:160px 1fr 160px;align-items:start;gap:2rem;padding:1.5rem;background:var(--card);border-bottom:1px solid var(--border)}
+.type-row:last-child{border-bottom:none}
+.type-name{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.2rem}
+.type-role{font-family:'Inter',sans-serif;font-size:.72rem;color:var(--muted-fg)}
+.spec{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted-fg);line-height:1.9}
+.usage-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.usage{border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.usage-hd{padding:.55rem 1rem;border-bottom:1px solid var(--border);background:var(--card);display:flex;align-items:center;gap:.4rem;font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.usage-body{padding:1rem;background:var(--card);font-family:'Roboto',sans-serif;font-size:.82rem;color:var(--muted-fg);line-height:1.6}
+code{font-family:'JetBrains Mono',monospace;font-size:.75rem;background:var(--muted);padding:.1rem .3rem;border-radius:3px;color:var(--ember)}
+pre{font-family:'JetBrains Mono',monospace;font-size:.75rem;background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1rem;overflow-x:auto;line-height:1.7;color:var(--muted-fg)}
+.cr{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.cr-sw{height:56px;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-size:.95rem;font-weight:700}
+.cr-info{padding:.4rem .6rem;background:var(--card)}
+.cr-ratio{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;display:block}
+.cr-label{font-family:'Inter',sans-serif;font-size:.58rem;color:var(--muted-fg);display:block;margin-top:.1rem}
+.pass{color:#22C55E}.lpass{color:#16A34A}.fail{color:#EF4444}
+.tok-table{width:100%;border-collapse:collapse}
+.tok-table th,.tok-table td{padding:.5rem .75rem;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:.7rem;text-align:left}
+.tok-table th{font-weight:600;color:var(--ember);background:var(--muted)}
+.tok-table td{color:var(--muted-fg)}
+.tok-table td:first-child{color:var(--fg);font-weight:500}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div style="display:flex;align-items:center;gap:.6rem">
+    <svg width="24" height="24" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="9" fill="#111827"/><polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+      <line x1="24" y1="24" x2="24" y2="8" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="37.86" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="10.14" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/><circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+    </svg>
+    <span class="nav-brand">The <em>Boss</em> — Brand Guide v2.2</span>
+  </div>
+  <button class="mode-btn" onclick="document.documentElement.setAttribute('data-mode',document.documentElement.getAttribute('data-mode')==='dark'?'light':'dark');this.textContent=document.documentElement.getAttribute('data-mode')==='dark'?'☀ Light':'☽ Dark'">☀ Light</button>
+</nav>
+<main class="wrap">
+
+<!-- § 01 IDENTITY -->
+<section class="section">
+  <span class="eyebrow">§ 01 — Logo System</span>
+  <h2>The Boss Identity Mark v2.2</h2>
+  <hr class="rule"/>
+  <div class="grid-2" style="gap:1.5px;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:2rem">
+    <div style="background:#0B0F14;padding:2.5rem">
+      <span class="label" style="color:#2A3D55">Dark Mode · #0B0F14</span>
+      <svg viewBox="0 0 560 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:480px;margin-top:1rem">
+        <defs><clipPath id="bg1"><rect x="7" y="7" width="116" height="116" rx="22"/></clipPath><mask id="m1"><rect width="560" height="130" fill="white"/><polygon points="65,35 90.98,50 90.98,80 65,95 39.02,80 39.02,50" fill="black"/></mask></defs>
+        <rect x="7" y="7" width="116" height="116" rx="22" fill="#FF6A3D"/>
+        <g clip-path="url(#bg1)" stroke="#FF8A55" stroke-width="0.5" opacity="0.18" fill="none">
+          <line x1="7" y1="19" x2="123" y2="19"/><line x1="7" y1="31" x2="123" y2="31"/><line x1="7" y1="43" x2="123" y2="43"/><line x1="7" y1="55" x2="123" y2="55"/><line x1="7" y1="67" x2="123" y2="67"/><line x1="7" y1="79" x2="123" y2="79"/><line x1="7" y1="91" x2="123" y2="91"/><line x1="7" y1="103" x2="123" y2="103"/><line x1="7" y1="115" x2="123" y2="115"/>
+          <line x1="19" y1="7" x2="19" y2="123"/><line x1="31" y1="7" x2="31" y2="123"/><line x1="43" y1="7" x2="43" y2="123"/><line x1="55" y1="7" x2="55" y2="123"/><line x1="67" y1="7" x2="67" y2="123"/><line x1="79" y1="7" x2="79" y2="123"/><line x1="91" y1="7" x2="91" y2="123"/><line x1="103" y1="7" x2="103" y2="123"/><line x1="115" y1="7" x2="115" y2="123"/>
+        </g>
+        <circle cx="65" cy="65" r="47" fill="none" stroke="#E04E28" stroke-width="0.75" stroke-dasharray="3 4" opacity="0.5" mask="url(#m1)"/>
+        <polygon points="65,35 90.98,50 90.98,80 65,95 39.02,80 39.02,50" fill="#0B0F14"/>
+        <line x1="65" y1="65" x2="65" y2="35" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="90.98" y2="50" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="39.02" y2="50" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="90.98" y2="80" stroke="#4A8EC7" stroke-width="2.5" opacity="0.9" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="65" y2="95" stroke="#4A8EC7" stroke-width="2.5" opacity="0.9" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="39.02" y2="80" stroke="#4A8EC7" stroke-width="2.5" opacity="0.9" stroke-linecap="round"/>
+        <circle cx="65" cy="35" r="4.5" fill="#FFF"/><circle cx="90.98" cy="50" r="4.5" fill="#FFF"/><circle cx="39.02" cy="50" r="4.5" fill="#FFF"/>
+        <circle cx="90.98" cy="80" r="4" fill="#0B0F14" stroke="#4A8EC7" stroke-width="2.25"/>
+        <circle cx="65" cy="95" r="4" fill="#0B0F14" stroke="#4A8EC7" stroke-width="2.25"/>
+        <circle cx="39.02" cy="80" r="4" fill="#0B0F14" stroke="#4A8EC7" stroke-width="2.25"/>
+        <circle cx="65" cy="65" r="9" fill="none" stroke="#FFF" stroke-width="0.85" opacity="0.22"/>
+        <circle cx="65" cy="65" r="5.5" fill="#FFF" opacity="0.95"/>
+        <line x1="140" y1="16" x2="140" y2="114" stroke="#E04E28" stroke-width="0.75" opacity="0.4"/>
+        <text x="156" y="43" font-family="'Space Grotesk',sans-serif" font-weight="500" font-size="11" fill="#A7B0BC" letter-spacing="0.26em">THE</text>
+        <text x="152" y="90" font-family="'Space Grotesk',sans-serif" font-weight="700" font-size="50" fill="#F1F3F6" letter-spacing="-0.03em">BOSS</text>
+        <rect x="152" y="95" width="6" height="4" fill="#FF6A3D" rx="1"/>
+        <rect x="162" y="96" width="196" height="2.5" fill="#FF6A3D" rx="1.25"/>
+        <text x="153" y="113" font-family="'JetBrains Mono',monospace" font-size="8" fill="#FF6A3D" letter-spacing="0.18em">AGENT STUDIO</text>
+      </svg>
+      <div style="display:flex;gap:2rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #1E2A38;flex-wrap:wrap">
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#2A3D55;display:block">Container</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#A7B0BC">#FF6A3D ember</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#2A3D55;display:block">Hex Fill</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#A7B0BC">#0B0F14 charcoal</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#2A3D55;display:block">Crown</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#A7B0BC">#FFFFFF solid</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#2A3D55;display:block">Passive</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#A7B0BC">#4A8EC7 navy ring</span></div>
+      </div>
+    </div>
+    <div style="background:#F7F7F8;padding:2.5rem">
+      <span class="label" style="color:#9CA3AF">Light Mode · #F7F7F8</span>
+      <svg viewBox="0 0 560 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:480px;margin-top:1rem">
+        <defs><clipPath id="bg2"><rect x="7" y="7" width="116" height="116" rx="22"/></clipPath><mask id="m2"><rect width="560" height="130" fill="white"/><polygon points="65,35 90.98,50 90.98,80 65,95 39.02,80 39.02,50" fill="black"/></mask></defs>
+        <rect x="7" y="7" width="116" height="116" rx="22" fill="#111827"/>
+        <g clip-path="url(#bg2)" stroke="#1A2432" stroke-width="0.5" opacity="0.6" fill="none">
+          <line x1="7" y1="19" x2="123" y2="19"/><line x1="7" y1="31" x2="123" y2="31"/><line x1="7" y1="43" x2="123" y2="43"/><line x1="7" y1="55" x2="123" y2="55"/><line x1="7" y1="67" x2="123" y2="67"/><line x1="7" y1="79" x2="123" y2="79"/><line x1="7" y1="91" x2="123" y2="91"/><line x1="7" y1="103" x2="123" y2="103"/><line x1="7" y1="115" x2="123" y2="115"/>
+          <line x1="19" y1="7" x2="19" y2="123"/><line x1="31" y1="7" x2="31" y2="123"/><line x1="43" y1="7" x2="43" y2="123"/><line x1="55" y1="7" x2="55" y2="123"/><line x1="67" y1="7" x2="67" y2="123"/><line x1="79" y1="7" x2="79" y2="123"/><line x1="91" y1="7" x2="91" y2="123"/><line x1="103" y1="7" x2="103" y2="123"/><line x1="115" y1="7" x2="115" y2="123"/>
+        </g>
+        <circle cx="65" cy="65" r="47" fill="none" stroke="#233041" stroke-width="0.75" stroke-dasharray="3 4" opacity="0.7" mask="url(#m2)"/>
+        <polygon points="65,35 90.98,50 90.98,80 65,95 39.02,80 39.02,50" fill="#E04E28"/>
+        <line x1="65" y1="65" x2="65" y2="35" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="90.98" y2="50" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="39.02" y2="50" stroke="#FFF" stroke-width="2.5" opacity="0.92" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="90.98" y2="80" stroke="#0B0F14" stroke-width="2.5" opacity="0.72" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="65" y2="95" stroke="#0B0F14" stroke-width="2.5" opacity="0.72" stroke-linecap="round"/>
+        <line x1="65" y1="65" x2="39.02" y2="80" stroke="#0B0F14" stroke-width="2.5" opacity="0.72" stroke-linecap="round"/>
+        <circle cx="65" cy="35" r="4.5" fill="#FFF"/><circle cx="90.98" cy="50" r="4.5" fill="#FFF"/><circle cx="39.02" cy="50" r="4.5" fill="#FFF"/>
+        <circle cx="90.98" cy="80" r="4" fill="#0B0F14" stroke="#E04E28" stroke-width="2"/>
+        <circle cx="65" cy="95" r="4" fill="#0B0F14" stroke="#E04E28" stroke-width="2"/>
+        <circle cx="39.02" cy="80" r="4" fill="#0B0F14" stroke="#E04E28" stroke-width="2"/>
+        <circle cx="65" cy="65" r="9" fill="none" stroke="#FFF" stroke-width="0.85" opacity="0.22"/>
+        <circle cx="65" cy="65" r="5.5" fill="#FFF" opacity="0.95"/>
+        <line x1="140" y1="16" x2="140" y2="114" stroke="#D8DEE6" stroke-width="0.75"/>
+        <text x="156" y="43" font-family="'Space Grotesk',sans-serif" font-weight="500" font-size="11" fill="#9CA3AF" letter-spacing="0.26em">THE</text>
+        <text x="152" y="90" font-family="'Space Grotesk',sans-serif" font-weight="700" font-size="50" fill="#0B0F14" letter-spacing="-0.03em">BOSS</text>
+        <rect x="152" y="95" width="6" height="4" fill="#E04E28" rx="1"/>
+        <rect x="162" y="96" width="196" height="2.5" fill="#E04E28" rx="1.25"/>
+        <text x="153" y="113" font-family="'JetBrains Mono',monospace" font-size="8" fill="#E04E28" letter-spacing="0.18em">AGENT STUDIO</text>
+      </svg>
+      <div style="display:flex;gap:2rem;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #D8DEE6;flex-wrap:wrap">
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;display:block">Container</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#4B5563">#111827 charcoal</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;display:block">Hex Fill</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#4B5563">#E04E28 ember</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;display:block">Crown</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#4B5563">#FFFFFF solid</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:#9CA3AF;display:block">Passive</span><span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#4B5563">#E04E28 ring on dark</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Visual Language — Active vs Passive Agents</h3>
+  <div class="grid-2">
+    <div class="card"><span class="label">Active Crown (top 3 spokes)</span><p style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg);line-height:1.6">Solid white fill. The three agents directly connected to The Boss. Authority, clarity, action. Color: <code>#FFFFFF</code>. Radius: 4.5 (primary), 2.75 (context).</p></div>
+    <div class="card"><span class="label">Passive Agents (lower 3 spokes)</span><p style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg);line-height:1.6">Dark fill with contrasting ring. Dark mode: <code>#4A8EC7</code> navy ring. Light mode: <code>#E04E28</code> ember ring. Communicates standby/waiting state. Ring blends subtly into orange hex in light mode — intentional “punched through” effect.</p></div>
+  </div>
+</section>
+<!-- § 02 COLOR -->
+<section class="section">
+  <span class="eyebrow">§ 02 — Color System</span>
+  <h2>Design Tokens</h2>
+  <hr class="rule"/>
+  <h3>Dark Mode Palette</h3>
+  <div class="grid-4" style="margin-bottom:2rem">
+    <div class="chip"><div class="chip-sw" style="background:#0B0F14"></div><div class="chip-info"><span class="chip-name">Background</span><span class="chip-hex">#0B0F14</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#0F1620"></div><div class="chip-info"><span class="chip-name">Card</span><span class="chip-hex">#0F1620</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#141C26"></div><div class="chip-info"><span class="chip-name">Muted</span><span class="chip-hex">#141C26</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#1A2432"></div><div class="chip-info"><span class="chip-name">Secondary</span><span class="chip-hex">#1A2432</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#233041"></div><div class="chip-info"><span class="chip-name">Border</span><span class="chip-hex">#233041</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#A7B0BC"></div><div class="chip-info"><span class="chip-name">Muted FG</span><span class="chip-hex">#A7B0BC</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#E8EDF3"></div><div class="chip-info"><span class="chip-name">Foreground</span><span class="chip-hex">#E8EDF3</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#FF6A3D"></div><div class="chip-info"><span class="chip-name">Ember ★</span><span class="chip-hex">#FF6A3D</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#4A8EC7"></div><div class="chip-info"><span class="chip-name">Passive Navy</span><span class="chip-hex">#4A8EC7</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#2A1B17"></div><div class="chip-info"><span class="chip-name">Accent</span><span class="chip-hex">#2A1B17</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#22C55E"></div><div class="chip-info"><span class="chip-name">Success</span><span class="chip-hex">#22C55E</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#60A5FA"></div><div class="chip-info"><span class="chip-name">Info</span><span class="chip-hex">#60A5FA</span></div></div>
+  </div>
+  <h3>Light Mode Palette</h3>
+  <div class="grid-4" style="margin-bottom:2rem">
+    <div class="chip"><div class="chip-sw" style="background:#F7F7F8;border-bottom:1px solid #E8EBF0"></div><div class="chip-info"><span class="chip-name">Background</span><span class="chip-hex">#F7F7F8</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#FFFFFF;border-bottom:1px solid #E8EBF0"></div><div class="chip-info"><span class="chip-name">Card</span><span class="chip-hex">#FFFFFF</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#EEF0F3"></div><div class="chip-info"><span class="chip-name">Muted</span><span class="chip-hex">#EEF0F3</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#111827"></div><div class="chip-info"><span class="chip-name">Secondary</span><span class="chip-hex">#111827</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#D8DEE6"></div><div class="chip-info"><span class="chip-name">Border</span><span class="chip-hex">#D8DEE6</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#4B5563"></div><div class="chip-info"><span class="chip-name">Muted FG</span><span class="chip-hex">#4B5563</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#0B0F14"></div><div class="chip-info"><span class="chip-name">Foreground</span><span class="chip-hex">#0B0F14</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#E04E28"></div><div class="chip-info"><span class="chip-name">Ember ★</span><span class="chip-hex">#E04E28</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#F2D6CF"></div><div class="chip-info"><span class="chip-name">Accent</span><span class="chip-hex">#F2D6CF</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#3B1410"></div><div class="chip-info"><span class="chip-name">Accent FG</span><span class="chip-hex">#3B1410</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#16A34A"></div><div class="chip-info"><span class="chip-name">Success</span><span class="chip-hex">#16A34A</span></div></div>
+    <div class="chip"><div class="chip-sw" style="background:#2563EB"></div><div class="chip-info"><span class="chip-name">Info</span><span class="chip-hex">#2563EB</span></div></div>
+  </div>
+  <h3>CSS Custom Properties</h3>
+  <pre>/* Dark Mode (default) */
+:root {
+  --bg: #0B0F14;   --fg: #E8EDF3;   --card: #0F1620;   --muted: #141C26;
+  --muted-fg: #A7B0BC;  --border: #233041;  --primary: #FF6A3D;
+  --secondary: #1A2432;  --accent: #2A1B17;
+  --logo-container: #FF6A3D;  --logo-hex: #0B0F14;  --logo-passive: #4A8EC7;
+}
+/* Light Mode */
+[data-mode="light"] {
+  --bg: #F7F7F8;   --fg: #0B0F14;   --card: #FFFFFF;   --muted: #EEF0F3;
+  --muted-fg: #4B5563;  --border: #D8DEE6;  --primary: #E04E28;
+  --secondary: #111827;  --accent: #F2D6CF;
+  --logo-container: #111827;  --logo-hex: #E04E28;  --logo-passive: #E04E28;
+}</pre>
+</section>
+<!-- § 03 TYPOGRAPHY -->
+<section class="section">
+  <span class="eyebrow">§ 03 — Typography</span>
+  <h2>Type System — Four Fonts, Four Roles</h2>
+  <hr class="rule"/>
+  <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div class="type-row">
+      <div><span class="type-name">Space Grotesk</span><span class="type-role">Display &amp; Headlines<br>H1–H4, hero, feature names</span></div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:2.25rem;font-weight:700;letter-spacing:-.03em;line-height:1.05;color:var(--fg)">Orchestrate everything.</div>
+      <div class="spec">H1: 48–56px / 700<br>tracking: −0.03em<br>leading: 1.05<br>H2: 32–36px / 700<br>H3: 22–26px / 700<br>Never uppercase.</div>
+    </div>
+    <div class="type-row">
+      <div><span class="type-name">Inter</span><span class="type-role">UI &amp; Interface<br>Buttons, nav, labels, badges</span></div>
+      <div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.6rem">
+          <button style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;background:var(--ember);color:var(--card);border:none;padding:.48rem 1rem;border-radius:8px">New Agent</button>
+          <button style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;background:transparent;color:var(--fg);border:1.5px solid var(--border);padding:.48rem 1rem;border-radius:8px">Settings</button>
+          <span style="font-family:'Inter',sans-serif;font-size:.65rem;font-weight:600;background:var(--muted);color:var(--muted-fg);padding:.18rem .5rem;border-radius:999px">v2.2</span>
+        </div>
+        <div style="font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg)">Agents · Skills · Memory · Settings</div>
+      </div>
+      <div class="spec">Button: 14px / 600<br>Nav: 13px / 600<br>Label: 12px / 600<br>Overline: 11px / 700<br>tracking: 0.08–0.12em</div>
+    </div>
+    <div class="type-row">
+      <div><span class="type-name">Roboto</span><span class="type-role">Body &amp; Long-form<br>Paragraphs, articles, docs</span></div>
+      <div><p style="font-family:'Roboto',sans-serif;font-size:.9rem;font-weight:400;color:var(--fg);line-height:1.72;max-width:50ch">The Prometheus Fabric is infrastructure — the kind you build once and operate forever. Every component earns its place.</p></div>
+      <div class="spec">Body: 16px / 400<br>leading: 1.70–1.75<br>max-width: 65ch<br>Body sm: 14px / 400<br>Lead: 18px / 300</div>
+    </div>
+    <div class="type-row">
+      <div><span class="type-name">JetBrains Mono</span><span class="type-role">Code &amp; Technical<br>Code, eyebrows, hex values</span></div>
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);margin-bottom:.5rem">§ Configuration</div>
+        <div style="background:var(--muted);border:1px solid var(--border);border-radius:6px;padding:.75rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--muted-fg);line-height:1.7"><span style="color:#60A5FA">let</span> boss = Boss::new()<br>&nbsp;&nbsp;.skills(["artifact","memory"])<br>&nbsp;&nbsp;.build()?;</div>
+      </div>
+      <div class="spec">Code: 13px / 400<br>Eyebrow: 11px / 600<br>tracking: 0.12–0.16em<br>uppercase · ember<br>Inline: 13px / 500</div>
+    </div>
+  </div>
+</section>
+<!-- § 04 WCAG -->
+<section class="section">
+  <span class="eyebrow">§ 04 — Accessibility</span>
+  <h2>WCAG Contrast Compliance</h2>
+  <hr class="rule"/>
+  <div class="grid-4">
+    <div class="cr"><div class="cr-sw" style="background:#0B0F14;color:#FF6A3D">Aa</div><div class="cr-info"><span class="cr-ratio pass">5.1:1 ✓ AA</span><span class="cr-label">Ember on dark bg</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#FF6A3D;color:#0B0F14">Aa</div><div class="cr-info"><span class="cr-ratio pass">5.1:1 ✓ AA</span><span class="cr-label">Dark hex on ember</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#0B0F14;color:#4A8EC7">Aa</div><div class="cr-info"><span class="cr-ratio pass">4.5:1 ✓ AA</span><span class="cr-label">Navy on dark hex</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#F7F7F8;color:#111827">Aa</div><div class="cr-info"><span class="cr-ratio lpass">17:1 ✓ AAA</span><span class="cr-label">Dark container/light bg</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#111827;color:#E04E28">Aa</div><div class="cr-info"><span class="cr-ratio lpass">5.1:1 ✓ AA</span><span class="cr-label">Ember hex on charcoal</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#0B0F14;color:#F1F3F6">Aa</div><div class="cr-info"><span class="cr-ratio pass">14.2:1 ✓ AAA</span><span class="cr-label">Near-white on dark bg</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#F7F7F8;color:#0B0F14">Aa</div><div class="cr-info"><span class="cr-ratio lpass">19.3:1 ✓ AAA</span><span class="cr-label">Dark text on light bg</span></div></div>
+    <div class="cr"><div class="cr-sw" style="background:#0D1219;color:#0B0F14">✗</div><div class="cr-info"><span class="cr-ratio fail">1.05:1 ✗</span><span class="cr-label">v1 dark-on-dark — NEVER USE</span></div></div>
+  </div>
+</section>
+<!-- § 05 FILE REF -->
+<section class="section">
+  <span class="eyebrow">§ 05 — Asset Reference</span>
+  <h2>SVG File Index</h2>
+  <hr class="rule"/>
+  <div class="card">
+    <table class="tok-table" style="width:100%">
+      <thead><tr><th>File</th><th>Mode</th><th>Use Case</th><th>Dimensions</th></tr></thead>
+      <tbody>
+        <tr><td>lockup-dark.svg</td><td>Dark</td><td>Primary horizontal logo, dark surfaces</td><td>560×130 (flexible)</td></tr>
+        <tr><td>lockup-light.svg</td><td>Light</td><td>Primary horizontal logo, light surfaces</td><td>560×130 (flexible)</td></tr>
+        <tr><td>wordmark-dark.svg</td><td>Dark</td><td>Text-only lockup, dark surfaces</td><td>310×75 (flexible)</td></tr>
+        <tr><td>wordmark-light.svg</td><td>Light</td><td>Text-only lockup, light surfaces</td><td>310×75 (flexible)</td></tr>
+        <tr><td>icon-dark-512.svg</td><td>Dark</td><td>App store, large display, OG image</td><td>512×512</td></tr>
+        <tr><td>icon-dark-256.svg</td><td>Dark</td><td>macOS dock, retina @2x</td><td>256×256</td></tr>
+        <tr><td>icon-dark-192.svg</td><td>Dark</td><td>Android adaptive icon</td><td>192×192</td></tr>
+        <tr><td>icon-dark-96.svg</td><td>Dark</td><td>iOS home screen</td><td>96×96</td></tr>
+        <tr><td>icon-dark-64.svg</td><td>Dark</td><td>Sidebar, toolbar large</td><td>64×64</td></tr>
+        <tr><td>icon-dark-48.svg</td><td>Dark</td><td>App header, nav</td><td>48×48</td></tr>
+        <tr><td>icon-dark-32.svg</td><td>Dark</td><td>Tab icon, favicon @2x</td><td>32×32</td></tr>
+        <tr><td>icon-light-*.svg</td><td>Light</td><td>All above, light surface variants</td><td>All sizes</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <span class="label">Size Thresholds</span>
+    <p style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg);line-height:1.6">At 32px and below: omit all spokes, render hex + crown dots only (r=3.5). At 16px (favicon): hex shape alone — all internal elements disappear below 1px at this scale.</p>
+  </div>
+</section>
+<!-- § 06 USAGE -->
+<section class="section">
+  <span class="eyebrow">§ 06 — Enforcement</span>
+  <h2>Usage Rules</h2>
+  <hr class="rule"/>
+  <div class="usage-grid">
+    <div class="usage"><div class="usage-hd"><span style="color:#22C55E">Do</span></div><div class="usage-body">Use ember container (#FF6A3D) in dark mode. This is the “lit terminal”. The icon must glow against the dark background. 5.1:1 contrast ✓</div></div>
+    <div class="usage"><div class="usage-hd"><span style="color:#EF4444">Don’t</span></div><div class="usage-body">Never use a dark container on a dark background without a border. v1 failure: 1.05:1 contrast — the icon was invisible.</div></div>
+    <div class="usage"><div class="usage-hd"><span style="color:#22C55E">Do</span></div><div class="usage-body">Crown nodes (white) = active agents. Passive nodes = navy ring (dark mode) / ember ring (light mode). This visual grammar is intentional and must be preserved.</div></div>
+    <div class="usage"><div class="usage-hd"><span style="color:#EF4444">Don’t</span></div><div class="usage-body">Never render the full icon below 32px with spokes visible. The spoke geometry collapses to noise at sub-32px. Use crown-dots-only at 32px, hex-only at 16px.</div></div>
+    <div class="usage"><div class="usage-hd"><span style="color:#22C55E">Do</span></div><div class="usage-body">Dark mode ember: <code>#FF6A3D</code>. Light mode ember: <code>#E04E28</code>. Use the contextually correct value — they are calibrated for their respective backgrounds.</div></div>
+    <div class="usage"><div class="usage-hd"><span style="color:#EF4444">Don’t</span></div><div class="usage-body">Never introduce a second accent color. The single ember + structural navy palette is the entire identity. Teal, purple, or green dilutes it permanently and irreversibly.</div></div>
+  </div>
+</section>
+</main>
+<footer style="border-top:1px solid var(--border);padding:1.25rem 2.5rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted-fg);display:flex;justify-content:space-between">
+  <span>The Boss · Brand Guide v2.2 · travisjames.ai Open Source</span>
+  <span>2026-04-05 · /docs/branding/branding-guide.html</span>
+</footer>
+</body>
+</html>

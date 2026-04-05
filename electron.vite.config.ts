@@ -15,6 +15,7 @@ const visualizerPlugin = (type: 'renderer' | 'main') => {
 
 const isDev = process.env.NODE_ENV === 'development'
 const isProd = process.env.NODE_ENV === 'production'
+const enableCodeInspector = isDev && process.env.ENABLE_CODE_INSPECTOR === 'true'
 
 export default defineConfig({
   main: {
@@ -77,7 +78,7 @@ export default defineConfig({
       react({
         tsDecorators: true
       }),
-      ...(isDev ? [CodeInspectorPlugin({ bundler: 'vite' })] : []), // 只在开发环境下启用 CodeInspectorPlugin
+      ...(enableCodeInspector ? [CodeInspectorPlugin({ bundler: 'vite' })] : []),
       ...visualizerPlugin('renderer')
     ],
     resolve: {

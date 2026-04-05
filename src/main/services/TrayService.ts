@@ -1,5 +1,6 @@
 import { isLinux, isMac, isWin } from '@main/constant'
 import { locales } from '@main/utils/locales'
+import { APP_NAME } from '@shared/config/branding'
 import type { MenuItemConstructorOptions } from 'electron'
 import { app, Menu, nativeImage, nativeTheme, Tray } from 'electron'
 
@@ -52,7 +53,7 @@ export class TrayService {
       this.tray.setContextMenu(this.contextMenu)
     }
 
-    this.tray.setToolTip('Cherry Studio')
+    this.tray.setToolTip(APP_NAME)
 
     this.tray.on('right-click', () => {
       if (this.contextMenu) {

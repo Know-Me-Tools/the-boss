@@ -2,18 +2,26 @@ import { GithubOutlined } from '@ant-design/icons'
 import IndicatorLight from '@renderer/components/IndicatorLight'
 import { HStack } from '@renderer/components/Layout'
 import UpdateDialogPopup from '@renderer/components/Popups/UpdateDialogPopup'
-import { APP_NAME, AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
+import { APP_NAME } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
-import i18n from '@renderer/i18n'
 import { useAppDispatch } from '@renderer/store'
 import { setUpdateState } from '@renderer/store/runtime'
-import { ThemeMode } from '@renderer/types'
 import { runAsyncFunction } from '@renderer/utils'
+import {
+  PUBLIC_CAREERS_URL,
+  PUBLIC_DOCS_URL,
+  PUBLIC_ENTERPRISE_URL,
+  PUBLIC_ISSUES_URL,
+  PUBLIC_RELEASES_URL,
+  PUBLIC_REPO_URL,
+  PUBLIC_SUPPORT_URL,
+  PUBLIC_WEBSITE_URL
+} from '@shared/config/branding'
 import { UpgradeChannel } from '@shared/config/constant'
-import { Avatar, Button, Progress, Radio, Row, Switch, Tag, Tooltip } from 'antd'
+import { Button, Progress, Radio, Row, Switch, Tag, Tooltip } from 'antd'
 import { debounce } from 'lodash'
 import { Briefcase, Bug, Building2, Github, Globe, Mail, Rss } from 'lucide-react'
 import { BadgeQuestionMark } from 'lucide-react'
@@ -32,9 +40,9 @@ const AboutSettings: FC = () => {
   const { t } = useTranslation()
   const { autoCheckUpdate, setAutoCheckUpdate, testPlan, setTestPlan, testChannel, setTestChannel } = useSettings()
   const { theme } = useTheme()
+  const { lockup } = useBrandAssets()
   const dispatch = useAppDispatch()
   const { update } = useRuntime()
-  const { openSmartMinapp } = useMinappPopup()
 
   const onCheckUpdate = debounce(
     async () => {
@@ -67,13 +75,8 @@ const AboutSettings: FC = () => {
     void window.api.openWebsite(url)
   }
 
-  const mailto = async () => {
-    const email = 'support@cherry-ai.com'
-    const subject = `${APP_NAME} Feedback`
-    const version = (await window.api.getAppInfo()).version
-    const platform = window.electron.process.platform
-    const url = `mailto:${email}?subject=${subject}&body=%0A%0AVersion: ${version} | Platform: ${platform}`
-    onOpenWebsite(url)
+  const openSupport = async () => {
+    onOpenWebsite(PUBLIC_SUPPORT_URL)
   }
 
   const debug = async () => {
@@ -81,17 +84,11 @@ const AboutSettings: FC = () => {
   }
 
   const showEnterprise = async () => {
-    onOpenWebsite('https://enterprise.cherry-ai.com')
+    onOpenWebsite(PUBLIC_ENTERPRISE_URL)
   }
 
   const showReleases = async () => {
-    const { appPath } = await window.api.getAppInfo()
-    openSmartMinapp({
-      id: 'cherrystudio-releases',
-      name: t('settings.about.releases.title'),
-      url: `file://${appPath}/resources/cherry-studio/releases.html?theme=${theme === ThemeMode.dark ? 'dark' : 'light'}`,
-      logo: AppLogo
-    })
+    onOpenWebsite(PUBLIC_RELEASES_URL)
   }
 
   const currentChannelByVersion =
@@ -169,8 +166,7 @@ const AboutSettings: FC = () => {
   }, [autoCheckUpdate, setAutoCheckUpdate])
 
   const onOpenDocs = () => {
-    const isChinese = i18n.language.startsWith('zh')
-    void window.api.openWebsite(isChinese ? 'https://docs.cherry-ai.com/' : 'https://docs.cherry-ai.com/docs/en-us')
+    void window.api.openWebsite(PUBLIC_DOCS_URL)
   }
 
   return (
@@ -179,15 +175,21 @@ const AboutSettings: FC = () => {
         <SettingTitle>
           {t('settings.about.title')}
           <HStack alignItems="center">
-            <Link to="https://github.com/CherryHQ/cherry-studio">
-              <GithubOutlined style={{ marginRight: 4, color: 'var(--color-text)', fontSize: 20 }} />
+            <Link to={PUBLIC_REPO_URL}>
+              <GithubOutlined
+                style={{
+                  marginRight: 4,
+                  color: 'var(--color-text)',
+                  fontSize: 20
+                }}
+              />
             </Link>
           </HStack>
         </SettingTitle>
         <SettingDivider />
         <AboutHeader>
           <Row align="middle">
-            <AvatarWrapper onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio')}>
+            <AvatarWrapper onClick={() => onOpenWebsite(PUBLIC_REPO_URL)}>
               {update.downloadProgress > 0 && (
                 <ProgressCircle
                   type="circle"
@@ -198,13 +200,12 @@ const AboutSettings: FC = () => {
                   strokeColor="#67ad5b"
                 />
               )}
-              <Avatar src={AppLogo} size={80} style={{ minHeight: 80 }} />
+              <BrandLockup src={lockup} alt={APP_NAME} />
             </AvatarWrapper>
             <VersionWrapper>
-              <Title>{APP_NAME}</Title>
               <Description>{t('settings.about.description')}</Description>
               <Tag
-                onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio/releases')}
+                onClick={() => onOpenWebsite(PUBLIC_RELEASES_URL)}
                 color="cyan"
                 style={{ marginTop: 8, cursor: 'pointer' }}>
                 v{version}
@@ -264,7 +265,9 @@ const AboutSettings: FC = () => {
         <SettingGroup theme={theme}>
           <SettingRow>
             <SettingRowTitle>
-              {t('settings.about.updateAvailable', { version: update.info.version })}
+              {t('settings.about.updateAvailable', {
+                version: update.info.version
+              })}
               <IndicatorLight color="green" />
             </SettingRowTitle>
           </SettingRow>
@@ -299,7 +302,7 @@ const AboutSettings: FC = () => {
             <Globe size={18} />
             {t('settings.about.website.title')}
           </SettingRowTitle>
-          <Button onClick={() => onOpenWebsite('https://cherry-ai.com')}>{t('settings.about.website.button')}</Button>
+          <Button onClick={() => onOpenWebsite(PUBLIC_WEBSITE_URL)}>{t('settings.about.website.button')}</Button>
         </SettingRow>
         <SettingDivider />
         <SettingRow>
@@ -307,9 +310,7 @@ const AboutSettings: FC = () => {
             <Github size={18} />
             {t('settings.about.feedback.title')}
           </SettingRowTitle>
-          <Button onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio/issues/new/choose')}>
-            {t('settings.about.feedback.button')}
-          </Button>
+          <Button onClick={() => onOpenWebsite(PUBLIC_ISSUES_URL)}>{t('settings.about.feedback.button')}</Button>
         </SettingRow>
         <SettingDivider />
         <SettingRow>
@@ -325,7 +326,7 @@ const AboutSettings: FC = () => {
             <Mail size={18} />
             {t('settings.about.contact.title')}
           </SettingRowTitle>
-          <Button onClick={mailto}>{t('settings.about.contact.button')}</Button>
+          <Button onClick={openSupport}>{t('settings.about.contact.button')}</Button>
         </SettingRow>
         <SettingDivider />
         <SettingRow>
@@ -333,9 +334,7 @@ const AboutSettings: FC = () => {
             <Briefcase size={18} />
             {t('settings.about.careers.title')}
           </SettingRowTitle>
-          <Button onClick={() => onOpenWebsite('https://www.cherry-ai.com/careers')}>
-            {t('settings.about.careers.button')}
-          </Button>
+          <Button onClick={() => onOpenWebsite(PUBLIC_CAREERS_URL)}>{t('settings.about.careers.button')}</Button>
         </SettingRow>
         <SettingDivider />
         <SettingRow>
@@ -362,22 +361,17 @@ const AboutHeader = styled.div`
 const VersionWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  min-height: 80px;
   justify-content: center;
   align-items: flex-start;
-`
-
-const Title = styled.div`
-  font-size: 20px;
-  font-weight: bold;
-  color: var(--color-text-1);
-  margin-bottom: 5px;
+  gap: 8px;
 `
 
 const Description = styled.div`
   font-size: 14px;
   color: var(--color-text-2);
-  text-align: center;
+  font-family: var(--font-family-body);
+  max-width: 320px;
+  text-align: left;
 `
 
 const CheckUpdateButton = styled(Button)``
@@ -385,13 +379,22 @@ const CheckUpdateButton = styled(Button)``
 const AvatarWrapper = styled.div`
   position: relative;
   cursor: pointer;
-  margin-right: 15px;
+  display: flex;
+  align-items: center;
+  margin-right: 24px;
 `
 
 const ProgressCircle = styled(Progress)`
   position: absolute;
   top: -2px;
   left: -2px;
+`
+
+const BrandLockup = styled.img`
+  display: block;
+  width: 240px;
+  max-width: 44vw;
+  height: auto;
 `
 
 export const SettingRowTitle = styled.div`

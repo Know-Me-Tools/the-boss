@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import { SELECTION_FINETUNED_LIST, SELECTION_PREDEFINED_BLACKLIST } from '@main/configs/SelectionConfig'
 import { isDev, isLinux, isMac, isWin } from '@main/constant'
+import { APP_BUNDLE_ID } from '@shared/config/branding'
 import { IpcChannel } from '@shared/IpcChannel'
 import { app, BrowserWindow, clipboard, ipcMain, screen, systemPreferences } from 'electron'
 import { join } from 'path'
@@ -574,7 +575,7 @@ export class SelectionService {
     // [macOS] a hacky way
     // when set `skipTransformProcessType: true`, if the selection is in self app, it will make the selection canceled after toolbar showing
     // so we just don't set `skipTransformProcessType: true` when in self app
-    const isSelf = ['com.github.Electron', 'com.kangfenmao.CherryStudio'].includes(programName)
+    const isSelf = ['com.github.Electron', APP_BUNDLE_ID, 'com.kangfenmao.CherryStudio'].includes(programName)
 
     if (!isSelf) {
       // [macOS] an ugly hacky way
@@ -684,7 +685,10 @@ export class SelectionService {
    * Get actual toolbar dimensions accounting for zoom factor
    * @returns Object containing toolbar width and height
    */
-  private getToolbarRealSize(): { toolbarWidth: number; toolbarHeight: number } {
+  private getToolbarRealSize(): {
+    toolbarWidth: number
+    toolbarHeight: number
+  } {
     return {
       toolbarWidth: this.TOOLBAR_WIDTH * this.zoomFactor,
       toolbarHeight: this.TOOLBAR_HEIGHT * this.zoomFactor
@@ -873,7 +877,10 @@ export class SelectionService {
             isLogical = true
           } else {
             refOrientation = 'bottomMiddle'
-            refPoint = { x: selectionData.mousePosEnd.x, y: selectionData.mousePosEnd.y + 16 }
+            refPoint = {
+              x: selectionData.mousePosEnd.x,
+              y: selectionData.mousePosEnd.y + 16
+            }
           }
         }
         break
@@ -927,7 +934,10 @@ export class SelectionService {
 
           if (isNoMouse) {
             refOrientation = 'bottomLeft'
-            refPoint = { x: selectionData.endBottom.x, y: selectionData.endBottom.y + 4 }
+            refPoint = {
+              x: selectionData.endBottom.x,
+              y: selectionData.endBottom.y + 4
+            }
             break
           }
 
@@ -945,7 +955,10 @@ export class SelectionService {
           //double click to select a word
           if (isDoubleClick && isSameLine) {
             refOrientation = 'bottomMiddle'
-            refPoint = { x: selectionData.mousePosEnd.x, y: selectionData.endBottom.y + 4 }
+            refPoint = {
+              x: selectionData.mousePosEnd.x,
+              y: selectionData.endBottom.y + 4
+            }
             break
           }
 
@@ -955,10 +968,16 @@ export class SelectionService {
 
             if (direction > 0) {
               refOrientation = 'bottomLeft'
-              refPoint = { x: selectionData.endBottom.x, y: selectionData.endBottom.y + 4 }
+              refPoint = {
+                x: selectionData.endBottom.x,
+                y: selectionData.endBottom.y + 4
+              }
             } else {
               refOrientation = 'bottomRight'
-              refPoint = { x: selectionData.startBottom.x, y: selectionData.startBottom.y + 4 }
+              refPoint = {
+                x: selectionData.startBottom.x,
+                y: selectionData.startBottom.y + 4
+              }
             }
             break
           }
@@ -968,10 +987,16 @@ export class SelectionService {
 
           if (direction > 0) {
             refOrientation = 'bottomLeft'
-            refPoint = { x: selectionData.endBottom.x, y: selectionData.endBottom.y + 4 }
+            refPoint = {
+              x: selectionData.endBottom.x,
+              y: selectionData.endBottom.y + 4
+            }
           } else {
             refOrientation = 'topRight'
-            refPoint = { x: selectionData.startTop.x, y: selectionData.startTop.y - 4 }
+            refPoint = {
+              x: selectionData.startTop.x,
+              y: selectionData.startTop.y - 4
+            }
           }
         }
         break

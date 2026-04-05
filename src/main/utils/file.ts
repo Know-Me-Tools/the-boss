@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
+import { APP_TEMP_DIR_NAME } from '@shared/config/branding'
 import { audioExts, documentExts, HOME_CHERRY_DIR, imageExts, MB, textExts, videoExts } from '@shared/config/constant'
 import type { FileMetadata, FileType, NotesTreeNode } from '@types'
 import { FILE_TYPE } from '@types'
@@ -162,7 +163,7 @@ export function getAllFiles(dirPath: string, arrayOfFiles: FileMetadata[] = []):
 }
 
 export function getTempDir() {
-  return path.join(app.getPath('temp'), 'CherryStudio')
+  return path.join(app.getPath('temp'), APP_TEMP_DIR_NAME)
 }
 
 export function getFilesDir() {
@@ -436,7 +437,10 @@ export function validateFileName(fileName: string, platform = process.platform):
 
   // 通用检查
   if (fileName.length === 0 || fileName.length > 255) {
-    return { valid: false, error: 'File name length must be between 1 and 255 characters' }
+    return {
+      valid: false,
+      error: 'File name length must be between 1 and 255 characters'
+    }
   }
 
   // 检查 null 字符（所有系统都不允许）
@@ -448,7 +452,10 @@ export function validateFileName(fileName: string, platform = process.platform):
   if (platform === 'win32') {
     const winInvalidChars = /[<>:"/\\|?*]/
     if (winInvalidChars.test(fileName)) {
-      return { valid: false, error: 'File name contains characters not supported by Windows: < > : " / \\ | ? *' }
+      return {
+        valid: false,
+        error: 'File name contains characters not supported by Windows: < > : " / \\ | ? *'
+      }
     }
 
     const reservedNames = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)/i
@@ -457,7 +464,10 @@ export function validateFileName(fileName: string, platform = process.platform):
     }
 
     if (fileName.endsWith('.') || fileName.endsWith(' ')) {
-      return { valid: false, error: 'File name cannot end with a dot or a space' }
+      return {
+        valid: false,
+        error: 'File name cannot end with a dot or a space'
+      }
     }
   }
 
@@ -471,7 +481,10 @@ export function validateFileName(fileName: string, platform = process.platform):
   // macOS 额外限制
   if (platform === 'darwin') {
     if (fileName.includes(':')) {
-      return { valid: false, error: 'macOS filenames cannot contain a colon :' }
+      return {
+        valid: false,
+        error: 'macOS filenames cannot contain a colon :'
+      }
     }
   }
 

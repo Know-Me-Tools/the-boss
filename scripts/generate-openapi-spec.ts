@@ -10,12 +10,12 @@ const swaggerOptions: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Cherry Studio API',
+      title: 'The Boss API',
       version: '1.0.0',
-      description: 'OpenAI-compatible API for Cherry Studio with additional Cherry-specific endpoints',
+      description: 'OpenAI-compatible API for The Boss with additional product-specific endpoints',
       contact: {
-        name: 'Cherry Studio',
-        url: 'https://github.com/CherryHQ/cherry-studio'
+        name: 'The Boss',
+        url: 'https://github.com/Know-Me-Tools/the-boss'
       }
     },
     servers: [
@@ -30,7 +30,7 @@ const swaggerOptions: swaggerJSDoc.Options = {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'JWT',
-          description: 'Use the API key from Cherry Studio settings'
+          description: 'Use the API key from The Boss settings'
         }
       },
       schemas: {

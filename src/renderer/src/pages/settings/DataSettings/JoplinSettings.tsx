@@ -1,6 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
-import { AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import type { RootState } from '@renderer/store'
@@ -17,6 +17,7 @@ import { SettingDivider, SettingGroup, SettingHelpText, SettingRow, SettingRowTi
 const JoplinSettings: FC = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { icon } = useBrandAssets()
   const dispatch = useAppDispatch()
   const { openSmartMinapp } = useMinappPopup()
 
@@ -72,7 +73,7 @@ const JoplinSettings: FC = () => {
       id: 'joplin-help',
       name: 'Joplin Help',
       url: 'https://joplinapp.org/help/apps/clipper',
-      logo: AppLogo
+      logo: icon
     })
   }
 

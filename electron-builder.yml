@@ -1,5 +1,5 @@
-appId: com.kangfenmao.CherryStudio
-productName: Cherry Studio
+appId: tools.know-me.the-boss
+productName: The Boss
 electronLanguages:
   - zh-CN
   - zh-TW
@@ -14,9 +14,9 @@ directories:
   buildResources: build
 
 protocols:
-  - name: Cherry Studio
+  - name: The Boss
     schemes:
-      - cherrystudio
+      - theboss
 files:
   - "**/*"
   - "!**/{.vscode,.yarn,.yarn-lock,.github,.cursorrules,.prettierrc}"
@@ -75,7 +75,7 @@ asarUnpack:
   - "node_modules/@img/sharp-libvips-*/**"
 
 win:
-  executableName: Cherry Studio
+  executableName: The Boss
   artifactName: ${productName}-${version}-${arch}-setup.${ext}
   target:
     - target: nsis
@@ -112,7 +112,7 @@ dmg:
   writeUpdateInfo: false
 linux:
   artifactName: ${productName}-${version}-${arch}.${ext}
-  executableName: CherryStudio
+  executableName: TheBoss
   target:
     - target: AppImage
     - target: deb
@@ -121,17 +121,17 @@ linux:
   category: Utility
   desktop:
     entry:
-      Name: Cherry Studio
-      StartupWMClass: CherryStudio
+      Name: The Boss
+      StartupWMClass: TheBoss
   mimeTypes:
-    - x-scheme-handler/cherrystudio
+    - x-scheme-handler/theboss
 rpm:
   # Workaround for electron build issue on rpm package:
   # https://github.com/electron/forge/issues/3594
   fpm: ["--rpm-rpmbuild-define=_build_id_links none"]
 publish:
   provider: generic
-  url: https://releases.cherry-ai.com
+  url: https://the-boss.know-me.tools/releases/latest/download
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
 beforePack: scripts/before-pack.js
@@ -141,7 +141,7 @@ artifactBuildCompleted: scripts/artifact-build-completed.js
 releaseInfo:
   releaseNotes: |
     <!--LANG:en-->
-    Cherry Studio 1.9.0-rc.0 - CherryClaw Agent, Skills System & Security Hardening
+    The Boss 1.9.0-rc.0 - CherryClaw Agent, Skills System & Security Hardening
 
     ⚠️ Breaking Changes
     - [Agents] "Plugins" system renamed to "Skills". Plugin marketplace has been replaced by a unified Skills management interface
@@ -180,7 +180,7 @@ releaseInfo:
     - [Agent] Improve session switch experience
 
     <!--LANG:zh-CN-->
-    Cherry Studio 1.9.0-rc.0 - CherryClaw 智能体、技能系统与安全加固
+    The Boss 1.9.0-rc.0 - CherryClaw 智能体、技能系统与安全加固
 
     ⚠️ 破坏性变更
     - [智能体] "插件"系统更名为"技能（Skills）"，插件市场已替换为统一的技能管理界面

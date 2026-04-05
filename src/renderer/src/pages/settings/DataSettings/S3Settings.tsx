@@ -3,7 +3,7 @@ import { HStack } from '@renderer/components/Layout'
 import { S3BackupManager } from '@renderer/components/S3BackupManager'
 import { S3BackupModal, useS3BackupModal } from '@renderer/components/S3Modals'
 import Selector from '@renderer/components/Selector'
-import { AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useSettings } from '@renderer/hooks/useSettings'
@@ -48,6 +48,7 @@ const S3Settings: FC = () => {
 
   const dispatch = useAppDispatch()
   const { theme } = useTheme()
+  const { icon } = useBrandAssets()
   const { t } = useTranslation()
   const { openSmartMinapp } = useMinappPopup()
 
@@ -67,8 +68,8 @@ const S3Settings: FC = () => {
     openSmartMinapp({
       id: 's3-help',
       name: 'S3 Compatible Storage Help',
-      url: 'https://docs.cherry-ai.com/data-settings/s3-compatible',
-      logo: AppLogo
+      url: 'https://the-boss.know-me.tools/docs/data-settings/s3-compatible',
+      logo: icon
     })
   }
 
@@ -93,13 +94,18 @@ const S3Settings: FC = () => {
       <HStack gap="5px" alignItems="center">
         {s3Sync?.syncing && <SyncOutlined spin />}
         {!s3Sync?.syncing && s3Sync?.lastSyncError && (
-          <Tooltip title={t('settings.data.s3.syncStatus.error', { message: s3Sync.lastSyncError })}>
+          <Tooltip
+            title={t('settings.data.s3.syncStatus.error', {
+              message: s3Sync.lastSyncError
+            })}>
             <WarningOutlined style={{ color: 'red' }} />
           </Tooltip>
         )}
         {s3Sync?.lastSyncTime && (
           <span style={{ color: 'var(--text-secondary)' }}>
-            {t('settings.data.s3.syncStatus.lastSync', { time: dayjs(s3Sync.lastSyncTime).format('HH:mm:ss') })}
+            {t('settings.data.s3.syncStatus.lastSync', {
+              time: dayjs(s3Sync.lastSyncTime).format('HH:mm:ss')
+            })}
           </span>
         )}
       </HStack>
@@ -222,15 +228,42 @@ const S3Settings: FC = () => {
           disabled={!endpoint || !accessKeyId || !secretAccessKey}
           options={[
             { label: t('settings.data.s3.autoSync.off'), value: 0 },
-            { label: t('settings.data.s3.autoSync.minute', { count: 1 }), value: 1 },
-            { label: t('settings.data.s3.autoSync.minute', { count: 5 }), value: 5 },
-            { label: t('settings.data.s3.autoSync.minute', { count: 15 }), value: 15 },
-            { label: t('settings.data.s3.autoSync.minute', { count: 30 }), value: 30 },
-            { label: t('settings.data.s3.autoSync.hour', { count: 1 }), value: 60 },
-            { label: t('settings.data.s3.autoSync.hour', { count: 2 }), value: 120 },
-            { label: t('settings.data.s3.autoSync.hour', { count: 6 }), value: 360 },
-            { label: t('settings.data.s3.autoSync.hour', { count: 12 }), value: 720 },
-            { label: t('settings.data.s3.autoSync.hour', { count: 24 }), value: 1440 }
+            {
+              label: t('settings.data.s3.autoSync.minute', { count: 1 }),
+              value: 1
+            },
+            {
+              label: t('settings.data.s3.autoSync.minute', { count: 5 }),
+              value: 5
+            },
+            {
+              label: t('settings.data.s3.autoSync.minute', { count: 15 }),
+              value: 15
+            },
+            {
+              label: t('settings.data.s3.autoSync.minute', { count: 30 }),
+              value: 30
+            },
+            {
+              label: t('settings.data.s3.autoSync.hour', { count: 1 }),
+              value: 60
+            },
+            {
+              label: t('settings.data.s3.autoSync.hour', { count: 2 }),
+              value: 120
+            },
+            {
+              label: t('settings.data.s3.autoSync.hour', { count: 6 }),
+              value: 360
+            },
+            {
+              label: t('settings.data.s3.autoSync.hour', { count: 12 }),
+              value: 720
+            },
+            {
+              label: t('settings.data.s3.autoSync.hour', { count: 24 }),
+              value: 1440
+            }
           ]}
         />
       </SettingRow>
