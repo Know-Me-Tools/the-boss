@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
 import { messageBlocksSlice } from '@renderer/store/messageBlock'
+import settingsReducer from '@renderer/store/settings'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
 import { createErrorBlock, createMainTextBlock, createMessage } from '@renderer/utils/messageUtils/create'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,7 +9,8 @@ import { ConversationService } from '../ConversationService'
 
 // Create a lightweight mock store for selectors used in the filtering pipeline
 const reducer = combineReducers({
-  messageBlocks: messageBlocksSlice.reducer
+  messageBlocks: messageBlocksSlice.reducer,
+  settings: settingsReducer
 })
 
 const createMockStore = () => {

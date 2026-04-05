@@ -1,7 +1,13 @@
 import type { Assistant, FileMetadata, Usage } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
-import { findFileBlocks, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
+import { MessageBlockType } from '@renderer/types/newMessage'
+import {
+  findAllBlocks,
+  findFileBlocks,
+  getMainTextContent,
+  getThinkingContent
+} from '@renderer/utils/messageUtils/find'
 import { flatten, takeRight } from 'lodash'
 import { approximateTokenSize } from 'tokenx'
 
@@ -193,4 +199,145 @@ export async function estimateHistoryTokens(assistant: Assistant, msgs: Message[
     .join('\n')
 
   return estimateTextTokens(prompt + input) + uasageTokens
+}
+
+// ==================== Context Management Token Estimation ====================
+
+/**
+ * Estimate tokens for a single message (synchronous version for context strategies)
+ */
+export function estimateSingleMessageTokens(message: Message): number {
+  if (!message.blocks || message.blocks.length === 0) {
+    const content = getMainTextContent(message)
+    const reasoningContent = getThinkingContent(message)
+    const combinedContent = [content, reasoningContent].filter((s) => s !== undefined).join(' ')
+    return estimateTextTokens(combinedContent)
+  }
+
+  let totalTokens = 0
+  const blocks = findAllBlocks(message)
+
+  for (const block of blocks) {
+    if (block.type === MessageBlockType.ERROR || block.type === MessageBlockType.UNKNOWN) {
+      continue
+    }
+
+    switch (block.type) {
+      case MessageBlockType.MAIN_TEXT:
+      case MessageBlockType.THINKING:
+      case MessageBlockType.TRANSLATION:
+      case MessageBlockType.CODE:
+      case MessageBlockType.COMPACT:
+        if ((block as { content?: string }).content) {
+          totalTokens += estimateTextTokens((block as { content: string }).content)
+        }
+        break
+
+      case MessageBlockType.IMAGE: {
+        const imgBlock = block as { file?: FileMetadata; url?: string }
+        if (imgBlock.file) {
+          totalTokens += estimateImageTokens(imgBlock.file)
+        } else if (imgBlock.url) {
+          totalTokens += 85
+        }
+        break
+      }
+
+      case MessageBlockType.FILE: {
+        const fileBlock = block as { file?: { size?: number } }
+        if (fileBlock.file?.size) {
+          totalTokens += Math.floor(fileBlock.file.size / 4)
+        }
+        break
+      }
+
+      case MessageBlockType.TOOL: {
+        const toolBlock = block as {
+          toolName?: string
+          arguments?: unknown
+          content?: unknown
+        }
+        let toolContent = `Tool: ${toolBlock.toolName || ''} `
+        if (toolBlock.arguments) {
+          toolContent += `Args: ${JSON.stringify(toolBlock.arguments)} `
+        }
+        if (toolBlock.content) {
+          const contentStr =
+            typeof toolBlock.content === 'string' ? toolBlock.content : JSON.stringify(toolBlock.content)
+          toolContent += `Result: ${contentStr}`
+        }
+        totalTokens += estimateTextTokens(toolContent)
+        break
+      }
+
+      case MessageBlockType.CITATION: {
+        const citationBlock = block as {
+          response?: { results?: Array<{ title?: string; url?: string; content?: string }> }
+          knowledge?: Array<{ fileName?: string; content?: string }>
+        }
+        let citationContent = ''
+        if (citationBlock.response && Array.isArray(citationBlock.response.results)) {
+          for (const result of citationBlock.response.results) {
+            citationContent += `${result.title} ${result.url} ${result.content || ''} `
+          }
+        }
+        if (Array.isArray(citationBlock.knowledge)) {
+          for (const k of citationBlock.knowledge) {
+            citationContent += `${k.fileName} ${k.content} `
+          }
+        }
+        if (citationContent) {
+          totalTokens += estimateTextTokens(citationContent)
+        }
+        break
+      }
+
+      case MessageBlockType.VIDEO: {
+        const videoBlock = block as { url?: string }
+        if (videoBlock.url) {
+          totalTokens += estimateTextTokens(videoBlock.url)
+        }
+        break
+      }
+
+      default:
+        if ((block as { content?: string }).content && typeof (block as { content?: string }).content === 'string') {
+          totalTokens += estimateTextTokens((block as { content: string }).content)
+        }
+        break
+    }
+  }
+
+  return totalTokens
+}
+
+export function estimateMessagesTokens(messages: Message[]): number {
+  return messages.reduce((total, message) => total + estimateSingleMessageTokens(message), 0)
+}
+
+export function estimateConversationTokens(messages: Message[], systemPrompt?: string): number {
+  let total = estimateMessagesTokens(messages)
+
+  if (systemPrompt) {
+    total += estimateTextTokens(systemPrompt)
+  }
+
+  return total
+}
+
+export function estimateToolTokens(
+  tools: Array<{ name: string; description?: string; inputSchema?: unknown }>
+): number {
+  if (!tools || tools.length === 0) {
+    return 0
+  }
+
+  return tools.reduce((total, tool) => {
+    let tokens = approximateTokenSize(tool.name + ' ' + (tool.description || ''))
+    if (tool.inputSchema) {
+      tokens += approximateTokenSize(JSON.stringify(tool.inputSchema))
+    }
+    tokens += 20
+    return total + tokens
+  }, 0)
 }

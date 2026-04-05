@@ -7,7 +7,7 @@ import { getEmbeddingMaxContext } from '@renderer/config/embedings'
 import { REFERENCE_PROMPT } from '@renderer/config/prompts'
 import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
 import store from '@renderer/store'
-import type { Assistant } from '@renderer/types'
+import type { Assistant, Message } from '@renderer/types'
 import {
   type FileMetadata,
   type KnowledgeBase,
@@ -22,6 +22,7 @@ import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage
 import { routeToEndpoint } from '@renderer/utils'
 import type { ExtractResults } from '@renderer/utils/extract'
 import { createCitationBlock } from '@renderer/utils/messageUtils/create'
+import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { isAzureOpenAIProvider, isGeminiProvider } from '@renderer/utils/provider'
 import type { ModelMessage, UserModelMessage } from 'ai'
 import { isEmpty } from 'lodash'
@@ -352,6 +353,66 @@ export function processKnowledgeReferences(
         })
         break
       }
+    }
+  }
+}
+
+/**
+ * Inject knowledge base search results into the last user message in a Message[] array.
+ * Used to inject knowledge BEFORE context strategy is applied.
+ */
+export const injectKnowledgeIntoMessages = async ({
+  messages,
+  assistant,
+  assistantMsgId,
+  topicId,
+  blockManager,
+  setCitationBlockId
+}: {
+  messages: Message[]
+  assistant: Assistant
+  assistantMsgId: string
+  topicId?: string
+  blockManager: BlockManager
+  setCitationBlockId: (blockId: string) => void
+}) => {
+  if (assistant.knowledge_bases?.length && messages.length > 0) {
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop()
+
+    if (!lastUserMessage) {
+      return
+    }
+
+    const knowledgeReferences = await getKnowledgeReferences({
+      assistant,
+      lastUserMessage: {
+        role: 'user',
+        content: getMainTextContent(lastUserMessage) || ''
+      },
+      topicId
+    })
+
+    if (knowledgeReferences.length === 0) {
+      return
+    }
+
+    await createKnowledgeReferencesBlock({
+      assistantMsgId,
+      knowledgeReferences,
+      blockManager,
+      setCitationBlockId
+    })
+
+    const question = getMainTextContent(lastUserMessage) || ''
+    const references = JSON.stringify(knowledgeReferences, null, 2)
+    const knowledgeSearchPrompt = REFERENCE_PROMPT.replace('{question}', question).replace('{references}', references)
+
+    const lastUserMessageIndex = messages.findLastIndex((m) => m.role === 'user')
+    if (lastUserMessageIndex !== -1) {
+      messages[lastUserMessageIndex] = {
+        ...lastUserMessage,
+        content: knowledgeSearchPrompt
+      } as Message
     }
   }
 }

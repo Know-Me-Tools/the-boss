@@ -1,6 +1,7 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
+import ContextManagementSettings from '@renderer/pages/settings/ContextManagementSettings'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import { Divider as AntDivider } from 'antd'
 import {
@@ -11,6 +12,7 @@ import {
   FileCode,
   HardDrive,
   Info,
+  Layers,
   MonitorCog,
   Package,
   PictureInPicture2,
@@ -68,6 +70,12 @@ const SettingsPage: FC = () => {
             <MenuItem className={isRoute('/settings/model')}>
               <Package size={18} />
               {t('settings.model')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/context">
+            <MenuItem className={isRoute('/settings/context')}>
+              <Layers size={18} />
+              {t('settings.contextStrategy.nav_title')}
             </MenuItem>
           </MenuItemLink>
           <Divider />
@@ -175,6 +183,7 @@ const SettingsPage: FC = () => {
           <Routes>
             <Route path="provider" element={<ProviderList />} />
             <Route path="model" element={<ModelSettings />} />
+            <Route path="context" element={<ContextManagementSettings />} />
             <Route path="websearch/*" element={<WebSearchSettings />} />
             <Route path="api-server" element={<ApiServerSettings />} />
             <Route path="channels" element={<ChannelsSettings />} />

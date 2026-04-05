@@ -39,7 +39,6 @@ import {
 } from './AssistantService'
 import { ConversationService } from './ConversationService'
 import FileManager from './FileManager'
-import { injectUserMessageWithKnowledgeSearchPrompt } from './KnowledgeService'
 import type { BlockManager } from './messageStreaming'
 import type { StreamProcessorCallbacks } from './StreamProcessingService'
 // import { processKnowledgeSearch } from './KnowledgeService'
@@ -159,12 +158,35 @@ export async function transformMessagesAndFetch(
   const { messages, assistant } = request
 
   try {
-    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
+    let toolTokens = 0
+    if (isPromptToolUse(assistant) || isSupportedToolUse(assistant)) {
+      const mcpTools = await fetchMcpTools(assistant)
+      if (mcpTools.length > 0) {
+        const { estimateToolTokens } = await import('./TokenService')
+        toolTokens = estimateToolTokens(mcpTools)
+        logger.debug('Estimated MCP tool tokens for context budget', { toolCount: mcpTools.length, toolTokens })
+      }
+    }
 
-    // replace prompt variables
+    if (assistant.knowledge_bases?.length && messages.length > 0) {
+      const { injectKnowledgeIntoMessages } = await import('./KnowledgeService')
+      await injectKnowledgeIntoMessages({
+        messages,
+        assistant,
+        assistantMsgId: request.assistantMsgId,
+        topicId: request.topicId,
+        blockManager: request.blockManager,
+        setCitationBlockId: request.callbacks.setCitationBlockId!
+      })
+      logger.debug('Knowledge base content injected before context strategy')
+    }
+
+    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant, {
+      toolTokens
+    })
+
     assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)
 
-    // 专用图像生成模型直接走 fetchImageGeneration
     const model = assistant.model || getDefaultModel()
     if (isDedicatedImageGenerationModel(model)) {
       await fetchImageGeneration({
@@ -174,16 +196,6 @@ export async function transformMessagesAndFetch(
       })
       return
     }
-
-    // inject knowledge search prompt into model messages
-    await injectUserMessageWithKnowledgeSearchPrompt({
-      modelMessages,
-      assistant,
-      assistantMsgId: request.assistantMsgId,
-      topicId: request.topicId,
-      blockManager: request.blockManager,
-      setCitationBlockId: request.callbacks.setCitationBlockId!
-    })
 
     await fetchChatCompletion({
       messages: modelMessages,

@@ -1058,6 +1058,15 @@
         "placeholder": "搜索"
       }
     },
+    "contextStrategy": {
+      "button": "上下文",
+      "customActive": "自定义上下文策略已启用",
+      "customInfo": "自定义上下文策略将仅对此对话覆盖助手的设置。",
+      "description": "配置此对话如何管理上下文。您可以使用助手的默认设置或为此对话自定义。",
+      "title": "对话上下文策略",
+      "useAssistantDefault": "使用助手默认",
+      "usingDefault": "使用助手默认"
+    },
     "deeply_thought": "已深度思考（用时 {{seconds}} 秒）",
     "default": {
       "description": "你好，我是默认助手。你可以立刻开始跟我聊天",
@@ -3960,6 +3969,55 @@
     "channels": {
       "description": "将 Agent 连接到 Telegram、飞书、Discord 等消息平台。",
       "title": "频道"
+    },
+    "contextStrategy": {
+      "configuration": "策略配置",
+      "configurationHelp": "配置如何在对话接近模型限制时管理上下文。不同策略在上下文保留和令牌效率之间提供不同的权衡。",
+      "description": "选择如何在接近模型限制时管理对话上下文。这可以防止「提示词过长」错误，同时保留重要上下文。",
+      "descriptions": {
+        "hierarchical": "三层记忆系统：最近消息保留原文，较早消息被摘要，关键信息被提取。",
+        "none": "不进行上下文管理。长对话可能超出模型限制。",
+        "sliding_window": "仅保留最近的消息在令牌预算内。简单且可预测。",
+        "summarize": "渐进式摘要较早的消息以保留关键信息，同时减少令牌数。",
+        "truncate_middle": "保留初始指令和最近上下文，删除中间消息。"
+      },
+      "globalDescription": "自动管理对话上下文以防止超出模型限制。此设置全局适用，可以按助手或对话覆盖。",
+      "howItWorks": "工作原理",
+      "inheritedStrategy": "当前使用：",
+      "keepFirst": "保留首部消息数",
+      "keepFirstHelp": "保留的初始消息数（系统上下文、指令）。",
+      "keepLast": "保留尾部消息数",
+      "keepLastHelp": "保留的最近消息数。",
+      "longTermBudget": "长期预算",
+      "longTermBudgetHelp": "提取的长期事实和偏好的令牌预算。",
+      "maxMessages": "最大消息数",
+      "maxMessagesHelp": "保留的最大消息数。留空则自动（基于令牌）管理。",
+      "midTermBudget": "中期预算",
+      "midTermBudgetHelp": "中期记忆摘要的令牌预算。",
+      "nav_title": "上下文管理",
+      "noSummarizationModel": "未配置摘要模型。请在设置中指定或使用当前对话模型。",
+      "selectModel": "模型",
+      "selectModelPlaceholder": "选择摘要模型",
+      "shortTermTurns": "短期轮次",
+      "shortTermTurnsHelp": "保持原文的最近对话轮次数。",
+      "strategy": "策略",
+      "summarizationModel": "摘要模型",
+      "summarizationModelDescription": "此模型将用于生成对话摘要。选择快速模型以减少延迟。如未设置，将使用当前对话模型。",
+      "summarizationModelHelp": "选择一个快速轻量的模型来生成摘要。推荐：Claude Haiku、GPT-3.5 Turbo 或类似的快速模型。",
+      "summarizeThreshold": "摘要前最小消息数",
+      "summarizeThresholdHelp": "触发摘要前的最小消息数。",
+      "summaryMaxTokens": "摘要预算",
+      "summaryMaxTokensHelp": "分配给对话摘要的最大令牌数。",
+      "title": "上下文管理",
+      "tooltip": "自动管理对话上下文，防止超出模型限制。适用于所有对话，除非被覆盖。",
+      "types": {
+        "hierarchical": "层级记忆",
+        "none": "无（不管理）",
+        "sliding_window": "滑动窗口",
+        "summarize": "渐进式摘要",
+        "truncate_middle": "保留首尾"
+      },
+      "useInherited": "使用默认"
     },
     "data": {
       "app_data": {

@@ -1,11 +1,12 @@
 import { loggerService } from '@logger'
 import { convertMessagesToSdkMessages } from '@renderer/aiCore/prepareParams'
-import type { Assistant, Message } from '@renderer/types'
+import type { Assistant, Message, Topic } from '@renderer/types'
 import { filterAdjacentUserMessaegs, filterLastAssistantMessage } from '@renderer/utils/messageUtils/filters'
 import type { ModelMessage } from 'ai'
 import { findLast, isEmpty, takeRight } from 'lodash'
 
 import { getAssistantSettings, getDefaultModel } from './AssistantService'
+import { applyContextStrategy, getEffectiveStrategyConfig, isContextStrategyEnabled } from './contextStrategies'
 import {
   filterAfterContextClearMessages,
   filterEmptyMessages,
@@ -37,31 +38,94 @@ export class ConversationService {
 
   static async prepareMessagesForModel(
     messages: Message[],
-    assistant: Assistant
-  ): Promise<{ modelMessages: ModelMessage[]; uiMessages: Message[] }> {
+    assistant: Assistant,
+    options: {
+      topic?: Topic
+      systemPrompt?: string
+      maxOutputTokens?: number
+      toolTokens?: number
+      knowledgeTokens?: number
+    } = {}
+  ): Promise<{
+    modelMessages: ModelMessage[]
+    uiMessages: Message[]
+    contextSummary?: string
+    contextManagementApplied: boolean
+  }> {
+    const { topic, systemPrompt, maxOutputTokens, toolTokens, knowledgeTokens } = options
     const { contextCount } = getAssistantSettings(assistant)
-    // This logic is extracted from the original ApiService.fetchChatCompletion
-    // const contextMessages = filterContextMessages(messages)
+    const model = assistant.model || getDefaultModel()
+
     const lastUserMessage = findLast(messages, (m) => m.role === 'user')
     if (!lastUserMessage) {
       return {
         modelMessages: [],
-        uiMessages: []
+        uiMessages: [],
+        contextManagementApplied: false
       }
     }
 
-    const uiMessagesFromPipeline = ConversationService.filterMessagesPipeline(messages, contextCount)
+    let uiMessagesFromPipeline = ConversationService.filterMessagesPipeline(messages, contextCount)
     logger.debug('uiMessagesFromPipeline', uiMessagesFromPipeline)
 
-    // Fallback: ensure at least the last user message is present to avoid empty payloads
-    let uiMessages = uiMessagesFromPipeline
-    if ((!uiMessages || uiMessages.length === 0) && lastUserMessage) {
-      uiMessages = [lastUserMessage]
+    if ((!uiMessagesFromPipeline || uiMessagesFromPipeline.length === 0) && lastUserMessage) {
+      uiMessagesFromPipeline = [lastUserMessage]
+    }
+
+    const strategyConfig = getEffectiveStrategyConfig(topic, assistant)
+    let contextSummary: string | undefined
+    let contextManagementApplied = false
+    let finalUiMessages = uiMessagesFromPipeline
+
+    if (isContextStrategyEnabled(strategyConfig)) {
+      logger.debug('Applying context management strategy', {
+        strategyType: strategyConfig.type,
+        messageCount: uiMessagesFromPipeline.length,
+        modelName: model.name,
+        topicId: topic?.id
+      })
+
+      const strategyResult = await applyContextStrategy(uiMessagesFromPipeline, model, {
+        topic,
+        assistant,
+        systemPrompt,
+        maxOutputTokens,
+        toolTokens,
+        knowledgeTokens,
+        existingSummary: topic?.contextMetadata?.conversationSummary,
+        existingFacts: topic?.contextMetadata?.longTermFacts
+      })
+
+      if (strategyResult.wasApplied) {
+        finalUiMessages = strategyResult.messages
+        contextSummary = strategyResult.summary
+        contextManagementApplied = true
+
+        logger.info('Context management applied', {
+          strategy: strategyConfig.type,
+          originalCount: uiMessagesFromPipeline.length,
+          finalCount: finalUiMessages.length,
+          messagesRemoved: strategyResult.messagesRemoved,
+          tokensSaved: strategyResult.tokensSaved
+        })
+      } else {
+        logger.debug('Context strategy executed but no changes needed', {
+          strategy: strategyConfig.type,
+          originalCount: uiMessagesFromPipeline.length
+        })
+      }
+    } else {
+      logger.debug('Context strategy disabled', {
+        type: strategyConfig.type,
+        modelName: model.name
+      })
     }
 
     return {
-      modelMessages: await convertMessagesToSdkMessages(uiMessages, assistant.model || getDefaultModel()),
-      uiMessages
+      modelMessages: await convertMessagesToSdkMessages(finalUiMessages, model),
+      uiMessages: finalUiMessages,
+      contextSummary,
+      contextManagementApplied
     }
   }
 

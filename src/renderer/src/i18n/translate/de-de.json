@@ -1058,6 +1058,15 @@
         "placeholder": "Suchen"
       }
     },
+    "contextStrategy": {
+      "button": "[to be translated]:Context",
+      "customActive": "[to be translated]:Custom context strategy active",
+      "customInfo": "[to be translated]:Custom context strategy will override the assistant's setting for this conversation only.",
+      "description": "[to be translated]:Configure how this conversation manages context. You can use the assistant's default or customize for this conversation.",
+      "title": "[to be translated]:Conversation Context Strategy",
+      "useAssistantDefault": "[to be translated]:Use Assistant Default",
+      "usingDefault": "[to be translated]:Using assistant default"
+    },
     "deeply_thought": "Tiefgehend nachgedacht ({{seconds}} Sekunden)",
     "default": {
       "description": "Hallo, ich bin der Standardassistent. Sie können sofort mit mir chatten",
@@ -3960,6 +3969,55 @@
     "channels": {
       "description": "Verbinden Sie Agenten mit Messaging-Plattformen wie Telegram, Feishu, Discord und vielen mehr.",
       "title": "Kanäle"
+    },
+    "contextStrategy": {
+      "configuration": "[to be translated]:Strategy Configuration",
+      "configurationHelp": "[to be translated]:Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.",
+      "description": "[to be translated]:Choose how to manage conversation context when it approaches model limits. This prevents \"Prompt is too long\" errors while preserving important context.",
+      "descriptions": {
+        "hierarchical": "[to be translated]:Three-tier memory system: recent messages verbatim, older messages summarized, key facts extracted.",
+        "none": "[to be translated]:No context management. May exceed model limits on long conversations.",
+        "sliding_window": "[to be translated]:Keeps only the most recent messages within the token budget. Simple and predictable.",
+        "summarize": "[to be translated]:Progressively summarizes older messages to preserve key information while reducing tokens.",
+        "truncate_middle": "[to be translated]:Preserves initial instructions and recent context, removes middle messages."
+      },
+      "globalDescription": "[to be translated]:Automatically manages conversation context to prevent exceeding model limits. This setting applies globally and can be overridden per assistant or conversation.",
+      "howItWorks": "[to be translated]:How It Works",
+      "inheritedStrategy": "[to be translated]:Currently using:",
+      "keepFirst": "[to be translated]:Keep First Messages",
+      "keepFirstHelp": "[to be translated]:Number of initial messages to preserve (system context, instructions).",
+      "keepLast": "[to be translated]:Keep Last Messages",
+      "keepLastHelp": "[to be translated]:Number of recent messages to preserve.",
+      "longTermBudget": "[to be translated]:Long-term Budget",
+      "longTermBudgetHelp": "[to be translated]:Token budget for extracted long-term facts and preferences.",
+      "maxMessages": "[to be translated]:Max Messages",
+      "maxMessagesHelp": "[to be translated]:Maximum number of messages to keep. Leave empty for automatic (token-based) management.",
+      "midTermBudget": "[to be translated]:Mid-term Budget",
+      "midTermBudgetHelp": "[to be translated]:Token budget for mid-term memory summaries.",
+      "nav_title": "[to be translated]:Context Management",
+      "noSummarizationModel": "[to be translated]:No summarization model configured. Set one in settings or use the conversation model.",
+      "selectModel": "[to be translated]:Model",
+      "selectModelPlaceholder": "[to be translated]:Select summarization model",
+      "shortTermTurns": "[to be translated]:Short-term Turns",
+      "shortTermTurnsHelp": "[to be translated]:Number of recent conversation turns to keep verbatim.",
+      "strategy": "[to be translated]:Strategy",
+      "summarizationModel": "[to be translated]:Summarization Model",
+      "summarizationModelDescription": "[to be translated]:This model will be used to generate conversation summaries. Choose a fast model to minimize latency. If not set, the current conversation model will be used.",
+      "summarizationModelHelp": "[to be translated]:Select a fast, lightweight model for generating summaries. Recommended: Claude Haiku, GPT-3.5 Turbo, or similar quick models.",
+      "summarizeThreshold": "[to be translated]:Min Messages Before Summarizing",
+      "summarizeThresholdHelp": "[to be translated]:Minimum number of messages before summarization kicks in.",
+      "summaryMaxTokens": "[to be translated]:Summary Budget",
+      "summaryMaxTokensHelp": "[to be translated]:Maximum tokens allocated for the conversation summary.",
+      "title": "[to be translated]:Context Management",
+      "tooltip": "[to be translated]:Automatically manages conversation context to prevent exceeding model limits. Applies to all conversations unless overridden.",
+      "types": {
+        "hierarchical": "[to be translated]:Hierarchical Memory",
+        "none": "[to be translated]:None (No Management)",
+        "sliding_window": "[to be translated]:Sliding Window",
+        "summarize": "[to be translated]:Progressive Summarization",
+        "truncate_middle": "[to be translated]:Keep First & Last"
+      },
+      "useInherited": "[to be translated]:Use Default"
     },
     "data": {
       "app_data": {

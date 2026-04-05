@@ -11,6 +11,7 @@ import * as z from 'zod'
 
 import type { StreamTextParams } from './aiCoreTypes'
 import type { Chunk } from './chunk'
+import type { ContextStrategyConfig, TopicContextMetadata } from './contextStrategy'
 import type { FileMetadata } from './file'
 import type { KnowledgeBase, KnowledgeReference } from './knowledge'
 import type { MCPConfigSample, MCPServerInstallSource, McpServerType } from './mcp'
@@ -20,6 +21,7 @@ import type { BaseTool, MCPTool } from './tool'
 export * from './agent'
 export * from './apiModels'
 export * from './apiServer'
+export * from './contextStrategy'
 export * from './knowledge'
 export * from './mcp'
 export * from './notification'
@@ -190,6 +192,11 @@ export type AssistantSettings = {
   reasoning_effort_cache?: ReasoningEffortOption
   qwenThinkMode?: boolean
   toolUseMode: 'function' | 'prompt'
+  /**
+   * Per-assistant context management strategy configuration.
+   * Overrides global settings if specified.
+   */
+  contextStrategy?: ContextStrategyConfig
   maxToolCalls?: number
   enableMaxToolCalls?: boolean
 }
@@ -274,6 +281,15 @@ export type Topic = {
   pinned?: boolean
   prompt?: string
   isNameManuallyEdited?: boolean
+  /**
+   * Per-conversation context management strategy configuration.
+   * Overrides assistant and global settings if specified.
+   */
+  contextStrategy?: ContextStrategyConfig
+  /**
+   * Metadata for context management persistence (summaries, extracted facts, etc.)
+   */
+  contextMetadata?: TopicContextMetadata
 }
 
 export type User = {
@@ -329,6 +345,8 @@ export type Model = {
   endpoint_type?: EndpointType
   supported_endpoint_types?: EndpointType[]
   supported_text_delta?: boolean
+  /** User override for max input context (tokens), when supported by the UI */
+  maxContextTokens?: number
 }
 
 export type Suggestion = {
