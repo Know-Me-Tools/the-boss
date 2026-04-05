@@ -28,13 +28,14 @@ export class AppMenuService {
   public setupApplicationMenu(): void {
     const locale = locales[configManager.getLanguage()]
     const { appMenu } = locale.translation
+    const appName = app.getName()
 
     const template: MenuItemConstructorOptions[] = [
       {
-        label: app.name,
+        label: appName,
         submenu: [
           {
-            label: appMenu.about + ' ' + app.name,
+            label: appMenu.about + ' ' + appName,
             click: () => {
               // Emit event to navigate to About page
               const mainWindow = windowService.getMainWindow()
@@ -47,11 +48,11 @@ export class AppMenuService {
           { type: 'separator' },
           { role: 'services', label: appMenu.services },
           { type: 'separator' },
-          { role: 'hide', label: `${appMenu.hide} ${app.name}` },
+          { role: 'hide', label: `${appMenu.hide} ${appName}` },
           { role: 'hideOthers', label: appMenu.hideOthers },
           { role: 'unhide', label: appMenu.unhide },
           { type: 'separator' },
-          { role: 'quit', label: `${appMenu.quit} ${app.name}` }
+          { role: 'quit', label: `${appMenu.quit} ${appName}` }
         ]
       },
       {
