@@ -150,7 +150,7 @@ class OpenClawService {
 
   /**
    * Check if OpenClaw is installed.
-   * Only recognizes the local binary (~/.cherrystudio/bin/). If openclaw is found
+   * Only recognizes the local binary (~/.theboss/bin/). If openclaw is found
    * in PATH but not locally, it's likely an old npm-installed version (possibly a
    * third-party fork with ads) and needs migration.
    */
@@ -168,7 +168,7 @@ class OpenClawService {
   }
 
   /**
-   * Find the openclaw executable. Only uses the local binary (~/.cherrystudio/bin/).
+   * Find the openclaw executable. Only uses the local binary (~/.theboss/bin/).
    * Never falls back to PATH to avoid running old npm-installed versions.
    */
   private async findOpenClawBinary(): Promise<string | null> {
@@ -287,7 +287,7 @@ class OpenClawService {
   }
 
   /**
-   * Uninstall OpenClaw by removing the binary from ~/.cherrystudio/bin/.
+   * Uninstall OpenClaw by removing the binary from ~/.theboss/bin/.
    */
   public async uninstall(): Promise<OperationResult> {
     // Stop the gateway before removing binary
@@ -733,7 +733,7 @@ class OpenClawService {
   }
 
   /**
-   * Sync Cherry Studio Provider configuration to OpenClaw
+   * Sync The Boss Provider configuration to OpenClaw
    */
   public async syncProviderConfig(
     _: Electron.IpcMainInvokeEvent,

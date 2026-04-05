@@ -1,6 +1,6 @@
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { HStack } from '@renderer/components/Layout'
-import { AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import type { RootState } from '@renderer/store'
@@ -17,6 +17,7 @@ import { SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle
 const YuqueSettings: FC = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { icon } = useBrandAssets()
   const dispatch = useAppDispatch()
   const { openSmartMinapp } = useMinappPopup()
 
@@ -71,7 +72,7 @@ const YuqueSettings: FC = () => {
       id: 'yuque-help',
       name: 'Yuque Help',
       url: 'https://www.yuque.com/settings/tokens',
-      logo: AppLogo
+      logo: icon
     })
   }
 

@@ -23,7 +23,7 @@ class AnalyticsService {
   public init(): void {
     this.client = new AnalyticsClient({
       clientId: configManager.getClientId(),
-      channel: 'cherry-studio',
+      channel: 'the-boss',
       onError: (error) => logger.error('Analytics error:', error),
       headers: {
         'User-Agent': generateUserAgent(),

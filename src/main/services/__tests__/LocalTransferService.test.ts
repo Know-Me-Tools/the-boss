@@ -76,7 +76,7 @@ describe('LocalTransferService', () => {
 
       expect(state.isScanning).toBe(true)
       expect(state.lastScanStartedAt).toBeDefined()
-      expect(mockBonjour.find).toHaveBeenCalledWith({ type: 'cherrystudio', protocol: 'tcp' })
+      expect(mockBonjour.find).toHaveBeenCalledWith({ type: 'theboss', protocol: 'tcp' })
       expect(mockBrowser.start).toHaveBeenCalled()
     })
 
@@ -172,7 +172,7 @@ describe('LocalTransferService', () => {
         port: 12345,
         addresses: ['192.168.1.100'],
         fqdn: 'test.local',
-        type: 'cherrystudio',
+        type: 'theboss',
         protocol: 'tcp'
       })
 

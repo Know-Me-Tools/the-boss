@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Boss - Web Design Document - the-boss.know-me.tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Roboto:wght@300;400;500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0B0F14;--fg:#E8EDF3;--card:#0F1620;--muted:#141C26;--muted-fg:#A7B0BC;--border:#233041;--ember:#FF6A3D;--shadow:rgba(0,0,0,.55)}
+[data-mode=light]{--bg:#F7F7F8;--fg:#0B0F14;--card:#FFFFFF;--muted:#EEF0F3;--muted-fg:#4B5563;--border:#D8DEE6;--ember:#E04E28;--shadow:rgba(0,0,0,.08)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+.nav{position:sticky;top:0;z-index:100;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:.75rem 2.5rem;display:flex;align-items:center;justify-content:space-between}
+.nav-brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:-.02em;color:var(--fg)}
+.nav-brand-name em{font-style:normal;color:var(--ember)}
+.mode-btn{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);background:none;border:1px solid var(--border);border-radius:6px;padding:.28rem .65rem;cursor:pointer}
+.mode-btn:hover{border-color:var(--ember);color:var(--ember)}
+.wrap{max-width:1100px;margin:0 auto;padding:3rem 2.5rem 6rem}
+.section{margin-bottom:5rem}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.4rem}
+h2{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:-.025em;margin-bottom:1.5rem}
+h3{font-family:'Space Grotesk',sans-serif;font-size:1rem;font-weight:700;letter-spacing:-.015em;margin-bottom:.75rem;margin-top:1.5rem}
+.rule{border:none;border-top:1px solid var(--border);margin-bottom:2rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+code{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--muted);border:1px solid var(--border);border-radius:4px;padding:.1rem .3rem;color:var(--ember)}
+pre{font-family:'JetBrains Mono',monospace;font-size:.75rem;background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1.25rem;overflow-x:auto;line-height:1.7;color:var(--muted-fg)}
+.wireframe{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);box-shadow:0 8px 40px var(--shadow);margin-bottom:2rem}
+.wf-titlebar{height:34px;background:color-mix(in srgb,var(--muted) 80%,transparent);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 1rem;gap:.5rem}
+.wf-dots{display:flex;gap:5px}.wf-dot{width:10px;height:10px;border-radius:50%}
+.wf-url{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted-fg)}
+.wf-hero{min-height:230px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2.5rem 2rem;position:relative;overflow:hidden}
+.wf-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(224,78,40,.07),transparent 70%);pointer-events:none}
+.wf-nav-bar{background:color-mix(in srgb,var(--card) 90%,transparent);border-bottom:1px solid var(--border);padding:.6rem 2rem;display:flex;align-items:center;justify-content:space-between}
+.wf-nav-link{font-family:'Inter',sans-serif;font-size:.68rem;font-weight:600;color:var(--muted-fg);text-decoration:none}
+.pill{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);border:1px solid var(--border);border-radius:999px;padding:.18rem .65rem;margin-bottom:.75rem}
+.hero-title{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:700;letter-spacing:-.035em;line-height:1.05;margin-bottom:.75rem;color:var(--fg)}
+.hero-sub{font-family:'Roboto',sans-serif;font-size:.9rem;font-weight:300;color:var(--muted-fg);max-width:50ch;line-height:1.7;margin-bottom:1.5rem}
+.btn-primary{display:inline-flex;align-items:center;padding:.5rem 1.15rem;background:var(--ember);color:var(--card);font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;border:none;border-radius:8px;cursor:pointer;text-decoration:none}
+.btn-outline{display:inline-flex;align-items:center;padding:.48rem 1.1rem;background:transparent;color:var(--fg);font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;text-decoration:none}
+.fc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+.fi{width:36px;height:36px;background:var(--muted);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--ember);margin-bottom:.75rem}
+.ft{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:-.01em;margin-bottom:.35rem;color:var(--fg)}
+.fb{font-family:'Roboto',sans-serif;font-size:.8rem;color:var(--muted-fg);line-height:1.55}
+.doc-table{width:100%;border-collapse:collapse}
+.doc-table th{text-align:left;padding:.55rem .75rem;font-family:'Inter',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);background:var(--muted);border-bottom:1px solid var(--border)}
+.doc-table td{padding:.5rem .75rem;border-bottom:1px solid var(--border);font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg)}
+.doc-table td:first-child{color:var(--fg);font-weight:500}
+</style></head><body>
+<nav class="nav">
+  <div style="display:flex;align-items:center;gap:.55rem">
+    <svg width="22" height="22" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="9" fill="#111827"/><polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+      <line x1="24" y1="24" x2="24" y2="8" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="37.86" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="10.14" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/><circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+    </svg>
+    <span class="nav-brand-name">The <em>Boss</em> &#x2014; Web Design Document</span>
+  </div>
+  <button class="mode-btn" onclick="document.documentElement.setAttribute('data-mode',document.documentElement.getAttribute('data-mode')==='dark'?'light':'dark');this.textContent=document.documentElement.getAttribute('data-mode')==='dark'?'&#x2600; Light':'&#x263d; Dark'">&#x2600; Light</button>
+</nav>
+<main class="wrap">
+<section class="section">
+  <span class="eyebrow">&#xa7; 01 &#x2014; Overview</span>
+  <h2>Site Specification &#xb7; the-boss.know-me.tools</h2>
+  <hr class="rule"/>
+  <div class="grid-2">
+    <div>
+      <p style="font-family:'Roboto',sans-serif;font-size:.95rem;color:var(--muted-fg);line-height:1.7">Marketing and documentation site. Public presence for The Boss application &#x2014; download hub, feature showcase, and documentation entry point.</p>
+      <div style="margin-top:1.25rem;display:flex;flex-direction:column;gap:.5rem">
+        <div style="display:flex;gap:.5rem;align-items:center"><code>URL</code><span style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--fg)">https://the-boss.know-me.tools</span></div>
+        <div style="display:flex;gap:.5rem"><code>Stack</code><span style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg)">React 19 &#xb7; Vite 7 &#xb7; Tailwind 4 &#xb7; shadcn/ui</span></div>
+        <div style="display:flex;gap:.5rem"><code>Brand</code><span style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg)">The Boss v2.2 &#xb7; travisjames.ai</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.5rem">Site Goals</span>
+      <ul style="font-family:'Roboto',sans-serif;font-size:.88rem;color:var(--muted-fg);list-style:none;display:flex;flex-direction:column;gap:.45rem">
+        <li style="display:flex;gap:.5rem"><span style="color:var(--ember);font-weight:700">01</span>Drive downloads of The Boss macOS/Windows application</li>
+        <li style="display:flex;gap:.5rem"><span style="color:var(--ember);font-weight:700">02</span>Position The Boss as the open-source agent studio for builders</li>
+        <li style="display:flex;gap:.5rem"><span style="color:var(--ember);font-weight:700">03</span>Documentation entry point &#x2014; link to full docs/wiki</li>
+        <li style="display:flex;gap:.5rem"><span style="color:var(--ember);font-weight:700">04</span>Establish travisjames.ai brand authority via product showcase</li>
+        <li style="display:flex;gap:.5rem"><span style="color:var(--ember);font-weight:700">05</span>Link to GitHub, Prometheus AGS, KnowMe ecosystem</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<section class="section">
+  <span class="eyebrow">&#xa7; 02 &#x2014; Page Structure</span>
+  <h2>Information Architecture</h2>
+  <hr class="rule"/>
+  <table class="doc-table">
+    <thead><tr><th>#</th><th>Section</th><th>Purpose</th><th>Primary CTA</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Hero</td><td>Immediate orientation &#x2014; what is The Boss, why it matters</td><td>Download &#xb7; GitHub</td></tr>
+      <tr><td>2</td><td>Features</td><td>4 pillars: agent studio, artifact authoring, context mgmt, skills</td><td>See all features &#x2192;</td></tr>
+      <tr><td>3</td><td>Architecture</td><td>Cherry Studio base + travisjames.ai additions &#x2014; technical position</td><td>Read the docs &#x2192;</td></tr>
+      <tr><td>4</td><td>Open Source</td><td>Cherry Studio lineage, travisjames.ai OSS license, GitHub link</td><td>Star on GitHub</td></tr>
+      <tr><td>5</td><td>Download</td><td>Platform-specific download buttons + version + requirements</td><td>Download for macOS</td></tr>
+      <tr><td>6</td><td>Ecosystem</td><td>Entry point to Prometheus Fabric, KnowMe, Kaia verification</td><td>Explore &#x2192;</td></tr>
+      <tr><td>7</td><td>Footer</td><td>Links, travisjames.ai attribution, legal, social</td><td>&#x2014;</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- §03 WIREFRAMES -->
+<section class="section">
+  <span class="eyebrow">&#xa7; 03 &#x2014; Wireframes</span>
+  <h2>Page Layout Mockups</h2>
+  <hr class="rule"/>
+  <h3>Hero Section</h3>
+  <div class="wireframe">
+    <div class="wf-titlebar">
+      <div class="wf-dots">
+        <div class="wf-dot" style="background:#FF5F57"></div>
+        <div class="wf-dot" style="background:#FEBC2E"></div>
+        <div class="wf-dot" style="background:#28C840"></div>
+      </div>
+      <span class="wf-url">the-boss.know-me.tools</span>
+    </div>
+    <div class="wf-nav-bar">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="9" fill="#111827"/><polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+          <line x1="24" y1="24" x2="24" y2="8" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="24" y1="24" x2="37.86" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="24" y1="24" x2="10.14" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+          <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/><circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+        </svg>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.82rem;color:var(--fg)">The <span style="color:var(--ember)">Boss</span></span>
+      </div>
+      <div style="display:flex;gap:1.25rem">
+        <a class="wf-nav-link" href="#">Features</a>
+        <a class="wf-nav-link" href="#">Architecture</a>
+        <a class="wf-nav-link" href="#">Docs</a>
+        <a class="wf-nav-link" href="#">GitHub</a>
+      </div>
+      <a class="btn-primary" href="#" style="font-size:.72rem;padding:.38rem .9rem">Download</a>
+    </div>
+    <div class="wf-hero">
+      <div class="pill">Open Source &#xb7; travisjames.ai</div>
+      <h1 class="hero-title">The Agent Studio<br>for Builders.</h1>
+      <p class="hero-sub">Built on Cherry Studio. Extended with artifact authoring, context management, skills selection, A2A, AG-UI, and memory-aware agents. The first open-source release from travisjames.ai.</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center">
+        <a class="btn-primary" href="#">&#x2b07; Download for macOS</a>
+        <a class="btn-outline" href="#">View on GitHub &#x2192;</a>
+      </div>
+      <div style="margin-top:1.25rem;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted-fg);letter-spacing:.08em">v2.2.0 &#xb7; macOS 13+ &#xb7; Apple Silicon &amp; Intel &#xb7; Free</div>
+    </div>
+  </div>
+  <h3>Features Grid</h3>
+  <div class="wireframe" style="padding:2rem">
+    <div style="text-align:center;margin-bottom:2rem">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.4rem">Built different</span>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;margin:0">Everything Cherry Studio has. Plus the infrastructure layer.</h2>
+    </div>
+    <div class="grid-3">
+      <div class="fc"><div class="fi">ART</div><div class="ft">Artifact Authoring</div><p class="fb">Create, edit, and manage artifacts in conversation. Full lifecycle &#x2014; draft, revise, version, export.</p></div>
+      <div class="fc"><div class="fi">CTX</div><div class="ft">Context Management</div><p class="fb">Window optimization, memory injection, chunking. Surreal Memory MCP built in.</p></div>
+      <div class="fc"><div class="fi">SKL</div><div class="ft">Skills Selection</div><p class="fb">Browse, activate, and chain skills mid-conversation from the travisjames.ai skills registry.</p></div>
+      <div class="fc"><div class="fi">A2A</div><div class="ft">A2A &#xb7; AG-UI &#xb7; A2UI</div><p class="fb">Protocol-native agent communication. Connect to UAR, MCP, and external runtimes without friction.</p></div>
+      <div class="fc"><div class="fi">RTG</div><div class="ft">Model Routing</div><p class="fb">LiteLLM to 140+ providers. BYOK. Candle-vLLM local inference with TurboQuant compression.</p></div>
+      <div class="fc" style="border-color:var(--ember)"><div class="fi" style="border-color:color-mix(in srgb,var(--ember) 35%,transparent)">OSS</div><div class="ft" style="color:var(--ember)">Open Source</div><p class="fb">Full source on GitHub. travisjames.ai OSS license. First public release under The Boss brand.</p></div>
+    </div>
+  </div>
+  <h3>Download Section</h3>
+  <div class="wireframe" style="padding:2.5rem;text-align:center">
+    <div class="pill" style="margin:0 auto .75rem">Available Now</div>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:.5rem">Download The Boss</h2>
+    <p style="font-family:'Roboto',sans-serif;font-size:.9rem;color:var(--muted-fg);margin-bottom:1.5rem">Free. Open source. No account required.</p>
+    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem">
+      <a class="btn-primary" href="#">macOS (Apple Silicon)</a>
+      <a class="btn-outline" href="#">macOS (Intel)</a>
+      <a class="btn-outline" href="#">Windows (x64)</a>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted-fg);letter-spacing:.06em">Latest: v2.2.0 &#xb7; Apr 2026 &#xb7; Requires macOS 13+ or Windows 11</div>
+  </div>
+</section>
+<!-- §04 COMPONENTS -->
+<section class="section">
+  <span class="eyebrow">&#xa7; 04 &#x2014; Components</span>
+  <h2>UI Component Specification</h2>
+  <hr class="rule"/>
+  <div class="grid-2">
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.75rem">Buttons</span>
+      <div style="display:flex;flex-direction:column;gap:.65rem">
+        <div style="display:flex;align-items:center;gap:1rem"><a class="btn-primary" href="#">Primary</a><code>ember bg &#xb7; dark text &#xb7; 8px radius</code></div>
+        <div style="display:flex;align-items:center;gap:1rem"><a class="btn-outline" href="#">Outline</a><code>transparent &#xb7; border &#xb7; hover ember</code></div>
+        <div style="display:flex;align-items:center;gap:1rem"><a href="#" style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:var(--muted-fg);text-decoration:none">Ghost</a><code>no border &#xb7; muted-fg &#xb7; hover ember</code></div>
+      </div>
+    </div>
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.75rem">Badges</span>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.65rem">
+        <span style="font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;background:#ECFDF5;color:#065F46">Stable</span>
+        <span style="font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;background:#EFF6FF;color:#1E40AF">Open Source</span>
+        <span style="font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;background:var(--muted);color:var(--muted-fg);border:1px solid var(--border)">v2.2.0</span>
+        <span style="font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--ember) 15%,transparent);color:var(--ember);border:1px solid color-mix(in srgb,var(--ember) 30%,transparent)">New</span>
+      </div>
+      <code>Inter 600 &#xb7; 999px radius &#xb7; semantic bg colors</code>
+    </div>
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.75rem">Navigation Active State</span>
+      <div style="display:flex;gap:1.25rem;margin-bottom:.65rem">
+        <a style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:var(--ember);text-decoration:none;border-bottom:2px solid var(--ember);padding-bottom:2px">Active</a>
+        <a style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:var(--muted-fg);text-decoration:none">Features</a>
+        <a style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:var(--muted-fg);text-decoration:none">Docs</a>
+        <a style="font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;color:var(--muted-fg);text-decoration:none">GitHub</a>
+      </div>
+      <code>Inter 600 &#xb7; active: ember underline 2px</code>
+    </div>
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.75rem">Code Block</span>
+      <pre style="margin:0;font-size:.72rem">// Quick start
+const agent = await Boss.createAgent({
+  model: 'claude-sonnet-4-5',
+  skills: ['artifact', 'memory']
+})</pre>
+      <code style="display:block;margin-top:.5rem">JetBrains Mono 13px &#xb7; muted bg &#xb7; ember accent</code>
+    </div>
+  </div>
+</section>
+<!-- §05 RESPONSIVE -->
+<section class="section">
+  <span class="eyebrow">&#xa7; 05 &#x2014; Responsive</span>
+  <h2>Breakpoint Strategy</h2>
+  <hr class="rule"/>
+  <table class="doc-table">
+    <thead><tr><th>Breakpoint</th><th>Columns</th><th>Nav</th><th>Hero Text</th><th>Features Grid</th></tr></thead>
+    <tbody>
+      <tr><td>Desktop &#x2265;1280px</td><td>12</td><td>Full nav + CTA</td><td>2.5rem / 700</td><td>3-col</td></tr>
+      <tr><td>Laptop 1024&#x2013;1279px</td><td>12</td><td>Full nav + CTA</td><td>2.2rem / 700</td><td>3-col</td></tr>
+      <tr><td>Tablet 768&#x2013;1023px</td><td>8</td><td>Condensed / hamburger</td><td>1.8rem / 700</td><td>2-col</td></tr>
+      <tr><td>Mobile 375&#x2013;767px</td><td>4</td><td>Logo + hamburger</td><td>1.5rem / 700</td><td>1-col</td></tr>
+    </tbody>
+  </table>
+</section>
+<!-- §06 THEMING -->
+<section class="section">
+  <span class="eyebrow">&#xa7; 06 &#x2014; Theming</span>
+  <h2>Dark / Light Mode</h2>
+  <hr class="rule"/>
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div class="card">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.5rem">Dark (Default)</span>
+      <p style="font-family:'Roboto',sans-serif;font-size:.85rem;color:var(--muted-fg);line-height:1.6;margin-bottom:.75rem">Deep charcoal. Ember glow. Authority &#xb7; Depth &#xb7; Focus. The lit terminal.</p>
+      <div style="display:flex;gap:.4rem">
+        <div style="width:24px;height:24px;border-radius:4px;background:#0B0F14;border:1px solid #233041"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#0F1620;border:1px solid #233041"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#FF6A3D;border:1px solid #233041"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#4A8EC7;border:1px solid #233041"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#E8EDF3;border:1px solid #233041"></div>
+      </div>
+    </div>
+    <div class="card" style="background:#F7F7F8;border-color:#D8DEE6">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;display:block;margin-bottom:.5rem">Light</span>
+      <p style="font-family:'Roboto',sans-serif;font-size:.85rem;color:#4B5563;line-height:1.6;margin-bottom:.75rem">Off-white. Charcoal authority. Concrete &#xb7; Light &#xb7; Structure.</p>
+      <div style="display:flex;gap:.4rem">
+        <div style="width:24px;height:24px;border-radius:4px;background:#F7F7F8;border:1px solid #D8DEE6"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#FFFFFF;border:1px solid #D8DEE6"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#E04E28;border:1px solid #D8DEE6"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#111827;border:1px solid #D8DEE6"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:#0B0F14;border:1px solid #D8DEE6"></div>
+      </div>
+    </div>
+  </div>
+  <pre>/* Tailwind 4 config.css */
+@theme {
+  --color-background:  var(--bg);
+  --color-foreground:  var(--fg);
+  --color-card:        var(--card);
+  --color-muted:       var(--muted);
+  --color-border:      var(--border);
+  --color-primary:     var(--ember);
+  --font-display:      'Space Grotesk', sans-serif;
+  --font-ui:           'Inter', sans-serif;
+  --font-body:         'Roboto', sans-serif;
+  --font-mono:         'JetBrains Mono', monospace;
+}
+:root[data-mode="dark"]  { color-scheme: dark; }
+:root[data-mode="light"] { color-scheme: light; }</pre>
+</section>
+<!-- §07 SEO -->
+<section class="section">
+  <span class="eyebrow">&#xa7; 07 &#x2014; SEO &amp; Meta</span>
+  <h2>Head Tags</h2>
+  <hr class="rule"/>
+  <pre>&lt;title&gt;The Boss &#x2014; Agent Studio &#xb7; travisjames.ai&lt;/title&gt;
+&lt;meta name="description" content="Open-source AI agent studio built on Cherry Studio.
+  Artifact authoring, context management, skills, A2A/AG-UI protocols."&gt;
+&lt;meta property="og:title"  content="The Boss &#x2014; Agent Studio"&gt;
+&lt;meta property="og:image"  content="https://the-boss.know-me.tools/og-image.png"&gt;
+&lt;meta property="og:url"    content="https://the-boss.know-me.tools"&gt;
+&lt;meta name="twitter:card"  content="summary_large_image"&gt;
+&lt;meta name="twitter:site"  content="@travisjamesai"&gt;
+&lt;link rel="icon"            href="/favicon.svg" type="image/svg+xml"&gt;
+&lt;link rel="apple-touch-icon" href="/apple-touch-icon.png"&gt;
+&lt;meta name="theme-color" media="(prefers-color-scheme: dark)"  content="#0B0F14"&gt;
+&lt;meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F7F8"&gt;</pre>
+</section>
+</main>
+<footer style="border-top:1px solid var(--border);padding:1.25rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+  <div style="display:flex;align-items:center;gap:.6rem">
+    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="9" fill="#111827"/>
+      <polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+      <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/><circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+    </svg>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted-fg);letter-spacing:.06em">The Boss &#xb7; Web Design Document &#xb7; the-boss.know-me.tools &#xb7; travisjames.ai</span>
+  </div>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--border);letter-spacing:.08em">2026 &#xb7; v2.2</span>
+</footer>
+<script>function toggleMode(){var h=document.documentElement,dark=h.getAttribute('data-mode')==='dark';h.setAttribute('data-mode',dark?'light':'dark');}</script>
+</body></html>

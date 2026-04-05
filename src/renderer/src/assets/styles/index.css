@@ -1,4 +1,5 @@
 @import './color.css';
+@import '../fonts/brand/brand.css';
 @import './font.css';
 @import './markdown.css';
 @import './ant.css';
@@ -8,7 +9,6 @@
 @import './richtext.css';
 @import './responsive.css';
 @import '../fonts/icon-fonts/iconfont.css';
-@import '../fonts/ubuntu/ubuntu.css';
 @import '../fonts/country-flag-fonts/flag.css';
 
 @layer base {
@@ -66,6 +66,43 @@ body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+button,
+input,
+select,
+textarea,
+.ant-btn,
+.ant-input,
+.ant-select,
+.ant-segmented,
+.ant-tag {
+  font-family: var(--font-family);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.brand-display {
+  font-family: var(--font-family-display);
+  letter-spacing: -0.02em;
+}
+
+.markdown,
+.markdown p,
+.markdown li,
+.ant-typography {
+  font-family: var(--font-family-body);
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--code-font-family);
 }
 
 input,

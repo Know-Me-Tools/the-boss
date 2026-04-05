@@ -29,8 +29,7 @@ const ALLOWED_ROUTES = [
 
 const NAVIGATE_TOOL: Tool = {
   name: 'navigate',
-  description:
-    'Navigate Cherry Studio to a specific page. Refer to the route table in your skills for available paths.',
+  description: 'Navigate The Boss to a specific page. Refer to the route table in your skills for available paths.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -51,7 +50,7 @@ const NAVIGATE_TOOL: Tool = {
 const DIAGNOSE_TOOL: Tool = {
   name: 'diagnose',
   description:
-    'Read Cherry Studio runtime state for troubleshooting. Use this to inspect app info, provider config, connectivity, logs, and MCP server status.',
+    'Read The Boss runtime state for troubleshooting. Use this to inspect app info, provider config, connectivity, logs, and MCP server status.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -157,7 +156,9 @@ class AssistantServer {
 
     // Don't actually navigate here — the renderer will show a clickable button
     // that the user can click to navigate. This keeps the tool non-blocking.
-    logger.info('Navigate tool called (deferred to user click)', { path: fullPath })
+    logger.info('Navigate tool called (deferred to user click)', {
+      path: fullPath
+    })
     return {
       content: [{ type: 'text' as const, text: `Navigate link created: ${fullPath}` }]
     }
@@ -280,7 +281,12 @@ class AssistantServer {
 
       if (!provider) {
         return {
-          content: [{ type: 'text' as const, text: `Provider not found: ${providerId}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Provider not found: ${providerId}`
+            }
+          ],
           isError: true
         }
       }
@@ -386,7 +392,12 @@ class AssistantServer {
       const logsDir = app.getPath('logs')
       if (!fs.existsSync(logsDir)) {
         return {
-          content: [{ type: 'text' as const, text: `Logs directory not found: ${logsDir}` }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Logs directory not found: ${logsDir}`
+            }
+          ],
           isError: true
         }
       }
@@ -442,17 +453,26 @@ class AssistantServer {
     try {
       const logsDir = app.getPath('logs')
       if (!fs.existsSync(logsDir)) {
-        return { content: [{ type: 'text' as const, text: 'Logs directory not found' }], isError: true }
+        return {
+          content: [{ type: 'text' as const, text: 'Logs directory not found' }],
+          isError: true
+        }
       }
 
       const logFiles = fs
         .readdirSync(logsDir)
         .filter((f) => f.endsWith('.log'))
-        .map((f) => ({ name: f, mtime: fs.statSync(path.join(logsDir, f)).mtime.getTime() }))
+        .map((f) => ({
+          name: f,
+          mtime: fs.statSync(path.join(logsDir, f)).mtime.getTime()
+        }))
         .sort((a, b) => b.mtime - a.mtime)
 
       if (logFiles.length === 0) {
-        return { content: [{ type: 'text' as const, text: 'No log files found' }], isError: true }
+        return {
+          content: [{ type: 'text' as const, text: 'No log files found' }],
+          isError: true
+        }
       }
 
       // Scan up to 3 most recent log files for error/warn lines
@@ -471,7 +491,14 @@ class AssistantServer {
       }
 
       if (errorLines.length === 0) {
-        return { content: [{ type: 'text' as const, text: 'No ERROR/WARN entries found in recent logs' }] }
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: 'No ERROR/WARN entries found in recent logs'
+            }
+          ]
+        }
       }
 
       return {
@@ -544,7 +571,11 @@ class AssistantServer {
         proxy: configManager.get<string>('proxy', ''),
         zoomFactor: configManager.getZoomFactor(),
         defaultModel: defaultModel
-          ? { id: defaultModel.id, name: defaultModel.name, provider: defaultModel.provider }
+          ? {
+              id: defaultModel.id,
+              name: defaultModel.name,
+              provider: defaultModel.provider
+            }
           : null,
         topicNamingModel: topicNamingModel ? { id: topicNamingModel.id, name: topicNamingModel.name } : null,
         tray: configManager.getTray(),
@@ -585,9 +616,12 @@ class AssistantServer {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 5000)
 
-      const response = await fetch('https://api.github.com/repos/CherryHQ/cherry-studio/releases/latest', {
+      const response = await fetch('https://api.github.com/repos/Know-Me-Tools/the-boss/releases/latest', {
         method: 'GET',
-        headers: { Accept: 'application/vnd.github.v3+json', 'User-Agent': 'CherryStudio' },
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'TheBoss'
+        },
         signal: controller.signal
       })
       clearTimeout(timeout)
@@ -597,13 +631,25 @@ class AssistantServer {
           content: [
             {
               type: 'text' as const,
-              text: JSON.stringify({ currentVersion, error: `GitHub API returned ${response.status}` }, null, 2)
+              text: JSON.stringify(
+                {
+                  currentVersion,
+                  error: `GitHub API returned ${response.status}`
+                },
+                null,
+                2
+              )
             }
           ]
         }
       }
 
-      const data = (await response.json()) as { tag_name: string; name: string; html_url: string; published_at: string }
+      const data = (await response.json()) as {
+        tag_name: string
+        name: string
+        html_url: string
+        published_at: string
+      }
       const latestVersion = data.tag_name.replace(/^v/, '')
 
       return {

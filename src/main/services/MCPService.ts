@@ -31,6 +31,7 @@ import {
   ToolListChangedNotificationSchema
 } from '@modelcontextprotocol/sdk/types.js'
 import { nanoid } from '@reduxjs/toolkit'
+import { APP_NAME } from '@shared/config/branding'
 import { HOME_CHERRY_DIR } from '@shared/config/constant'
 import type { MCPProgressEvent } from '@shared/config/types'
 import type { MCPServerLogEntry } from '@shared/config/types'
@@ -64,7 +65,12 @@ import { windowService } from './WindowService'
 // Generic type for caching wrapped functions
 type CachedFunction<T extends unknown[], R> = (...args: T) => Promise<R>
 
-type CallToolArgs = { server: MCPServer; name: string; args: any; callId?: string }
+type CallToolArgs = {
+  server: MCPServer
+  name: string
+  args: any
+  callId?: string
+}
 
 const logger = loggerService.withContext('MCPService')
 
@@ -138,7 +144,11 @@ function withCache<T extends unknown[], R>(
     const start = Date.now()
     const result = await fn(...args)
     CacheService.set(cacheKey, result, ttl)
-    logger.debug(`${logPrefix} cached`, { cacheKey, ttlMs: ttl, durationMs: Date.now() - start })
+    logger.debug(`${logPrefix} cached`, {
+      cacheKey,
+      ttlMs: ttl,
+      durationMs: Date.now() - start
+    })
     return result
   }
 }
@@ -246,7 +256,10 @@ class McpService {
     this.serverLogs.append(serverKey, entry)
     const mainWindow = windowService.getMainWindow()
     if (mainWindow) {
-      mainWindow.webContents.send(IpcChannel.Mcp_ServerLog, { ...entry, serverId: server.id })
+      mainWindow.webContents.send(IpcChannel.Mcp_ServerLog, {
+        ...entry,
+        serverId: server.id
+      })
     }
   }
 
@@ -298,7 +311,7 @@ class McpService {
     const initPromise = (async () => {
       try {
         // Create new client instance for each connection
-        const client = new Client({ name: 'Cherry Studio', version: app.getVersion() }, { capabilities: {} })
+        const client = new Client({ name: APP_NAME, version: app.getVersion() }, { capabilities: {} })
 
         let args = [...(server.args || [])]
 
@@ -332,7 +345,7 @@ class McpService {
               requestInit: {
                 headers: {
                   ...defaultAppHeaders(),
-                  APP: 'Cherry Studio'
+                  APP: APP_NAME
                 }
               },
               authProvider
@@ -421,7 +434,9 @@ class McpService {
               if (npxPath) {
                 // Use system npx
                 cmd = npxPath
-                getServerLogger(server).debug(`Using system npx`, { command: cmd })
+                getServerLogger(server).debug(`Using system npx`, {
+                  command: cmd
+                })
               } else {
                 // System npx not found, try bundled bun as fallback
                 getServerLogger(server).debug(`System npx not found, checking for bundled bun`)
@@ -506,7 +521,10 @@ class McpService {
               }
             }
 
-            getServerLogger(server).debug(`Starting server`, { command: cmd, args })
+            getServerLogger(server).debug(`Starting server`, {
+              command: cmd,
+              args
+            })
 
             // Bun not support proxy https://github.com/oven-sh/bun/issues/16812
             if (cmd.includes('bun')) {
@@ -828,7 +846,9 @@ class McpService {
   public async checkMcpConnectivity(_: Electron.IpcMainInvokeEvent, server: MCPServer): Promise<boolean> {
     getServerLogger(server).debug(`Checking connectivity`)
     try {
-      getServerLogger(server).debug(`About to call initClient`, { hasInitClient: !!this.initClient })
+      getServerLogger(server).debug(`About to call initClient`, {
+        hasInitClient: !!this.initClient
+      })
 
       if (!this.initClient) {
         throw new Error('initClient method is not available')
@@ -1157,7 +1177,9 @@ class McpService {
       getServerLogger(server).debug(`Server info`, redactSensitive(serverInfo))
 
       if (serverInfo && serverInfo.version) {
-        getServerLogger(server).debug(`Server version`, { version: serverInfo.version })
+        getServerLogger(server).debug(`Server version`, {
+          version: serverInfo.version
+        })
         return serverInfo.version
       }
 

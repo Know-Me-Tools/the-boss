@@ -1,5 +1,6 @@
 import type { WebSearchState } from '@renderer/store/websearch'
 import type { WebSearchProvider, WebSearchProviderResponse } from '@renderer/types'
+import { PUBLIC_WEBSITE_URL } from '@shared/config/branding'
 
 export default abstract class BaseWebSearchProvider {
   // @ts-ignore this
@@ -25,8 +26,8 @@ export default abstract class BaseWebSearchProvider {
 
   public defaultHeaders() {
     return {
-      'HTTP-Referer': 'https://cherry-ai.com',
-      'X-Title': 'Cherry Studio'
+      'HTTP-Referer': PUBLIC_WEBSITE_URL,
+      'X-Title': 'The Boss'
     }
   }
 

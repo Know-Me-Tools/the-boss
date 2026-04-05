@@ -60,8 +60,8 @@ export const syncMCPRouterServers = async (
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
-        'HTTP-Referer': 'https://cherry-ai.com',
-        'X-Title': 'Cherry Studio'
+        'HTTP-Referer': 'https://github.com/Know-Me-Tools/the-boss',
+        'X-Title': 'The Boss'
       },
       body: JSON.stringify({})
     })

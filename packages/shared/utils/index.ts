@@ -1,12 +1,14 @@
 import { parse as jsoncParse } from 'jsonc-parser'
 
+import { APP_NAME, PUBLIC_WEBSITE_URL } from '../config/branding'
+
 export * from './api'
 export * from './pdf'
 
 export const defaultAppHeaders = () => {
   return {
-    'HTTP-Referer': 'https://cherry-ai.com',
-    'X-Title': 'Cherry Studio'
+    'HTTP-Referer': PUBLIC_WEBSITE_URL,
+    'X-Title': APP_NAME
   }
 }
 

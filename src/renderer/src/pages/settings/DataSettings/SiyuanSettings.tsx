@@ -1,7 +1,7 @@
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { HStack } from '@renderer/components/Layout'
-import { AppLogo } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import type { RootState } from '@renderer/store'
@@ -21,6 +21,7 @@ const SiyuanSettings: FC = () => {
   const { openSmartMinapp } = useMinappPopup()
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { icon } = useBrandAssets()
   const dispatch = useAppDispatch()
 
   const siyuanApiUrl = useSelector((state: RootState) => state.settings.siyuanApiUrl)
@@ -48,8 +49,8 @@ const SiyuanSettings: FC = () => {
     openSmartMinapp({
       id: 'siyuan-help',
       name: 'Siyuan Help',
-      url: 'https://docs.cherry-ai.com/advanced-basic/siyuan',
-      logo: AppLogo
+      url: 'https://the-boss.know-me.tools/docs/advanced-basic/siyuan',
+      logo: icon
     })
   }
 
@@ -108,7 +109,11 @@ const SiyuanSettings: FC = () => {
           <span>{t('settings.data.siyuan.token.label')}</span>
           <Tooltip title={t('settings.data.siyuan.token.help')} placement="left">
             <InfoCircleOutlined
-              style={{ color: 'var(--color-text-2)', cursor: 'pointer', marginLeft: 4 }}
+              style={{
+                color: 'var(--color-text-2)',
+                cursor: 'pointer',
+                marginLeft: 4
+              }}
               onClick={handleSiyuanHelpClick}
             />
           </Tooltip>

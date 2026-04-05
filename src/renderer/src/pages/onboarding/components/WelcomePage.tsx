@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
-import CherryStudioLogo from '@renderer/assets/images/logo.png'
+import { useBrandAssets } from '@renderer/config/brand'
+import { APP_NAME } from '@renderer/config/env'
 import { useProvider } from '@renderer/hooks/useProvider'
 import { fetchModels } from '@renderer/services/ApiService'
 import { useAppStore } from '@renderer/store'
@@ -23,6 +24,7 @@ interface WelcomePageProps {
 
 const WelcomePage: FC<WelcomePageProps> = ({ setStep, setCherryInLoggedIn }) => {
   const { t } = useTranslation()
+  const { lockup } = useBrandAssets()
   const { provider, updateProvider, addModel } = useProvider('cherryin')
   const store = useAppStore()
   const [isAddingModels, setIsAddingModels] = useState(false)
@@ -71,10 +73,12 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setCherryInLoggedIn }) => 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center">
       <div className="flex flex-col items-center gap-6">
-        <img src={CherryStudioLogo} alt="Cherry Studio" className="h-16 w-16 rounded-xl" />
+        <img src={lockup} alt={APP_NAME} className="h-auto w-64 max-w-full" />
 
         <div className="flex flex-col items-center gap-2">
-          <h1 className="m-0 font-semibold text-(--color-text) text-2xl">{t('onboarding.welcome.title')}</h1>
+          <h1 className="brand-display m-0 font-semibold text-(--color-text) text-2xl">
+            {t('onboarding.welcome.title')}
+          </h1>
           <p className="m-0 text-(--color-text-2) text-sm">{t('onboarding.welcome.subtitle')}</p>
         </div>
 

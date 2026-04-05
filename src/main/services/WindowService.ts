@@ -6,6 +6,7 @@ import { loggerService } from '@logger'
 import { isDev, isLinux, isMac, isWin } from '@main/constant'
 import { getFilesDir } from '@main/utils/file'
 import { getWindowsBackgroundMaterial } from '@main/utils/windowUtil'
+import { BRAND_BG_DARK, BRAND_BG_LIGHT } from '@shared/config/brandTheme'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import { IpcChannel } from '@shared/IpcChannel'
 import { app, BrowserWindow, nativeImage, nativeTheme, screen, shell } from 'electron'
@@ -62,7 +63,7 @@ export class WindowService {
     let mainWindowBackgroundColor: string | undefined
 
     if (!isMac && !windowsBackgroundMaterial) {
-      mainWindowBackgroundColor = nativeTheme.shouldUseDarkColors ? '#181818' : '#FFFFFF'
+      mainWindowBackgroundColor = nativeTheme.shouldUseDarkColors ? BRAND_BG_DARK : BRAND_BG_LIGHT
     }
 
     this.mainWindow = new BrowserWindow({

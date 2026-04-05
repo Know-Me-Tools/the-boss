@@ -309,7 +309,10 @@ describe('AppUpdater', () => {
       const result = await (appUpdater as any)._fetchUpdateConfig(UpdateMirror.GITHUB)
 
       expect(result).toEqual(mockConfig)
-      expect(net.fetch).toHaveBeenCalledWith(expect.stringContaining('github'), expect.any(Object))
+      expect(net.fetch).toHaveBeenCalledWith(
+        'https://the-boss.know-me.tools/app-upgrade-config.json',
+        expect.any(Object)
+      )
     })
 
     it('should fetch config from GitCode mirror', async () => {

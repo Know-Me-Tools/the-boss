@@ -259,7 +259,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options }) => {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${AI.getApiKey()}`
     }
-    // NOTE: Cherry Studio当下 newapi只接受v1/images/xxx的请求
+    // NOTE: The Boss当下 newapi只接受v1/images/xxx的请求
     // TODO: support gemini https://www.newapi.ai/zh/docs/api/ai-model/images/gemini/geminirelayv1beta-383837589
     let url = newApiProvider.apiHost.replace(/\/v1$/, '') + `/v1/images/generations`
     let editUrl = newApiProvider.apiHost.replace(/\/v1$/, '') + `/v1/images/edits`
@@ -525,7 +525,7 @@ const NewApiPage: FC<{ Options: string[] }> = ({ Options }) => {
             <SettingTitle style={{ marginBottom: 5 }}>{t('common.provider')}</SettingTitle>
             <SettingHelpLink
               target="_blank"
-              href={PROVIDER_URLS[newApiProvider.id]?.websites?.docs || 'https://docs.newapi.pro/apps/cherry-studio/'}>
+              href={PROVIDER_URLS[newApiProvider.id]?.websites?.docs || 'https://docs.newapi.pro/apps/the-boss/'}>
               {t('paintings.learn_more')}
               <ProviderLogo
                 shape="square"

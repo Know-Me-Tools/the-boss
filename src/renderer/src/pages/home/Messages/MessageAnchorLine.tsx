@@ -1,5 +1,6 @@
 import EmojiAvatar from '@renderer/components/Avatar/EmojiAvatar'
-import { APP_NAME, AppLogo, isLocalAi } from '@renderer/config/env'
+import { useBrandAssets } from '@renderer/config/brand'
+import { APP_NAME, isLocalAi } from '@renderer/config/env'
 import { getModelLogoById } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import useAvatar from '@renderer/hooks/useAvatar'
@@ -24,15 +25,11 @@ interface MessageLineProps {
   messages: Message[]
 }
 
-const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
-  if (isLocalAi) return AppLogo
-  return modelId ? getModelLogoById(modelId) : undefined
-}
-
 const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
   const { t } = useTranslation()
   const avatar = useAvatar()
   const { theme } = useTheme()
+  const { icon: brandIcon } = useBrandAssets()
   const dispatch = useAppDispatch()
   const { userName } = useSettings()
   const { setTimeoutTimer } = useTimer()
@@ -203,7 +200,7 @@ const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
           const opacity = 0.5 + calculateValueByDistance(message.id, 1)
           const scale = 1 + calculateValueByDistance(message.id, 1.2)
           const size = 10 + calculateValueByDistance(message.id, 20)
-          const avatarSource = getAvatarSource(isLocalAi, getMessageModelId(message))
+          const avatarSource = isLocalAi ? brandIcon : getModelLogoById(getMessageModelId(message) || '')
           const username = removeLeadingEmoji(getUserName(message))
           const content = getMainTextContent(message)
 

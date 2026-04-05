@@ -1,5 +1,11 @@
 import { loggerService } from '@logger'
 import { isDev, isLinux, isMac, isWin } from '@main/constant'
+import {
+  APP_AUTOSTART_DESKTOP_NAME,
+  APP_AUTOSTART_DESKTOP_NAME_DEV,
+  APP_LINUX_ICON_NAME,
+  APP_NAME
+} from '@shared/config/branding'
 import { app } from 'electron'
 import fs from 'fs'
 import os from 'os'
@@ -29,7 +35,7 @@ export class AppService {
     } else if (isLinux) {
       try {
         const autostartDir = path.join(os.homedir(), '.config', 'autostart')
-        const desktopFile = path.join(autostartDir, isDev ? 'cherry-studio-dev.desktop' : 'cherry-studio.desktop')
+        const desktopFile = path.join(autostartDir, isDev ? APP_AUTOSTART_DESKTOP_NAME_DEV : APP_AUTOSTART_DESKTOP_NAME)
 
         if (isLaunchOnBoot) {
           // Ensure autostart directory exists
@@ -49,10 +55,10 @@ export class AppService {
           // Create desktop file content
           const desktopContent = `[Desktop Entry]
   Type=Application
-  Name=Cherry Studio
+  Name=${APP_NAME}
   Comment=A powerful AI assistant for producer.
   Exec=${executablePath}
-  Icon=cherrystudio
+  Icon=${APP_LINUX_ICON_NAME}
   Terminal=false
   StartupNotify=false
   Categories=Development;Utility;

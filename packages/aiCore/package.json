@@ -1,7 +1,7 @@
 {
   "name": "@cherrystudio/ai-core",
   "version": "2.0.0",
-  "description": "Cherry Studio AI Core - Unified AI Provider Interface Based on Vercel AI SDK",
+  "description": "The Boss AI Core - Unified AI Provider Interface Based on Vercel AI SDK",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -19,17 +19,17 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm build"
   },
-  "keywords": ["ai", "sdk", "openai", "anthropic", "google", "cherry-studio", "vercel-ai-sdk"],
-  "author": "Cherry Studio",
+  "keywords": ["ai", "sdk", "openai", "anthropic", "google", "the-boss", "vercel-ai-sdk"],
+  "author": "The Boss",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CherryHQ/cherry-studio.git"
+    "url": "git+https://github.com/Know-Me-Tools/the-boss.git"
   },
   "bugs": {
-    "url": "https://github.com/CherryHQ/cherry-studio/issues"
+    "url": "https://github.com/Know-Me-Tools/the-boss/issues"
   },
-  "homepage": "https://github.com/CherryHQ/cherry-studio#readme",
+  "homepage": "https://github.com/Know-Me-Tools/the-boss#readme",
   "peerDependencies": {
     "@ai-sdk/google": "^3.0.55",
     "@ai-sdk/openai": "^3.0.49",

@@ -325,7 +325,7 @@ export class SkillService {
     // Fetch skill detail to get download URL
     const detailUrl = `https://api.clawhub.ai/api/v1/skills/${slug}`
     const detailResp = await net.fetch(detailUrl, {
-      headers: { 'User-Agent': 'CherryStudio' }
+      headers: { 'User-Agent': 'TheBoss' }
     })
 
     if (!detailResp.ok) {
@@ -335,7 +335,7 @@ export class SkillService {
     // Download the skill zip
     const downloadUrl = `https://api.clawhub.ai/api/v1/skills/${slug}/download`
     const downloadResp = await net.fetch(downloadUrl, {
-      headers: { 'User-Agent': 'CherryStudio' }
+      headers: { 'User-Agent': 'TheBoss' }
     })
 
     if (!downloadResp.ok) {
@@ -576,7 +576,7 @@ export class SkillService {
   }
 
   private async createTempDir(prefix: string): Promise<string> {
-    const tempDir = path.join(app.getPath('temp'), 'cherry-studio', 'skill-install', `${prefix}-${Date.now()}`)
+    const tempDir = path.join(app.getPath('temp'), 'the-boss', 'skill-install', `${prefix}-${Date.now()}`)
     await fs.promises.mkdir(tempDir, { recursive: true })
     return tempDir
   }

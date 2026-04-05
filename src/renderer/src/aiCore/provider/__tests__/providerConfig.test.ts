@@ -526,7 +526,11 @@ describe('adaptProvider', () => {
 
 describe('providerToAiSdkConfig', () => {
   beforeEach(() => {
-    setupWindowMock({ withCopilotToken: true, withAnthropicOAuth: true, withCherryAI: true })
+    setupWindowMock({
+      withCopilotToken: true,
+      withAnthropicOAuth: true,
+      withCherryAI: true
+    })
     setupStoreMock()
     vi.clearAllMocks()
   })
@@ -596,7 +600,11 @@ describe('providerToAiSdkConfig', () => {
       const config = await providerToAiSdkConfig(provider, makeModel('claude-3-5-sonnet', 'anthropic'))
 
       expect(config.providerId).toBe('anthropic')
-      const settings = config.providerSettings as { baseURL: string; apiKey: string; headers: Record<string, string> }
+      const settings = config.providerSettings as {
+        baseURL: string
+        apiKey: string
+        headers: Record<string, string>
+      }
       expect(settings.baseURL).toBe('https://api.anthropic.com/v1')
       expect(settings.headers.Authorization).toBe('Bearer mock-oauth-token')
       expect(settings.apiKey).toBe('')
@@ -817,7 +825,9 @@ describe('providerToAiSdkConfig', () => {
         apiHost: 'https://api.newapi.com'
       })
 
-      const model = makeModel('gpt-4', provider.id, { endpoint_type: 'openai-response' })
+      const model = makeModel('gpt-4', provider.id, {
+        endpoint_type: 'openai-response'
+      })
 
       const config = await providerToAiSdkConfig(provider, model)
 
@@ -912,8 +922,8 @@ describe('providerToAiSdkConfig', () => {
 
       const settings = config.providerSettings
       expect(settings.headers).toBeDefined()
-      expect(settings.headers!['HTTP-Referer']).toBe('https://cherry-ai.com')
-      expect(settings.headers!['X-Title']).toBe('Cherry Studio')
+      expect(settings.headers!['HTTP-Referer']).toBe('https://the-boss.know-me.tools')
+      expect(settings.headers!['X-Title']).toBe('The Boss')
     })
 
     it('merges extra_headers from provider', async () => {

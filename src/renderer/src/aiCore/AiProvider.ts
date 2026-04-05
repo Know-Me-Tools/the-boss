@@ -95,8 +95,8 @@ export default class AiProvider {
   /**
    * 类型守卫函数：通过 provider 属性区分 Model 和 Provider
    */
-  private isModel(obj: Model | Provider): obj is Model {
-    return 'provider' in obj && typeof obj.provider === 'string'
+  private isModel(obj: Model | Provider | undefined | null): obj is Model {
+    return !!obj && 'provider' in obj && typeof obj.provider === 'string'
   }
 
   public getActualProvider() {
