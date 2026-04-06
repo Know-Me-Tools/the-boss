@@ -11,6 +11,7 @@
  * - Citation: web search/knowledge citations
  * - Video: video content processing
  * - Compact: /compact command handling
+ * - Skill: skill activation and context injection
  *
  * ARCHITECTURE NOTE:
  * These callbacks now use StreamingService for state management instead of Redux dispatch.
@@ -24,10 +25,13 @@ import { createBaseCallbacks } from './baseCallbacks'
 import { createCitationCallbacks } from './citationCallbacks'
 import { createCompactCallbacks } from './compactCallbacks'
 import { createImageCallbacks } from './imageCallbacks'
+import { createSkillCallbacks } from './skillCallbacks'
 import { createTextCallbacks } from './textCallbacks'
 import { createThinkingCallbacks } from './thinkingCallbacks'
 import { createToolCallbacks } from './toolCallbacks'
 import { createVideoCallbacks } from './videoCallbacks'
+
+export { createSkillCallbacks } from './skillCallbacks'
 
 /**
  * Dependencies required for creating all callbacks
@@ -83,6 +87,11 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     topicId
   })
 
+  const skillCallbacks = createSkillCallbacks({
+    blockManager,
+    assistantMsgId
+  })
+
   // Create textCallbacks with citation and compact handlers
   const textCallbacks = createTextCallbacks({
     blockManager,
@@ -102,6 +111,7 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     ...citationCallbacks,
     ...videoCallbacks,
     ...compactCallbacks,
+    ...skillCallbacks,
     // Cleanup method (throttling is managed by messageThunk)
     cleanup: () => {
       // Cleanup is managed by messageThunk throttle functions
