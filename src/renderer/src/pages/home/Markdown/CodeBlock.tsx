@@ -1,4 +1,5 @@
-import { CodeBlockView, HtmlArtifactsCard } from '@renderer/components/CodeBlockView'
+import { CodeBlockView, HtmlArtifactsCard, ReactArtifactsCard } from '@renderer/components/CodeBlockView'
+import { useArtifactSettings } from '@renderer/hooks/useArtifactSettings'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { ClickableFilePath } from '@renderer/pages/home/Messages/Tools/MessageAgentTools/ClickableFilePath'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
@@ -6,6 +7,7 @@ import store from '@renderer/store'
 import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
 import { getCodeBlockId, isOpenFenceBlock } from '@renderer/utils/markdown'
+import { parseArtifactLanguage } from '@shared/artifacts'
 import type { Node } from 'mdast'
 import React, { memo, useCallback, useMemo } from 'react'
 
@@ -29,6 +31,7 @@ const CodeBlock: React.FC<Props> = ({ children, className, node, blockId }) => {
         : detectedLanguage
   }, [children, detectedLanguage])
   const { codeFancyBlock } = useSettings()
+  const { settings: artifactSettings } = useArtifactSettings()
 
   // 代码块 id
   const id = useMemo(() => getCodeBlockId(node?.position?.start), [node?.position?.start])
@@ -50,12 +53,51 @@ const CodeBlock: React.FC<Props> = ({ children, className, node, blockId }) => {
     [blockId, id]
   )
 
+  const artifactLanguage = useMemo(
+    () =>
+      parseArtifactLanguage(language, {
+        defaultHtmlRuntimeProfileId: artifactSettings.defaultHtmlRuntimeProfileId,
+        defaultReactRuntimeProfileId: artifactSettings.defaultReactRuntimeProfileId
+      }),
+    [artifactSettings.defaultHtmlRuntimeProfileId, artifactSettings.defaultReactRuntimeProfileId, language]
+  )
+  const artifactOrigin = useMemo(
+    () => ({
+      messageBlockId: blockId,
+      codeBlockId: id === undefined ? undefined : String(id)
+    }),
+    [blockId, id]
+  )
+
   if (language !== null) {
     // Fancy code block
     if (codeFancyBlock) {
-      if (language === 'html') {
+      if (artifactLanguage?.kind === 'html') {
         const isOpenFence = isOpenFenceBlock(children?.length, languageMatch?.[1]?.length, node?.position)
-        return <HtmlArtifactsCard html={children} onSave={handleSave} isStreaming={isStreaming && isOpenFence} />
+        return (
+          <HtmlArtifactsCard
+            html={children}
+            runtimeProfileId={artifactLanguage.runtimeProfileId}
+            typeLabel={artifactLanguage.displayType}
+            origin={artifactOrigin}
+            onSave={handleSave}
+            isStreaming={isStreaming && isOpenFence}
+          />
+        )
+      }
+
+      if (artifactLanguage?.kind === 'react') {
+        const isOpenFence = isOpenFenceBlock(children?.length, languageMatch?.[1]?.length, node?.position)
+        return (
+          <ReactArtifactsCard
+            code={children}
+            runtimeProfileId={artifactLanguage.runtimeProfileId}
+            sourceLanguage={artifactLanguage.sourceLanguage}
+            origin={artifactOrigin}
+            onSave={handleSave}
+            isStreaming={isStreaming && isOpenFence}
+          />
+        )
       }
     }
 
