@@ -78,10 +78,10 @@ vi.mock('@renderer/services/ModelService', () => ({
 // Mock Markdown component
 vi.mock('@renderer/pages/home/Markdown/Markdown', () => ({
   __esModule: true,
-  default: ({ block, postProcess }: any) => {
+  default: ({ block, postProcess, allowArtifactCards }: any) => {
     const content = postProcess ? postProcess(block.content) : block.content
     return (
-      <div data-testid="mock-markdown" data-content={content}>
+      <div data-testid="mock-markdown" data-content={content} data-allow-artifact-cards={String(allowArtifactCards)}>
         Markdown: {content}
       </div>
     )
@@ -163,6 +163,7 @@ describe('MainTextBlock', () => {
       // User should see markdown-rendered content
       expect(getRenderedMarkdown()).toBeInTheDocument()
       expect(screen.getByText('Markdown: Assistant response')).toBeInTheDocument()
+      expect(getRenderedMarkdown()).toHaveAttribute('data-allow-artifact-cards', 'true')
       expect(getRenderedPlainText()).not.toBeInTheDocument()
     })
 
@@ -188,6 +189,7 @@ describe('MainTextBlock', () => {
 
       expect(getRenderedMarkdown()).toBeInTheDocument()
       expect(screen.getByText('Markdown: User **bold** content')).toBeInTheDocument()
+      expect(getRenderedMarkdown()).toHaveAttribute('data-allow-artifact-cards', 'false')
     })
 
     it('should preserve complex formatting in plain text mode', () => {

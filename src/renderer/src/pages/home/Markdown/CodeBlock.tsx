@@ -16,10 +16,11 @@ interface Props {
   className?: string
   node?: Omit<Node, 'type'>
   blockId: string // Message block id
+  allowArtifactCards?: boolean
   [key: string]: any
 }
 
-const CodeBlock: React.FC<Props> = ({ children, className, node, blockId }) => {
+const CodeBlock: React.FC<Props> = ({ children, className, node, blockId, allowArtifactCards = true }) => {
   const languageMatch = /language-([\w-+]+)/.exec(className || '')
   const isMultiline = children?.includes('\n')
   const detectedLanguage = languageMatch?.[1] ?? (isMultiline ? 'text' : null)
@@ -71,7 +72,7 @@ const CodeBlock: React.FC<Props> = ({ children, className, node, blockId }) => {
 
   if (language !== null) {
     // Fancy code block
-    if (codeFancyBlock) {
+    if (codeFancyBlock && allowArtifactCards) {
       if (artifactLanguage?.kind === 'html') {
         const isOpenFence = isOpenFenceBlock(children?.length, languageMatch?.[1]?.length, node?.position)
         return (
