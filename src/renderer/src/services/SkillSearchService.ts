@@ -14,6 +14,7 @@ const SKILLS_SH_API = 'https://skills.sh/api/search'
 const CLAWHUB_API = 'https://clawhub.ai/api/v1/search'
 
 const REQUEST_TIMEOUT_MS = 15_000
+const MIN_REMOTE_QUERY_LENGTH = 2
 
 // ===========================================================================
 // Normalizers: source-specific response → unified SkillSearchResult[]
@@ -132,18 +133,19 @@ async function searchClawhub(query: string): Promise<SkillSearchResult[]> {
  * then merges remaining sources as they complete.
  */
 export async function searchSkills(query: string): Promise<SkillSearchResult[]> {
-  if (!query.trim()) return []
+  const normalizedQuery = query.trim()
+  if (normalizedQuery.length < MIN_REMOTE_QUERY_LENGTH) return []
 
   const sources = [
-    searchSkillsSh(query).catch((err) => {
+    searchSkillsSh(normalizedQuery).catch((err) => {
       logger.warn('skills.sh search failed', { error: err instanceof Error ? err.message : String(err) })
       return [] as SkillSearchResult[]
     }),
-    searchClaudePlugins(query).catch((err) => {
+    searchClaudePlugins(normalizedQuery).catch((err) => {
       logger.warn('claude-plugins search failed', { error: err instanceof Error ? err.message : String(err) })
       return [] as SkillSearchResult[]
     }),
-    searchClawhub(query).catch((err) => {
+    searchClawhub(normalizedQuery).catch((err) => {
       logger.warn('clawhub search failed', { error: err instanceof Error ? err.message : String(err) })
       return [] as SkillSearchResult[]
     })

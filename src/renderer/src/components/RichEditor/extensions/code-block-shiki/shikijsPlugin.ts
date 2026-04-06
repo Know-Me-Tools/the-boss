@@ -105,6 +105,7 @@ export function ShikiPlugin({
         })
       },
       apply: (transaction, decorationSet, oldState, newState) => {
+        const currentDecorationSet = decorationSet ?? DecorationSet.empty
         const oldNodeName = oldState.selection.$head.parent.type.name
         const newNodeName = newState.selection.$head.parent.type.name
         const oldNodes = findChildren(oldState.doc, (node) => node.type.name === name)
@@ -148,7 +149,7 @@ export function ShikiPlugin({
           })
         }
 
-        return decorationSet.map(transaction.mapping, transaction.doc)
+        return currentDecorationSet.map(transaction.mapping, transaction.doc)
       }
     },
 
@@ -265,7 +266,7 @@ export function ShikiPlugin({
 
     props: {
       decorations(state) {
-        return shikiPlugin.getState(state)
+        return shikiPlugin.getState(state) ?? DecorationSet.empty
       }
     }
   })

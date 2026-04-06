@@ -23,9 +23,24 @@ function isServiceBridgePayload(source?: string): boolean {
 export default function ArtifactPreviewApp() {
   const sessionId = useMemo(() => getSessionId(), [])
   const innerFrameRef = useRef<HTMLIFrameElement>(null)
+  const missingSessionAttemptsRef = useRef(0)
   const [session, setSession] = useState<ArtifactPreviewSession | null>(() =>
     sessionId ? getArtifactPreviewSession(sessionId) : null
   )
+
+  const requestSessionSync = useCallback(() => {
+    if (!sessionId) {
+      return
+    }
+
+    window.parent.postMessage(
+      {
+        source: 'artifact-preview-session-request',
+        sessionId
+      },
+      '*'
+    )
+  }, [sessionId])
 
   const refreshSession = useCallback(() => {
     if (!sessionId) {
@@ -37,15 +52,41 @@ export default function ArtifactPreviewApp() {
     setSession(nextSession)
 
     if (!nextSession) {
-      logger.warn(`Artifact preview session "${sessionId}" was not found.`, {
-        capabilities: getRendererCapabilities()
-      })
+      missingSessionAttemptsRef.current += 1
+      requestSessionSync()
+
+      if (missingSessionAttemptsRef.current >= 3) {
+        logger.warn(`Artifact preview session "${sessionId}" was not found.`, {
+          capabilities: getRendererCapabilities()
+        })
+      }
+      return
     }
-  }, [sessionId])
+
+    missingSessionAttemptsRef.current = 0
+  }, [requestSessionSync, sessionId])
 
   useEffect(() => {
     refreshSession()
   }, [refreshSession])
+
+  useEffect(() => {
+    if (!sessionId) {
+      return
+    }
+
+    const retryTimers = [50, 150].map((delay) =>
+      window.setTimeout(() => {
+        if (!getArtifactPreviewSession(sessionId)) {
+          refreshSession()
+        }
+      }, delay)
+    )
+
+    return () => {
+      retryTimers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [refreshSession, sessionId])
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {

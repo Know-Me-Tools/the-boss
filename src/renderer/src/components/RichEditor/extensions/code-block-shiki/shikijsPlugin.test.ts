@@ -201,4 +201,15 @@ describe('ShikiPlugin lifecycle guards', () => {
     expect(view.dispatch).toHaveBeenCalledTimes(1)
     expect(view.state.tr.setMeta).toHaveBeenCalledWith('shikiHighlighterReady', true)
   })
+
+  it('returns an empty decoration set when asked for state from another plugin instance', async () => {
+    const { ShikiPlugin } = await loadPlugin()
+    const plugin = ShikiPlugin({ name: 'codeBlock', defaultLanguage: 'text', theme: 'one-light' })
+
+    const decorations = (plugin as any).spec.props.decorations({})
+
+    expect(decorations).toBeDefined()
+    expect(typeof decorations.find).toBe('function')
+    expect(decorations.find()).toEqual([])
+  })
 })
