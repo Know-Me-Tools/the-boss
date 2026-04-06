@@ -17,7 +17,7 @@ import {
   REACT_ARTIFACT_RUNTIME_PROFILES,
   UpdateArtifactMetadataRequestSchema
 } from '@shared/artifacts'
-import { build } from 'esbuild'
+import { app } from 'electron'
 
 import { getDataPath } from '../utils'
 import { writeWithLock } from '../utils/file'
@@ -406,13 +406,56 @@ export class ArtifactService {
     return true
   }
 
+  /**
+   * Resolve and pin the esbuild binary path before the first spawn.
+   *
+   * Problem: esbuild's JS API internally calls `require.resolve('@esbuild/<platform>/bin/esbuild')`
+   * from inside its own `node_modules/esbuild/lib/main.js`. In a packaged Electron app the
+   * `node_modules/esbuild` directory sits inside the asar archive, so `require.resolve` may
+   * return a virtual asar path (e.g. `.../app.asar/node_modules/@esbuild/...`).
+   * `child_process.spawn` cannot open paths inside an asar file and throws ENOTDIR.
+   *
+   * Fix: resolve the binary path ourselves using the `createRequire` that was created relative
+   * to this module (and therefore has the correct package-resolution roots), then rewrite any
+   * `.asar/` component to `.asar.unpacked/` so the path points to the real file on disk.
+   * `electron-builder.yml` already puts `node_modules/@esbuild/**` in asarUnpack, so the
+   * binary is always physically present at the unpacked location.
+   */
+  private ensureEsbuildBinaryPath(): void {
+    if (process.env.ESBUILD_BINARY_PATH) return
+
+    const platformPkg = `@esbuild/${process.platform}-${process.arch}`
+    const binaryName = process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild'
+
+    try {
+      let binPath = require.resolve(`${platformPkg}/${binaryName}`)
+
+      // Rewrite asar path → unpacked path so spawn() can access the binary
+      const asarMarker = `${path.sep}app.asar${path.sep}`
+      if (binPath.includes(asarMarker)) {
+        binPath = binPath.replace(asarMarker, `${path.sep}app.asar.unpacked${path.sep}`)
+      }
+
+      process.env.ESBUILD_BINARY_PATH = binPath
+      logger.info('Resolved esbuild binary path', { binPath })
+    } catch (err) {
+      logger.warn('Could not resolve esbuild binary path; esbuild will use its own resolution', err as Error)
+    }
+  }
+
   async compileReactArtifact(input: unknown): Promise<CompileReactArtifactResponse> {
     const request = CompileReactArtifactRequestSchema.parse(input)
     const entry = getBootstrapEntry(request)
 
     try {
+      this.ensureEsbuildBinaryPath()
+      const { build } = await import('esbuild')
+      // Use Electron's temp directory as working directory for esbuild
+      // This is more reliable than process.cwd() in Electron environments
+      // where cwd might point to an asar archive or be inaccessible
+      const workingDir = app.getPath('temp')
       const result = await build({
-        absWorkingDir: process.cwd(),
+        absWorkingDir: workingDir,
         bundle: true,
         write: false,
         platform: 'browser',
@@ -458,7 +501,7 @@ export class ArtifactService {
 
                 if (APPROVED_REACT_IMPORTS.has(args.path)) {
                   return {
-                    path: require.resolve(args.path, { paths: [process.cwd()] })
+                    path: require.resolve(args.path)
                   }
                 }
 

@@ -272,12 +272,15 @@ const ArtifactLibrarySection = ({ theme, settings }: Props) => {
           title={selectedArtifact.title}
           code={previewSource}
           codeLanguage={selectedArtifact.kind === 'html' ? 'html' : 'tsx'}
+          previewKind={selectedArtifact.kind}
           typeLabel={selectedArtifact.kind === 'html' ? 'HTML Artifact' : 'React/TSX Artifact'}
           previewDocument={
             previewLoading
               ? `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.library.preview_loading')}</body></html>`
               : previewDocument
           }
+          previewThemeId={selectedArtifact.themeId}
+          previewAccessPolicy={selectedArtifact.accessPolicy}
           onSave={(source) => {
             void handlePreviewSave(source)
           }}

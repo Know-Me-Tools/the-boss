@@ -1,4 +1,4 @@
-import type { ArtifactRecordDraft } from '@shared/artifacts'
+import type { ArtifactAccessPolicy, ArtifactRecordDraft, ArtifactThemeId } from '@shared/artifacts'
 
 import ArtifactPopup from './ArtifactPopup'
 
@@ -7,6 +7,8 @@ interface HtmlArtifactsPopupProps {
   title: string
   html: string
   previewDocument?: string
+  previewThemeId?: ArtifactThemeId
+  previewAccessPolicy?: ArtifactAccessPolicy
   onSave?: (html: string) => void
   createLibraryDraft?: (source: string) => Promise<ArtifactRecordDraft>
   onClose: () => void
@@ -17,6 +19,8 @@ const HtmlArtifactsPopup = ({
   title,
   html,
   previewDocument,
+  previewThemeId,
+  previewAccessPolicy,
   onSave,
   createLibraryDraft,
   onClose
@@ -27,8 +31,11 @@ const HtmlArtifactsPopup = ({
       title={title}
       code={html}
       codeLanguage="html"
+      previewKind="html"
       typeLabel="HTML Artifact"
       previewDocument={previewDocument ?? html}
+      previewThemeId={previewThemeId}
+      previewAccessPolicy={previewAccessPolicy}
       onSave={onSave}
       createLibraryDraft={createLibraryDraft}
       onClose={onClose}

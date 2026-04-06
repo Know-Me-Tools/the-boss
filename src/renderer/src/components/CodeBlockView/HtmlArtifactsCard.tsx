@@ -6,9 +6,15 @@ import {
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { openTrustedPreviewPath } from '@renderer/runtime/rendererPlatform'
 import type { ThemeMode } from '@renderer/types'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
-import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
+import type {
+  ArtifactAccessPolicy,
+  ArtifactOriginRef,
+  ArtifactThemeId,
+  HtmlArtifactRuntimeProfileId
+} from '@shared/artifacts'
 import { Button } from 'antd'
 import { Code, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
@@ -48,6 +54,8 @@ const HtmlArtifactsCard: FC<Props> = ({
   const title = extractHtmlTitle(html) || 'HTML Artifacts'
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [previewDocument, setPreviewDocument] = useState(html)
+  const [previewThemeId, setPreviewThemeId] = useState<ArtifactThemeId | undefined>(undefined)
+  const [previewAccessPolicy, setPreviewAccessPolicy] = useState<ArtifactAccessPolicy | undefined>(undefined)
   const { theme } = useTheme()
 
   const htmlContent = html || ''
@@ -62,6 +70,7 @@ const HtmlArtifactsCard: FC<Props> = ({
       }
 
       const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
+      const themeId = overrides.themeId ?? settings.defaultThemeId
       setPreviewDocument(
         buildHtmlArtifactPreviewDocument({
           source: htmlContent,
@@ -71,6 +80,11 @@ const HtmlArtifactsCard: FC<Props> = ({
           overrides
         })
       )
+      setPreviewThemeId(themeId)
+      setPreviewAccessPolicy({
+        internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
+        serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+      })
     })
 
     return () => {
@@ -81,12 +95,10 @@ const HtmlArtifactsCard: FC<Props> = ({
   const handleOpenExternal = async () => {
     const path = await window.api.file.createTempFile('artifacts-preview.html')
     await window.api.file.write(path, previewDocument)
-    const filePath = `file://${path}`
-
-    if (window.api.shell?.openExternal) {
-      void window.api.shell.openExternal(filePath)
-    } else {
-      logger.error(t('chat.artifacts.preview.openExternal.error.content'))
+    try {
+      await openTrustedPreviewPath(path)
+    } catch (error) {
+      logger.error(t('chat.artifacts.preview.openExternal.error.content'), error as Error)
     }
   }
 
@@ -157,6 +169,8 @@ const HtmlArtifactsCard: FC<Props> = ({
         title={title}
         html={htmlContent}
         previewDocument={previewDocument}
+        previewThemeId={previewThemeId}
+        previewAccessPolicy={previewAccessPolicy}
         createLibraryDraft={async (source) => {
           const settings = await loadArtifactSettings()
           const overrides = parseArtifactDirectiveOverrides('html', source)

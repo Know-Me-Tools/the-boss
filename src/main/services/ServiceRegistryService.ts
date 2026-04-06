@@ -13,6 +13,8 @@ import {
   ImportGraphQLServiceRequestSchema,
   type ImportOpenAPIServiceRequest,
   ImportOpenAPIServiceRequestSchema,
+  type ImportSupabaseServiceRequest,
+  ImportSupabaseServiceRequestSchema,
   InvokeServiceOperationRequestSchema,
   type InvokeServiceResponse,
   InvokeServiceResponseSchema,
@@ -33,6 +35,7 @@ import {
   type ServiceToolSummary,
   ServiceToolSummarySchema,
   SubscribeServiceOperationRequestSchema,
+  type SupabaseServiceDefinition,
   UpdateServiceMetadataRequestSchema
 } from '@shared/services'
 import { safeStorage, webContents } from 'electron'
@@ -229,6 +232,39 @@ function buildOpenApiInputSchema(operation: any, pathItem: any): JsonSchemaLike 
   }
 }
 
+function buildSupabaseInputSchema(): JsonSchemaLike {
+  return {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'Resource or RPC path relative to /rest/v1, such as /todos or /rpc/run_job.'
+      },
+      method: {
+        type: 'string',
+        enum: [...HTTP_METHODS],
+        default: 'get'
+      },
+      query: {
+        type: 'object',
+        additionalProperties: true
+      },
+      headers: {
+        type: 'object',
+        additionalProperties: {
+          type: 'string'
+        }
+      },
+      body: {},
+      useServiceRole: {
+        type: 'boolean',
+        default: false
+      }
+    },
+    required: ['path']
+  }
+}
+
 function syncGraphQLProjectedTools(operations: GraphQLServiceOperation[]): ServiceToolProjection[] {
   const projected = operations
     .filter((operation) => operation.projected && operation.operationType !== 'subscription')
@@ -409,6 +445,67 @@ async function buildGraphQLDefinition(params: {
     schemaSnapshot,
     operations: existingOperations
   }) as GraphQLServiceDefinition
+}
+
+function buildSupabaseDefinition(params: {
+  request: ImportSupabaseServiceRequest
+  headerTemplates: SupabaseServiceDefinition['headerTemplates']
+  anonKey: SupabaseServiceDefinition['anonKey']
+  serviceRoleKey?: SupabaseServiceDefinition['serviceRoleKey']
+  previous?: SupabaseServiceDefinition
+}): SupabaseServiceDefinition {
+  const timestamp = nowIso()
+  const restOperation = {
+    id: 'rest',
+    kind: 'rest' as const,
+    pathPrefix: '/rest/v1',
+    description: 'Brokered Supabase REST access for PostgREST resources and RPC endpoints.',
+    inputSchema: buildSupabaseInputSchema()
+  }
+  const previousProjection = params.previous?.projectedTools.find(
+    (projection) => projection.sourceOperationId === 'rest'
+  )
+
+  return ServiceDefinitionSchema.parse({
+    serviceId: params.request.serviceId ?? params.previous?.serviceId ?? randomUUID(),
+    name: params.request.name,
+    kind: 'supabase',
+    endpoint: params.request.endpoint,
+    importSource: {
+      type: 'manual',
+      locator: params.request.endpoint,
+      importedAt: timestamp
+    } satisfies ServiceImportSource,
+    auth: {
+      type: 'none'
+    },
+    headerTemplates: params.headerTemplates,
+    projectedTools: [
+      {
+        id: previousProjection?.id ?? 'rest',
+        kind: 'supabase-rest',
+        sourceOperationId: 'rest',
+        name: previousProjection?.name ?? 'Supabase REST',
+        description:
+          previousProjection?.description ??
+          'Invoke Supabase PostgREST resources or RPC endpoints through the shared service broker.',
+        enabled: previousProjection?.enabled ?? false,
+        inputSchema: restOperation.inputSchema,
+        additionalHeaders: previousProjection?.additionalHeaders ?? []
+      }
+    ],
+    createdAt: params.previous?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+    refresh: {
+      lastImportedAt: timestamp,
+      lastRefreshedAt: timestamp,
+      importHash: createImportHash(params.request.endpoint)
+    },
+    metadata: {},
+    anonKey: params.anonKey,
+    serviceRoleKey: params.serviceRoleKey,
+    operations: [restOperation]
+  }) as SupabaseServiceDefinition
 }
 
 function resolveTemplateValue(template: ServiceHeaderTemplate, secrets: Record<string, string>): string {
@@ -709,6 +806,31 @@ export class ServiceRegistryService {
     return service
   }
 
+  async importSupabaseService(input: unknown): Promise<SupabaseServiceDefinition> {
+    const request = ImportSupabaseServiceRequestSchema.parse(input)
+    const registry = await this.readRegistry()
+    const previous = registry.services.find(
+      (service) => service.serviceId === request.serviceId && service.kind === 'supabase'
+    ) as SupabaseServiceDefinition | undefined
+
+    const service = buildSupabaseDefinition({
+      request,
+      previous,
+      headerTemplates: await this.materializeHeaderTemplates(request.headerTemplates),
+      anonKey: (await this.upsertSecret(request.anonKey))!,
+      serviceRoleKey: request.serviceRoleKey ? await this.upsertSecret(request.serviceRoleKey) : undefined
+    })
+
+    const nextRegistry: ServiceRegistryFile = {
+      ...registry,
+      services: [...registry.services.filter((item) => item.serviceId !== service.serviceId), service].sort(
+        (left, right) => right.updatedAt.localeCompare(left.updatedAt)
+      )
+    }
+    await this.writeRegistry(nextRegistry)
+    return service
+  }
+
   async updateServiceMetadata(input: unknown): Promise<ServiceDefinition> {
     const request = UpdateServiceMetadataRequestSchema.parse(input)
     const registry = await this.readRegistry()
@@ -820,6 +942,14 @@ export class ServiceRegistryService {
       return this.invokeOpenApiOperation(service, operation, request.input)
     }
 
+    if (service.kind === 'supabase') {
+      const operation = service.operations.find((item) => item.id === request.operationId)
+      if (!operation) {
+        throw new Error(`Unknown Supabase operation "${request.operationId}".`)
+      }
+      return this.invokeSupabaseOperation(service, operation, request.input)
+    }
+
     const operation = service.operations.find((item) => item.id === request.operationId)
     if (!operation) {
       throw new Error(`Unknown GraphQL operation "${request.operationId}".`)
@@ -846,6 +976,15 @@ export class ServiceRegistryService {
       return this.invokeOpenApiOperation(
         service,
         operation as OpenAPIServiceDefinition['operations'][number],
+        input,
+        projection.additionalHeaders
+      )
+    }
+
+    if (service.kind === 'supabase') {
+      return this.invokeSupabaseOperation(
+        service,
+        operation as SupabaseServiceDefinition['operations'][number],
         input,
         projection.additionalHeaders
       )
@@ -925,6 +1064,67 @@ export class ServiceRegistryService {
     const data = await readResponseData(response)
     return InvokeServiceResponseSchema.parse({
       ok: response.ok && !(data && typeof data === 'object' && 'errors' in (data as Record<string, unknown>)),
+      status: response.status,
+      data,
+      headers: Object.fromEntries(response.headers.entries())
+    })
+  }
+
+  private async invokeSupabaseOperation(
+    service: SupabaseServiceDefinition,
+    operation: SupabaseServiceDefinition['operations'][number],
+    input: Record<string, unknown>,
+    additionalHeaders: ServiceHeaderTemplate[] = []
+  ): Promise<InvokeServiceResponse> {
+    const secrets = await this.readSecrets()
+    const useServiceRole = Boolean(input.useServiceRole)
+    const activeKeyRef = useServiceRole ? service.serviceRoleKey : service.anonKey
+
+    if (useServiceRole && !service.serviceRoleKey) {
+      throw new Error(`Supabase service "${service.name}" does not have a service-role key configured.`)
+    }
+
+    const activeKey = activeKeyRef ? secrets[activeKeyRef.id] : undefined
+    if (!activeKey) {
+      throw new Error(`Missing Supabase credentials for service "${service.name}".`)
+    }
+
+    const rawPath = String(input.path ?? '').trim()
+    if (!rawPath) {
+      throw new Error('Supabase requests require a resource or RPC path.')
+    }
+
+    const method = String(input.method ?? 'get').toLowerCase()
+    if (!HTTP_METHODS.includes(method as (typeof HTTP_METHODS)[number])) {
+      throw new Error(`Unsupported Supabase method "${method}".`)
+    }
+
+    const trimmedPrefix = operation.pathPrefix.replace(/\/+$/g, '')
+    const relativePath = rawPath.startsWith(trimmedPrefix) ? rawPath.slice(trimmedPrefix.length) : rawPath
+    const normalizedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`
+    const url = new URL(`${trimmedPrefix}${normalizedPath}`, service.endpoint)
+
+    for (const [key, value] of Object.entries((input.query as Record<string, unknown> | undefined) ?? {})) {
+      if (value === undefined || value === null) {
+        continue
+      }
+      url.searchParams.set(key, String(value))
+    }
+
+    const response = await fetch(url, {
+      method: method.toUpperCase(),
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: activeKey,
+        Authorization: `Bearer ${activeKey}`,
+        ...buildServiceHeaders(service, secrets, 'request', additionalHeaders),
+        ...((input.headers as Record<string, string> | undefined) ?? {})
+      },
+      body: method === 'get' || method === 'head' ? undefined : JSON.stringify(input.body ?? input.input ?? undefined)
+    })
+    const data = await readResponseData(response)
+    return InvokeServiceResponseSchema.parse({
+      ok: response.ok,
       status: response.status,
       data,
       headers: Object.fromEntries(response.headers.entries())
@@ -1096,6 +1296,27 @@ export class ServiceRegistryService {
           ok: response.ok,
           status: response.status,
           message: response.ok ? 'OpenAPI endpoint reachable.' : response.statusText
+        })
+      }
+
+      if (service.kind === 'supabase') {
+        const secrets = await this.readSecrets()
+        const anonKey = secrets[service.anonKey.id]
+        if (!anonKey) {
+          throw new Error(`Missing Supabase anon key for service "${service.name}".`)
+        }
+
+        const response = await fetch(new URL('/rest/v1/', service.endpoint), {
+          method: 'GET',
+          headers: {
+            apikey: anonKey,
+            Authorization: `Bearer ${anonKey}`
+          }
+        })
+        return ServiceConnectionTestResultSchema.parse({
+          ok: response.ok,
+          status: response.status,
+          message: response.ok ? 'Supabase REST endpoint reachable.' : response.statusText
         })
       }
 

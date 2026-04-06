@@ -1,3 +1,8 @@
+import {
+  createArtifactPreviewSessionId,
+  removeArtifactPreviewSession,
+  upsertArtifactPreviewSession
+} from '@renderer/artifacts/previewSessions'
 import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { CopyIcon, FilePngIcon } from '@renderer/components/Icons'
@@ -5,7 +10,7 @@ import { isMac } from '@renderer/config/constant'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { classNames } from '@renderer/utils'
 import { captureScrollableIframeAsBlob, captureScrollableIframeAsDataURL } from '@renderer/utils/image'
-import type { ArtifactRecordDraft } from '@shared/artifacts'
+import type { ArtifactAccessPolicy, ArtifactKind, ArtifactRecordDraft, ArtifactThemeId } from '@shared/artifacts'
 import { Button, Dropdown, Modal, Splitter, Tooltip, Typography } from 'antd'
 import {
   BookMarked,
@@ -76,21 +81,16 @@ const CodePanel = memo<CodePanelProps>(
 
 interface PreviewPanelProps {
   previewFrameRef: React.RefObject<HTMLIFrameElement | null>
-  previewDocument: string
+  previewUrl: string
   previewTitle: string
   emptyText: string
 }
 
-const PreviewPanel = memo<PreviewPanelProps>(({ previewFrameRef, previewDocument, previewTitle, emptyText }) => {
+const PreviewPanel = memo<PreviewPanelProps>(({ previewFrameRef, previewUrl, previewTitle, emptyText }) => {
   return (
     <PreviewSection>
-      {previewDocument.trim() ? (
-        <PreviewFrame
-          ref={previewFrameRef}
-          srcDoc={previewDocument}
-          title={previewTitle}
-          sandbox="allow-scripts allow-same-origin allow-forms"
-        />
+      {previewUrl ? (
+        <PreviewFrame ref={previewFrameRef} src={previewUrl} title={previewTitle} />
       ) : (
         <EmptyPreview>
           <p>{emptyText}</p>
@@ -105,8 +105,11 @@ export interface ArtifactPopupProps {
   title: string
   code: string
   codeLanguage: string
+  previewKind: ArtifactKind
   typeLabel: string
   previewDocument: string
+  previewThemeId?: ArtifactThemeId
+  previewAccessPolicy?: ArtifactAccessPolicy
   onSave?: (code: string) => void
   createLibraryDraft?: (source: string) => Promise<ArtifactRecordDraft>
   onClose: () => void
@@ -119,8 +122,11 @@ const ArtifactPopup = ({
   title,
   code,
   codeLanguage,
+  previewKind,
   typeLabel,
   previewDocument,
+  previewThemeId,
+  previewAccessPolicy,
   onSave,
   createLibraryDraft,
   onClose
@@ -133,6 +139,8 @@ const ArtifactPopup = ({
   const [splitSizes, setSplitSizes] = useState<string[]>(['50%', '50%'])
   const codeEditorRef = useRef<CodeEditorHandles>(null)
   const previewFrameRef = useRef<HTMLIFrameElement>(null)
+  const previewSessionIdRef = useRef(createArtifactPreviewSessionId())
+  const previewUrl = window.api.preview.getRuntimeUrl(previewSessionIdRef.current)
 
   useEffect(() => {
     const disposeSubscriptionEvents = window.api.services.onSubscriptionEvent((event) => {
@@ -223,6 +231,48 @@ const ArtifactPopup = ({
     return () => {
       disposeSubscriptionEvents()
       window.removeEventListener('message', handleMessage)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open || !previewDocument.trim()) {
+      return
+    }
+
+    const sessionId = previewSessionIdRef.current
+    upsertArtifactPreviewSession({
+      id: sessionId,
+      title,
+      kind: previewKind,
+      document: previewDocument,
+      themeId: previewThemeId,
+      accessPolicy: previewAccessPolicy ?? {
+        internetEnabled: true,
+        serviceIds: []
+      },
+      updatedAt: new Date().toISOString()
+    })
+
+    previewFrameRef.current?.contentWindow?.postMessage(
+      {
+        source: 'artifact-preview-session-update',
+        sessionId
+      },
+      '*'
+    )
+  }, [open, previewAccessPolicy, previewDocument, previewKind, previewThemeId, title])
+
+  useEffect(() => {
+    if (!open) {
+      removeArtifactPreviewSession(previewSessionIdRef.current)
+    }
+  }, [open])
+
+  useEffect(() => {
+    const sessionId = previewSessionIdRef.current
+
+    return () => {
+      removeArtifactPreviewSession(sessionId)
     }
   }, [])
 
@@ -417,7 +467,7 @@ const ArtifactPopup = ({
             <PanelWrapper $hidden={viewMode === 'code'}>
               <PreviewPanel
                 previewFrameRef={previewFrameRef}
-                previewDocument={previewDocument}
+                previewUrl={previewDocument.trim() ? previewUrl : ''}
                 previewTitle={`${typeLabel} preview`}
                 emptyText={t('html_artifacts.empty_preview', 'No content to preview')}
               />

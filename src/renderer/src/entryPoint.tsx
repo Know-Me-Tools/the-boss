@@ -1,7 +1,8 @@
+// IMPORTANT: Import bootstrapLogger first to ensure logger is initialized before any module that uses it
+import './bootstrapLogger'
 import './assets/styles/index.css'
 import './assets/styles/tailwind.css'
 import '@ant-design/v5-patch-for-react-19'
-import './bootstrapLogger'
 
 import { createRoot } from 'react-dom/client'
 

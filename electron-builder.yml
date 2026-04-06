@@ -72,6 +72,8 @@ asarUnpack:
   - out/proxy/**
   - resources/**
   - "**/*.{metal,exp,lib}"
+  - "node_modules/@esbuild/**"
+  - "node_modules/esbuild/**"
   - "node_modules/@img/sharp-libvips-*/**"
 
 win:

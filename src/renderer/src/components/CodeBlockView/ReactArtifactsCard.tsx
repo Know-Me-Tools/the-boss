@@ -6,8 +6,15 @@ import {
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { openTrustedPreviewPath } from '@renderer/runtime/rendererPlatform'
 import type { ThemeMode } from '@renderer/types'
-import type { ArtifactOriginRef, ArtifactSourceLanguage, ReactArtifactRuntimeProfileId } from '@shared/artifacts'
+import type {
+  ArtifactAccessPolicy,
+  ArtifactOriginRef,
+  ArtifactSourceLanguage,
+  ArtifactThemeId,
+  ReactArtifactRuntimeProfileId
+} from '@shared/artifacts'
 import { Button } from 'antd'
 import { Atom, DownloadIcon, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
@@ -95,6 +102,8 @@ const ReactArtifactsCard: FC<Props> = ({
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [isCompiling, setIsCompiling] = useState(false)
   const [previewDocument, setPreviewDocument] = useState('')
+  const [previewThemeId, setPreviewThemeId] = useState<ArtifactThemeId | undefined>(undefined)
+  const [previewAccessPolicy, setPreviewAccessPolicy] = useState<ArtifactAccessPolicy | undefined>(undefined)
   const { theme } = useTheme()
 
   const sourceCode = code || ''
@@ -107,6 +116,12 @@ const ReactArtifactsCard: FC<Props> = ({
       const settings = await loadArtifactSettings()
       const overrides = parseArtifactDirectiveOverrides('react', sourceCode)
       const themeId = overrides.themeId ?? settings.defaultThemeId
+      const accessPolicy = {
+        internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
+        serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+      }
+      setPreviewThemeId(themeId)
+      setPreviewAccessPolicy(accessPolicy)
       const result = await window.api.artifacts.compileReact({
         source: sourceCode,
         baseCss: settings.baseCss,
@@ -146,7 +161,7 @@ const ReactArtifactsCard: FC<Props> = ({
     const document = previewDocument || (await compilePreview())
     const path = await window.api.file.createTempFile('react-artifact-preview.html')
     await window.api.file.write(path, document)
-    void window.api.shell.openExternal(`file://${path}`)
+    await openTrustedPreviewPath(path)
   }, [compilePreview, previewDocument])
 
   const handleDownload = async () => {
@@ -221,8 +236,11 @@ const ReactArtifactsCard: FC<Props> = ({
         title={title}
         code={sourceCode}
         codeLanguage="tsx"
+        previewKind="react"
         typeLabel="React/TSX Artifact"
         previewDocument={previewDocument || loadingDocument}
+        previewThemeId={previewThemeId}
+        previewAccessPolicy={previewAccessPolicy}
         createLibraryDraft={async (source) => {
           const settings = await loadArtifactSettings()
           const overrides = parseArtifactDirectiveOverrides('react', source)

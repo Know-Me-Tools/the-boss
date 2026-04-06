@@ -180,6 +180,26 @@ export const CompileReactArtifactResponseSchema = z.object({
 })
 export type CompileReactArtifactResponse = z.infer<typeof CompileReactArtifactResponseSchema>
 
+export const ArtifactPreviewSessionSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  kind: ArtifactKindSchema,
+  document: z.string().min(1),
+  themeId: ArtifactThemeIdSchema.optional(),
+  accessPolicy: ArtifactAccessPolicySchema.default({
+    internetEnabled: true,
+    serviceIds: []
+  }),
+  updatedAt: z.string().min(1)
+})
+export type ArtifactPreviewSession = z.infer<typeof ArtifactPreviewSessionSchema>
+
+export const ArtifactPreviewSessionSeedSchema = ArtifactPreviewSessionSchema.omit({
+  id: true,
+  updatedAt: true
+})
+export type ArtifactPreviewSessionSeed = z.infer<typeof ArtifactPreviewSessionSeedSchema>
+
 export const SaveArtifactRequestSchema = ArtifactRecordDraftSchema
 export type SaveArtifactRequest = z.infer<typeof SaveArtifactRequestSchema>
 
@@ -228,7 +248,7 @@ export const REACT_ARTIFACT_RUNTIME_PROFILES: ReactArtifactRuntimeProfile[] = [
     id: 'react-default',
     kind: 'react',
     label: 'React/TSX + Shadow DOM',
-    description: 'Compile React/TSX locally and mount it inside a shadow root within a sandboxed frame.'
+    description: 'Compile React/TSX locally and mount it inside the trusted artifact preview runtime.'
   }
 ]
 

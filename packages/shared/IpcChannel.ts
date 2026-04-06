@@ -85,6 +85,7 @@ export enum IpcChannel {
   Services_Get = 'services:get',
   Services_ImportOpenAPI = 'services:import-openapi',
   Services_ImportGraphQL = 'services:import-graphql',
+  Services_ImportSupabase = 'services:import-supabase',
   Services_UpdateMetadata = 'services:update-metadata',
   Services_Delete = 'services:delete',
   Services_ListProjectedTools = 'services:list-projected-tools',

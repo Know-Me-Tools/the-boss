@@ -334,6 +334,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Services_ImportGraphQL, (_, request) =>
     serviceRegistryService.importGraphQLService(request)
   )
+  ipcMain.handle(IpcChannel.Services_ImportSupabase, (_, request) =>
+    serviceRegistryService.importSupabaseService(request)
+  )
   ipcMain.handle(IpcChannel.Services_UpdateMetadata, (_, request) =>
     serviceRegistryService.updateServiceMetadata(request)
   )

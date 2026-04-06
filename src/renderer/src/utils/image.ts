@@ -196,6 +196,13 @@ export async function captureScrollableIframe(
 
   const doc = iframe.contentDocument
   const win = iframe.contentWindow!
+  const nestedPreviewFrame = doc.querySelector(
+    'iframe[data-artifact-preview-content="true"]'
+  ) as HTMLIFrameElement | null
+
+  if (nestedPreviewFrame?.contentDocument?.defaultView) {
+    return captureScrollableIframe({ current: nestedPreviewFrame })
+  }
 
   // 禁用动画以确保捕获静态状态
   const disableAnimations = () => {

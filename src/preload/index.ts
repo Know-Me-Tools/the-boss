@@ -27,9 +27,12 @@ import type {
 import type { MCPServerLogEntry } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
+import type { RendererRuntimeEnvironment } from '@shared/runtime'
+import { resolveWindowKindFromPath } from '@shared/runtime'
 import type {
   ImportGraphQLServiceRequest,
   ImportOpenAPIServiceRequest,
+  ImportSupabaseServiceRequest,
   InvokeServiceResponse,
   ServiceConnectionTestResult,
   ServiceDefinition,
@@ -113,6 +116,18 @@ export function tracedInvoke(channel: string, spanContext: SpanContext | undefin
     return ipcRenderer.invoke(channel, ...args, data)
   }
   return ipcRenderer.invoke(channel, ...args)
+}
+
+const windowKind = resolveWindowKindFromPath(window.location.pathname)
+const runtimeEnvironment: RendererRuntimeEnvironment = {
+  windowKind,
+  capabilities: {
+    hasPreloadBridge: true,
+    hasFileApi: true,
+    hasShellApi: true,
+    canLogToMain: true,
+    isTrustedPreview: windowKind === 'ArtifactPreview'
+  }
 }
 
 // Custom APIs for renderer
@@ -412,6 +427,21 @@ const api = {
     compileReact: (request: CompileReactArtifactRequest): Promise<CompileReactArtifactResponse> =>
       ipcRenderer.invoke(IpcChannel.Artifact_CompileReact, request)
   },
+  runtime: {
+    environment: runtimeEnvironment,
+    getEnvironment: (): RendererRuntimeEnvironment => runtimeEnvironment
+  },
+  preview: {
+    openTempHtml: (path: string): Promise<void> => ipcRenderer.invoke(IpcChannel.Open_Path, path),
+    getRuntimeUrl: (sessionId: string): string => {
+      const url = new URL(window.location.href)
+      url.hash = ''
+      url.search = ''
+      url.pathname = url.pathname.replace(/[^/]+$/, 'artifactPreview.html')
+      url.searchParams.set('session', sessionId)
+      return url.toString()
+    }
+  },
   services: {
     list: (query?: ServiceListQuery): Promise<ServiceDefinition[]> =>
       ipcRenderer.invoke(IpcChannel.Services_List, query),
@@ -420,6 +450,8 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Services_ImportOpenAPI, request),
     importGraphQL: (request: ImportGraphQLServiceRequest): Promise<ServiceDefinition> =>
       ipcRenderer.invoke(IpcChannel.Services_ImportGraphQL, request),
+    importSupabase: (request: ImportSupabaseServiceRequest): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_ImportSupabase, request),
     updateMetadata: (id: string, patch: UpdateServiceMetadataRequest['patch']): Promise<ServiceDefinition> =>
       ipcRenderer.invoke(IpcChannel.Services_UpdateMetadata, { id, patch }),
     delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Services_Delete, id),
