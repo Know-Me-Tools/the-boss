@@ -379,10 +379,69 @@ export type ArtifactLanguageDescriptor =
 
 const REACT_ARTIFACT_LANGUAGE_ALIASES = new Set(['react', 'tsx-artifact', 'react-tsx', 'react+tsx', 'typescript-react'])
 const LEGACY_REACT_ARTIFACT_LANGUAGE_ALIASES = new Set(['jsx-artifact'])
+const HTML_HTMX_ARTIFACT_LANGUAGE_ALIASES = new Set(['htmx', 'htmx-artifact', 'html-htmx', 'htmx-html'])
+const HTML_ALPINE_ARTIFACT_LANGUAGE_ALIASES = new Set(['alpine', 'alpinejs', 'alpine-artifact', 'html-alpine'])
+const HTML_HTMX_ALPINE_ARTIFACT_LANGUAGE_ALIASES = new Set([
+  'htmx+alpine',
+  'alpine+htmx',
+  'htmx+alpinejs',
+  'alpinejs+htmx',
+  'html-htmx-alpine',
+  'html-alpine-htmx'
+])
+
+function detectHtmlRuntimeProfileId(
+  normalizedLanguage: string,
+  source: string | undefined,
+  defaults?: Pick<ArtifactSettings, 'defaultHtmlRuntimeProfileId'>
+): HtmlArtifactRuntimeProfileId | null {
+  const hasHtmxMarkers =
+    HTML_HTMX_ARTIFACT_LANGUAGE_ALIASES.has(normalizedLanguage) ||
+    HTML_HTMX_ALPINE_ARTIFACT_LANGUAGE_ALIASES.has(normalizedLanguage) ||
+    /\bhx-[\w:-]+\s*=/.test(source ?? '') ||
+    /\bhtmx\b/i.test(source ?? '')
+  const hasAlpineMarkers =
+    HTML_ALPINE_ARTIFACT_LANGUAGE_ALIASES.has(normalizedLanguage) ||
+    HTML_HTMX_ALPINE_ARTIFACT_LANGUAGE_ALIASES.has(normalizedLanguage) ||
+    /\bx-data\s*=/.test(source ?? '') ||
+    /\bx-(?:init|show|if|for|model|bind|on|ref|transition|cloak)\b/.test(source ?? '') ||
+    /\bAlpine\b/.test(source ?? '')
+
+  if (HtmlArtifactRuntimeProfileIdSchema.options.includes(normalizedLanguage as HtmlArtifactRuntimeProfileId)) {
+    if (normalizedLanguage !== 'html') {
+      return normalizedLanguage as HtmlArtifactRuntimeProfileId
+    }
+
+    if (hasHtmxMarkers && hasAlpineMarkers) {
+      return 'html+htmx+alpine'
+    }
+    if (hasHtmxMarkers) {
+      return 'html+htmx'
+    }
+    if (hasAlpineMarkers) {
+      return 'html+alpine'
+    }
+
+    return defaults?.defaultHtmlRuntimeProfileId ?? 'html'
+  }
+
+  if (hasHtmxMarkers && hasAlpineMarkers) {
+    return 'html+htmx+alpine'
+  }
+  if (hasHtmxMarkers) {
+    return 'html+htmx'
+  }
+  if (hasAlpineMarkers) {
+    return 'html+alpine'
+  }
+
+  return null
+}
 
 export function parseArtifactLanguage(
   language: string | null | undefined,
-  defaults?: Pick<ArtifactSettings, 'defaultHtmlRuntimeProfileId' | 'defaultReactRuntimeProfileId'>
+  defaults?: Pick<ArtifactSettings, 'defaultHtmlRuntimeProfileId' | 'defaultReactRuntimeProfileId'>,
+  source?: string
 ): ArtifactLanguageDescriptor | null {
   if (!language) {
     return null
@@ -390,16 +449,14 @@ export function parseArtifactLanguage(
 
   const normalized = language.toLowerCase()
 
-  if (HtmlArtifactRuntimeProfileIdSchema.options.includes(normalized as HtmlArtifactRuntimeProfileId)) {
-    const profileId =
-      normalized === 'html'
-        ? (defaults?.defaultHtmlRuntimeProfileId ?? 'html')
-        : (normalized as HtmlArtifactRuntimeProfileId)
-    const profile = HTML_ARTIFACT_RUNTIME_PROFILES.find((item) => item.id === profileId)
+  const htmlRuntimeProfileId = detectHtmlRuntimeProfileId(normalized, source, defaults)
+
+  if (htmlRuntimeProfileId) {
+    const profile = HTML_ARTIFACT_RUNTIME_PROFILES.find((item) => item.id === htmlRuntimeProfileId)
 
     return {
       kind: 'html',
-      runtimeProfileId: profileId,
+      runtimeProfileId: htmlRuntimeProfileId,
       displayType: profile?.label ?? 'HTML',
       editorLanguage: 'html',
       sourceLanguage: 'html'
