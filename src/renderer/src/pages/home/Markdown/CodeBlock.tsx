@@ -56,11 +56,15 @@ const CodeBlock: React.FC<Props> = ({ children, className, node, blockId, allowA
 
   const artifactLanguage = useMemo(
     () =>
-      parseArtifactLanguage(language, {
-        defaultHtmlRuntimeProfileId: artifactSettings.defaultHtmlRuntimeProfileId,
-        defaultReactRuntimeProfileId: artifactSettings.defaultReactRuntimeProfileId
-      }),
-    [artifactSettings.defaultHtmlRuntimeProfileId, artifactSettings.defaultReactRuntimeProfileId, language]
+      parseArtifactLanguage(
+        language,
+        {
+          defaultHtmlRuntimeProfileId: artifactSettings.defaultHtmlRuntimeProfileId,
+          defaultReactRuntimeProfileId: artifactSettings.defaultReactRuntimeProfileId
+        },
+        children
+      ),
+    [artifactSettings.defaultHtmlRuntimeProfileId, artifactSettings.defaultReactRuntimeProfileId, children, language]
   )
   const artifactOrigin = useMemo(
     () => ({
