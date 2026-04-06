@@ -2269,6 +2269,15 @@
       },
       "success": "Backup reușit"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "Crearea ramurii a eșuat"
     },
@@ -5844,6 +5853,9 @@
       "reset": "Resetează",
       "title": "Zoom pagină"
     }
+  },
+  "tab": {
+    "new": "[to be translated]:New Tab"
   },
   "title": {
     "apps": "Aplicații",

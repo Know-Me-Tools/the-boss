@@ -2269,6 +2269,15 @@
       },
       "success": "Backup successful"
     },
+    "block": {
+      "skill": {
+        "activation_method": "Method",
+        "injected_content": "Injected context",
+        "selection_reason": "Why selected",
+        "token_count": "Tokens injected",
+        "trigger_tokens": "Matched terms"
+      }
+    },
     "branch": {
       "error": "Branch creation failed"
     },

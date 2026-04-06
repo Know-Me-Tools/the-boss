@@ -2269,6 +2269,15 @@
       },
       "success": "Резервная копия успешно создана"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "Создание ветви не удалось"
     },
