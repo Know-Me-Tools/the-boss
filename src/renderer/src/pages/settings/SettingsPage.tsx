@@ -41,6 +41,7 @@ import { ProviderList } from './ProviderSettings'
 import QuickAssistantSettings from './QuickAssistantSettings'
 import QuickPhraseSettings from './QuickPhraseSettings'
 import SelectionAssistantSettings from './SelectionAssistantSettings/SelectionAssistantSettings'
+import SkillSettings from './SkillSettings'
 import ShortcutSettings from './ShortcutSettings'
 import SkillsSettings from './SkillsSettings'
 import TasksSettings from './TasksSettings'
@@ -114,6 +115,12 @@ const SettingsPage: FC = () => {
             <MenuItem className={isRoute('/settings/skills')}>
               <Sparkles size={18} />
               {t('settings.skills.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/skill">
+            <MenuItem className={isRoute('/settings/skill')}>
+              <Zap size={18} />
+              {t('settings.skill.title')}
             </MenuItem>
           </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
@@ -197,6 +204,7 @@ const SettingsPage: FC = () => {
             <Route path="quickphrase" element={<QuickPhraseSettings />} />
             <Route path="mcp/*" element={<MCPSettings />} />
             <Route path="skills" element={<SkillsSettings />} />
+            <Route path="skill" element={<SkillSettings />} />
             <Route path="memory" element={<MemorySettings />} />
             <Route path="general/*" element={<GeneralSettings />} />
             <Route path="display" element={<DisplaySettings />} />

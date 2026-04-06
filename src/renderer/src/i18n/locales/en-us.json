@@ -5641,6 +5641,28 @@
       "zoom_out": "Zoom Out",
       "zoom_reset": "Reset Zoom"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "Chunked RAG",
+        "full_injection": "Full Injection",
+        "prefix_cache_aware": "Prefix Cache Aware",
+        "progressive": "Progressive",
+        "summarized": "Summarized"
+      },
+      "context_method": "Context Management",
+      "max_tokens": "Max Skill Tokens",
+      "method": {
+        "embedding": "Embedding (Semantic)",
+        "hybrid": "Hybrid (BM25 + Dense)",
+        "llm_delegated": "LLM Delegated",
+        "llm_router": "LLM Router",
+        "two_stage": "Two-Stage"
+      },
+      "selection_method": "Selection Method",
+      "similarity_threshold": "Similarity Threshold",
+      "title": "Skill Configuration",
+      "top_k": "Max Skills (Top K)"
+    },
     "skills": {
       "author": "Author",
       "batchUninstallSuccess": "{{count}} skills uninstalled",
