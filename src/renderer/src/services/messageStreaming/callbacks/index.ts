@@ -5,10 +5,13 @@ import { createBaseCallbacks } from './baseCallbacks'
 import { createCitationCallbacks } from './citationCallbacks'
 import { createCompactCallbacks } from './compactCallbacks'
 import { createImageCallbacks } from './imageCallbacks'
+import { createSkillCallbacks } from './skillCallbacks'
 import { createTextCallbacks } from './textCallbacks'
 import { createThinkingCallbacks } from './thinkingCallbacks'
 import { createToolCallbacks } from './toolCallbacks'
 import { createVideoCallbacks } from './videoCallbacks'
+
+export { createSkillCallbacks } from './skillCallbacks'
 
 interface CallbacksDependencies {
   blockManager: BlockManager
@@ -69,6 +72,11 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     saveUpdatesToDB
   })
 
+  const skillCallbacks = createSkillCallbacks({
+    blockManager,
+    assistantMsgId
+  })
+
   // 创建textCallbacks时传入citationCallbacks的getCitationBlockId方法和compactCallbacks的handleTextComplete方法
   const textCallbacks = createTextCallbacks({
     blockManager,
@@ -89,6 +97,7 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     ...citationCallbacks,
     ...videoCallbacks,
     ...compactCallbacks,
+    ...skillCallbacks,
     // 清理资源的方法
     cleanup: () => {
       // 清理由 messageThunk 中的节流函数管理，这里不需要特别处理

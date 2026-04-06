@@ -1,6 +1,6 @@
 import { loggerService } from '@logger'
 import type { Assistant, FileMetadata, Topic } from '@renderer/types'
-import { FILE_TYPE } from '@renderer/types'
+import { ContextManagementMethod, FILE_TYPE, SkillSelectionMethod } from '@renderer/types'
 import type { SerializedError } from '@renderer/types/error'
 import type {
   BaseMessageBlock,
@@ -12,6 +12,7 @@ import type {
   ImageMessageBlock,
   MainTextMessageBlock,
   Message,
+  SkillMessageBlock,
   ThinkingMessageBlock,
   ToolMessageBlock,
   TranslationMessageBlock,
@@ -466,6 +467,38 @@ export const resetAssistantMessage = (
 
     // --- Apply Overrides ---
     ...updates // Apply any specific updates passed in (e.g., a different status)
+  }
+}
+
+/**
+ * Creates a Skill Message Block representing an activated skill during streaming.
+ * @param params - The skill block parameters.
+ * @returns A SkillMessageBlock object with STREAMING status.
+ */
+export function createSkillBlock(params: {
+  messageId: string
+  skillId: string
+  skillName: string
+  triggerTokens: string[]
+  selectionReason: string
+  activationMethod: SkillSelectionMethod
+  similarityScore?: number
+  contextManagementMethod: ContextManagementMethod
+}): SkillMessageBlock {
+  const baseBlock = createBaseMessageBlock(params.messageId, MessageBlockType.SKILL, {
+    status: MessageBlockStatus.STREAMING
+  })
+  return {
+    ...baseBlock,
+    skillId: params.skillId,
+    skillName: params.skillName,
+    triggerTokens: params.triggerTokens,
+    selectionReason: params.selectionReason,
+    tokenCount: 0,
+    content: '',
+    activationMethod: params.activationMethod,
+    similarityScore: params.similarityScore,
+    contextManagementMethod: params.contextManagementMethod
   }
 }
 
