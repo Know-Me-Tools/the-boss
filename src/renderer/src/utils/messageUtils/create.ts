@@ -501,5 +501,3 @@ export function createSkillBlock(params: {
     contextManagementMethod: params.contextManagementMethod
   }
 }
-
-// 需要一个重置助手消息

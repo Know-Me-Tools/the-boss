@@ -82,7 +82,7 @@ describe('createSkillCallbacks', () => {
   })
 
   describe('onSkillContentDelta', () => {
-    it('appends delta to existing block content via smartBlockUpdate', async () => {
+    it('accumulates delta content before dispatching', async () => {
       const activatedChunk: SkillActivatedChunk = {
         type: ChunkType.SKILL_ACTIVATED,
         skillId: 'skill-1',
@@ -99,19 +99,26 @@ describe('createSkillCallbacks', () => {
       const [createdBlock] = blockManager.handleBlockTransition.mock.calls[0]
       const blockId = createdBlock.id
 
-      const deltaChunk: SkillContentDeltaChunk = {
-        type: ChunkType.SKILL_CONTENT_DELTA,
-        skillId: 'skill-1',
-        delta: 'Hello World'
-      }
-      callbacks.onSkillContentDelta(deltaChunk)
+      // First delta
+      callbacks.onSkillContentDelta({ type: ChunkType.SKILL_CONTENT_DELTA, skillId: 'skill-1', delta: 'Hello ' })
+      // Second delta
+      callbacks.onSkillContentDelta({ type: ChunkType.SKILL_CONTENT_DELTA, skillId: 'skill-1', delta: 'World' })
 
-      expect(blockManager.smartBlockUpdate).toHaveBeenCalledTimes(1)
-      const [calledBlockId, changes, blockType] = blockManager.smartBlockUpdate.mock.calls[0]
-      expect(calledBlockId).toBe(blockId)
-      expect(changes.content).toBe('Hello World')
-      expect(changes.status).toBe(MessageBlockStatus.STREAMING)
-      expect(blockType).toBe(MessageBlockType.SKILL)
+      expect(blockManager.smartBlockUpdate).toHaveBeenCalledTimes(2)
+
+      // First call should have only first delta
+      const [firstBlockId, firstChanges, firstBlockType] = blockManager.smartBlockUpdate.mock.calls[0]
+      expect(firstBlockId).toBe(blockId)
+      expect(firstChanges.content).toBe('Hello ')
+      expect(firstChanges.status).toBe(MessageBlockStatus.STREAMING)
+      expect(firstBlockType).toBe(MessageBlockType.SKILL)
+
+      // Second call should have accumulated content
+      const [secondBlockId, secondChanges, secondBlockType] = blockManager.smartBlockUpdate.mock.calls[1]
+      expect(secondBlockId).toBe(blockId)
+      expect(secondChanges.content).toBe('Hello World')
+      expect(secondChanges.status).toBe(MessageBlockStatus.STREAMING)
+      expect(secondBlockType).toBe(MessageBlockType.SKILL)
     })
 
     it('logs a warning and does nothing when no block exists for the skillId', () => {

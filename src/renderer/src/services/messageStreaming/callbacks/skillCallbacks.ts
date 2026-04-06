@@ -26,11 +26,19 @@ interface SkillCallbacksDependencies {
   assistantMsgId: string
 }
 
-export const createSkillCallbacks = (deps: SkillCallbacksDependencies) => {
+export interface SkillCallbacks {
+  onSkillActivated: (chunk: SkillActivatedChunk) => Promise<void>
+  onSkillContentDelta: (chunk: SkillContentDeltaChunk) => void
+  onSkillComplete: (chunk: SkillCompleteChunk) => void
+}
+
+export const createSkillCallbacks = (deps: SkillCallbacksDependencies): SkillCallbacks => {
   const { blockManager, assistantMsgId } = deps
 
   // Map from skillId -> block id, supporting multiple skills in one response
   const skillIdToBlockIdMap = new Map<string, string>()
+  // Accumulate deltas client-side since smartBlockUpdate replaces (not appends) content
+  const skillContentAccumulator = new Map<string, string>()
 
   return {
     onSkillActivated: async (chunk: SkillActivatedChunk) => {
@@ -48,7 +56,12 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies) => {
       })
 
       skillIdToBlockIdMap.set(chunk.skillId, block.id)
-      await blockManager.handleBlockTransition(block, MessageBlockType.SKILL)
+      try {
+        await blockManager.handleBlockTransition(block, MessageBlockType.SKILL)
+      } catch (err) {
+        logger.error(`[onSkillActivated] Failed to transition block for skillId: ${chunk.skillId}`, err)
+        skillIdToBlockIdMap.delete(chunk.skillId)
+      }
     },
 
     onSkillContentDelta: (chunk: SkillContentDeltaChunk) => {
@@ -58,8 +71,11 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies) => {
         return
       }
 
+      const accumulated = (skillContentAccumulator.get(chunk.skillId) ?? '') + chunk.delta
+      skillContentAccumulator.set(chunk.skillId, accumulated)
+
       const changes: Partial<SkillMessageBlock> = {
-        content: chunk.delta,
+        content: accumulated,
         status: MessageBlockStatus.STREAMING
       }
       blockManager.smartBlockUpdate(blockId, changes, MessageBlockType.SKILL)
@@ -77,6 +93,7 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies) => {
         tokenCount: chunk.finalTokenCount
       }
       blockManager.smartBlockUpdate(blockId, changes, MessageBlockType.SKILL, true)
+      skillContentAccumulator.delete(chunk.skillId)
       skillIdToBlockIdMap.delete(chunk.skillId)
     }
   }
