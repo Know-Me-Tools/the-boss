@@ -224,6 +224,37 @@ describe('emitSkillChunks', () => {
     expect(completeChunk.finalTokenCount).toBe(42)
   })
 
+  it('continues with remaining skills when one fails', async () => {
+    const skills = [makeSkillDescriptor('fail-skill', 'content-fail'), makeSkillDescriptor('ok-skill', 'content-ok')]
+    mockGetAll.mockReturnValue(skills)
+    mockSelect.mockResolvedValue([
+      makeSelectorResult('fail-skill', 'content-fail'),
+      makeSelectorResult('ok-skill', 'content-ok')
+    ])
+    mockPrepare.mockRejectedValueOnce(new Error('context manager exploded')).mockResolvedValueOnce({
+      content: 'content-ok',
+      tokenCount: 5,
+      method: ContextManagementMethod.FULL_INJECTION,
+      truncated: false
+    })
+
+    const chunks: Chunk[] = []
+    // Should not throw
+    await expect(
+      emitSkillChunks({ prompt: 'test', config: makeConfig(), processChunk: (c) => chunks.push(c) })
+    ).resolves.toBeUndefined()
+
+    // No chunks for the failed skill
+    const activatedChunks = chunks.filter((c) => c.type === ChunkType.SKILL_ACTIVATED) as any[]
+    expect(activatedChunks).toHaveLength(1)
+    expect(activatedChunks[0].skillId).toBe('ok-skill')
+
+    // COMPLETE emitted for the successful skill
+    const completeChunks = chunks.filter((c) => c.type === ChunkType.SKILL_COMPLETE) as any[]
+    expect(completeChunks).toHaveLength(1)
+    expect(completeChunks[0].skillId).toBe('ok-skill')
+  })
+
   it('processes multiple matched skills sequentially', async () => {
     const skills = [makeSkillDescriptor('s1', 'content1'), makeSkillDescriptor('s2', 'content2')]
     mockGetAll.mockReturnValue(skills)
