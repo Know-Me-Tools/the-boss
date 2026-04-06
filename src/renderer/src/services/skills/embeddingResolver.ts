@@ -1,5 +1,6 @@
 // src/renderer/src/services/skills/embeddingResolver.ts
 import { loggerService } from '@logger'
+import { embed } from 'ai'
 
 const logger = loggerService.withContext('EmbeddingResolver')
 
@@ -27,12 +28,15 @@ export class EmbeddingResolver {
   }
 
   private async fastEmbed(text: string): Promise<number[]> {
-    const { EmbedMany } = await import('@mastra/fastembed')
-    const results = await EmbedMany([text])
-    return results[0]
+    const { fastembed } = await import('@mastra/fastembed')
+    const { embedding } = await embed({ model: fastembed, value: text })
+    return embedding
   }
 
   cosineSimilarity(a: number[], b: number[]): number {
+    if (a.length !== b.length) {
+      throw new Error('Vector length mismatch')
+    }
     let dot = 0,
       normA = 0,
       normB = 0

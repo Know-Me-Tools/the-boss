@@ -1,7 +1,17 @@
 // src/renderer/src/services/skills/__tests__/skillRegistry.test.ts
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SkillRegistry } from '../skillRegistry'
+
+vi.mock('@logger', () => ({
+  loggerService: {
+    withContext: () => ({
+      warn: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn()
+    })
+  }
+}))
 
 describe('SkillRegistry', () => {
   let registry: SkillRegistry
@@ -76,5 +86,26 @@ describe('SkillRegistry', () => {
     })
     const skill = registry.getAll()[0]
     expect(registry.getMatchedTokens(skill, 'no match here')).toEqual([])
+  })
+
+  it('silently skips registration when a duplicate id is provided', () => {
+    const skill = {
+      id: 'dup',
+      name: 'Original',
+      description: 'original',
+      triggerPatterns: [],
+      getContent: () => 'original',
+      priority: 5
+    }
+    registry.register(skill)
+    registry.register({
+      ...skill,
+      name: 'Duplicate',
+      description: 'duplicate',
+      getContent: () => 'duplicate'
+    })
+    const all = registry.getAll()
+    expect(all).toHaveLength(1)
+    expect(all[0].name).toBe('Original')
   })
 })
