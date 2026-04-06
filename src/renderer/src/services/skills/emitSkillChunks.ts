@@ -4,7 +4,6 @@ import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 
-import type { ContextManagerOptions } from './contextManager'
 import { ContextManager } from './contextManager'
 import { skillRegistry } from './skillRegistry'
 import { SkillSelector } from './skillSelector'
@@ -42,51 +41,56 @@ export async function emitSkillChunks(params: {
   const contextManager = new ContextManager()
 
   for (const result of results) {
-    const rawContent = result.skill.getContent()
+    try {
+      const rawContent = result.skill.getContent()
 
-    const managed = await contextManager.prepare(rawContent, {
-      method: config.contextManagementMethod,
-      maxTokens: config.maxSkillTokens,
-      prompt
-    } as ContextManagerOptions)
-
-    // 1. Emit SKILL_ACTIVATED
-    processChunk({
-      type: ChunkType.SKILL_ACTIVATED,
-      skillId: result.skill.id,
-      skillName: result.skill.name,
-      triggerTokens: result.matchedKeywords,
-      selectionReason: result.selectionReason,
-      estimatedTokens: managed.tokenCount,
-      content: managed.content,
-      activationMethod: result.activationMethod,
-      similarityScore: result.score,
-      matchedKeywords: result.matchedKeywords,
-      contextManagementMethod: config.contextManagementMethod
-    })
-
-    // 2. Emit SKILL_CONTENT_DELTA (stream content in chunks of ~100 chars)
-    const DELTA_CHUNK_SIZE = 100
-    for (let i = 0; i < managed.content.length; i += DELTA_CHUNK_SIZE) {
-      processChunk({
-        type: ChunkType.SKILL_CONTENT_DELTA,
-        skillId: result.skill.id,
-        delta: managed.content.slice(i, i + DELTA_CHUNK_SIZE)
+      const managed = await contextManager.prepare(rawContent, {
+        method: config.contextManagementMethod,
+        maxTokens: config.maxSkillTokens,
+        prompt
       })
+
+      // 1. Emit SKILL_ACTIVATED
+      processChunk({
+        type: ChunkType.SKILL_ACTIVATED,
+        skillId: result.skill.id,
+        skillName: result.skill.name,
+        triggerTokens: result.matchedKeywords,
+        selectionReason: result.selectionReason,
+        estimatedTokens: managed.tokenCount,
+        content: managed.content,
+        activationMethod: result.activationMethod,
+        similarityScore: result.score,
+        matchedKeywords: result.matchedKeywords,
+        contextManagementMethod: config.contextManagementMethod
+      })
+
+      // 2. Emit SKILL_CONTENT_DELTA (stream content in chunks of ~100 chars)
+      const DELTA_CHUNK_SIZE = 100
+      for (let i = 0; i < managed.content.length; i += DELTA_CHUNK_SIZE) {
+        processChunk({
+          type: ChunkType.SKILL_CONTENT_DELTA,
+          skillId: result.skill.id,
+          delta: managed.content.slice(i, i + DELTA_CHUNK_SIZE)
+        })
+      }
+
+      // 3. Emit SKILL_COMPLETE
+      processChunk({
+        type: ChunkType.SKILL_COMPLETE,
+        skillId: result.skill.id,
+        finalTokenCount: managed.tokenCount
+      })
+
+      logger.info('Emitted skill chunks', {
+        skillId: result.skill.id,
+        skillName: result.skill.name,
+        tokenCount: managed.tokenCount,
+        method: config.contextManagementMethod
+      })
+    } catch (err) {
+      logger.error(`Failed to prepare/emit skill '${result.skill.id}', skipping`, err)
+      // Continue with next skill, don't abort
     }
-
-    // 3. Emit SKILL_COMPLETE
-    processChunk({
-      type: ChunkType.SKILL_COMPLETE,
-      skillId: result.skill.id,
-      finalTokenCount: managed.tokenCount
-    })
-
-    logger.info('Emitted skill chunks', {
-      skillId: result.skill.id,
-      skillName: result.skill.name,
-      tokenCount: managed.tokenCount,
-      method: config.contextManagementMethod
-    })
   }
 }
