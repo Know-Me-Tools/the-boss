@@ -1,9 +1,10 @@
 // src/renderer/src/services/skills/__tests__/skillSelector.test.ts
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
-import { SkillSelectionMethod } from '@renderer/types/skillConfig'
+import { ContextManagementMethod, SkillSelectionMethod } from '@renderer/types/skillConfig'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { SkillDescriptor } from '../skillRegistry'
+import { SkillRegistry } from '../skillRegistry'
 import { SkillSelector } from '../skillSelector'
 
 // Mock logger
@@ -23,16 +24,16 @@ vi.mock('ai', () => ({
   embed: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
 }))
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Test helpers
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 function makeConfig(overrides: Partial<SkillGlobalConfig> = {}): SkillGlobalConfig {
   return {
     selectionMethod: SkillSelectionMethod.EMBEDDING,
     similarityThreshold: 0.5,
     topK: 3,
-    contextManagementMethod: 'prefix_cache_aware' as any,
+    contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
     maxSkillTokens: 4096,
     ...overrides
   }
@@ -50,17 +51,17 @@ function makeSkill(id: string, description: string, opts: Partial<SkillDescripto
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Shared skill fixtures
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 const skillA = makeSkill('skill-a', 'retrieval augmented generation knowledge base')
 const skillB = makeSkill('skill-b', 'calendar scheduling and time management')
 const skillC = makeSkill('skill-c', 'code generation and programming assistance')
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Helpers to build deterministic mock resolvers
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Returns a mock EmbeddingResolver whose embed() returns the registered vector
@@ -87,16 +88,16 @@ function buildMockResolver(vectorMap: Record<string, number[]>) {
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Tests
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 describe('SkillSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  // ── 1. Empty skills list ─────────────────────────────────────────────────
+  // ── 1. Empty skills list ──────────────────────────────────────────────────
 
   describe('empty skills list', () => {
     const methods: SkillSelectionMethod[] = [
@@ -117,7 +118,7 @@ describe('SkillSelector', () => {
     }
   })
 
-  // ── 2. topK = 0 ──────────────────────────────────────────────────────────
+  // ── 2. topK = 0 ───────────────────────────────────────────────────────────
 
   it('returns [] when topK is 0', async () => {
     const resolver = buildMockResolver({
@@ -129,7 +130,7 @@ describe('SkillSelector', () => {
     expect(results).toEqual([])
   })
 
-  // ── 3. EMBEDDING: selects skill with highest similarity above threshold ───
+  // ── 3. EMBEDDING: selects skill with highest similarity above threshold ────
 
   describe('EMBEDDING method', () => {
     const prompt = 'find relevant documents using retrieval'
@@ -250,42 +251,99 @@ describe('SkillSelector', () => {
     })
   })
 
-  // ── 5. TWO_STAGE ─────────────────────────────────────────────────────────
+  // ── 5. TWO_STAGE ──────────────────────────────────────────────────────────
 
   describe('TWO_STAGE method', () => {
-    const prompt = 'code generation python'
+    it('stage 1 pattern-match skill advances while no-pattern low-BM25 skill is filtered out', async () => {
+      const prompt = 'specific-keyword query'
 
-    it('first filters by pattern match then re-ranks by embedding', async () => {
-      const patternSkill = makeSkill('pattern-skill', 'code generation assistant', {
-        triggerPatterns: [/code/i]
+      // Use an injected test registry so trigger-pattern matching is exercised (not dead code)
+      const testRegistry = new SkillRegistry()
+
+      const patternSkill = makeSkill('pattern-skill', 'specific-keyword assistant', {
+        triggerPatterns: [/specific-keyword/i]
       })
-      const noPatternSkill = makeSkill('no-pattern-skill', 'retrieval augmented search')
+      // No trigger patterns and description sharing no tokens with the prompt
+      const noPatternSkill = makeSkill('no-pattern-skill', 'unrelated topic zxqwerty')
+
+      testRegistry.register(patternSkill)
+      testRegistry.register(noPatternSkill)
 
       const resolver = buildMockResolver({
         [prompt]: [1, 0, 0],
-        [patternSkill.description]: [0.9, 0, 0],
-        [noPatternSkill.description]: [0.2, 0, 0] // high embedding but no trigger match
+        [patternSkill.description]: [0.9, 0, 0], // high embedding → passes stage 2 threshold
+        [noPatternSkill.description]: [0.1, 0, 0] // low embedding → filtered by stage 2 threshold
       })
+
+      // topK: 1 forces BM25 to select only the single best candidate; no-pattern-skill
+      // has BM25 score 0 (no shared tokens with prompt) and no trigger match, so it never
+      // enters the stage-2 pool.
       const selector = new SkillSelector(
         makeConfig({
           selectionMethod: SkillSelectionMethod.TWO_STAGE,
-          similarityThreshold: 0.5
+          similarityThreshold: 0.5,
+          topK: 1
         }),
-        resolver as any
+        resolver as any,
+        testRegistry
       )
+
       const results = await selector.select(prompt, [patternSkill, noPatternSkill])
       const ids = results.map((r) => r.skill.id)
-      // pattern-skill matches trigger + has high embedding; no-pattern-skill has low embedding
+
+      // pattern-skill matches trigger AND passes the embedding threshold
       expect(ids).toContain('pattern-skill')
+      // no-pattern-skill has no trigger match AND BM25 score 0 → excluded from stage-1 candidates
+      expect(ids).not.toContain('no-pattern-skill')
       expect(results[0].activationMethod).toBe(SkillSelectionMethod.TWO_STAGE)
       expect(results[0].selectionReason).toMatch(/Two-stage/)
     })
+
+    it('BM25 top-K skill without trigger pattern advances if embedding passes threshold', async () => {
+      const prompt = 'specific keyword query'
+
+      const testRegistry = new SkillRegistry()
+
+      const bm25Skill = makeSkill('bm25-skill', 'specific keyword topic', {
+        triggerPatterns: [] // no trigger pattern — advances via BM25 top-K only
+      })
+      // Description shares NO tokens with the prompt → BM25 score 0 → excluded from stage 1
+      const irrelevantSkill = makeSkill('irrelevant-skill', 'unrelated zxqwerty foobar')
+
+      testRegistry.register(bm25Skill)
+      testRegistry.register(irrelevantSkill)
+
+      const resolver = buildMockResolver({
+        [prompt]: [1, 0, 0],
+        [bm25Skill.description]: [0.8, 0, 0], // high embedding → passes stage 2 threshold
+        [irrelevantSkill.description]: [0.1, 0, 0] // low embedding
+      })
+
+      // topK: 1 ensures BM25 only passes its top-1 candidate (bm25-skill, which has shared tokens)
+      const selector = new SkillSelector(
+        makeConfig({
+          selectionMethod: SkillSelectionMethod.TWO_STAGE,
+          similarityThreshold: 0.5,
+          topK: 1
+        }),
+        resolver as any,
+        testRegistry
+      )
+
+      const results = await selector.select(prompt, [bm25Skill, irrelevantSkill])
+      const ids = results.map((r) => r.skill.id)
+
+      // bm25-skill advances via BM25 top-K path and passes the embedding threshold
+      expect(ids).toContain('bm25-skill')
+      // irrelevant-skill has BM25 score 0 and no trigger match → excluded from stage-1 candidates
+      expect(ids).not.toContain('irrelevant-skill')
+    })
   })
 
-  // ── 6. LLM_ROUTER falls back to EMBEDDING ─────────────────────────────────
+  // ── 6. LLM_ROUTER falls back to EMBEDDING ────────────────────────────────
 
   describe('LLM_ROUTER method', () => {
-    it('falls back to EMBEDDING and logs a warning', async () => {
+    it('falls back to EMBEDDING and uses LLM routing selectionReason', async () => {
       const prompt = 'find relevant docs'
       const resolver = buildMockResolver({
         [prompt]: [1, 0, 0],
@@ -301,14 +359,15 @@ describe('SkillSelector', () => {
       const results = await selector.select(prompt, [skillA])
       expect(results.length).toBeGreaterThanOrEqual(1)
       expect(results[0].activationMethod).toBe(SkillSelectionMethod.LLM_ROUTER)
+      // selectionReason is only set in the LLM_ROUTER fallback path — verifies the code path was taken
       expect(results[0].selectionReason).toBe('LLM routing (fallback to embedding)')
     })
   })
 
-  // ── 7. LLM_DELEGATED falls back to EMBEDDING ──────────────────────────────
+  // ── 7. LLM_DELEGATED falls back to EMBEDDING ─────────────────────────────
 
   describe('LLM_DELEGATED method', () => {
-    it('falls back to EMBEDDING and logs a warning', async () => {
+    it('falls back to EMBEDDING and uses LLM delegated selectionReason', async () => {
       const prompt = 'find relevant docs'
       const resolver = buildMockResolver({
         [prompt]: [1, 0, 0],
@@ -324,6 +383,7 @@ describe('SkillSelector', () => {
       const results = await selector.select(prompt, [skillA])
       expect(results.length).toBeGreaterThanOrEqual(1)
       expect(results[0].activationMethod).toBe(SkillSelectionMethod.LLM_DELEGATED)
+      // selectionReason is only set in the LLM_DELEGATED fallback path — verifies the code path was taken
       expect(results[0].selectionReason).toBe('LLM delegated (fallback to embedding)')
     })
   })

@@ -5,7 +5,7 @@ import { SkillSelectionMethod } from '@renderer/types/skillConfig'
 
 import { EmbeddingResolver } from './embeddingResolver'
 import type { SkillDescriptor } from './skillRegistry'
-import { SkillRegistry } from './skillRegistry'
+import { SkillRegistry, skillRegistry as defaultRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('SkillSelector')
 
@@ -65,13 +65,13 @@ function computeBm25Scores(prompt: string, skills: SkillDescriptor[]): Map<strin
 export class SkillSelector {
   private config: SkillGlobalConfig
   private resolver: EmbeddingResolver
-  // Internal registry used only for trigger-pattern helpers
   private registry: SkillRegistry
 
-  constructor(config: SkillGlobalConfig, resolver?: EmbeddingResolver) {
+  constructor(config: SkillGlobalConfig, resolver?: EmbeddingResolver, registry?: SkillRegistry) {
     this.config = config
     this.resolver = resolver ?? new EmbeddingResolver(config.embeddingModelId)
-    this.registry = new SkillRegistry()
+    // Accept an injected registry (useful for testing); default to the module-level singleton
+    this.registry = registry ?? defaultRegistry
   }
 
   async select(prompt: string, skills: SkillDescriptor[]): Promise<SkillSelectorResult[]> {
@@ -178,10 +178,10 @@ export class SkillSelector {
       return { skill, rrf, denseScore: denseScoreMap.get(skill.id) ?? 0 }
     })
 
-    // Keep skills that match a trigger pattern OR have a nonzero RRF score
-    const candidates = rrfScores.filter(({ skill, rrf }) => this.registry.matchesTriggers(skill, prompt) || rrf > 0)
-
-    return candidates
+    // HYBRID uses RRF ranking rather than a hard similarity threshold; topK limits results.
+    // RRF scores are always positive (1/(60+rank)), so no hard threshold is applied —
+    // the fusion ranking itself demotes irrelevant skills to the bottom, and topK caps the output.
+    return rrfScores
       .sort((a, b) => b.rrf - a.rrf)
       .slice(0, this.config.topK)
       .map(({ skill, rrf }) => ({
