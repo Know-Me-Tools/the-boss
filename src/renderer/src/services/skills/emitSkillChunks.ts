@@ -89,7 +89,7 @@ export async function emitSkillChunks(params: {
         method: config.contextManagementMethod
       })
     } catch (err) {
-      logger.error(`Failed to prepare/emit skill '${result.skill.id}', skipping`, err)
+      logger.error(`Failed to prepare/emit skill '${result.skill.id}', skipping`, err as Error)
       // Continue with next skill, don't abort
     }
   }

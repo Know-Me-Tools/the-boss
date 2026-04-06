@@ -35,7 +35,8 @@ export const { setGlobalSkillConfig, setAgentSkillOverride, clearAgentSkillOverr
 
 export const selectGlobalSkillConfig = (state: RootState) => state.skillConfig.global
 
-export const selectAgentSkillOverride = (state: RootState, agentId: string) => state.skillConfig.agentOverrides[agentId]
+export const selectAgentSkillOverride = (state: RootState, agentId: string | undefined) =>
+  agentId !== undefined ? state.skillConfig.agentOverrides[agentId] : undefined
 
 export const selectResolvedSkillConfig = createSelector(
   selectGlobalSkillConfig,

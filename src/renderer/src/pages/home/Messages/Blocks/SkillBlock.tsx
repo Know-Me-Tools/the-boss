@@ -115,7 +115,7 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
                   <MetaRow>
                     <MetaLabel>{t('message.block.skill.token_count')}:</MetaLabel>
                     <MetaValue>
-                      {t('message.block.skill.token_count_value', { count: block.tokenCount.toLocaleString() })}
+                      {t('message.block.skill.token_count_value', { value: block.tokenCount.toLocaleString() })}
                     </MetaValue>
                   </MetaRow>
                 )}

@@ -59,7 +59,7 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies): SkillCal
       try {
         await blockManager.handleBlockTransition(block, MessageBlockType.SKILL)
       } catch (err) {
-        logger.error(`[onSkillActivated] Failed to transition block for skillId: ${chunk.skillId}`, err)
+        logger.error(`[onSkillActivated] Failed to transition block for skillId: ${chunk.skillId}`, err as Error)
         skillIdToBlockIdMap.delete(chunk.skillId)
       }
     },
