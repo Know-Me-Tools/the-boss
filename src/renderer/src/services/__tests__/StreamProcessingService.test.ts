@@ -73,6 +73,13 @@ describe('StreamProcessingService – SKILL_* routing', () => {
       expect(() => processor(baseSkillActivatedChunk)).not.toThrow()
     })
 
+    it('accepts async callbacks without throwing', () => {
+      const asyncCallback = vi.fn().mockResolvedValue(undefined)
+      const processor = createStreamProcessor({ onSkillActivated: asyncCallback })
+      expect(() => processor(baseSkillActivatedChunk)).not.toThrow()
+      expect(asyncCallback).toHaveBeenCalledWith(baseSkillActivatedChunk)
+    })
+
     it('passes through optional fields (similarityScore, matchedKeywords)', () => {
       const chunkWithOptionals: SkillActivatedChunk = {
         ...baseSkillActivatedChunk,

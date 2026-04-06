@@ -35,7 +35,7 @@ export interface StreamProcessorCallbacks {
   onThinkingChunk?: (text: string, thinking_millsec?: number) => void
   onThinkingComplete?: (text: string, thinking_millsec?: number) => void
   // Skill activated (skill context injection started)
-  onSkillActivated?: (data: SkillActivatedChunk) => void
+  onSkillActivated?: (data: SkillActivatedChunk) => void | Promise<void>
   // Skill content delta (streaming skill content)
   onSkillContentDelta?: (data: SkillContentDeltaChunk) => void
   // Skill injection complete
@@ -115,7 +115,7 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}) 
           break
         }
         case ChunkType.SKILL_ACTIVATED: {
-          if (callbacks.onSkillActivated) callbacks.onSkillActivated(data)
+          if (callbacks.onSkillActivated) void callbacks.onSkillActivated(data)
           break
         }
         case ChunkType.SKILL_CONTENT_DELTA: {
