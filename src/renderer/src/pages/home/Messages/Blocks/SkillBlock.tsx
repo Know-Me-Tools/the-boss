@@ -5,7 +5,7 @@ import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { MessageBlockStatus, type SkillMessageBlock } from '@renderer/types/newMessage'
 import { SkillSelectionMethod } from '@renderer/types/skillConfig'
 import { Collapse, Tag } from 'antd'
-import { memo, useCallback, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -26,8 +26,15 @@ const methodColorMap: Record<SkillSelectionMethod, string> = {
 const SkillBlock: React.FC<Props> = ({ block }) => {
   const { t } = useTranslation()
   const [copied, setCopied] = useTemporaryValue(false, 2000)
-  const isStreaming = block.status === MessageBlockStatus.STREAMING
+  const isStreaming = useMemo(() => block.status === MessageBlockStatus.STREAMING, [block.status])
+  const isCompleted = useMemo(() => block.status === MessageBlockStatus.SUCCESS, [block.status])
   const [activeKey, setActiveKey] = useState<'skill' | ''>(isStreaming ? 'skill' : '')
+
+  useEffect(() => {
+    if (isStreaming) {
+      setActiveKey('skill')
+    }
+  }, [isStreaming])
 
   const copyContent = useCallback(() => {
     if (block.content) {
@@ -45,7 +52,7 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
   }, [block.content, setCopied, t])
 
   const methodColor = methodColorMap[block.activationMethod] ?? 'default'
-  const methodLabel = block.activationMethod.toUpperCase().replace('_', ' ')
+  const methodLabel = block.activationMethod.toUpperCase().replaceAll('_', ' ')
 
   const headerLabel = (
     <HeaderLabel>
@@ -73,7 +80,7 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
           label: headerLabel,
           children: (
             <SkillContent>
-              {!isStreaming && block.content && (
+              {isCompleted && block.content && (
                 <Tooltip content={t('common.copy')} delay={800}>
                   <ActionButton
                     className="message-action-button"
@@ -107,7 +114,15 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
                 {block.tokenCount !== undefined && (
                   <MetaRow>
                     <MetaLabel>{t('message.block.skill.token_count')}:</MetaLabel>
-                    <MetaValue>{block.tokenCount.toLocaleString()} tokens</MetaValue>
+                    <MetaValue>
+                      {t('message.block.skill.token_count_value', { count: block.tokenCount.toLocaleString() })}
+                    </MetaValue>
+                  </MetaRow>
+                )}
+                {block.contextManagementMethod && (
+                  <MetaRow>
+                    <MetaLabel>{t('message.block.skill.context_method')}:</MetaLabel>
+                    <MetaValue>{block.contextManagementMethod.toUpperCase().replaceAll('_', ' ')}</MetaValue>
                   </MetaRow>
                 )}
               </MetaSection>

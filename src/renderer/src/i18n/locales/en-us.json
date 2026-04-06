@@ -2272,9 +2272,11 @@
     "block": {
       "skill": {
         "activation_method": "Method",
+        "context_method": "Context method",
         "injected_content": "Injected context",
         "selection_reason": "Why selected",
         "token_count": "Tokens injected",
+        "token_count_value": "{{count}} tokens injected",
         "trigger_tokens": "Matched terms"
       }
     },
