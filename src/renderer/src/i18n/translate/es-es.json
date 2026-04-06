@@ -2272,9 +2272,11 @@
     "block": {
       "skill": {
         "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
         "injected_content": "[to be translated]:Injected context",
         "selection_reason": "[to be translated]:Why selected",
         "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{count}} tokens injected",
         "trigger_tokens": "[to be translated]:Matched terms"
       }
     },
@@ -5590,6 +5592,28 @@
       "zoom_in": "Ampliar interfaz",
       "zoom_out": "Reducir interfaz",
       "zoom_reset": "Restablecer zoom"
+    },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
     },
     "skills": {
       "author": "Autor",

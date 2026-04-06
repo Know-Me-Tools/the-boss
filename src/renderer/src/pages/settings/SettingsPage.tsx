@@ -84,6 +84,12 @@ const SettingsPage: FC = () => {
               {t('settings.skills.title')}
             </MenuItem>
           </MenuItemLink>
+          <MenuItemLink to="/settings/skill">
+            <MenuItem className={isRoute('/settings/skill')}>
+              <Zap size={18} />
+              {t('settings.skill.title')}
+            </MenuItem>
+          </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
             <MenuItem className={isRoute('/settings/websearch')}>
               <Search size={18} />
