@@ -61,6 +61,7 @@ const SkillSettings: FC = () => {
                 min={0}
                 max={1}
                 step={0.05}
+                precision={2}
                 value={globalConfig.similarityThreshold}
                 style={{ width: '100%' }}
                 onChange={(value) => {

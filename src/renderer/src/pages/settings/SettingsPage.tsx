@@ -20,6 +20,7 @@ import {
   Search,
   Server,
   Settings2,
+  SlidersHorizontal,
   Sparkles,
   TextCursorInput,
   Zap
@@ -119,7 +120,7 @@ const SettingsPage: FC = () => {
           </MenuItemLink>
           <MenuItemLink to="/settings/skill">
             <MenuItem className={isRoute('/settings/skill')}>
-              <Zap size={18} />
+              <SlidersHorizontal size={18} />
               {t('settings.skill.title')}
             </MenuItem>
           </MenuItemLink>
