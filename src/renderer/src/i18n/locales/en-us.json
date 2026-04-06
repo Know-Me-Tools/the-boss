@@ -2276,7 +2276,7 @@
         "injected_content": "Injected context",
         "selection_reason": "Why selected",
         "token_count": "Tokens injected",
-        "token_count_value": "{{count}} tokens injected",
+        "token_count_value": "{{value}} tokens injected",
         "trigger_tokens": "Matched terms"
       }
     },

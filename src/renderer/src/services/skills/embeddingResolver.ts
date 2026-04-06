@@ -21,7 +21,7 @@ export class EmbeddingResolver {
         const result = await (window as any).api?.embedText?.({ modelId: this.modelId, text })
         if (Array.isArray(result) && result.length > 0) return result
       } catch (err) {
-        logger.warn('Configured embedding model failed, falling back to fastembed', err)
+        logger.warn('Configured embedding model failed, falling back to fastembed', err as Error)
       }
     }
     return this.fastEmbed(text)
