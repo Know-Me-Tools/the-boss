@@ -130,32 +130,23 @@ describe('ContextManager', () => {
   // ── CHUNKED_RAG ─────────────────────────────────────────────────────────────
 
   describe('CHUNKED_RAG', () => {
-    it('selects most relevant chunks based on embedding similarity', async () => {
-      // Build 3 chunks of ~800 chars each
-      const chunkA = 'chunk about retrieval augmented generation. '.repeat(20) // ~880 chars
-      const chunkB = 'chunk about cooking recipes and food. '.repeat(21) // ~798 chars
-      const chunkC = 'chunk about machine learning models. '.repeat(21) // ~777 chars
+    it('selects highest-similarity chunk, drops lower-ranked chunks, and sets truncated=true under tight budget', async () => {
+      // CHUNK_SIZE_CHARS is 800. Build 3 distinct chunks of exactly 800 chars each.
+      const chunkA = 'retrieval augmented generation '.repeat(26).slice(0, 800) // high similarity
+      const chunkB = 'cooking recipes and food prep '.repeat(27).slice(0, 800) // low similarity
+      const chunkC = 'machine learning model training '.repeat(25).slice(0, 800) // low similarity
       const content = chunkA + chunkB + chunkC
 
       const prompt = 'retrieval augmented generation'
 
-      // chunkA embedding is very similar to prompt; others are not
-      const resolver = buildMockResolver({
-        [prompt]: [1, 0, 0]
-        // We can't map exact chunk text since chunking splits on chars,
-        // so use defaultVec for unrecognised → zero similarity.
-        // We need to map chunks as they appear post-split.
-        // Instead, build chunks manually and map them.
-      })
-
-      // Override embed to return high similarity for text containing 'retrieval'
+      const resolver = buildMockResolver({ [prompt]: [1, 0, 0] })
       resolver.embed = vi.fn(async (text: string) => {
         if (text === prompt || text.includes('retrieval')) return [1, 0, 0]
         if (text.includes('cooking')) return [0, 1, 0]
-        if (text.includes('machine learning')) return [0, 0, 1]
-        return [0, 0, 0]
+        return [0, 0, 1]
       })
 
+      // Budget = 300 tokens = 1200 chars — fits only 1 chunk (800 chars), not all 3
       const result = await manager.prepare(content, {
         method: ContextManagementMethod.CHUNKED_RAG,
         maxTokens: 300,
@@ -164,9 +155,12 @@ describe('ContextManager', () => {
       })
 
       expect(result.method).toBe(ContextManagementMethod.CHUNKED_RAG)
+      // Highest-similarity chunk (chunkA) must appear
       expect(result.content).toContain('retrieval')
-      // Should not include cooking chunks if budget is constrained and retrieval chunk is higher similarity
-      // (budget of 300 tokens = 1200 chars, so might fit multiple chunks — just verify retrieval is present)
+      // Lower-ranked chunk C must be excluded (budget only fits 1 chunk)
+      expect(result.content).not.toContain('machine learning')
+      // truncated because not all 3 chunks fit
+      expect(result.truncated).toBe(true)
     })
 
     it('falls back to FULL_INJECTION when no resolver provided', async () => {
@@ -202,9 +196,12 @@ describe('ContextManager', () => {
       expect(result.content).toMatch(/^\[Summary\] /)
       expect(result.truncated).toBe(true)
       expect(result.method).toBe(ContextManagementMethod.SUMMARIZED)
-      // Content (minus prefix) should be truncated to maxTokens * 4 chars
+      // Content (minus prefix) should be truncated; body chars ≤ budget + suffix length
+      const TRUNCATION_SUFFIX = '...[truncated]'
       const bodyContent = result.content.slice('[Summary] '.length)
-      expect(bodyContent.length).toBeLessThanOrEqual(maxTokens * 4)
+      expect(bodyContent.length).toBeLessThanOrEqual(maxTokens * 4 + TRUNCATION_SUFFIX.length)
+      // Total tokenCount must stay within the maxTokens budget
+      expect(result.tokenCount).toBeLessThanOrEqual(maxTokens)
     })
 
     it('returns full content with [Summary] prefix when within budget', async () => {

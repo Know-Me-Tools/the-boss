@@ -155,6 +155,7 @@ export class ContextManager {
       chunks.push(rawContent.slice(i, i + CHUNK_SIZE_CHARS))
     }
 
+    // defensive guard: unreachable given outer empty-content check
     if (chunks.length === 0) {
       return emptyResult(method)
     }
@@ -202,15 +203,16 @@ export class ContextManager {
     logger.warn('SUMMARIZED method using head-truncation; real summarization requires LLM')
 
     const prefix = '[Summary] '
-    const budget = maxTokens * CHARS_PER_TOKEN
+    // Reserve chars for prefix; also reserve suffix chars when truncation will occur so
+    // the final content stays within the token budget.
+    const totalBudgetChars = maxTokens * CHARS_PER_TOKEN
+    const maxBodyCharsWhenTruncated = totalBudgetChars - prefix.length - TRUNCATION_SUFFIX.length
+    const maxBodyCharsWhenFull = totalBudgetChars - prefix.length
 
-    let body = rawContent
-    let wasTruncated = false
-
-    if (rawContent.length > budget) {
-      body = rawContent.slice(0, budget)
-      wasTruncated = true
-    }
+    const wasTruncated = estimateTokens(rawContent) > maxTokens
+    const body = wasTruncated
+      ? rawContent.slice(0, maxBodyCharsWhenTruncated) + TRUNCATION_SUFFIX
+      : rawContent.slice(0, maxBodyCharsWhenFull)
 
     const content = prefix + body
     return {
