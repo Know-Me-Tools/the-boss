@@ -9,6 +9,7 @@ import { objectKeys } from '@types'
 import fs from 'fs'
 import path from 'path'
 
+import { serviceRegistryService } from '../ServiceRegistryService'
 import { DatabaseManager } from './database/DatabaseManager'
 import type { AgentModelField } from './errors'
 import { AgentModelValidationError } from './errors'
@@ -87,6 +88,23 @@ export abstract class BaseService {
           })
         }
       }
+    }
+
+    try {
+      const serviceTools = await serviceRegistryService.listProjectedTools()
+      for (const serviceTool of serviceTools) {
+        tools.push({
+          id: serviceTool.id,
+          name: serviceTool.name,
+          type: 'service',
+          description: serviceTool.description || `Projected service tool from ${serviceTool.serviceName}`,
+          requirePermissions: true
+        })
+      }
+    } catch (error) {
+      logger.warn('Failed to list projected service tools', {
+        error: error as Error
+      })
     }
 
     return { tools, legacyIdMap }

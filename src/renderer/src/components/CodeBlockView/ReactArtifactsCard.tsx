@@ -1,130 +1,194 @@
 import { CodeOutlined } from '@ant-design/icons'
-import { loggerService } from '@logger'
 import {
-  buildHtmlArtifactPreviewDocument,
+  buildReactArtifactPreviewDocument,
+  getThemeCss,
   loadArtifactSettings,
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import type { ThemeMode } from '@renderer/types'
-import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
-import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
+import type { ArtifactOriginRef, ArtifactSourceLanguage, ReactArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
-import { Code, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
+import { Atom, DownloadIcon, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
 
-import HtmlArtifactsPopup from './HtmlArtifactsPopup'
-
-const logger = loggerService.withContext('HtmlArtifactsCard')
+import ArtifactPopup from './ArtifactPopup'
 
 interface Props {
-  html: string
-  runtimeProfileId?: HtmlArtifactRuntimeProfileId
-  typeLabel?: string
+  code: string
+  runtimeProfileId?: ReactArtifactRuntimeProfileId
+  sourceLanguage?: Extract<ArtifactSourceLanguage, 'tsx' | 'jsx'>
   origin?: ArtifactOriginRef
-  onSave?: (html: string) => void
+  onSave?: (code: string) => void
   isStreaming?: boolean
 }
 
 const getTerminalStyles = (theme: ThemeMode) => ({
   background: theme === 'dark' ? '#1e1e1e' : '#f0f0f0',
   color: theme === 'dark' ? '#cccccc' : '#333333',
-  promptColor: theme === 'dark' ? '#00ff00' : '#007700'
+  promptColor: theme === 'dark' ? '#7dd3fc' : '#0369a1'
 })
 
-const HtmlArtifactsCard: FC<Props> = ({
-  html,
-  runtimeProfileId = 'html',
-  typeLabel = 'HTML Artifact',
+function getReactArtifactTitle(source: string): string {
+  const componentName = /export\s+default\s+function\s+([A-Za-z0-9_]+)/.exec(source)?.[1]
+  if (componentName) {
+    return componentName
+  }
+
+  const constName = /export\s+default\s+([A-Za-z0-9_]+)/.exec(source)?.[1]
+  if (constName) {
+    return constName
+  }
+
+  return 'React/TSX Artifact'
+}
+
+function buildCompileErrorDocument(title: string, messages: string[]): string {
+  const content = messages
+    .map((message) => message.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;'))
+    .join('\n')
+
+  return `<!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${title}</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 24px;
+            font-family:
+              "SFMono-Regular",
+              "JetBrains Mono",
+              ui-monospace,
+              Menlo,
+              monospace;
+            background: #0f172a;
+            color: #fda4af;
+          }
+          pre {
+            white-space: pre-wrap;
+            line-height: 1.5;
+          }
+        </style>
+      </head>
+      <body>
+        <pre>${content}</pre>
+      </body>
+    </html>`
+}
+
+const ReactArtifactsCard: FC<Props> = ({
+  code,
+  runtimeProfileId = 'react-default',
+  sourceLanguage = 'tsx',
   origin,
   onSave,
   isStreaming = false
 }) => {
   const { t } = useTranslation()
-  const title = extractHtmlTitle(html) || 'HTML Artifacts'
+  const title = useMemo(() => getReactArtifactTitle(code), [code])
   const [isPopupOpen, setIsPopupOpen] = useState(false)
-  const [previewDocument, setPreviewDocument] = useState(html)
+  const [isCompiling, setIsCompiling] = useState(false)
+  const [previewDocument, setPreviewDocument] = useState('')
   const { theme } = useTheme()
 
-  const htmlContent = html || ''
-  const hasContent = htmlContent.trim().length > 0
+  const sourceCode = code || ''
+  const hasContent = sourceCode.trim().length > 0
 
-  useEffect(() => {
-    let cancelled = false
+  const compilePreview = useCallback(async (): Promise<string> => {
+    setIsCompiling(true)
 
-    void loadArtifactSettings().then((settings) => {
-      if (cancelled) {
-        return
+    try {
+      const settings = await loadArtifactSettings()
+      const overrides = parseArtifactDirectiveOverrides('react', sourceCode)
+      const themeId = overrides.themeId ?? settings.defaultThemeId
+      const result = await window.api.artifacts.compileReact({
+        source: sourceCode,
+        baseCss: settings.baseCss,
+        themeCss: getThemeCss(themeId),
+        customCss: settings.customCss,
+        title
+      })
+
+      if (!result.ok || !result.script) {
+        const errorDocument = buildCompileErrorDocument(title, result.diagnostics)
+        setPreviewDocument(errorDocument)
+        return errorDocument
       }
 
-      const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
-      setPreviewDocument(
-        buildHtmlArtifactPreviewDocument({
-          source: htmlContent,
-          title,
-          runtimeProfileId,
-          settings,
-          overrides
-        })
-      )
-    })
-
-    return () => {
-      cancelled = true
+      const document = buildReactArtifactPreviewDocument({
+        title,
+        script: result.script,
+        settings,
+        overrides
+      })
+      setPreviewDocument(document)
+      return document
+    } finally {
+      setIsCompiling(false)
     }
-  }, [htmlContent, runtimeProfileId, title])
+  }, [sourceCode, title])
 
-  const handleOpenExternal = async () => {
-    const path = await window.api.file.createTempFile('artifacts-preview.html')
-    await window.api.file.write(path, previewDocument)
-    const filePath = `file://${path}`
-
-    if (window.api.shell?.openExternal) {
-      void window.api.shell.openExternal(filePath)
-    } else {
-      logger.error(t('chat.artifacts.preview.openExternal.error.content'))
+  useEffect(() => {
+    if (!isPopupOpen || !hasContent) {
+      return
     }
-  }
+
+    void compilePreview()
+  }, [compilePreview, hasContent, isPopupOpen])
+
+  const handleOpenExternal = useCallback(async () => {
+    const document = previewDocument || (await compilePreview())
+    const path = await window.api.file.createTempFile('react-artifact-preview.html')
+    await window.api.file.write(path, document)
+    void window.api.shell.openExternal(`file://${path}`)
+  }, [compilePreview, previewDocument])
 
   const handleDownload = async () => {
-    const fileName = `${getFileNameFromHtmlTitle(title) || 'html-artifact'}.html`
-    await window.api.file.save(fileName, htmlContent)
+    await window.api.file.save(`${title.replace(/[^\w.-]+/g, '-').toLowerCase() || 'react-artifact'}.tsx`, sourceCode)
     window.toast.success(t('message.download.success'))
   }
+
+  const loadingDocument = `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.react_compiling')}</body></html>`
 
   return (
     <>
       <Container $isStreaming={isStreaming}>
         <Header>
           <IconWrapper $isStreaming={isStreaming}>
-            {isStreaming ? <Sparkles size={20} color="white" /> : <Globe size={20} color="white" />}
+            {isStreaming ? <Sparkles size={20} color="white" /> : <Atom size={20} color="white" />}
           </IconWrapper>
           <TitleSection>
             <Title>{title}</Title>
             <TypeBadge>
-              <Code size={12} />
-              <span>{typeLabel}</span>
+              <Atom size={12} />
+              <span>React/TSX</span>
             </TypeBadge>
           </TitleSection>
         </Header>
         <Content>
-          {isStreaming && !hasContent ? (
+          {(isStreaming && !hasContent) || isCompiling ? (
             <GeneratingContainer>
               <ClipLoader size={20} color="var(--color-primary)" />
-              <GeneratingText>{t('html_artifacts.generating', 'Generating content...')}</GeneratingText>
+              <GeneratingText>
+                {isCompiling
+                  ? t('settings.artifacts.react_compiling')
+                  : t('html_artifacts.generating', 'Generating content...')}
+              </GeneratingText>
             </GeneratingContainer>
           ) : isStreaming && hasContent ? (
             <>
               <TerminalPreview $theme={theme}>
                 <TerminalContent $theme={theme}>
                   <TerminalLine>
-                    <TerminalPrompt $theme={theme}>$</TerminalPrompt>
+                    <TerminalPrompt $theme={theme}>tsx</TerminalPrompt>
                     <TerminalCodeLine $theme={theme}>
-                      {htmlContent.trim().split('\n').slice(-3).join('\n')}
+                      {sourceCode.trim().split('\n').slice(-4).join('\n')}
                       <TerminalCursor $theme={theme} />
                     </TerminalCodeLine>
                   </TerminalLine>
@@ -152,20 +216,22 @@ const HtmlArtifactsCard: FC<Props> = ({
         </Content>
       </Container>
 
-      <HtmlArtifactsPopup
+      <ArtifactPopup
         open={isPopupOpen}
         title={title}
-        html={htmlContent}
-        previewDocument={previewDocument}
+        code={sourceCode}
+        codeLanguage="tsx"
+        typeLabel="React/TSX Artifact"
+        previewDocument={previewDocument || loadingDocument}
         createLibraryDraft={async (source) => {
           const settings = await loadArtifactSettings()
-          const overrides = parseArtifactDirectiveOverrides('html', source)
+          const overrides = parseArtifactDirectiveOverrides('react', source)
 
           return {
-            title: extractHtmlTitle(source) || title,
-            kind: 'html',
+            title: getReactArtifactTitle(source),
+            kind: 'react',
             runtimeProfileId,
-            sourceLanguage: 'html',
+            sourceLanguage,
             source,
             themeId: overrides.themeId ?? settings.defaultThemeId,
             accessPolicy: {
@@ -225,11 +291,11 @@ const IconWrapper = styled.div<{ $isStreaming: boolean }>`
   background: ${(props) =>
     props.$isStreaming
       ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
-      : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'};
+      : 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)'};
   border-radius: 12px;
   color: white;
   box-shadow: ${(props) =>
-    props.$isStreaming ? '0 4px 6px -1px rgba(245, 158, 11, 0.3)' : '0 4px 6px -1px rgba(59, 130, 246, 0.3)'};
+    props.$isStreaming ? '0 4px 6px -1px rgba(245, 158, 11, 0.3)' : '0 4px 6px -1px rgba(20, 184, 166, 0.3)'};
   transition: background 0.3s ease;
 `
 
@@ -321,11 +387,12 @@ const blinkAnimation = keyframes`
 
 const TerminalCursor = styled.span<{ $theme: ThemeMode }>`
   display: inline-block;
-  width: 2px;
-  height: 16px;
+  width: 7px;
+  height: 14px;
   background: ${(props) => getTerminalStyles(props.$theme).promptColor};
-  animation: ${blinkAnimation} 1s infinite;
   margin-left: 2px;
+  vertical-align: middle;
+  animation: ${blinkAnimation} 1s infinite;
 `
 
-export default HtmlArtifactsCard
+export default ReactArtifactsCard

@@ -1,7 +1,9 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
+import ArtifactSettings from '@renderer/pages/settings/ArtifactSettings'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
+import ServicesSettings from '@renderer/pages/settings/ServicesSettings'
 import { Divider as AntDivider } from 'antd'
 import {
   Brain,
@@ -87,6 +89,18 @@ const SettingsPage: FC = () => {
             <MenuItem className={isRoute('/settings/data')}>
               <HardDrive size={18} />
               {t('settings.data.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/artifacts">
+            <MenuItem className={isRoute('/settings/artifacts')}>
+              <FileCode size={18} />
+              {t('settings.artifacts.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/services">
+            <MenuItem className={isRoute('/settings/services')}>
+              <Server size={18} />
+              Services
             </MenuItem>
           </MenuItemLink>
           <Divider />
@@ -190,6 +204,8 @@ const SettingsPage: FC = () => {
             <Route path="quickAssistant" element={<QuickAssistantSettings />} />
             <Route path="selectionAssistant" element={<SelectionAssistantSettings />} />
             <Route path="data" element={<DataSettings />} />
+            <Route path="artifacts" element={<ArtifactSettings />} />
+            <Route path="services" element={<ServicesSettings />} />
             <Route path="about" element={<AboutSettings />} />
           </Routes>
         </SettingContent>

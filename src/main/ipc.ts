@@ -44,6 +44,7 @@ import { analyticsService } from './services/AnalyticsService'
 import { apiServerService } from './services/ApiServerService'
 import appService from './services/AppService'
 import AppUpdater from './services/AppUpdater'
+import { artifactService } from './services/ArtifactService'
 import BackupManager from './services/BackupManager'
 import CherryINOAuthService from './services/CherryINOAuthService'
 import { codeToolsService } from './services/CodeToolsService'
@@ -73,6 +74,7 @@ import { FileServiceManager } from './services/remotefile/FileServiceManager'
 import { searchService } from './services/SearchService'
 import { isSafeExternalUrl } from './services/security'
 import { SelectionService } from './services/SelectionService'
+import { serviceRegistryService } from './services/ServiceRegistryService'
 import { registerShortcuts, unregisterAllShortcuts } from './services/ShortcutService'
 import {
   addEndMessage,
@@ -313,6 +315,39 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Config_Get, (_, key: string) => {
     return configManager.get(key)
   })
+
+  ipcMain.handle(IpcChannel.Artifact_GetRuntimeProfiles, () => artifactService.listRuntimeProfiles())
+  ipcMain.handle(IpcChannel.Artifact_GetThemes, () => artifactService.listThemes())
+  ipcMain.handle(IpcChannel.Artifact_GetPackageRegistry, () => artifactService.listPackageRegistry())
+  ipcMain.handle(IpcChannel.Artifact_Save, (_, request) => artifactService.saveArtifact(request))
+  ipcMain.handle(IpcChannel.Artifact_List, (_, query) => artifactService.listArtifacts(query))
+  ipcMain.handle(IpcChannel.Artifact_Get, (_, id: string) => artifactService.getArtifact(id))
+  ipcMain.handle(IpcChannel.Artifact_UpdateMetadata, (_, request) => artifactService.updateArtifactMetadata(request))
+  ipcMain.handle(IpcChannel.Artifact_Fork, (_, id: string) => artifactService.forkArtifact(id))
+  ipcMain.handle(IpcChannel.Artifact_Delete, (_, id: string) => artifactService.deleteArtifact(id))
+  ipcMain.handle(IpcChannel.Artifact_CompileReact, (_, request) => artifactService.compileReactArtifact(request))
+  ipcMain.handle(IpcChannel.Services_List, (_, query) => serviceRegistryService.listServices(query))
+  ipcMain.handle(IpcChannel.Services_Get, (_, id: string) => serviceRegistryService.getService(id))
+  ipcMain.handle(IpcChannel.Services_ImportOpenAPI, (_, request) =>
+    serviceRegistryService.importOpenAPIService(request)
+  )
+  ipcMain.handle(IpcChannel.Services_ImportGraphQL, (_, request) =>
+    serviceRegistryService.importGraphQLService(request)
+  )
+  ipcMain.handle(IpcChannel.Services_UpdateMetadata, (_, request) =>
+    serviceRegistryService.updateServiceMetadata(request)
+  )
+  ipcMain.handle(IpcChannel.Services_Delete, (_, id: string) => serviceRegistryService.deleteService(id))
+  ipcMain.handle(IpcChannel.Services_ListProjectedTools, () => serviceRegistryService.listProjectedTools())
+  ipcMain.handle(IpcChannel.Services_InvokeTool, (_, request) => serviceRegistryService.invokeTool(request))
+  ipcMain.handle(IpcChannel.Services_InvokeOperation, (_, request) => serviceRegistryService.invokeOperation(request))
+  ipcMain.handle(IpcChannel.Services_Subscribe, (event, request) =>
+    serviceRegistryService.subscribe(request, event.sender.id)
+  )
+  ipcMain.handle(IpcChannel.Services_Unsubscribe, (_, subscriptionId: string) =>
+    serviceRegistryService.unsubscribe(subscriptionId)
+  )
+  ipcMain.handle(IpcChannel.Services_TestConnection, (_, id: string) => serviceRegistryService.testConnection(id))
 
   // theme
   ipcMain.handle(IpcChannel.App_SetTheme, (_, theme: ThemeMode) => {
