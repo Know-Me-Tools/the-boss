@@ -39,9 +39,8 @@ export const selectAgentSkillOverride = (state: RootState, agentId: string) => s
 
 export const selectResolvedSkillConfig = createSelector(
   selectGlobalSkillConfig,
-  (_state: RootState, agentId?: string) => agentId,
-  (state: RootState, agentId?: string) => (agentId ? state.skillConfig.agentOverrides[agentId] : undefined),
-  (global, _agentId, agentOverride) => resolveSkillConfig(global, agentOverride)
+  selectAgentSkillOverride,
+  (global, agentOverride) => resolveSkillConfig(global, agentOverride)
 )
 
 export default skillConfigSlice.reducer
