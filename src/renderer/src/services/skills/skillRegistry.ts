@@ -1,4 +1,7 @@
 // src/renderer/src/services/skills/skillRegistry.ts
+import { loggerService } from '@logger'
+
+const logger = loggerService.withContext('SkillRegistry')
 
 /**
  * Skill descriptor and registry for the skill selection pipeline.
@@ -12,7 +15,7 @@ export interface SkillDescriptor {
   name: string
   /** Used as selectionReason in the UI and as the embedding text for semantic matching */
   description: string
-  /** Regex patterns matched against user prompt for keyword-based methods */
+  /** Regex patterns matched against user prompt. Note: patterns with the 'g' flag may produce unexpected results in getMatchedTokens — prefer patterns without 'g'. */
   triggerPatterns: RegExp[]
   /** Returns the full text to inject into the LLM context */
   getContent: () => string
@@ -24,6 +27,10 @@ export class SkillRegistry {
   private skills: SkillDescriptor[] = []
 
   register(skill: SkillDescriptor): void {
+    if (this.skills.some((s) => s.id === skill.id)) {
+      logger.warn('Duplicate skill id registered, skipping', { id: skill.id })
+      return
+    }
     this.skills.push(skill)
     this.skills.sort((a, b) => b.priority - a.priority)
   }
