@@ -20,6 +20,7 @@ import type {
   WebSearchSource
 } from '.'
 import type { SerializedError } from './error'
+import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
 
 // MessageBlock 类型枚举 - 根据实际API返回特性优化
 export enum MessageBlockType {
@@ -34,7 +35,8 @@ export enum MessageBlockType {
   ERROR = 'error', // 错误信息
   CITATION = 'citation', // 引用类型 (Now includes web search, grounding, etc.)
   VIDEO = 'video', // 视频内容
-  COMPACT = 'compact' // Compact command response
+  COMPACT = 'compact', // Compact command response
+  SKILL = 'skill' // Skill activation block
 }
 
 // 块状态定义
@@ -155,6 +157,29 @@ export interface CompactMessageBlock extends BaseMessageBlock {
   compactedContent: string // 从 <local-command-stdout> 提取的内容
 }
 
+/** Skill activation block — shows which skill fired and what content was injected */
+export interface SkillMessageBlock extends BaseMessageBlock {
+  type: MessageBlockType.SKILL
+  /** Registry ID of the activated skill */
+  skillId: string
+  /** Display name */
+  skillName: string
+  /** Keywords/phrases that triggered selection */
+  triggerTokens: string[]
+  /** Human-readable explanation of why this skill was selected */
+  selectionReason: string
+  /** Estimated token count of the injected content after context management */
+  tokenCount: number
+  /** The content that was injected into the LLM context */
+  content: string
+  /** Which selection algorithm activated this skill */
+  activationMethod: SkillSelectionMethod
+  /** Similarity score (available for EMBEDDING / HYBRID / TWO_STAGE methods) */
+  similarityScore?: number
+  /** Which context management method was applied */
+  contextManagementMethod: ContextManagementMethod
+}
+
 // MessageBlock 联合类型
 export type MessageBlock =
   | PlaceholderMessageBlock
@@ -169,6 +194,7 @@ export type MessageBlock =
   | CitationMessageBlock
   | VideoMessageBlock
   | CompactMessageBlock
+  | SkillMessageBlock
 
 export enum UserMessageStatus {
   SUCCESS = 'success'
