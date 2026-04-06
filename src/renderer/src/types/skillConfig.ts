@@ -1,3 +1,8 @@
+/**
+ * Skill selection and context management configuration types.
+ * Controls how skills are matched to user prompts and how their content
+ * is injected into the LLM context window before each request.
+ */
 export enum SkillSelectionMethod {
   LLM_DELEGATED = 'llm_delegated',
   EMBEDDING = 'embedding',
@@ -35,7 +40,6 @@ export interface AgentSkillConfigOverride {
 
 export const DEFAULT_SKILL_CONFIG: SkillGlobalConfig = {
   selectionMethod: SkillSelectionMethod.EMBEDDING,
-  embeddingModelId: undefined,
   similarityThreshold: 0.35,
   topK: 3,
   contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
