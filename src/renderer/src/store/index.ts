@@ -46,6 +46,7 @@ import runtime from './runtime'
 import selectionStore from './selectionStore'
 import settings from './settings'
 import shortcuts from './shortcuts'
+import skillConfigReducer from './skillConfig'
 import tabs from './tabs'
 import toolPermissions from './toolPermissions'
 import translate from './translate'
@@ -79,7 +80,8 @@ const rootReducer = combineReducers({
   translate,
   ocr,
   note,
-  toolPermissions
+  toolPermissions,
+  skillConfig: skillConfigReducer
 })
 
 const persistedReducer = persistReducer(
