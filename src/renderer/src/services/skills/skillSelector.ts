@@ -4,8 +4,8 @@ import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 import { SkillSelectionMethod } from '@renderer/types/skillConfig'
 
 import { EmbeddingResolver } from './embeddingResolver'
-import type { SkillDescriptor } from './skillRegistry'
-import { SkillRegistry, skillRegistry as defaultRegistry } from './skillRegistry'
+import type { SkillDescriptor, SkillRegistry } from './skillRegistry'
+import { skillRegistry as defaultRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('SkillSelector')
 

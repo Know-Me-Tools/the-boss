@@ -26,10 +26,12 @@ import FileManager from '@renderer/services/FileManager'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { streamingService } from '@renderer/services/messageStreaming/StreamingService'
+import { emitSkillChunks } from '@renderer/services/skills/emitSkillChunks'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
+import { selectResolvedSkillConfig } from '@renderer/store/skillConfig'
 import { type ApiServerConfig, type Assistant, type FileMetadata, type Model, type Topic } from '@renderer/types'
 import type {
   AgentEffort,
@@ -945,6 +947,22 @@ const fetchAndProcessAssistantResponseImpl = async (
       assistant
     })
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
+
+    // Get skill config from Redux state
+    const skillConfig = selectResolvedSkillConfig(getState(), origAssistant.id)
+
+    // Extract the last user message as the prompt
+    const lastUserMsg = messagesForContext.filter((m) => m.role === 'user').at(-1)
+    const userPrompt = lastUserMsg ? getMainTextContent(lastUserMsg) : ''
+
+    // Emit skill chunks before the LLM request
+    if (userPrompt) {
+      await emitSkillChunks({
+        prompt: userPrompt,
+        config: skillConfig,
+        processChunk: streamProcessorCallbacks
+      })
+    }
 
     const abortController = new AbortController()
     logger.silly('Add Abort Controller', { id: userMessageId })
