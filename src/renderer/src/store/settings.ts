@@ -39,7 +39,7 @@ import type {
   OpenAIReasoningSummary,
   OpenAIVerbosity
 } from '@renderer/types/aiCoreTypes'
-import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
+import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG, DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import { API_SERVER_DEFAULTS, UpgradeChannel } from '@shared/config/constant'
 import { v4 as uuid } from 'uuid'
 
@@ -257,6 +257,10 @@ export interface SettingsState {
    * If not set, uses the quick model setting.
    */
   contextSummarizationModelId: string | null
+  /** Default agent context strategy (session/agent can override via configuration). */
+  agentContextStrategy: ContextStrategyConfig
+  /** Summarization model for agent strategies when not set on the strategy config. */
+  agentContextSummarizationModelId: string | null
 }
 
 export type MultiModelMessageStyle = 'horizontal' | 'vertical' | 'fold' | 'grid'
@@ -461,7 +465,9 @@ export const initialState: SettingsState = {
   showMessageOutline: false,
   // Context Management
   contextStrategy: DEFAULT_CONTEXT_STRATEGY_CONFIG,
-  contextSummarizationModelId: null
+  contextSummarizationModelId: null,
+  agentContextStrategy: DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG,
+  agentContextSummarizationModelId: null
 }
 
 const settingsSlice = createSlice({
@@ -921,6 +927,15 @@ const settingsSlice = createSlice({
     },
     setContextSummarizationModelId: (state, action: PayloadAction<string | null>) => {
       state.contextSummarizationModelId = action.payload
+    },
+    setAgentContextStrategy: (state, action: PayloadAction<ContextStrategyConfig>) => {
+      state.agentContextStrategy = action.payload
+    },
+    setAgentContextStrategyPartial: (state, action: PayloadAction<Partial<ContextStrategyConfig>>) => {
+      state.agentContextStrategy = { ...state.agentContextStrategy, ...action.payload }
+    },
+    setAgentContextSummarizationModelId: (state, action: PayloadAction<string | null>) => {
+      state.agentContextSummarizationModelId = action.payload
     }
   }
 })
@@ -1059,7 +1074,10 @@ export const {
   // Context Management actions
   setContextStrategy,
   setContextStrategyPartial,
-  setContextSummarizationModelId
+  setContextSummarizationModelId,
+  setAgentContextStrategy,
+  setAgentContextStrategyPartial,
+  setAgentContextSummarizationModelId
 } = settingsSlice.actions
 
 export default settingsSlice.reducer

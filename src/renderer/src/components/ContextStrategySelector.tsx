@@ -9,6 +9,25 @@ import {
   CONTEXT_STRATEGY_LABELS,
   DEFAULT_CONTEXT_STRATEGY_CONFIG
 } from '@renderer/types/contextStrategy'
+
+/** Agent Phase 1: only none + SDK compaction (threshold); other chat strategy names are not implemented for agents yet. */
+const AGENT_PHASE1_STRATEGY_TYPES: ContextStrategyType[] = ['none', 'sliding_window']
+
+const STRATEGY_TYPE_I18N_KEY: Record<ContextStrategyType, string> = {
+  none: 'settings.contextStrategy.types.none',
+  sliding_window: 'settings.contextStrategy.types.sliding_window',
+  summarize: 'settings.contextStrategy.types.summarize',
+  hierarchical: 'settings.contextStrategy.types.hierarchical',
+  truncate_middle: 'settings.contextStrategy.types.truncate_middle'
+}
+
+const STRATEGY_DESC_I18N_KEY: Record<ContextStrategyType, string> = {
+  none: 'settings.contextStrategy.descriptions.none',
+  sliding_window: 'settings.contextStrategy.descriptions.sliding_window',
+  summarize: 'settings.contextStrategy.descriptions.summarize',
+  hierarchical: 'settings.contextStrategy.descriptions.hierarchical',
+  truncate_middle: 'settings.contextStrategy.descriptions.truncate_middle'
+}
 import { Switch } from 'antd'
 import { InputNumber, Slider } from 'antd'
 import type { FC } from 'react'
@@ -20,6 +39,8 @@ interface ContextStrategySelectorProps {
   value: ContextStrategyConfig
   /** Callback when configuration changes */
   onChange: (config: ContextStrategyConfig) => void
+  /** Agent sessions: show compact threshold and agent-specific help */
+  variant?: 'chat' | 'agent'
   /** Whether to show "Use inherited" option */
   showInheritOption?: boolean
   /** If showing inherit option, what is the inherited strategy type */
@@ -43,6 +64,7 @@ interface ContextStrategySelectorProps {
 const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
   value,
   onChange,
+  variant = 'chat',
   showInheritOption = false,
   inheritedStrategyType,
   inheritLabel,
@@ -55,14 +77,38 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
 
   const strategy = value || DEFAULT_CONTEXT_STRATEGY_CONFIG
 
-  const strategyOptions = (Object.keys(CONTEXT_STRATEGY_LABELS) as ContextStrategyType[]).map((type) => ({
+  const strategyTypesForVariant: ContextStrategyType[] =
+    variant === 'agent' ? AGENT_PHASE1_STRATEGY_TYPES : (Object.keys(CONTEXT_STRATEGY_LABELS) as ContextStrategyType[])
+
+  const agentLegacyUnsupportedType =
+    variant === 'agent' && strategy.type !== 'none' && !AGENT_PHASE1_STRATEGY_TYPES.includes(strategy.type)
+
+  const selectorStrategyType: ContextStrategyType =
+    variant === 'agent' && agentLegacyUnsupportedType ? 'sliding_window' : strategy.type
+
+  const strategyOptions = strategyTypesForVariant.map((type) => ({
     value: type,
-    label: t(`settings.contextStrategy.types.${type}`, { defaultValue: CONTEXT_STRATEGY_LABELS[type] })
+    label:
+      variant === 'agent' && type === 'sliding_window'
+        ? t('settings.contextStrategy.types.agent_sliding_window', {
+            defaultValue: 'SDK compaction (token threshold)'
+          })
+        : t(STRATEGY_TYPE_I18N_KEY[type], { defaultValue: CONTEXT_STRATEGY_LABELS[type] })
   }))
 
   const handleStrategyChange = (type: ContextStrategyType) => {
     onChange({ ...strategy, type })
   }
+
+  const strategyTooltipDescription =
+    variant === 'agent' && selectorStrategyType === 'sliding_window'
+      ? t('settings.contextStrategy.descriptions.agent_sliding_window', {
+          defaultValue:
+            'Runs the Claude Agent SDK /compact when the last turn’s total token usage reaches your threshold (resumed sessions). This is not the same as chat sliding-window trimming.'
+        })
+      : t(STRATEGY_DESC_I18N_KEY[selectorStrategyType], {
+          defaultValue: CONTEXT_STRATEGY_DESCRIPTIONS[selectorStrategyType]
+        })
 
   const handleConfigChange = (key: keyof ContextStrategyConfig, configValue: number | string | boolean | undefined) => {
     onChange({ ...strategy, [key]: configValue })
@@ -85,7 +131,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
             <InheritedInfo>
               {t('settings.contextStrategy.inheritedStrategy', { defaultValue: 'Currently using:' })}{' '}
               <strong>
-                {t(`settings.contextStrategy.types.${inheritedStrategyType}`, {
+                {t(STRATEGY_TYPE_I18N_KEY[inheritedStrategyType], {
                   defaultValue: CONTEXT_STRATEGY_LABELS[inheritedStrategyType]
                 })}
               </strong>
@@ -101,14 +147,59 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
           <SettingRow>
             <RowTitle>
               {t('settings.contextStrategy.strategy', { defaultValue: 'Strategy' })}
-              <InfoTooltip
-                title={t(`settings.contextStrategy.descriptions.${strategy.type}`, {
-                  defaultValue: CONTEXT_STRATEGY_DESCRIPTIONS[strategy.type]
-                })}
-              />
+              <InfoTooltip title={strategyTooltipDescription} />
             </RowTitle>
-            <Selector value={strategy.type} onChange={handleStrategyChange} options={strategyOptions} />
+            <Selector value={selectorStrategyType} onChange={handleStrategyChange} options={strategyOptions} />
           </SettingRow>
+
+          {variant === 'agent' && (
+            <SettingDescriptionText>
+              {t('settings.contextStrategy.agentPhase1Notice', {
+                defaultValue:
+                  'Agent strategies (Phase 1): enabling a non-None strategy applies a token threshold and may run SDK /compact before your next message. Chat-style summarize/hierarchical pipelines are not applied to SDK sessions yet.'
+              })}
+            </SettingDescriptionText>
+          )}
+
+          {variant === 'agent' && agentLegacyUnsupportedType && (
+            <WarningText>
+              {t('settings.contextStrategy.agentLegacyStrategyWarning', {
+                defaultValue:
+                  'This session used a strategy type that is not yet implemented for SDK sessions; threshold + /compact still applies. Saving will use SDK compaction (threshold) going forward.'
+              })}
+            </WarningText>
+          )}
+
+          {variant === 'agent' && strategy.type !== 'none' && (
+            <>
+              <SettingDivider />
+              <SettingRow>
+                <RowTitle>
+                  {t('settings.contextStrategy.compactTriggerTokens', {
+                    defaultValue: 'Compact when prior turn ≥ tokens'
+                  })}
+                  <InfoTooltip
+                    title={t('settings.contextStrategy.compactTriggerTokensHelp', {
+                      defaultValue:
+                        'Uses the Claude Agent SDK session. When the last turn’s total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).'
+                    })}
+                  />
+                </RowTitle>
+                <InputNumber
+                  min={1000}
+                  max={2_000_000}
+                  step={1000}
+                  value={strategy.compactTriggerTokens}
+                  onChange={(val) => handleConfigChange('compactTriggerTokens', val ?? undefined)}
+                  placeholder={t('settings.contextStrategy.compactTriggerPlaceholder', {
+                    defaultValue: 'Default 180000'
+                  })}
+                  style={{ width: 140 }}
+                  size={compact ? 'small' : 'middle'}
+                />
+              </SettingRow>
+            </>
+          )}
 
           {/* Sliding Window Options */}
           {strategy.type === 'sliding_window' && (
@@ -345,6 +436,13 @@ const WarningText = styled.div`
   background: var(--color-warning-bg, rgba(250, 173, 20, 0.1));
   border-radius: 6px;
   border: 1px solid var(--color-warning);
+`
+
+const SettingDescriptionText = styled.div`
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
 `
 
 export default ContextStrategySelector

@@ -3412,6 +3412,21 @@ const migrateConfig = {
       logger.error('migrate 206 error', error as Error)
       return state
     }
+  },
+  '207': (state: RootState) => {
+    try {
+      if (!state.settings.agentContextStrategy) {
+        state.settings.agentContextStrategy = { type: 'none' }
+      }
+      if (state.settings.agentContextSummarizationModelId === undefined) {
+        state.settings.agentContextSummarizationModelId = null
+      }
+      logger.info('migrate 207 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 207 error', error as Error)
+      return state
+    }
   }
 }
 

@@ -12,7 +12,8 @@ const swaggerOptions: swaggerJSDoc.Options = {
     info: {
       title: 'The Boss API',
       version: '1.0.0',
-      description: 'OpenAI-compatible API for The Boss with additional product-specific endpoints',
+      description:
+        'OpenAI-compatible API for The Boss with additional product-specific endpoints. Interop: A2A JSON-RPC `POST /v1/a2a` (protocol v0.3.0), Agent Card `GET /.well-known/agent.json`, AG-UI SSE `POST /v1/agents/{agentId}/sessions/{sessionId}/messages/ag-ui`, A2UI extraction `POST .../messages/buffer` (minimal schema v0.8 validation).',
       contact: {
         name: 'The Boss',
         url: 'https://github.com/Know-Me-Tools/the-boss'

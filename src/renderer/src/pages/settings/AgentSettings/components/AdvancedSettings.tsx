@@ -1,10 +1,15 @@
+import ContextStrategySelector from '@renderer/components/ContextStrategySelector'
+import { useAgent } from '@renderer/hooks/agents/useAgent'
 import type { UpdateAgentBaseForm } from '@renderer/types'
 import { AgentConfigurationSchema } from '@renderer/types'
+import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
+import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import { parseKeyValueString, serializeKeyValueString } from '@renderer/utils/env'
 import { Input, InputNumber, Tooltip } from 'antd'
 import { Info } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector } from 'react-redux'
 
 import {
   type AgentConfigurationState,
@@ -22,6 +27,29 @@ export const AdvancedSettings: React.FC<AgentOrSessionSettingsProps> = ({ agentB
   const [configuration, setConfiguration] = useState<AgentConfigurationState>(defaultConfiguration)
   const [maxTurnsInput, setMaxTurnsInput] = useState<number>(defaultConfiguration.max_turns)
   const [envVarsText, setEnvVarsText] = useState<string>('')
+
+  const globalAgentContextStrategy = useSelector(
+    (state: { settings: { agentContextStrategy: ContextStrategyConfig } }) => state.settings.agentContextStrategy
+  )
+
+  const isSessionSettings = !!(agentBase && 'agent_id' in agentBase)
+  const { agent: parentAgent } = useAgent(isSessionSettings ? agentBase.agent_id : '')
+
+  const baseMergedContext = useMemo(() => {
+    let c: ContextStrategyConfig = {
+      ...DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG,
+      ...globalAgentContextStrategy
+    }
+    if (isSessionSettings && parentAgent?.configuration?.context_strategy) {
+      c = { ...c, ...parentAgent.configuration.context_strategy }
+    }
+    return c
+  }, [globalAgentContextStrategy, isSessionSettings, parentAgent?.configuration?.context_strategy])
+
+  const useInheritedContext = configuration.context_strategy === undefined
+  const displayContextStrategy = useInheritedContext
+    ? baseMergedContext
+    : { ...baseMergedContext, ...configuration.context_strategy }
 
   useEffect(() => {
     if (!agentBase) {
@@ -63,12 +91,71 @@ export const AdvancedSettings: React.FC<AgentOrSessionSettingsProps> = ({ agentB
     void update({ id: agentBase.id, configuration: next } satisfies UpdateAgentBaseForm)
   }, [agentBase, configuration, envVarsText, update])
 
+  const handleContextStrategyChange = useCallback(
+    (config: ContextStrategyConfig) => {
+      if (!agentBase) return
+      const next: AgentConfigurationState = { ...configuration, context_strategy: config }
+      setConfiguration(next)
+      void update({ id: agentBase.id, configuration: next } satisfies UpdateAgentBaseForm)
+    },
+    [agentBase, configuration, update]
+  )
+
+  const handleInheritedContextChange = useCallback(
+    (inherit: boolean) => {
+      if (!agentBase) return
+      if (inherit) {
+        const next = { ...configuration } as AgentConfigurationState
+        delete next.context_strategy
+        setConfiguration(next)
+        void update({ id: agentBase.id, configuration: next } satisfies UpdateAgentBaseForm)
+      } else {
+        const next: AgentConfigurationState = {
+          ...configuration,
+          context_strategy: { ...baseMergedContext }
+        }
+        setConfiguration(next)
+        void update({ id: agentBase.id, configuration: next } satisfies UpdateAgentBaseForm)
+      }
+    },
+    [agentBase, configuration, update, baseMergedContext]
+  )
+
   if (!agentBase) {
     return null
   }
 
   return (
     <SettingsContainer>
+      <SettingsItem>
+        <SettingsTitle
+          contentAfter={
+            <Tooltip
+              title={t('settings.contextStrategy.agentSessionsDescription', {
+                defaultValue:
+                  'Optional override for this agent or session. Inheritance: session → agent → global defaults.'
+              })}
+              placement="left">
+              <Info size={16} className="text-foreground-400" />
+            </Tooltip>
+          }>
+          {t('agent.settings.advance.contextStrategy.label', { defaultValue: 'Context strategy' })}
+        </SettingsTitle>
+        <div className="my-2 flex w-full flex-col gap-2">
+          <ContextStrategySelector
+            variant="agent"
+            value={displayContextStrategy}
+            onChange={handleContextStrategyChange}
+            showInheritOption
+            useInherited={useInheritedContext}
+            onInheritedChange={handleInheritedContextChange}
+            inheritedStrategyType={baseMergedContext.type}
+            inheritLabel={t('agent.settings.advance.contextStrategy.inherit', {
+              defaultValue: 'Use inherited defaults'
+            })}
+          />
+        </div>
+      </SettingsItem>
       <SettingsItem>
         <SettingsTitle
           contentAfter={

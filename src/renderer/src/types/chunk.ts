@@ -1,3 +1,5 @@
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+
 import type { ExternalToolResult, KnowledgeReference, MCPToolResponse, NormalToolResponse, WebSearchResponse } from '.'
 import type { Response, ResponseError } from './newMessage'
 
@@ -52,7 +54,8 @@ export enum ChunkType {
   SEARCH_COMPLETE_UNION = 'search_complete_union',
   VIDEO_SEARCHED = 'video.searched',
   IMAGE_SEARCHED = 'image.searched',
-  RAW = 'raw'
+  RAW = 'raw',
+  CONTEXT_MANAGEMENT = 'context_management'
 }
 
 export interface LLMResponseCreatedChunk {
@@ -453,6 +456,11 @@ export interface RawChunk {
   metadata?: Record<string, any>
 }
 
+export interface ContextManagementChunk {
+  type: ChunkType.CONTEXT_MANAGEMENT
+  payload: ContextManagementStreamPayload
+}
+
 export type Chunk =
   | BlockCreatedChunk // 消息块创建，无意义
   | BlockInProgressChunk // 消息块进行中，无意义
@@ -490,3 +498,4 @@ export type Chunk =
   | VideoSearchedChunk // 知识库检索视频
   | ImageSearchedChunk // 知识库检索图片
   | RawChunk
+  | ContextManagementChunk

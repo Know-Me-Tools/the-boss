@@ -13,6 +13,7 @@ import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
 import type { IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
 import { convertLinks, flushLinkConverterBuffer } from '@renderer/utils/linkConverter'
 import type { ClaudeCodeRawValue } from '@shared/agents/claudecode/types'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import { AISDKError, type TextStreamPart, type ToolSet } from 'ai'
 
 import { ToolCallChunkHandler } from './handleToolCallChunk'
@@ -438,8 +439,17 @@ export class AiSdkToChunkAdapter {
               })
         })
         break
-
-      default:
+      default: {
+        const custom = chunk as unknown as { type?: string; data?: ContextManagementStreamPayload }
+        if (custom.type === 'data-context-management' && custom.data) {
+          this.onChunk({
+            type: ChunkType.CONTEXT_MANAGEMENT,
+            payload: custom.data
+          })
+          break
+        }
+        break
+      }
     }
   }
 

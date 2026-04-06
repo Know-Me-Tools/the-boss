@@ -1,4 +1,5 @@
 import type { CompletionUsage } from '@cherrystudio/openai/resources'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type { ProviderMetadata } from 'ai'
 
 import type {
@@ -32,7 +33,8 @@ export enum MessageBlockType {
   ERROR = 'error', // 错误信息
   CITATION = 'citation', // 引用类型 (Now includes web search, grounding, etc.)
   VIDEO = 'video', // 视频内容
-  COMPACT = 'compact' // Compact command response
+  COMPACT = 'compact', // Compact command response
+  CONTEXT_MANAGEMENT = 'context_management' // Context strategy / compaction notice
 }
 
 // 块状态定义
@@ -153,6 +155,12 @@ export interface CompactMessageBlock extends BaseMessageBlock {
   compactedContent: string // 从 <local-command-stdout> 提取的内容
 }
 
+/** Notice when chat or agent context policy altered the prompt / SDK session */
+export interface ContextManagementMessageBlock extends BaseMessageBlock {
+  type: MessageBlockType.CONTEXT_MANAGEMENT
+  payload: ContextManagementStreamPayload
+}
+
 // MessageBlock 联合类型
 export type MessageBlock =
   | PlaceholderMessageBlock
@@ -167,6 +175,7 @@ export type MessageBlock =
   | CitationMessageBlock
   | VideoMessageBlock
   | CompactMessageBlock
+  | ContextManagementMessageBlock
 
 export enum UserMessageStatus {
   SUCCESS = 'success'

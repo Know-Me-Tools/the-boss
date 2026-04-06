@@ -249,7 +249,7 @@ export const messagesSlice = createSlice({
       // Update Block ID
       const currentBlocks = messageToUpdate.blocks || []
       if (!currentBlocks.includes(blockId)) {
-        if (blockType === MessageBlockType.THINKING) {
+        if (blockType === MessageBlockType.THINKING || blockType === MessageBlockType.CONTEXT_MANAGEMENT) {
           changes.blocks = [blockId, ...currentBlocks]
         } else {
           changes.blocks = [...currentBlocks, blockId]

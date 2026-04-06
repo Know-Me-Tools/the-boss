@@ -18,6 +18,7 @@ import { and, asc, count, desc, eq, type SQL, sql } from 'drizzle-orm'
 import { BaseService } from '../BaseService'
 import { agentsTable, type InsertSessionRow, type SessionRow, sessionsTable } from '../database/schema'
 import type { AgentModelField } from '../errors'
+import { getAgentSessionLastTotalTokens, setAgentSessionLastTotalTokens } from './agentContextStrategy/usageCache'
 import { builtinSlashCommands } from './claudecode/commands'
 
 const logger = loggerService.withContext('SessionService')
@@ -25,6 +26,45 @@ const logger = loggerService.withContext('SessionService')
 export class SessionService extends BaseService {
   private static instance: SessionService | null = null
   private readonly modelFields: AgentModelField[] = ['model', 'plan_model', 'small_model']
+
+  /** Hydrate in-memory compact threshold cache from a DB row (call before deserialize). */
+  private hydrateLastTotalTokensFromRow(row: Pick<SessionRow, 'id' | 'last_total_tokens'>): void {
+    const v = row.last_total_tokens
+    if (v != null && Number.isFinite(v) && v >= 0) {
+      setAgentSessionLastTotalTokens(row.id, v)
+    }
+  }
+
+  /**
+   * If usage was never loaded into memory (e.g. cold send path), read `last_total_tokens` from SQLite.
+   */
+  async ensureLastTotalTokensInMemory(agentId: string, sessionId: string): Promise<void> {
+    if (getAgentSessionLastTotalTokens(sessionId) !== undefined) {
+      return
+    }
+    const database = await this.getDatabase()
+    const row = await database
+      .select({ id: sessionsTable.id, last_total_tokens: sessionsTable.last_total_tokens })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.agent_id, agentId)))
+      .limit(1)
+    if (row[0]) {
+      this.hydrateLastTotalTokensFromRow(row[0])
+    }
+  }
+
+  /** Persist last finish-token total for threshold + /compact across app restarts. */
+  async persistSessionLastTotalTokens(agentId: string, sessionId: string, tokens: number): Promise<void> {
+    if (!Number.isFinite(tokens) || tokens < 0) {
+      return
+    }
+    const database = await this.getDatabase()
+    const now = new Date().toISOString()
+    await database
+      .update(sessionsTable)
+      .set({ last_total_tokens: Math.floor(tokens), updated_at: now })
+      .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.agent_id, agentId)))
+  }
 
   static getInstance(): SessionService {
     if (!SessionService.instance) {
@@ -192,6 +232,7 @@ export class SessionService extends BaseService {
       return null
     }
 
+    this.hydrateLastTotalTokensFromRow(result[0])
     const session = this.deserializeJsonFields(result[0]) as GetAgentSessionResponse
     const { tools, legacyIdMap } = await this.listMcpTools(session.agent_type, session.mcps)
     session.tools = tools
@@ -242,6 +283,10 @@ export class SessionService extends BaseService {
           ? await baseQuery.limit(options.limit).offset(options.offset)
           : await baseQuery.limit(options.limit)
         : await baseQuery
+
+    for (const row of result) {
+      this.hydrateLastTotalTokensFromRow(row)
+    }
 
     const sessions = result.map((row) => this.deserializeJsonFields(row)) as GetAgentSessionResponse[]
 

@@ -4,6 +4,7 @@ import type { BlockManager } from '../BlockManager'
 import { createBaseCallbacks } from './baseCallbacks'
 import { createCitationCallbacks } from './citationCallbacks'
 import { createCompactCallbacks } from './compactCallbacks'
+import { createContextManagementCallbacks } from './contextManagementCallbacks'
 import { createImageCallbacks } from './imageCallbacks'
 import { createTextCallbacks } from './textCallbacks'
 import { createThinkingCallbacks } from './thinkingCallbacks'
@@ -69,6 +70,15 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     saveUpdatesToDB
   })
 
+  const contextManagementCallbacks = createContextManagementCallbacks({
+    blockManager,
+    assistantMsgId,
+    dispatch,
+    getState,
+    topicId,
+    saveUpdatesToDB
+  })
+
   // 创建textCallbacks时传入citationCallbacks的getCitationBlockId方法和compactCallbacks的handleTextComplete方法
   const textCallbacks = createTextCallbacks({
     blockManager,
@@ -89,6 +99,7 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     ...citationCallbacks,
     ...videoCallbacks,
     ...compactCallbacks,
+    ...contextManagementCallbacks,
     // 清理资源的方法
     cleanup: () => {
       // 清理由 messageThunk 中的节流函数管理，这里不需要特别处理

@@ -17,8 +17,10 @@
 /**
  * Drizzle Kit configuration for agents database
  */
-import { APP_USER_DATA_CONTAINER, APP_USER_DATA_CONTAINER_DEV } from '@shared/config/branding'
 import { defineConfig } from 'drizzle-kit'
+
+/** Relative path so `drizzle-kit` can load this file without TS path aliases. */
+import { APP_USER_DATA_CONTAINER, APP_USER_DATA_CONTAINER_DEV } from '../../../../packages/shared/config/branding'
 
 function getDefaultDbUrl(): string {
   const platform = process.platform

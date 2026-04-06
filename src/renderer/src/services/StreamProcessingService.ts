@@ -10,6 +10,7 @@ import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import type { Response } from '@renderer/types/newMessage'
 import { AssistantMessageStatus } from '@renderer/types/newMessage'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 
 const logger = loggerService.withContext('StreamProcessingService')
 
@@ -60,6 +61,8 @@ export interface StreamProcessorCallbacks {
   onBlockCreated?: () => void
   // Called when raw data is received (e.g., session_id updates from Agent SDK)
   onRawData?: (content: unknown, metadata?: Record<string, any>) => void
+  /** Chat or agent context policy altered the prompt / SDK session */
+  onContextManagement?: (payload: ContextManagementStreamPayload) => void | Promise<void>
 }
 
 // Function to create a stream processor instance
@@ -169,6 +172,10 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}) 
         }
         case ChunkType.RAW: {
           if (callbacks.onRawData) callbacks.onRawData(data.content, data.metadata)
+          break
+        }
+        case ChunkType.CONTEXT_MANAGEMENT: {
+          if (callbacks.onContextManagement) void callbacks.onContextManagement(data.payload)
           break
         }
         default: {

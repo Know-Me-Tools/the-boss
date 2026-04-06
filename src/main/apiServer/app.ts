@@ -7,6 +7,8 @@ import { LONG_POLL_TIMEOUT_MS } from './config/timeouts'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error'
 import { setupOpenAPIDocumentation } from './middleware/openapi'
+import { buildTheBossAgentCard, getRequestBaseUrl } from './routes/a2a/agentCard'
+import { handleA2AJsonRpc } from './routes/a2a/jsonRpc'
 import { agentsRoutes } from './routes/agents'
 import { channelsRouter } from './routes/channels'
 import { chatRoutes } from './routes/chat'
@@ -96,6 +98,24 @@ app.get('/health', (_req, res) => {
 
 /**
  * @swagger
+ * /.well-known/agent.json:
+ *   get:
+ *     summary: A2A Agent Card (discovery)
+ *     description: >
+ *       JSON metadata for Agent2Agent protocol v0.3.0. Uses `protocolVersion` and `url` pointing to POST /v1/a2a.
+ *       No authentication on this path; Bearer token still required for /v1/* execution.
+ *     tags: [A2A]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Agent Card
+ */
+app.get('/.well-known/agent.json', (req, res) => {
+  res.json(buildTheBossAgentCard(getRequestBaseUrl(req)))
+})
+
+/**
+ * @swagger
  * /:
  *   get:
  *     summary: API information
@@ -138,6 +158,10 @@ app.get('/', (_req, res) => {
       channels: 'GET /v1/channels',
       agent_sessions: 'GET /v1/agents/:agentId/sessions',
       session_messages: 'GET /v1/agents/:agentId/sessions/:sessionId/messages',
+      session_messages_ag_ui: 'POST /v1/agents/:agentId/sessions/:sessionId/messages/ag-ui',
+      session_messages_buffer: 'POST /v1/agents/:agentId/sessions/:sessionId/messages/buffer',
+      a2a_jsonrpc: 'POST /v1/a2a',
+      a2a_agent_card: 'GET /.well-known/agent.json',
       knowledge_bases: 'GET /v1/knowledge-bases',
       knowledge_search: 'POST /v1/knowledge-bases/search'
     }
@@ -163,6 +187,42 @@ apiRouter.use('/channels', channelsRouter)
 apiRouter.use('/tasks', tasksRouter)
 apiRouter.use('/claw', clawMcpRoutes)
 apiRouter.use('/knowledge-bases', knowledgeRoutes)
+
+/**
+ * @swagger
+ * /v1/a2a:
+ *   post:
+ *     summary: A2A JSON-RPC (message/send, message/stream)
+ *     description: >
+ *       Agent2Agent v0.3.0 JSON-RPC 2.0. Body includes `method`, `params.message`, and
+ *       `params.metadata.theBoss` with `{ agentId, sessionId }` to route to a local agent session.
+ *     tags: [A2A]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               jsonrpc:
+ *                 type: string
+ *                 example: "2.0"
+ *               method:
+ *                 type: string
+ *                 enum: [message/send, message/stream]
+ *               id:
+ *                 oneOf:
+ *                   - type: string
+ *                   - type: integer
+ *               params:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: JSON-RPC result or SSE stream (message/stream)
+ */
+apiRouter.post('/a2a', handleA2AJsonRpc)
 app.use('/v1', apiRouter)
 
 // Error handling (must be last)

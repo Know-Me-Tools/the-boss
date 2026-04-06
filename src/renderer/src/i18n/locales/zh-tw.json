@@ -395,6 +395,10 @@
     },
     "settings": {
       "advance": {
+        "contextStrategy": {
+          "inherit": "[to be translated]:Use inherited defaults",
+          "label": "[to be translated]:Context strategy"
+        },
         "envVars": {
           "description": "為智慧體執行環境設置自訂環境變數。",
           "helper": "輸入自訂環境變數（每行一個，格式：KEY=value）",
@@ -2402,6 +2406,17 @@
       "compact": {
         "title": "對話已壓縮"
       },
+      "contextManagement": {
+        "agent": "[to be translated]:Agent (SDK)",
+        "assistant": "[to be translated]:Assistant chat",
+        "messageCounts": "[to be translated]:Messages in prompt",
+        "summaryPreview": "[to be translated]:Summary preview",
+        "title": "[to be translated]:Context updated",
+        "tokensAfter": "[to be translated]:Tokens after",
+        "tokensBefore": "[to be translated]:Tokens before",
+        "tokensSaved": "[to be translated]:Tokens saved (est.)",
+        "trigger": "[to be translated]:Trigger"
+      },
       "delete": {
         "content": "確定要刪除此訊息嗎？",
         "title": "刪除訊息"
@@ -4019,10 +4034,20 @@
       "title": "頻道"
     },
     "contextStrategy": {
+      "agentConfiguration": "[to be translated]:Agent strategy defaults",
+      "agentLegacyStrategyWarning": "[to be translated]:This item used a strategy type that is not yet implemented for SDK sessions; threshold + /compact still applies. Saving will use SDK compaction (threshold) going forward.",
+      "agentPhase1Notice": "[to be translated]:Agent strategies (Phase 1): a non-None choice applies a token threshold and may run SDK /compact before your next message (resumed sessions). Chat-style summarize/hierarchical trimming is not applied to SDK transcripts yet (see docs).",
+      "agentSessionsDescription": "[to be translated]:Optional defaults for autonomous agents. Per-agent and per-session settings can override. Uses SDK resume and may run /compact when token usage exceeds your threshold.",
+      "agentSessionsTitle": "[to be translated]:Agent context (SDK sessions)",
+      "agentSummarizationModel": "[to be translated]:Agent summarization model",
+      "compactTriggerPlaceholder": "[to be translated]:Default 180000",
+      "compactTriggerTokens": "[to be translated]:Compact when prior turn ≥ tokens",
+      "compactTriggerTokensHelp": "[to be translated]:When the last turn’s total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).",
       "configuration": "策略配置",
       "configurationHelp": "配置如何在對話接近模型限制時管理上下文。不同策略在上下文保留和令牌效率之間提供不同的權衡。",
       "description": "選擇如何在接近模型限制時管理對話上下文。這可以防止「提示詞過長」錯誤，同時保留重要上下文。",
       "descriptions": {
+        "agent_sliding_window": "[to be translated]:Runs the Claude Agent SDK /compact when the last turn’s total token usage reaches your threshold (resumed sessions). Not the same as chat sliding-window trimming.",
         "hierarchical": "三層記憶系統：最近訊息保留原文，較早訊息被摘要，關鍵資訊被提取。",
         "none": "不進行上下文管理。長對話可能超出模型限制。",
         "sliding_window": "僅保留最近的訊息在令牌預算內。簡單且可預測。",
@@ -4059,6 +4084,7 @@
       "title": "上下文管理",
       "tooltip": "自動管理對話上下文，防止超出模型限制。適用於所有對話，除非被覆蓋。",
       "types": {
+        "agent_sliding_window": "[to be translated]:SDK compaction (token threshold)",
         "hierarchical": "層級記憶",
         "none": "無（不管理）",
         "sliding_window": "滑動視窗",

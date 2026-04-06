@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
 
 import { loggerService } from '@logger'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type {
   AgentPersistedMessage,
   AgentSessionMessageEntity,
+  ContextStrategyConfig,
   CreateSessionMessageRequest,
   GetAgentSessionResponse,
   ListOptions
@@ -14,8 +16,17 @@ import { and, desc, eq, not } from 'drizzle-orm'
 import { BaseService } from '../BaseService'
 import { sessionMessagesTable } from '../database/schema'
 import { agentMessageRepository } from '../database/sessionMessageRepository'
-import type { AgentStreamEvent } from '../interfaces/AgentStreamInterface'
+import type { AgentStream, AgentStreamEvent } from '../interfaces/AgentStreamInterface'
+import {
+  extractTotalTokensFromFinishPart,
+  getAgentSessionLastTotalTokens,
+  getEffectiveAgentContextStrategy,
+  setAgentSessionLastTotalTokens,
+  shouldRunSdkCompactBeforeTurn
+} from './agentContextStrategy'
+import { agentService } from './AgentService'
 import ClaudeCodeService from './claudecode'
+import { sessionService } from './SessionService'
 
 const claudeCodeService = new ClaudeCodeService()
 
@@ -175,6 +186,55 @@ export class SessionMessageService extends BaseService {
     return await this.startSessionMessageStream(session, messageData, abortController, options)
   }
 
+  private async loadGlobalAgentContextSettings(): Promise<{
+    strategy: ContextStrategyConfig
+    summarizationModelId: string | null
+  }> {
+    try {
+      const { reduxService } = await import('@main/services/ReduxService')
+      const settings = await reduxService.select('state.settings')
+      return {
+        strategy: settings?.agentContextStrategy ?? { type: 'none' },
+        summarizationModelId:
+          settings?.agentContextSummarizationModelId ?? settings?.contextSummarizationModelId ?? null
+      }
+    } catch {
+      return { strategy: { type: 'none' }, summarizationModelId: null }
+    }
+  }
+
+  /**
+   * Consume a Claude Code stream for a single-shot operation (e.g. `/compact`) without exposing SSE.
+   */
+  private async drainClaudeStreamForCompaction(stream: AgentStream, session: GetAgentSessionResponse): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      const onData = (event: AgentStreamEvent) => {
+        if (event.type === 'chunk' && event.chunk) {
+          const tokens = extractTotalTokensFromFinishPart(event.chunk as TextStreamPart<Record<string, any>>)
+          if (tokens !== undefined) {
+            setAgentSessionLastTotalTokens(session.id, tokens)
+            void sessionService.persistSessionLastTotalTokens(session.agent_id, session.id, tokens).catch((err) =>
+              logger.warn('Failed to persist session last_total_tokens after /compact', {
+                sessionId: session.id,
+                error: err instanceof Error ? err.message : String(err)
+              })
+            )
+          }
+        }
+        if (event.type === 'error') {
+          stream.removeListener('data', onData)
+          reject(event.error ?? new Error('Compaction stream error'))
+        }
+        if (event.type === 'complete' || event.type === 'cancelled') {
+          stream.removeListener('data', onData)
+          resolve()
+        }
+      }
+      stream.on('data', onData)
+    })
+    stream.removeAllListeners()
+  }
+
   private async startSessionMessageStream(
     session: GetAgentSessionResponse,
     req: CreateSessionMessageRequest,
@@ -183,6 +243,68 @@ export class SessionMessageService extends BaseService {
   ): Promise<SessionStreamResult> {
     const agentSessionId = await this.getLastAgentSessionId(session.id)
     logger.debug('Session Message stream message data:', { message: req, session_id: agentSessionId })
+
+    await sessionService.ensureLastTotalTokensInMemory(session.agent_id, session.id)
+
+    const globalAgent = await this.loadGlobalAgentContextSettings()
+    const agentEntity = await agentService.getAgent(session.agent_id)
+    const effectiveContext = getEffectiveAgentContextStrategy({
+      globalStrategy: globalAgent.strategy,
+      globalSummarizationModelId: globalAgent.summarizationModelId,
+      agentConfiguration: agentEntity?.configuration ?? null,
+      sessionConfiguration: session.configuration ?? null
+    })
+
+    logger.debug('Effective agent context strategy', {
+      sessionId: session.id,
+      strategyType: effectiveContext.type
+    })
+
+    let agentContextNotice: ContextManagementStreamPayload | undefined
+
+    if (
+      shouldRunSdkCompactBeforeTurn({
+        appSessionId: session.id,
+        sdkSessionIdForResume: agentSessionId,
+        userPrompt: req.content,
+        config: effectiveContext
+      })
+    ) {
+      const tokensBeforeCompact = getAgentSessionLastTotalTokens(session.id)
+      try {
+        const compactAbort = new AbortController()
+        const compactStream = await claudeCodeService.invoke(
+          '/compact',
+          session,
+          compactAbort,
+          agentSessionId,
+          {
+            effort: req.effort,
+            thinking: req.thinking
+          },
+          undefined
+        )
+        await this.drainClaudeStreamForCompaction(compactStream, session)
+        const tokensAfterCompact = getAgentSessionLastTotalTokens(session.id)
+        agentContextNotice = {
+          surface: 'agent',
+          strategyType: effectiveContext.type,
+          tokensBefore: tokensBeforeCompact,
+          tokensAfter: tokensAfterCompact,
+          alterationSummary: `SDK /compact ran automatically before your message (policy: ${effectiveContext.type}).`,
+          trigger: 'sdk_compact_pre_turn'
+        }
+        if (tokensBeforeCompact !== undefined && tokensAfterCompact !== undefined) {
+          agentContextNotice.tokensSaved = Math.max(0, tokensBeforeCompact - tokensAfterCompact)
+        }
+        logger.info('Agent context: completed pre-turn SDK /compact', { sessionId: session.id })
+      } catch (err) {
+        logger.warn('Agent context: pre-turn /compact failed; continuing with user message', {
+          sessionId: session.id,
+          error: err instanceof Error ? err.message : String(err)
+        })
+      }
+    }
 
     const claudeStream = await claudeCodeService.invoke(
       req.content,
@@ -221,6 +343,12 @@ export class SessionMessageService extends BaseService {
 
     const stream = new ReadableStream<TextStreamPart<Record<string, any>>>({
       start: (controller) => {
+        if (agentContextNotice) {
+          controller.enqueue({
+            type: 'data-context-management',
+            data: agentContextNotice
+          } as unknown as TextStreamPart<Record<string, any>>)
+        }
         claudeStream.on('data', async (event: AgentStreamEvent) => {
           if (finished) return
           try {
@@ -230,6 +358,21 @@ export class SessionMessageService extends BaseService {
                 if (!chunk) {
                   logger.warn('Received agent chunk event without chunk payload')
                   return
+                }
+
+                if (chunk.type === 'finish') {
+                  const tokens = extractTotalTokensFromFinishPart(chunk as TextStreamPart<Record<string, any>>)
+                  if (tokens !== undefined) {
+                    setAgentSessionLastTotalTokens(session.id, tokens)
+                    void sessionService
+                      .persistSessionLastTotalTokens(session.agent_id, session.id, tokens)
+                      .catch((err) =>
+                        logger.warn('Failed to persist session last_total_tokens', {
+                          sessionId: session.id,
+                          error: err instanceof Error ? err.message : String(err)
+                        })
+                      )
+                  }
                 }
 
                 accumulator.add(chunk)

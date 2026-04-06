@@ -6,6 +6,8 @@
  * conversation history to stay within model context limits.
  */
 
+import * as z from 'zod'
+
 import type { Model } from './index'
 import type { Message } from './newMessage'
 
@@ -97,10 +99,38 @@ export interface ContextStrategyConfig {
    * @default true
    */
   showOmissionMarker?: boolean
+
+  /**
+   * Agent sessions only: when the last known total token count (from the prior turn’s
+   * finish usage) exceeds this value, the app may run an SDK `/compact` step before
+   * sending the next user message. Requires an active resumed SDK session.
+   */
+  compactTriggerTokens?: number
 }
 
 /**
+ * Zod schema for persisting context strategy on agent/session `configuration` JSON.
+ */
+export const ContextStrategyConfigSchema = z.object({
+  type: z.enum(['none', 'sliding_window', 'summarize', 'hierarchical', 'truncate_middle']),
+  maxMessages: z.number().optional(),
+  summarizationModelId: z.string().optional(),
+  summaryMaxTokens: z.number().optional(),
+  summarizeThreshold: z.number().optional(),
+  shortTermTurns: z.number().optional(),
+  midTermSummaryTokens: z.number().optional(),
+  longTermFactsTokens: z.number().optional(),
+  keepFirstMessages: z.number().optional(),
+  keepLastMessages: z.number().optional(),
+  showOmissionMarker: z.boolean().optional(),
+  compactTriggerTokens: z.number().optional()
+})
+
+/**
  * Default configuration for context strategies
+ */
+/**
+ * Default for **assistant/chat** context strategies (existing behavior).
  */
 export const DEFAULT_CONTEXT_STRATEGY_CONFIG: ContextStrategyConfig = {
   type: 'sliding_window',
@@ -118,6 +148,13 @@ export const DEFAULT_CONTEXT_STRATEGY_CONFIG: ContextStrategyConfig = {
   keepFirstMessages: 2,
   keepLastMessages: 4,
   showOmissionMarker: true
+}
+
+/**
+ * Default for **agent** context strategies: disabled unless the user opts in.
+ */
+export const DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG: ContextStrategyConfig = {
+  type: 'none'
 }
 
 /**

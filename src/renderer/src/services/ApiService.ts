@@ -10,7 +10,7 @@ import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
 import { hubMCPServer } from '@renderer/store/mcp'
-import type { Assistant, MCPServer, MCPTool, Model, Provider } from '@renderer/types'
+import type { Assistant, MCPServer, MCPTool, Model, Provider, Topic } from '@renderer/types'
 import { type FetchChatCompletionParams, getEffectiveMcpMode, isSystemProvider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { type Chunk, ChunkType } from '@renderer/types/chunk'
@@ -161,6 +161,8 @@ export async function transformMessagesAndFetch(
     assistantMsgId: string
     callbacks: StreamProcessorCallbacks
     topicId?: string // 添加 topicId 用于 trace
+    /** Topic entity (context strategy + metadata); optional but needed for per-topic overrides */
+    topic?: Topic
     allowedTools?: string[]
     options: {
       signal?: AbortSignal
@@ -196,9 +198,28 @@ export async function transformMessagesAndFetch(
       logger.debug('Knowledge base content injected before context strategy')
     }
 
-    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant, {
-      toolTokens
+    const prepareResult = await ConversationService.prepareMessagesForModel(messages, assistant, {
+      toolTokens,
+      topic: request.topic
     })
+    const { modelMessages, uiMessages, contextManagementApplied, contextManagementDetail } = prepareResult
+
+    if (contextManagementApplied && contextManagementDetail) {
+      onChunkReceived({
+        type: ChunkType.CONTEXT_MANAGEMENT,
+        payload: {
+          surface: 'assistant',
+          strategyType: contextManagementDetail.strategyType,
+          originalMessageCount: contextManagementDetail.originalMessageCount,
+          finalMessageCount: contextManagementDetail.finalMessageCount,
+          messagesRemoved: contextManagementDetail.messagesRemoved,
+          tokensSaved: contextManagementDetail.tokensSaved,
+          summaryPreview: contextManagementDetail.summaryPreview,
+          alterationSummary: contextManagementDetail.alterationSummary,
+          trigger: 'chat_pipeline'
+        }
+      })
+    }
 
     assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)
 
