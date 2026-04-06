@@ -229,5 +229,35 @@ describe('CodeBlock', () => {
       expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
       expect(mocks.CodeBlockView).not.toHaveBeenCalled()
     })
+
+    it('should fall back to CodeBlockView for HTML artifacts when artifact cards are disabled', () => {
+      const htmlProps = {
+        ...defaultProps,
+        className: 'language-html',
+        children: '<h1>Hello</h1>',
+        allowArtifactCards: false
+      }
+
+      render(<CodeBlock {...htmlProps} />)
+
+      expect(mocks.HtmlArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.CodeBlockView).toHaveBeenCalledOnce()
+      expect(screen.getByText('<h1>Hello</h1>')).toBeInTheDocument()
+    })
+
+    it('should fall back to CodeBlockView for React artifacts when artifact cards are disabled', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-tsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }',
+        allowArtifactCards: false
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.CodeBlockView).toHaveBeenCalledOnce()
+      expect(screen.getByText('export default function App() { return <div>Hello</div> }')).toBeInTheDocument()
+    })
   })
 })

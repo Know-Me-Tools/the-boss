@@ -55,7 +55,7 @@ const MainTextBlock: React.FC<Props> = ({ block, citationBlockId, role, mentions
           {block.content}
         </p>
       ) : (
-        <Markdown block={block} postProcess={processContent} />
+        <Markdown block={block} postProcess={processContent} allowArtifactCards={role === 'assistant'} />
       )}
     </>
   )
