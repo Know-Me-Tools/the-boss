@@ -13,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   isOpenFenceBlock: vi.fn(),
   selectById: vi.fn(),
   useSettings: vi.fn().mockReturnValue({ codeFancyBlock: true }),
+  useArtifactSettings: vi.fn().mockReturnValue({
+    settings: {
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default'
+    }
+  }),
   CodeBlockView: vi.fn(({ onSave, children }) => (
     <div>
       <code>{children}</code>
@@ -26,6 +32,14 @@ const mocks = vi.hoisted(() => ({
       <div>{html}</div>
       <button type="button" onClick={() => onSave('new html content')}>
         Save HTML
+      </button>
+    </div>
+  )),
+  ReactArtifactsCard: vi.fn(({ onSave, code }) => (
+    <div>
+      <div>{code}</div>
+      <button type="button" onClick={() => onSave('new react content')}>
+        Save React
       </button>
     </div>
   ))
@@ -58,9 +72,14 @@ vi.mock('@renderer/hooks/useSettings', () => ({
   useSettings: () => mocks.useSettings()
 }))
 
+vi.mock('@renderer/hooks/useArtifactSettings', () => ({
+  useArtifactSettings: () => mocks.useArtifactSettings()
+}))
+
 vi.mock('@renderer/components/CodeBlockView', () => ({
   CodeBlockView: mocks.CodeBlockView,
-  HtmlArtifactsCard: mocks.HtmlArtifactsCard
+  HtmlArtifactsCard: mocks.HtmlArtifactsCard,
+  ReactArtifactsCard: mocks.ReactArtifactsCard
 }))
 
 // Mock ClickableFilePath
@@ -183,6 +202,32 @@ describe('CodeBlock', () => {
         codeBlockId: 'test-code-block-id',
         newContent: 'new html content'
       })
+    })
+
+    it('should route React artifacts to the React artifact card', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-tsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }'
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
+    it('should keep jsx-artifact as a compatibility alias', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-jsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }'
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
     })
   })
 })

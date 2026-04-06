@@ -3,6 +3,14 @@ import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
+import type {
+  ArtifactLibraryQuery,
+  ArtifactMetadataPatch,
+  ArtifactRecord,
+  ArtifactRecordDraft,
+  CompileReactArtifactRequest,
+  CompileReactArtifactResponse
+} from '@shared/artifacts'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import type {
@@ -19,6 +27,20 @@ import type {
 import type { MCPServerLogEntry } from '@shared/config/types'
 import type { ExternalAppInfo } from '@shared/externalApp/types'
 import { IpcChannel } from '@shared/IpcChannel'
+import type { RendererRuntimeEnvironment } from '@shared/runtime'
+import { resolveWindowKindFromPath } from '@shared/runtime'
+import type {
+  ImportGraphQLServiceRequest,
+  ImportOpenAPIServiceRequest,
+  ImportSupabaseServiceRequest,
+  InvokeServiceResponse,
+  ServiceConnectionTestResult,
+  ServiceDefinition,
+  ServiceListQuery,
+  ServiceSubscriptionEvent,
+  ServiceToolSummary,
+  UpdateServiceMetadataRequest
+} from '@shared/services'
 import type { Notification } from '@types'
 import type {
   AddMemoryOptions,
@@ -94,6 +116,18 @@ export function tracedInvoke(channel: string, spanContext: SpanContext | undefin
     return ipcRenderer.invoke(channel, ...args, data)
   }
   return ipcRenderer.invoke(channel, ...args)
+}
+
+const windowKind = resolveWindowKindFromPath(window.location.pathname)
+const runtimeEnvironment: RendererRuntimeEnvironment = {
+  windowKind,
+  capabilities: {
+    hasPreloadBridge: true,
+    hasFileApi: true,
+    hasShellApi: true,
+    canLogToMain: true,
+    isTrustedPreview: windowKind === 'ArtifactPreview'
+  }
 }
 
 // Custom APIs for renderer
@@ -377,6 +411,74 @@ const api = {
     set: (key: string, value: any, isNotify: boolean = false) =>
       ipcRenderer.invoke(IpcChannel.Config_Set, key, value, isNotify),
     get: (key: string) => ipcRenderer.invoke(IpcChannel.Config_Get, key)
+  },
+  artifacts: {
+    getRuntimeProfiles: () => ipcRenderer.invoke(IpcChannel.Artifact_GetRuntimeProfiles),
+    getThemes: () => ipcRenderer.invoke(IpcChannel.Artifact_GetThemes),
+    getPackageRegistry: () => ipcRenderer.invoke(IpcChannel.Artifact_GetPackageRegistry),
+    save: (draft: ArtifactRecordDraft): Promise<ArtifactRecord> => ipcRenderer.invoke(IpcChannel.Artifact_Save, draft),
+    list: (query?: ArtifactLibraryQuery): Promise<ArtifactRecord[]> =>
+      ipcRenderer.invoke(IpcChannel.Artifact_List, query),
+    get: (id: string): Promise<ArtifactRecord | null> => ipcRenderer.invoke(IpcChannel.Artifact_Get, id),
+    updateMetadata: (id: string, patch: ArtifactMetadataPatch): Promise<ArtifactRecord> =>
+      ipcRenderer.invoke(IpcChannel.Artifact_UpdateMetadata, { id, patch }),
+    fork: (id: string): Promise<ArtifactRecord> => ipcRenderer.invoke(IpcChannel.Artifact_Fork, id),
+    delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Artifact_Delete, id),
+    compileReact: (request: CompileReactArtifactRequest): Promise<CompileReactArtifactResponse> =>
+      ipcRenderer.invoke(IpcChannel.Artifact_CompileReact, request)
+  },
+  runtime: {
+    environment: runtimeEnvironment,
+    getEnvironment: (): RendererRuntimeEnvironment => runtimeEnvironment
+  },
+  preview: {
+    openTempHtml: (path: string): Promise<void> => ipcRenderer.invoke(IpcChannel.Open_Path, path),
+    getRuntimeUrl: (sessionId: string): string => {
+      const url = new URL(window.location.href)
+      url.hash = ''
+      url.search = ''
+      url.pathname = url.pathname.replace(/[^/]+$/, 'artifactPreview.html')
+      url.searchParams.set('session', sessionId)
+      return url.toString()
+    }
+  },
+  services: {
+    list: (query?: ServiceListQuery): Promise<ServiceDefinition[]> =>
+      ipcRenderer.invoke(IpcChannel.Services_List, query),
+    get: (id: string): Promise<ServiceDefinition | null> => ipcRenderer.invoke(IpcChannel.Services_Get, id),
+    importOpenAPI: (request: ImportOpenAPIServiceRequest): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_ImportOpenAPI, request),
+    importGraphQL: (request: ImportGraphQLServiceRequest): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_ImportGraphQL, request),
+    importSupabase: (request: ImportSupabaseServiceRequest): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_ImportSupabase, request),
+    updateMetadata: (id: string, patch: UpdateServiceMetadataRequest['patch']): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_UpdateMetadata, { id, patch }),
+    delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Services_Delete, id),
+    listProjectedTools: (): Promise<ServiceToolSummary[]> => ipcRenderer.invoke(IpcChannel.Services_ListProjectedTools),
+    invokeTool: (toolId: string, input: Record<string, unknown>): Promise<InvokeServiceResponse> =>
+      ipcRenderer.invoke(IpcChannel.Services_InvokeTool, { toolId, input }),
+    invokeOperation: (
+      serviceId: string,
+      operationId: string,
+      input: Record<string, unknown>
+    ): Promise<InvokeServiceResponse> =>
+      ipcRenderer.invoke(IpcChannel.Services_InvokeOperation, { serviceId, operationId, input }),
+    subscribe: (
+      serviceId: string,
+      operationId: string,
+      variables: Record<string, unknown>
+    ): Promise<{ subscriptionId: string }> =>
+      ipcRenderer.invoke(IpcChannel.Services_Subscribe, { serviceId, operationId, variables }),
+    unsubscribe: (subscriptionId: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannel.Services_Unsubscribe, subscriptionId),
+    testConnection: (id: string): Promise<ServiceConnectionTestResult> =>
+      ipcRenderer.invoke(IpcChannel.Services_TestConnection, id),
+    onSubscriptionEvent: (callback: (event: ServiceSubscriptionEvent) => void) => {
+      const listener = (_: Electron.IpcRendererEvent, event: ServiceSubscriptionEvent) => callback(event)
+      ipcRenderer.on(IpcChannel.Services_SubscriptionEvent, listener)
+      return () => ipcRenderer.off(IpcChannel.Services_SubscriptionEvent, listener)
+    }
   },
   miniWindow: {
     show: () => ipcRenderer.invoke(IpcChannel.MiniWindow_Show),

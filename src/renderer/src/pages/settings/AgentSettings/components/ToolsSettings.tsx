@@ -195,6 +195,7 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
                           {tool.type === 'mcp' ? (
                             <Tag color="default">{t('agent.settings.tooling.preapproved.mcpBadge', 'MCP tool')}</Tag>
                           ) : null}
+                          {tool.type === 'service' ? <Tag color="processing">Service</Tag> : null}
                           {tool.requirePermissions ? (
                             <Tag color="warning">
                               {t(

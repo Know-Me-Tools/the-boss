@@ -1,3 +1,6 @@
+// IMPORTANT: Import bootstrapLogger first to ensure logger is initialized before any module that uses it
+import './bootstrapLogger'
+
 import KeyvStorage from '@kangfenmao/keyv-storage'
 
 import { startAutoSync } from './services/BackupService'

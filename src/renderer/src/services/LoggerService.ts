@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
+import { getRendererCapabilities, getRendererWindowKind, getSafeWindowApi } from '@renderer/runtime/environment'
 import type { LogContextData, LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import { LEVEL, LEVEL_MAP } from '@shared/config/logger'
-import { IpcChannel } from '@shared/IpcChannel'
 
 // check if the current process is a worker
 const IS_WORKER = typeof window === 'undefined'
@@ -29,7 +29,7 @@ class LoggerService {
   private level: LogLevel = DEFAULT_LEVEL
   private logToMainLevel: LogLevel = MAIN_LOG_LEVEL
 
-  private window: string = ''
+  private window?: string
   private module: string = ''
   private context: Record<string, any> = {}
 
@@ -80,6 +80,9 @@ class LoggerService {
    */
   public initWindowSource(window: string): LoggerService {
     if (this.window) {
+      if (this.window === window) {
+        return this
+      }
       console.warn(
         '[LoggerService] window source already initialized, current: %s, want to set: %s',
         this.window,
@@ -89,6 +92,19 @@ class LoggerService {
     }
     this.window = window
     return this
+  }
+
+  private resolveWindowSource(): string {
+    if (this.window) {
+      return this.window
+    }
+
+    const runtimeWindowKind = getRendererWindowKind()
+    if (runtimeWindowKind && runtimeWindowKind !== 'unknown') {
+      return runtimeWindowKind
+    }
+
+    return IS_WORKER ? 'Worker' : 'UNKNOWN'
   }
 
   /**
@@ -114,11 +130,7 @@ class LoggerService {
    * @param data - Additional data to log
    */
   private processLog(level: LogLevel, message: string, data: any[]): void {
-    let windowSource = this.window
-    if (!this.window) {
-      console.error('[LoggerService] window source not initialized, please initialize window source first')
-      windowSource = 'UNKNOWN'
-    }
+    const windowSource = this.resolveWindowSource()
 
     const currentLevel = LEVEL_MAP[level]
 
@@ -179,11 +191,12 @@ class LoggerService {
         data = data.slice(0, -1)
       }
 
-      // In renderer process, use window.api.logToMain to send log to main process
-      if (!IS_WORKER) {
-        void window.electron.ipcRenderer.invoke(IpcChannel.App_LogToMain, source, level, message, data)
-      } else {
-        //TODO support worker to send log to main process
+      if (!IS_WORKER && getRendererCapabilities().canLogToMain) {
+        try {
+          void getSafeWindowApi()?.logToMain?.(source, level, message, data)
+        } catch (error) {
+          console.warn('[LoggerService] Failed to forward renderer log to main process', error)
+        }
       }
     }
   }

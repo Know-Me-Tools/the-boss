@@ -1,6 +1,9 @@
+import { loggerService } from '@logger'
 import i18n from '@renderer/i18n'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+
+loggerService.initWindowSource('TraceWindow')
 
 import { TraceIcon } from './pages/Component'
 import { TracePage } from './pages/index'

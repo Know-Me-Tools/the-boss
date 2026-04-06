@@ -51,7 +51,7 @@ export const isAgentType = (type: unknown): type is AgentType => {
 export const ToolSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(['builtin', 'mcp', 'custom']),
+  type: z.enum(['builtin', 'mcp', 'service', 'custom']),
   description: z.string().optional(),
   requirePermissions: z.boolean().optional()
 })

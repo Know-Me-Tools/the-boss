@@ -58,20 +58,23 @@ import GroqProviderLogo from '@renderer/assets/images/providers/groq.png?url'
 import OpenAiProviderLogo from '@renderer/assets/images/providers/openai.png?url'
 import SiliconFlowProviderLogo from '@renderer/assets/images/providers/silicon.png?url'
 import ZhipuProviderLogo from '@renderer/assets/images/providers/zhipu.png?url'
+import { getMiniAppStorage } from '@renderer/runtime/rendererPlatform'
 import type { MinAppType } from '@renderer/types'
 
 const logger = loggerService.withContext('Config:minapps')
 
 // 加载自定义小应用
 const loadCustomMiniApp = async (): Promise<MinAppType[]> => {
+  const storage = getMiniAppStorage()
+
   try {
     let content: string
     try {
-      content = await window.api.file.read('custom-minapps.json')
+      content = await storage.read()
     } catch (error) {
       // 如果文件不存在，创建一个空的 JSON 数组
       content = '[]'
-      await window.api.file.writeWithId('custom-minapps.json', content)
+      await storage.write(content)
     }
 
     const customApps = JSON.parse(content)
@@ -85,6 +88,7 @@ const loadCustomMiniApp = async (): Promise<MinAppType[]> => {
       supportedRegions: ['CN', 'Global'] // Custom mini apps should always be visible for all regions
     }))
   } catch (error) {
+    logger.warn(`Custom mini apps fell back after storage mode "${storage.kind}" failed.`)
     logger.error('Failed to load custom mini apps:', error as Error)
     return []
   }
