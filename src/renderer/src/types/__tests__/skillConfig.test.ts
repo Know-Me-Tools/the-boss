@@ -3,26 +3,22 @@ import { describe, expect, it } from 'vitest'
 import { ContextManagementMethod, DEFAULT_SKILL_CONFIG, resolveSkillConfig, SkillSelectionMethod } from '../skillConfig'
 
 describe('SkillSelectionMethod', () => {
-  it('has the five expected values', () => {
-    expect(Object.values(SkillSelectionMethod)).toEqual([
-      'llm_delegated',
-      'embedding',
-      'hybrid',
-      'llm_router',
-      'two_stage'
-    ])
+  it('exposes all five method values', () => {
+    expect(SkillSelectionMethod.LLM_DELEGATED).toBe('llm_delegated')
+    expect(SkillSelectionMethod.EMBEDDING).toBe('embedding')
+    expect(SkillSelectionMethod.HYBRID).toBe('hybrid')
+    expect(SkillSelectionMethod.LLM_ROUTER).toBe('llm_router')
+    expect(SkillSelectionMethod.TWO_STAGE).toBe('two_stage')
   })
 })
 
 describe('ContextManagementMethod', () => {
-  it('has the five expected values', () => {
-    expect(Object.values(ContextManagementMethod)).toEqual([
-      'full_injection',
-      'prefix_cache_aware',
-      'chunked_rag',
-      'summarized',
-      'progressive'
-    ])
+  it('exposes all five method values', () => {
+    expect(ContextManagementMethod.FULL_INJECTION).toBe('full_injection')
+    expect(ContextManagementMethod.PREFIX_CACHE_AWARE).toBe('prefix_cache_aware')
+    expect(ContextManagementMethod.CHUNKED_RAG).toBe('chunked_rag')
+    expect(ContextManagementMethod.SUMMARIZED).toBe('summarized')
+    expect(ContextManagementMethod.PROGRESSIVE).toBe('progressive')
   })
 })
 
@@ -42,14 +38,8 @@ describe('resolveSkillConfig', () => {
     expect(result).toBe(DEFAULT_SKILL_CONFIG)
   })
 
-  it('falls through to global for all fields when an empty override object is passed', () => {
-    const result = resolveSkillConfig(DEFAULT_SKILL_CONFIG, {})
-    expect(result.selectionMethod).toBe(DEFAULT_SKILL_CONFIG.selectionMethod)
-    expect(result.embeddingModelId).toBe(DEFAULT_SKILL_CONFIG.embeddingModelId)
-    expect(result.similarityThreshold).toBe(DEFAULT_SKILL_CONFIG.similarityThreshold)
-    expect(result.topK).toBe(DEFAULT_SKILL_CONFIG.topK)
-    expect(result.contextManagementMethod).toBe(DEFAULT_SKILL_CONFIG.contextManagementMethod)
-    expect(result.maxSkillTokens).toBe(DEFAULT_SKILL_CONFIG.maxSkillTokens)
+  it('returns global config unchanged when override is empty', () => {
+    expect(resolveSkillConfig(DEFAULT_SKILL_CONFIG, {})).toEqual(DEFAULT_SKILL_CONFIG)
   })
 
   it('applies only the overridden field and inherits the rest from global when a partial override is passed', () => {

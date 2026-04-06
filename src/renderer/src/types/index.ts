@@ -28,6 +28,7 @@ export * from './plugin'
 export * from './provider'
 export * from './serialize'
 export * from './skill'
+export * from './skillConfig'
 
 export type McpMode = 'disabled' | 'auto' | 'manual'
 
