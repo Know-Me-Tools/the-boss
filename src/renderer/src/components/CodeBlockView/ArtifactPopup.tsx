@@ -161,33 +161,6 @@ const ArtifactPopup = ({
         variables?: Record<string, unknown>
       }
 
-      if (data?.source === 'artifact-preview-session-request' && data.requestId === undefined) {
-        if (previewDocument.trim()) {
-          const sessionId = previewSessionIdRef.current
-          upsertArtifactPreviewSession({
-            id: sessionId,
-            title,
-            kind: previewKind,
-            document: previewDocument,
-            themeId: previewThemeId,
-            accessPolicy: previewAccessPolicy ?? {
-              internetEnabled: true,
-              serviceIds: []
-            },
-            updatedAt: new Date().toISOString()
-          })
-
-          previewFrameRef.current?.contentWindow?.postMessage(
-            {
-              source: 'artifact-preview-session-update',
-              sessionId
-            },
-            '*'
-          )
-        }
-        return
-      }
-
       if (!data || data.source !== 'artifact-service-request' || !data.kind) {
         return
       }
@@ -251,7 +224,7 @@ const ArtifactPopup = ({
       disposeSubscriptionEvents()
       window.removeEventListener('message', handleMessage)
     }
-  }, [previewAccessPolicy, previewDocument, previewKind, previewThemeId, title])
+  }, [previewDocument, title])
 
   const panelSizes = viewMode === 'split' ? splitSizes : viewMode === 'code' ? ['100%', 0] : [0, '100%']
 

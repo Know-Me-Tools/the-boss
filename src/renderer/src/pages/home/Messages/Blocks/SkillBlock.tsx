@@ -1,10 +1,9 @@
 import { CheckOutlined } from '@ant-design/icons'
-import { Tooltip } from '@cherrystudio/ui'
 import { loggerService } from '@logger'
 import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { MessageBlockStatus, type SkillMessageBlock } from '@renderer/types/newMessage'
 import { SkillSelectionMethod } from '@renderer/types/skillConfig'
-import { Collapse, Tag } from 'antd'
+import { Collapse, Tag, Tooltip } from 'antd'
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -81,7 +80,7 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
           children: (
             <SkillContent>
               {isCompleted && block.content && (
-                <Tooltip content={t('common.copy')} delay={800}>
+                <Tooltip title={t('common.copy')} mouseEnterDelay={0.8}>
                   <ActionButton
                     className="message-action-button"
                     onClick={(e) => {
