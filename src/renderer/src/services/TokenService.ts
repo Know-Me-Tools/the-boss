@@ -300,6 +300,15 @@ export function estimateSingleMessageTokens(message: Message): number {
         break
       }
 
+      case MessageBlockType.CONTEXT_MANAGEMENT: {
+        const cm = block
+        const text = [cm.payload.alterationSummary, cm.payload.summaryPreview].filter(Boolean).join('\n')
+        if (text) {
+          totalTokens += estimateTextTokens(text)
+        }
+        break
+      }
+
       default:
         if ((block as { content?: string }).content && typeof (block as { content?: string }).content === 'string') {
           totalTokens += estimateTextTokens((block as { content: string }).content)

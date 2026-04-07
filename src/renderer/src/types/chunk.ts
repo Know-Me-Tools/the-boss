@@ -1,5 +1,8 @@
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+
 import type { ExternalToolResult, KnowledgeReference, MCPToolResponse, NormalToolResponse, WebSearchResponse } from '.'
 import type { Response, ResponseError } from './newMessage'
+import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
 
 /**
  * Provider metadata type for passing provider-specific data through chunks
@@ -43,6 +46,9 @@ export enum ChunkType {
   THINKING_START = 'thinking.start',
   THINKING_DELTA = 'thinking.delta',
   THINKING_COMPLETE = 'thinking.complete',
+  SKILL_ACTIVATED = 'skill.activated',
+  SKILL_CONTENT_DELTA = 'skill.content_delta',
+  SKILL_COMPLETE = 'skill.complete',
   LLM_WEB_SEARCH_IN_PROGRESS = 'llm_websearch_in_progress',
   LLM_WEB_SEARCH_COMPLETE = 'llm_websearch_complete',
   LLM_RESPONSE_COMPLETE = 'llm_response_complete',
@@ -52,7 +58,8 @@ export enum ChunkType {
   SEARCH_COMPLETE_UNION = 'search_complete_union',
   VIDEO_SEARCHED = 'video.searched',
   IMAGE_SEARCHED = 'image.searched',
-  RAW = 'raw'
+  RAW = 'raw',
+  CONTEXT_MANAGEMENT = 'context_management'
 }
 
 export interface LLMResponseCreatedChunk {
@@ -453,6 +460,37 @@ export interface RawChunk {
   metadata?: Record<string, any>
 }
 
+export interface SkillActivatedChunk {
+  type: ChunkType.SKILL_ACTIVATED
+  skillId: string
+  skillName: string
+  triggerTokens: string[]
+  selectionReason: string
+  estimatedTokens: number
+  content: string
+  activationMethod: SkillSelectionMethod
+  similarityScore?: number
+  matchedKeywords?: string[]
+  contextManagementMethod: ContextManagementMethod
+}
+
+export interface SkillContentDeltaChunk {
+  type: ChunkType.SKILL_CONTENT_DELTA
+  skillId: string
+  delta: string
+}
+
+export interface SkillCompleteChunk {
+  type: ChunkType.SKILL_COMPLETE
+  skillId: string
+  finalTokenCount: number
+}
+
+export interface ContextManagementChunk {
+  type: ChunkType.CONTEXT_MANAGEMENT
+  payload: ContextManagementStreamPayload
+}
+
 export type Chunk =
   | BlockCreatedChunk // 消息块创建，无意义
   | BlockInProgressChunk // 消息块进行中，无意义
@@ -480,6 +518,10 @@ export type Chunk =
   | ThinkingStartChunk // 思考内容生成开始
   | ThinkingDeltaChunk // 思考内容生成中
   | ThinkingCompleteChunk // 思考内容生成完成
+  | SkillActivatedChunk // 技能激活
+  | SkillContentDeltaChunk // 技能内容流式传输中
+  | SkillCompleteChunk // 技能注入完成
+  | ContextManagementChunk // 上下文管理（流式）
   | LLMWebSearchInProgressChunk // 大模型内部搜索进行中，无明显特征
   | LLMWebSearchCompleteChunk // 大模型内部搜索完成
   | LLMResponseCompleteChunk // 大模型响应完成，未来用于作为流式处理的完成标记

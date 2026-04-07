@@ -1,3 +1,4 @@
+import { cacheService } from '@data/CacheService'
 import { loggerService } from '@logger'
 import { getAnthropicReasoningParams } from '@renderer/aiCore/utils/reasoning'
 import type { QuickPanelTriggerInfo } from '@renderer/components/QuickPanel'
@@ -23,7 +24,6 @@ import { getInputbarConfig } from '@renderer/pages/home/Inputbar/registry'
 import type { ToolContext } from '@renderer/pages/home/Inputbar/types'
 import { TopicType } from '@renderer/pages/home/Inputbar/types'
 import { isSoulModeEnabled } from '@renderer/pages/settings/AgentSettings/shared'
-import { CacheService } from '@renderer/services/CacheService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { pauseTrace } from '@renderer/services/SpanManagerService'
 import { estimateUserPromptUsage } from '@renderer/services/TokenService'
@@ -160,8 +160,8 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
     setText,
     isEmpty: inputEmpty
   } = useInputText({
-    initialValue: CacheService.get<string>(draftCacheKey) ?? '',
-    onChange: (value) => CacheService.set(draftCacheKey, value, DRAFT_CACHE_TTL)
+    initialValue: cacheService.getCasual<string>(draftCacheKey) ?? '',
+    onChange: (value) => cacheService.setCasual(draftCacheKey, value, DRAFT_CACHE_TTL)
   })
   const {
     textareaRef,
@@ -274,7 +274,7 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
           action: () => {
             // Insert command into textarea
             setText((prev: string) => {
-              const textArea = document.querySelector('.inputbar textarea') as HTMLTextAreaElement | null
+              const textArea = document.querySelector<HTMLTextAreaElement>('.inputbar textarea')
               if (!textArea) {
                 return prev + ' ' + cmd.command
               }

@@ -26,6 +26,9 @@ export const sessionsTable = sqliteTable('sessions', {
 
   configuration: text('configuration'), // JSON, extensible settings
 
+  /** Last observed total token count from SDK finish chunk; used for compact threshold after restart */
+  last_total_tokens: integer('last_total_tokens'),
+
   sort_order: integer('sort_order').notNull().default(0), // Manual sort order (lower = first)
 
   created_at: text('created_at').notNull(),

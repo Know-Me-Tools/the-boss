@@ -1,58 +1,46 @@
-import { isMac } from '@main/constant'
-import { windowService } from '@main/services/WindowService'
-import { locales } from '@main/utils/locales'
-import { PUBLIC_DOCS_URL, PUBLIC_ISSUES_URL, PUBLIC_RELEASES_URL, PUBLIC_WEBSITE_URL } from '@shared/config/branding'
+import { application } from '@main/core/application'
+import { BaseService, Conditional, Injectable, onPlatform, Phase, ServicePhase } from '@main/core/lifecycle'
+import { getAppLanguage, locales } from '@main/utils/language'
 import { IpcChannel } from '@shared/IpcChannel'
 import type { MenuItemConstructorOptions } from 'electron'
 import { app, Menu, shell } from 'electron'
 
-import { configManager } from './ConfigManager'
-export class AppMenuService {
-  private languageChangeCallback?: (newLanguage: string) => void
-
-  constructor() {
-    // Subscribe to language change events
-    this.languageChangeCallback = () => {
-      this.setupApplicationMenu()
-    }
-    configManager.subscribe('language', this.languageChangeCallback)
+@Injectable('AppMenuService')
+@ServicePhase(Phase.WhenReady)
+@Conditional(onPlatform('darwin'))
+export class AppMenuService extends BaseService {
+  protected async onInit() {
+    const preferenceService = application.get('PreferenceService')
+    this.registerDisposable(preferenceService.subscribeChange('app.language', () => this.setupApplicationMenu()))
+    this.setupApplicationMenu()
   }
 
-  public destroy(): void {
-    // Clean up subscription to prevent memory leaks
-    if (this.languageChangeCallback) {
-      configManager.unsubscribe('language', this.languageChangeCallback)
-    }
-  }
-
-  public setupApplicationMenu(): void {
-    const locale = locales[configManager.getLanguage()]
+  private setupApplicationMenu(): void {
+    const locale = locales[getAppLanguage()]
     const { appMenu } = locale.translation
-    const appName = app.getName()
 
     const template: MenuItemConstructorOptions[] = [
       {
-        label: appName,
+        label: app.name,
         submenu: [
           {
-            label: appMenu.about + ' ' + appName,
+            label: appMenu.about + ' ' + app.name,
             click: () => {
-              // Emit event to navigate to About page
-              const mainWindow = windowService.getMainWindow()
+              const mainWindow = application.get('WindowService').getMainWindow()
               if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send(IpcChannel.Windows_NavigateToAbout)
-                windowService.showMainWindow()
+                application.get('WindowService').showMainWindow()
               }
             }
           },
           { type: 'separator' },
           { role: 'services', label: appMenu.services },
           { type: 'separator' },
-          { role: 'hide', label: `${appMenu.hide} ${appName}` },
+          { role: 'hide', label: `${appMenu.hide} ${app.name}` },
           { role: 'hideOthers', label: appMenu.hideOthers },
           { role: 'unhide', label: appMenu.unhide },
           { type: 'separator' },
-          { role: 'quit', label: `${appMenu.quit} ${appName}` }
+          { role: 'quit', label: `${appMenu.quit} ${app.name}` }
         ]
       },
       {
@@ -101,25 +89,25 @@ export class AppMenuService {
           {
             label: appMenu.website,
             click: () => {
-              void shell.openExternal(PUBLIC_WEBSITE_URL)
+              void shell.openExternal('https://cherry-ai.com')
             }
           },
           {
             label: appMenu.documentation,
             click: () => {
-              void shell.openExternal(PUBLIC_DOCS_URL)
+              void shell.openExternal('https://cherry-ai.com/docs')
             }
           },
           {
             label: appMenu.feedback,
             click: () => {
-              void shell.openExternal(PUBLIC_ISSUES_URL)
+              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/issues/new/choose')
             }
           },
           {
             label: appMenu.releases,
             click: () => {
-              void shell.openExternal(PUBLIC_RELEASES_URL)
+              void shell.openExternal('https://github.com/CherryHQ/cherry-studio/releases')
             }
           }
         ]
@@ -130,5 +118,3 @@ export class AppMenuService {
     Menu.setApplicationMenu(menu)
   }
 }
-
-export const appMenuService = isMac ? new AppMenuService() : null

@@ -13,11 +13,13 @@ import styled from 'styled-components'
 import BlockErrorFallback from './BlockErrorFallback'
 import CitationBlock from './CitationBlock'
 import CompactBlock from './CompactBlock'
+import ContextManagementBlock from './ContextManagementBlock'
 import ErrorBlock from './ErrorBlock'
 import FileBlock from './FileBlock'
 import ImageBlock from './ImageBlock'
 import MainTextBlock from './MainTextBlock'
 import PlaceholderBlock from './PlaceholderBlock'
+import SkillBlock from './SkillBlock'
 import ThinkingBlock from './ThinkingBlock'
 import ToolBlock from './ToolBlock'
 import ToolBlockGroup from './ToolBlockGroup'
@@ -229,6 +231,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
           case MessageBlockType.THINKING:
             blockComponent = <ThinkingBlock key={block.id} block={block} />
             break
+          case MessageBlockType.SKILL:
+            blockComponent = <SkillBlock key={block.id} block={block} />
+            break
           case MessageBlockType.TRANSLATION:
             blockComponent = <TranslationBlock key={block.id} block={block} />
             break
@@ -237,6 +242,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
             break
           case MessageBlockType.COMPACT:
             blockComponent = <CompactBlock key={block.id} block={block} />
+            break
+          case MessageBlockType.CONTEXT_MANAGEMENT:
+            blockComponent = <ContextManagementBlock key={block.id} block={block} />
             break
           default:
             logger.warn('Unsupported block type in MessageBlockRenderer:', (block as any).type, block)

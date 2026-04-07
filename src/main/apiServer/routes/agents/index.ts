@@ -1,6 +1,8 @@
 import express from 'express'
 
 import { agentHandlers, messageHandlers, sessionHandlers } from './handlers'
+import { createAgUiMessage } from './handlers/messagesAgUi'
+import { createBufferedMessageWithA2ui } from './handlers/messagesRestA2ui'
 import { checkAgentExists, handleValidationErrors } from './middleware'
 import {
   validateAgent,
@@ -955,6 +957,74 @@ const createMessagesRouter = (): express.Router => {
    *               $ref: '#/components/schemas/ErrorResponse'
    */
   messagesRouter.post('/', validateSessionMessage, handleValidationErrors, messageHandlers.createMessage)
+
+  /**
+   * @swagger
+   * /agents/{agentId}/sessions/{sessionId}/messages/ag-ui:
+   *   post:
+   *     summary: Stream session message as AG-UI events (SSE)
+   *     description: >
+   *       Agent–User Interaction protocol: Server-Sent Events with JSON event types (RunStarted, TEXT_MESSAGE_*, RunFinished).
+   *       See https://docs.ag-ui.com/concepts/events — pinned refs in `theboss.protocol.meta` events. Protocol versions in OpenAPI API info.
+   *     tags: [AG-UI]
+   *     security:
+   *       - BearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: agentId
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: sessionId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateSessionMessageRequest'
+   *     responses:
+   *       200:
+   *         description: text/event-stream of AG-UI JSON events
+   */
+  messagesRouter.post('/ag-ui', validateSessionMessage, handleValidationErrors, createAgUiMessage)
+
+  /**
+   * @swagger
+   * /agents/{agentId}/sessions/{sessionId}/messages/buffer:
+   *   post:
+   *     summary: Non-streaming message with optional A2UI JSON extraction
+   *     description: >
+   *       Returns `{ text, a2ui }` after the full assistant reply is collected. `a2ui` is set only when
+   *       the assistant output contains parseable JSON with a non-empty `type` field (A2UI v0.8 minimal validation).
+   *     tags: [A2UI]
+   *     security:
+   *       - BearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: agentId
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: sessionId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateSessionMessageRequest'
+   *     responses:
+   *       200:
+   *         description: Buffered text and optional A2UI object
+   */
+  messagesRouter.post('/buffer', validateSessionMessage, handleValidationErrors, createBufferedMessageWithA2ui)
 
   /**
    * @swagger

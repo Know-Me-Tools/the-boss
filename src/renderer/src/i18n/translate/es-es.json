@@ -395,6 +395,10 @@
     },
     "settings": {
       "advance": {
+        "contextStrategy": {
+          "inherit": "[to be translated]:Use inherited defaults",
+          "label": "[to be translated]:Context strategy"
+        },
         "envVars": {
           "description": "Establece variables de entorno personalizadas para el tiempo de ejecución del agente.",
           "helper": "Introduce variables de entorno personalizadas (una por línea, formato: CLAVE=valor)",
@@ -2278,6 +2282,17 @@
       },
       "success": "Backup exitoso"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "La creación de la rama ha fallado"
     },
@@ -2401,6 +2416,17 @@
       "code_style": "Estilo de código",
       "compact": {
         "title": "Conversación Compactada"
+      },
+      "contextManagement": {
+        "agent": "[to be translated]:Agent (SDK)",
+        "assistant": "[to be translated]:Assistant chat",
+        "messageCounts": "[to be translated]:Messages in prompt",
+        "summaryPreview": "[to be translated]:Summary preview",
+        "title": "[to be translated]:Context updated",
+        "tokensAfter": "[to be translated]:Tokens after",
+        "tokensBefore": "[to be translated]:Tokens before",
+        "tokensSaved": "[to be translated]:Tokens saved (est.)",
+        "trigger": "[to be translated]:Trigger"
       },
       "delete": {
         "content": "¿Está seguro de querer eliminar este mensaje?",
@@ -4019,10 +4045,20 @@
       "title": "Canales"
     },
     "contextStrategy": {
+      "agentConfiguration": "[to be translated]:Agent strategy defaults",
+      "agentLegacyStrategyWarning": "[to be translated]:This item used a strategy type that is not yet implemented for SDK sessions; threshold + /compact still applies. Saving will use SDK compaction (threshold) going forward.",
+      "agentPhase1Notice": "[to be translated]:Agent strategies (Phase 1): a non-None choice applies a token threshold and may run SDK /compact before your next message (resumed sessions). Chat-style summarize/hierarchical trimming is not applied to SDK transcripts yet (see docs).",
+      "agentSessionsDescription": "[to be translated]:Optional defaults for autonomous agents. Per-agent and per-session settings can override. Uses SDK resume and may run /compact when token usage exceeds your threshold.",
+      "agentSessionsTitle": "[to be translated]:Agent context (SDK sessions)",
+      "agentSummarizationModel": "[to be translated]:Agent summarization model",
+      "compactTriggerPlaceholder": "[to be translated]:Default 180000",
+      "compactTriggerTokens": "[to be translated]:Compact when prior turn ≥ tokens",
+      "compactTriggerTokensHelp": "[to be translated]:When the last turn’s total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).",
       "configuration": "[to be translated]:Strategy Configuration",
       "configurationHelp": "[to be translated]:Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.",
       "description": "[to be translated]:Choose how to manage conversation context when it approaches model limits. This prevents \"Prompt is too long\" errors while preserving important context.",
       "descriptions": {
+        "agent_sliding_window": "[to be translated]:Runs the Claude Agent SDK /compact when the last turn’s total token usage reaches your threshold (resumed sessions). Not the same as chat sliding-window trimming.",
         "hierarchical": "[to be translated]:Three-tier memory system: recent messages verbatim, older messages summarized, key facts extracted.",
         "none": "[to be translated]:No context management. May exceed model limits on long conversations.",
         "sliding_window": "[to be translated]:Keeps only the most recent messages within the token budget. Simple and predictable.",
@@ -4059,6 +4095,7 @@
       "title": "[to be translated]:Context Management",
       "tooltip": "[to be translated]:Automatically manages conversation context to prevent exceeding model limits. Applies to all conversations unless overridden.",
       "types": {
+        "agent_sliding_window": "[to be translated]:SDK compaction (token threshold)",
         "hierarchical": "[to be translated]:Hierarchical Memory",
         "none": "[to be translated]:None (No Management)",
         "sliding_window": "[to be translated]:Sliding Window",
@@ -5688,6 +5725,28 @@
       "zoom_out": "Reducir interfaz",
       "zoom_reset": "Restablecer zoom"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
+    },
     "skills": {
       "author": "Autor",
       "batchUninstallSuccess": "{{count}} habilidades desinstaladas",
@@ -5950,6 +6009,9 @@
       "reset": "Restablecer",
       "title": "Escala"
     }
+  },
+  "tab": {
+    "new": "[to be translated]:New Tab"
   },
   "title": {
     "apps": "Aplicaciones",

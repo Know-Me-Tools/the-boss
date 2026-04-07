@@ -18,10 +18,11 @@ import type {
 } from '@anthropic-ai/claude-agent-sdk'
 import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { Base64ImageSource, ContentBlockParam } from '@anthropic-ai/sdk/resources/messages/messages'
+import { mcpServerService } from '@data/services/McpServerService'
 import { loggerService } from '@logger'
-import { config as apiConfigService } from '@main/apiServer/config'
 import { validateModelId } from '@main/apiServer/utils'
 import { isWin } from '@main/constant'
+import { application } from '@main/core/application'
 import AssistantServer from '@main/mcpServers/assistant'
 import BrowserServer from '@main/mcpServers/browser/server'
 import ClawServer from '@main/mcpServers/claw'
@@ -32,6 +33,7 @@ import {
   getProxyProtocol
 } from '@main/services/proxy/nodeProxy'
 import { toAsarUnpackedPath } from '@main/utils'
+import { getAppLanguage } from '@main/utils/language'
 import { autoDiscoverGitBash, getBinaryPath } from '@main/utils/process'
 import { rtkRewrite } from '@main/utils/rtk'
 import getLoginShellEnvironment from '@main/utils/shell-env'
@@ -70,7 +72,7 @@ const shouldAutoApproveTools = process.env.CHERRY_AUTO_ALLOW_TOOLS === '1'
 const NO_RESUME_COMMANDS = ['/clear']
 
 const getLanguageInstruction = () => {
-  const lang = configManager.getLanguage()
+  const lang = getAppLanguage()
   return `
   IMPORTANT: You MUST use ${languageEnglishNameMap[lang]} language for ALL your outputs, including:
   (1) text responses, (2) tool call parameters like "description" fields, and (3) any user-facing content.
@@ -160,7 +162,11 @@ class ClaudeCodeService implements AgentServiceInterface {
       provider.apiKey = provider.id
     }
 
-    const apiConfig = await apiConfigService.get()
+    const apiConfig = application.get('PreferenceService').getMultiple({
+      host: 'feature.csaas.host',
+      port: 'feature.csaas.port',
+      apiKey: 'feature.csaas.api_key'
+    })
     const loginShellEnv = await getLoginShellEnvironment()
 
     // Auto-discover Git Bash path on Windows (already logs internally)
@@ -186,9 +192,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       // prevent claude agent sdk using bedrock api
       CLAUDE_CODE_USE_BEDROCK: '0',
       // TODO: fix the proxy api server
-      // ANTHROPIC_API_KEY: apiConfig.apiKey,
-      // ANTHROPIC_AUTH_TOKEN: apiConfig.apiKey,
-      // ANTHROPIC_BASE_URL: `http://${apiConfig.host}:${apiConfig.port}/${modelInfo.provider.id}`,
+      // ANTHROPIC_API_KEY: apiConfig['feature.csaas.api_key'],
+      // ANTHROPIC_AUTH_TOKEN: apiConfig['feature.csaas.api_key'],
+      // ANTHROPIC_BASE_URL: `http://${apiConfig['feature.csaas.host']}:${apiConfig['feature.csaas.port']}/${modelInfo.provider.id}`,
       ANTHROPIC_API_KEY: provider.apiKey,
       ANTHROPIC_AUTH_TOKEN: provider.apiKey,
       ANTHROPIC_BASE_URL: anthropicBaseUrl,
@@ -1014,19 +1020,20 @@ class ClaudeCodeService implements AgentServiceInterface {
 async function buildAssistantContext(): Promise<string> {
   const appVersion = app.getVersion()
   const platform = `${os.platform()} ${os.release()}`
-  const language = configManager.getLanguage()
-  const theme = configManager.getTheme()
-  const proxy = configManager.get<string>('proxy', '')
+  const language = application.get('PreferenceService').get('app.language')
+  const theme = application.get('PreferenceService').get('ui.theme_mode')
+  const proxy = application.get('PreferenceService').get('app.proxy.url')
 
   // Provider summary (no apiKey exposed)
+  // TODO: v2 refactor it
   const providers = configManager.get<Record<string, unknown>[]>('providers', [])
   const configuredProviders = providers
     .filter((p) => p.apiKey || p.enabled)
     .map((p) => `${p.name || p.id}(${(p.models as unknown[])?.length || 0} models)`)
 
   // MCP summary
-  const mcpServers = configManager.get<Record<string, unknown>[]>('mcpServers', [])
-  const activeMcp = mcpServers.filter((s) => s.isActive)
+  const mcpServers = (await mcpServerService.list({})).items
+  const activeMcp = (await mcpServerService.list({ isActive: true })).items
 
   // Network probe (parallel, 2s timeout each)
   const probeResults = await Promise.allSettled([

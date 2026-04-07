@@ -7,6 +7,7 @@ This file provides guidance to AI coding assistants when working with code in th
 - **Keep it clear**: Write code that is easy to read, maintain, and explain.
 - **Match the house style**: Reuse existing patterns, naming, and conventions.
 - **Search smart**: Prefer `ast-grep` for semantic queries; fall back to `rg`/`grep` when needed.
+- **Build with Tailwind CSS & Shadcn UI**: Use components from `@packages/ui` (Shadcn UI + Tailwind CSS) for every new UI component; never add `antd` or `styled-components`.
 - **Log centrally**: Route all logging through `loggerService` with the right context—no `console.log`.
 - **Research via subagent**: Lean on `subagent` for external docs, APIs, news, and references.
 - **Always propose before executing**: Before making any changes, clearly explain your planned approach and wait for explicit user approval to ensure alignment and prevent unwanted modifications.
@@ -76,143 +77,113 @@ If the skill is unavailable, directly read `.agents/skills/gh-create-issue/SKILL
 
 ### Electron Structure
 
-```
-src/
-  main/          # Node.js backend (Electron main process)
-  renderer/      # React UI (Electron renderer process)
-  preload/       # Secure IPC bridge (contextBridge)
-packages/
-  aiCore/        # @cherrystudio/ai-core — AI SDK middleware & provider abstraction
-  shared/        # Cross-process types, constants, IPC channel definitions
-  mcp-trace/     # OpenTelemetry tracing for MCP operations
-  ai-sdk-provider/  # Custom AI SDK provider implementations
-  extension-table-plus/  # TipTap table extension
-```
+- **Main Process** (`src/main/`): Node.js backend with services (MCP, Knowledge, Storage, etc.)
+- **Renderer Process** (`src/renderer/`): React UI
+- **Preload Scripts** (`src/preload/`): Secure IPC bridge
 
-### Key Path Aliases
+### Key Architectural Components
 
-| Alias | Resolves To |
-|---|---|
-| `@main` | `src/main/` |
-| `@renderer` | `src/renderer/src/` |
-| `@shared` | `packages/shared/` |
-| `@types` | `src/renderer/src/types/` |
-| `@logger` | `src/main/services/LoggerService` (main) / `src/renderer/src/services/LoggerService` (renderer) |
-| `@mcp-trace/trace-core` | `packages/mcp-trace/trace-core/` |
-| `@cherrystudio/ai-core` | `packages/aiCore/src/` |
+#### Data Management
 
-### Main Process (`src/main/`)
+**MUST READ**: [docs/en/references/data/README.md](docs/en/references/data/README.md) for system selection, architecture, and patterns.
 
-Node.js backend services. Key services:
+| System     | Use Case                        | APIs                                            |
+| ---------- | ------------------------------- | ----------------------------------------------- |
+| BootConfig | Early boot settings (pre-lifecycle) | `bootConfigService.get()`, `usePreference('BootConfig.*')` |
+| Cache      | Temp data (can lose)            | `useCache`, `useSharedCache`, `usePersistCache` |
+| Preference | User settings                   | `usePreference`                                 |
+| DataApi    | Business data (**critical**)    | `useQuery`, `useMutation`                       |
 
-| Service | Responsibility |
-|---|---|
-| `WindowService` | Electron window lifecycle management |
-| `MCPService` | Model Context Protocol server management |
-| `KnowledgeService` | RAG / knowledge base (via `@cherrystudio/embedjs`) |
-| `AnthropicService` | Anthropic API integration |
-| `LoggerService` | Winston-based structured logging (daily rotate) |
-| `StoreSyncService` | Syncs Redux state to/from main process |
-| `BackupManager` | Data backup/restore (WebDAV, S3, Nutstore) |
-| `ApiServerService` | Express HTTP API server (Swagger docs at `/api-docs`) |
-| `AppUpdater` | electron-updater auto-update |
-| `ShortcutService` | Global keyboard shortcuts |
-| `ThemeService` | System theme detection/application |
-| `SelectionService` | Text selection toolbar feature |
-| `CopilotService` | GitHub Copilot OAuth integration |
-| `PythonService` | Pyodide WASM Python runtime |
-| `OvmsManager` | OpenVINO model server management |
-| `NodeTraceService` | OpenTelemetry trace export |
+Database: SQLite + Drizzle ORM, schemas in `src/main/data/db/schemas/`, migrations via `yarn db:migrations:generate`
 
-Agents subsystem (`src/main/services/agents/`):
-- Drizzle ORM + LibSQL (SQLite) schema at `database/schema/index.ts`
-- Migrations in `resources/database/drizzle/`
-- **Currently undergoing v2 refactor** — only critical bug fixes accepted
+**DataApi boundary rule**: DataApi is for SQLite-backed business data only. No database table → no DataApi endpoint; use IPC instead. See [Scope & Boundaries](docs/en/references/data/api-design-guidelines.md#dataapi-scope--boundaries).
 
-### Renderer Process (`src/renderer/src/`)
+### Build System
 
-React 19 + Redux Toolkit SPA. Key structure:
+- **Electron-Vite**: Development and build tooling (v4.0.0)
+- **Rolldown-Vite**: Using experimental rolldown-vite instead of standard vite
+- **Workspaces**: Monorepo structure with `packages/` directory
+- **Multiple Entry Points**: Main app, mini window, selection toolbar
+- **Styled Components**: CSS-in-JS styling with SWC optimization
 
-```
-aiCore/          # Legacy middleware pipeline (deprecated, migrating to packages/aiCore)
-api/             # IPC call wrappers (typed electron API calls)
-components/      # Shared UI components (Ant Design 5 + styled-components + TailwindCSS v4)
-databases/       # Dexie (IndexedDB) — topics, files, message_blocks, etc.
-hooks/           # React hooks (useAssistant, useChatContext, useModel, etc.)
-pages/           # Route pages (home, settings, knowledge, paintings, notes, etc.)
-services/        # Frontend services (ApiService, ModelService, MemoryService, etc.)
-store/           # Redux Toolkit slices
-types/           # TypeScript type definitions
-workers/         # Web Workers
-windows/         # Multi-window entry points (mini, selection toolbar, trace)
-```
+### Testing Strategy
 
-### Redux Store (`src/renderer/src/store/`)
+- **Vitest**: Unit and integration testing
+- **Playwright**: End-to-end testing
+- **Component Testing**: React Testing Library
+- **Coverage**: Available via `yarn test:coverage`
 
-Slices (redux-persist enabled):
+#### Main Process Services (Lifecycle)
 
-| Slice | State |
-|---|---|
-| `assistants` | AI assistant configurations |
-| `settings` | App-wide settings |
-| `llm` | LLM provider/model configs |
-| `mcp` | MCP server configs |
-| `messageBlock` | Message block rendering state |
-| `knowledge` | Knowledge base entries |
-| `paintings` | Image generation state |
-| `memory` | Memory system config |
-| `websearch` | Web search settings |
-| `shortcuts` | Keyboard shortcuts |
-| `tabs` | Tab management |
+**MUST READ**: [docs/en/references/lifecycle/README.md](docs/en/references/lifecycle/README.md) — architecture, decision guides, usage patterns, and migration steps.
 
-> **BLOCKED**: Do not add new Redux slices or change existing state shape until v2.0.0.
+All main-process services that own long-lived resources or register persistent side effects **must** use the lifecycle system:
 
-### Database Layer
+- **Extend `BaseService`**, apply `@Injectable`, `@ServicePhase`, `@DependsOn` decorators
+- **Register in `serviceRegistry.ts`** (`src/main/core/application/serviceRegistry.ts`) — one line per service
+- **Access via `application.get('Name')`** (or `getOptional()` for `@Conditional` services)
+- **Use `this.ipcHandle()` / `this.ipcOn()`** for IPC — auto-cleaned on stop/destroy, returns `Disposable`
+- **Use `this.registerDisposable()`** for cleanup tracking — accepts `Disposable` objects or `() => void` cleanup functions
+- **Use `Emitter<T>` / `Event<T>`** for inter-service events, **`Signal<T>`** for one-shot completion
+- **Implement `Activatable`** for services with heavy on-demand resources (IPC stays registered, resources load/release via `onActivate()`/`onDeactivate()`)
+- **Do NOT** use `new` or manual singleton patterns — the container manages instantiation, ordering, and shutdown
 
-- **IndexedDB** (Dexie): `src/renderer/src/databases/index.ts`
-  - Tables: `files`, `topics`, `settings`, `knowledge_notes`, `translate_history`, `quick_phrases`, `message_blocks`, `translate_languages`
-  - Schema versioned with upgrade functions (`upgradeToV5`, `upgradeToV7`, `upgradeToV8`)
-  - **BLOCKED**: Do not modify schema until v2.0.0.
-- **SQLite** (Drizzle ORM + LibSQL): `src/main/services/agents/`
-  - Used for the agents subsystem
-  - DB path: `{userData}/Data/agents.db` (e.g., on macOS: `~/Library/Application Support/TheBossDev/Data/agents.db` in dev, `~/Library/Application Support/the-boss/Data/agents.db` in prod)
+For detailed code examples, see [Usage Guide](docs/en/references/lifecycle/lifecycle-usage.md). For migrating legacy services, see [Migration Guide](docs/en/references/lifecycle/lifecycle-migration-guide.md).
 
-### IPC Communication
+#### Non-Lifecycle Services (Direct-Import Singleton)
 
-- Channel constants defined in `packages/shared/IpcChannel.ts`
-- Renderer → Main: `ipcRenderer.invoke(IpcChannel.XXX, ...args)` via `api.*` wrappers in `src/preload/index.ts`
-- Main → Renderer: `webContents.send(channel, data)`
-- Tracing: `tracedInvoke()` in preload attaches OpenTelemetry span context to IPC calls
-- Typed API surface exposed via `contextBridge` as `window.api`
+Services without long-lived resources or persistent side effects: use **named export singleton** (`export const x = new X()`). No `getInstance()` patterns. See [Decision Guide](docs/en/references/lifecycle/lifecycle-decision-guide.md) for criteria.
 
-### AI Core (`packages/aiCore/`)
+### Key Patterns
 
-The `@cherrystudio/ai-core` package abstracts AI SDK providers:
+- **IPC Communication**: Secure main-renderer communication via preload scripts
+- **Service Layer**: Clear separation between UI and business logic
+- **Plugin Architecture**: Extensible via MCP servers and middleware
+- **Multi-language Support**: i18n with dynamic loading
+- **Theme System**: Light/dark themes with custom CSS variables
 
-```
-src/core/
-  providers/    # Provider registry (HubProvider, factory, registry)
-  middleware/   # LanguageModelV2Middleware pipeline (manager, wrapper)
-  plugins/      # Built-in plugins
-  runtime/      # Runtime execution
-  options/      # Request option preparation
+## v2 Refactoring (In Progress)
+
+The v2 branch is undergoing a major refactoring effort:
+
+### Data Layer
+
+- **Removing**: Redux, Dexie
+- **Adopting**: Cache / Preference / DataApi architecture (see [Data Management](#data-management))
+
+### UI Layer
+
+- **Removing**: antd, HeroUI, styled-components
+- **Adopting**: `@cherrystudio/ui` (located in `packages/ui`, Tailwind CSS + Shadcn UI)
+- **Prohibited**: antd, HeroUI, styled-components
+
+### Data Classification Toolchain
+
+The `v2-refactor-temp/tools/data-classify/` directory contains the code generation pipeline for the v2 data layer. `classification.json` is the single source of truth.
+
+**Rule**: After modifying `classification.json` or `target-key-definitions.json`, you **MUST** run:
+
+```bash
+cd v2-refactor-temp/tools/data-classify && npm run generate
 ```
 
-- Built on Vercel AI SDK v5 (`ai` package) with `LanguageModelV2Middleware`
-- `HubProvider` aggregates multiple provider backends
-- Supports: OpenAI, Anthropic, Google, Azure, Mistral, Bedrock, Vertex, Ollama, Perplexity, xAI, HuggingFace, Cerebras, OpenRouter, Copilot, and more
-- Custom fork of openai package: `@cherrystudio/openai`
+This regenerates the following TypeScript files:
+- `packages/shared/data/preference/preferenceSchemas.ts`
+- `packages/shared/data/bootConfig/bootConfigSchemas.ts`
+- `src/main/data/migration/v2/migrators/mappings/PreferencesMappings.ts`
+- `src/main/data/migration/v2/migrators/mappings/BootConfigMappings.ts`
 
-### Multi-Window Architecture
+### File Naming Convention
 
-The renderer builds multiple HTML entry points:
-- `index.html` — Main application window
-- `miniWindow.html` — Compact floating window (`src/renderer/src/windows/mini/`)
-- `selectionToolbar.html` — Text selection action toolbar
-- `selectionAction.html` — Selection action popup
-- `traceWindow.html` — MCP trace viewer
+During migration, use `*.v2.ts` suffix for files not yet fully migrated:
 
-### Logging
+- Indicates work-in-progress refactoring
+- Avoids conflicts with existing code
+- **Post-completion**: These files will be renamed or merged into their final locations
+
+## Logging Standards
+
+### Usage
 
 ```typescript
 import { loggerService } from "@logger";
@@ -236,22 +207,22 @@ logger.error("message", error);
 
 ## Tech Stack
 
-| Layer | Technologies |
-|---|---|
-| Runtime | Electron 38, Node ≥22 |
-| Frontend | React 19, TypeScript ~5.8 |
-| UI | Ant Design 5.27, styled-components 6, TailwindCSS v4 |
-| State | Redux Toolkit, redux-persist, Dexie (IndexedDB) |
-| Rich Text | TipTap 3.2 (with Yjs collaboration) |
-| AI SDK | Vercel AI SDK v5 (`ai`), `@cherrystudio/ai-core` |
-| Build | electron-vite 5 with rolldown-vite 7 (experimental) |
-| Test | Vitest 3 (unit), Playwright (e2e) |
-| Lint/Format | ESLint 9, oxlint, Biome 2 |
-| DB (main) | Drizzle ORM + LibSQL (SQLite) |
-| DB (renderer) | Dexie (IndexedDB) |
-| Logging | Winston + winston-daily-rotate-file |
-| Tracing | OpenTelemetry |
-| i18n | i18next + react-i18next |
+| Layer         | Technologies                                         |
+| ------------- | ---------------------------------------------------- |
+| Runtime       | Electron 38, Node ≥22                                |
+| Frontend      | React 19, TypeScript ~5.8                            |
+| UI            | Ant Design 5.27, styled-components 6, TailwindCSS v4 |
+| State         | Redux Toolkit, redux-persist, Dexie (IndexedDB)      |
+| Rich Text     | TipTap 3.2 (with Yjs collaboration)                  |
+| AI SDK        | Vercel AI SDK v5 (`ai`), `@cherrystudio/ai-core`     |
+| Build         | electron-vite 5 with rolldown-vite 7 (experimental)  |
+| Test          | Vitest 3 (unit), Playwright (e2e)                    |
+| Lint/Format   | ESLint 9, oxlint, Biome 2                            |
+| DB (main)     | Drizzle ORM + LibSQL (SQLite)                        |
+| DB (renderer) | Dexie (IndexedDB)                                    |
+| Logging       | Winston + winston-daily-rotate-file                  |
+| Tracing       | OpenTelemetry                                        |
+| i18n          | i18next + react-i18next                              |
 
 ## Conventions
 
@@ -297,6 +268,7 @@ Several dependencies have patches in `patches/` — be careful when upgrading:
 - All tests run without CI dependency (fully local)
 - Coverage via v8 provider (`pnpm test:coverage`)
 - **Features without tests are not considered complete**
+- **Test Mocking**: Use the unified mock system — do NOT create ad-hoc mocks for `application`, services, or data layers. See [tests/__mocks__/README.md](tests/__mocks__/README.md) for available mocks, usage patterns, and best practices.
 
 ## Important Notes
 

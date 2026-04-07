@@ -1,3 +1,4 @@
+import { Switch } from '@cherrystudio/ui'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useArtifactSettings } from '@renderer/hooks/useArtifactSettings'
 import { useServices } from '@renderer/hooks/useServices'
@@ -7,7 +8,7 @@ import type {
   HtmlArtifactRuntimeProfile,
   ReactArtifactRuntimeProfile
 } from '@shared/artifacts'
-import { Button, Select, Space, Switch, Table, Tag } from 'antd'
+import { Button, Select, Space, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ExternalLink } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -147,7 +148,7 @@ const ArtifactSettings = () => {
           <SettingRowTitle>{t('settings.artifacts.internet_default')}</SettingRowTitle>
           <Switch
             checked={settings.accessPolicy.internetEnabled}
-            onChange={(checked) =>
+            onCheckedChange={(checked) =>
               void updateSettings((prev) => ({
                 ...prev,
                 accessPolicy: {
@@ -163,7 +164,7 @@ const ArtifactSettings = () => {
           <SettingRowTitle>{t('settings.artifacts.show_package_registry')}</SettingRowTitle>
           <Switch
             checked={settings.exposePackageRegistry}
-            onChange={(checked) =>
+            onCheckedChange={(checked) =>
               void updateSettings((prev) => ({
                 ...prev,
                 exposePackageRegistry: checked
@@ -235,12 +236,11 @@ const ArtifactSettings = () => {
                     <span>{projectedCount} projected tools</span>
                   </ServiceMeta>
                 </div>
-                <Space>
+                <Space align="center">
+                  <span>{isEnabled ? 'Allowed' : 'Blocked'}</span>
                   <Switch
                     checked={isEnabled}
-                    checkedChildren="Allowed"
-                    unCheckedChildren="Blocked"
-                    onChange={(checked) =>
+                    onCheckedChange={(checked) =>
                       void updateSettings((prev) => ({
                         ...prev,
                         accessPolicy: {

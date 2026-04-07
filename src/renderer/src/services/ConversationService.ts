@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import { convertMessagesToSdkMessages } from '@renderer/aiCore/prepareParams'
 import type { Assistant, Message, Topic } from '@renderer/types'
+import type { ContextStrategyType } from '@renderer/types/contextStrategy'
 import { filterAdjacentUserMessaegs, filterLastAssistantMessage } from '@renderer/utils/messageUtils/filters'
 import type { ModelMessage } from 'ai'
 import { findLast, isEmpty, takeRight } from 'lodash'
@@ -16,6 +17,17 @@ import {
 } from './MessagesService'
 
 const logger = loggerService.withContext('ConversationService')
+
+/** Details for UI when chat context strategy changed the message list */
+export type ChatContextManagementDetail = {
+  strategyType: ContextStrategyType
+  originalMessageCount: number
+  finalMessageCount: number
+  messagesRemoved: number
+  tokensSaved: number
+  summaryPreview?: string
+  alterationSummary: string
+}
 
 export class ConversationService {
   /**
@@ -51,6 +63,7 @@ export class ConversationService {
     uiMessages: Message[]
     contextSummary?: string
     contextManagementApplied: boolean
+    contextManagementDetail?: ChatContextManagementDetail
   }> {
     const { topic, systemPrompt, maxOutputTokens, toolTokens, knowledgeTokens } = options
     const { contextCount } = getAssistantSettings(assistant)
@@ -75,6 +88,7 @@ export class ConversationService {
     const strategyConfig = getEffectiveStrategyConfig(topic, assistant)
     let contextSummary: string | undefined
     let contextManagementApplied = false
+    let contextManagementDetail: ChatContextManagementDetail | undefined
     let finalUiMessages = uiMessagesFromPipeline
 
     if (isContextStrategyEnabled(strategyConfig)) {
@@ -101,6 +115,29 @@ export class ConversationService {
         contextSummary = strategyResult.summary
         contextManagementApplied = true
 
+        const summaryPreview =
+          strategyResult.summary && strategyResult.summary.length > 0
+            ? strategyResult.summary.length > 500
+              ? `${strategyResult.summary.slice(0, 500)}…`
+              : strategyResult.summary
+            : undefined
+        const alterationSummary = [
+          `${strategyConfig.type}: ${uiMessagesFromPipeline.length}→${finalUiMessages.length} messages`,
+          strategyResult.messagesRemoved > 0 ? `${strategyResult.messagesRemoved} removed` : null,
+          strategyResult.tokensSaved > 0 ? `~${strategyResult.tokensSaved} tokens saved` : null
+        ]
+          .filter((x): x is string => Boolean(x))
+          .join('; ')
+        contextManagementDetail = {
+          strategyType: strategyConfig.type,
+          originalMessageCount: uiMessagesFromPipeline.length,
+          finalMessageCount: finalUiMessages.length,
+          messagesRemoved: strategyResult.messagesRemoved,
+          tokensSaved: strategyResult.tokensSaved,
+          summaryPreview,
+          alterationSummary
+        }
+
         logger.info('Context management applied', {
           strategy: strategyConfig.type,
           originalCount: uiMessagesFromPipeline.length,
@@ -125,7 +162,8 @@ export class ConversationService {
       modelMessages: await convertMessagesToSdkMessages(finalUiMessages, model),
       uiMessages: finalUiMessages,
       contextSummary,
-      contextManagementApplied
+      contextManagementApplied,
+      contextManagementDetail
     }
   }
 

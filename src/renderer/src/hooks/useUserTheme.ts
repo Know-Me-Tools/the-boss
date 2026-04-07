@@ -1,49 +1,38 @@
-import { resolveBrandPrimary, resolveBrandTheme } from '@renderer/config/brand'
-import { useAppDispatch, useAppSelector } from '@renderer/store'
-import type { UserTheme } from '@renderer/store/settings'
-import { setUserTheme } from '@renderer/store/settings'
+// import { useAppDispatch, useAppSelector } from '@renderer/store'
+// import { setUserTheme, UserTheme } from '@renderer/store/settings'
+
+import { usePreference } from '@data/hooks/usePreference'
 import Color from 'color'
 
 export default function useUserTheme() {
-  const userTheme = useAppSelector((state) => state.settings.userTheme)
+  const [colorPrimary, setColorPrimary] = usePreference('ui.theme_user.color_primary')
+  const [userFontFamily, setUserFontFamily] = usePreference('ui.theme_user.font_family')
+  const [userCodeFontFamily, setUserCodeFontFamily] = usePreference('ui.theme_user.code_font_family')
 
-  const dispatch = useAppDispatch()
-
-  const initUserTheme = (theme: UserTheme = userTheme) => {
-    const themeMode = resolveBrandTheme(document.body.getAttribute('theme-mode'))
-    const colorPrimary = Color(resolveBrandPrimary(themeMode, theme.colorPrimary))
+  const initUserTheme = (theme: { colorPrimary: string } = { colorPrimary }) => {
+    const colorPrimary = Color(theme.colorPrimary)
 
     document.body.style.setProperty('--color-primary', colorPrimary.toString())
     document.body.style.setProperty('--primary', colorPrimary.toString())
     document.body.style.setProperty('--color-primary-soft', colorPrimary.alpha(0.6).toString())
     document.body.style.setProperty('--color-primary-mute', colorPrimary.alpha(0.3).toString())
 
-    const rootStyle = document.documentElement.style
-
-    if (theme.userFontFamily) {
-      rootStyle.setProperty('--user-font-family', `${JSON.stringify(theme.userFontFamily)}, var(--font-family-base)`)
-    } else {
-      rootStyle.removeProperty('--user-font-family')
-    }
-
-    if (theme.userCodeFontFamily) {
-      rootStyle.setProperty(
-        '--user-code-font-family',
-        `${JSON.stringify(theme.userCodeFontFamily)}, var(--font-family-mono-base)`
-      )
-    } else {
-      rootStyle.removeProperty('--user-code-font-family')
-    }
+    // Set font family CSS variables
+    document.documentElement.style.setProperty('--user-font-family', `'${userFontFamily}'`)
+    document.documentElement.style.setProperty('--user-code-font-family', `'${userCodeFontFamily}'`)
   }
 
   return {
-    colorPrimary: Color(userTheme.colorPrimary),
+    colorPrimary: Color(colorPrimary),
 
     initUserTheme,
 
-    setUserTheme(userTheme: UserTheme) {
-      dispatch(setUserTheme(userTheme))
+    userTheme: { colorPrimary, userFontFamily, userCodeFontFamily },
 
+    setUserTheme(userTheme: { colorPrimary: string; userFontFamily: string; userCodeFontFamily: string }) {
+      void setColorPrimary(userTheme.colorPrimary)
+      void setUserFontFamily(userTheme.userFontFamily)
+      void setUserCodeFontFamily(userTheme.userCodeFontFamily)
       initUserTheme(userTheme)
     }
   }

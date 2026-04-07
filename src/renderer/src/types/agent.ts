@@ -7,6 +7,7 @@
 import type { ModelMessage, TextStreamPart } from 'ai'
 import * as z from 'zod'
 
+import { ContextStrategyConfigSchema } from './contextStrategy'
 import type { Message, MessageBlock } from './newMessage'
 import { PluginMetadataSchema } from './plugin'
 
@@ -90,7 +91,10 @@ export const AgentConfigurationSchema = z
 
     // Heartbeat
     heartbeat_enabled: z.boolean().optional(),
-    heartbeat_interval: z.number().optional() // minutes, default 30
+    heartbeat_interval: z.number().optional(), // minutes, default 30
+
+    /** Optional override for agent context management (inherits global when omitted). */
+    context_strategy: ContextStrategyConfigSchema.optional()
   })
   .loose()
 

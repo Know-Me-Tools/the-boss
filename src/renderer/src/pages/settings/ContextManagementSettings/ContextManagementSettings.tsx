@@ -1,18 +1,22 @@
+import { InfoTooltip, RowFlex, SpaceBetweenRowFlex, Switch } from '@cherrystudio/ui'
 import ContextStrategySelector from '@renderer/components/ContextStrategySelector'
-import { HStack } from '@renderer/components/Layout'
 import ModelSelector from '@renderer/components/ModelSelector'
-import { InfoTooltip } from '@renderer/components/TooltipIcons'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useProviders } from '@renderer/hooks/useProvider'
 import { useAppDispatch } from '@renderer/store'
-import { setContextStrategy, setContextSummarizationModelId } from '@renderer/store/settings'
+import {
+  setAgentContextStrategy,
+  setAgentContextSummarizationModelId,
+  setContextStrategy,
+  setContextSummarizationModelId
+} from '@renderer/store/settings'
 import type { Model } from '@renderer/types'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
-import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
-import { Badge, Switch } from 'antd'
+import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG, DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
+import { Badge } from 'antd'
 import { find } from 'lodash'
-import { Layers, Sparkles } from 'lucide-react'
+import { Bot, Layers, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,9 +53,21 @@ const ContextManagementSettings: FC = () => {
     (state: { settings: { contextSummarizationModelId?: string } }) => state.settings.contextSummarizationModelId
   )
 
+  const agentContextStrategy = useSelector(
+    (state: { settings: { agentContextStrategy: ContextStrategyConfig } }) => state.settings.agentContextStrategy
+  )
+
+  const agentContextSummarizationModelId = useSelector(
+    (state: { settings: { agentContextSummarizationModelId?: string | null } }) =>
+      state.settings.agentContextSummarizationModelId
+  )
+
   // Use defaults if not set
   const strategy = contextStrategy || DEFAULT_CONTEXT_STRATEGY_CONFIG
   const isEnabled = strategy.type !== 'none'
+
+  const agentStrategy = agentContextStrategy || DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG
+  const isAgentEnabled = agentStrategy.type !== 'none'
 
   const allModels = providers.map((p) => p.models).flat()
 
@@ -67,6 +83,12 @@ const ContextManagementSettings: FC = () => {
     const model = find(allModels, (m) => m.id === contextSummarizationModelId)
     return model ? JSON.stringify({ id: model.id, provider: model.provider }) : undefined
   }, [contextSummarizationModelId, allModels])
+
+  const agentSummarizationModelValue = useMemo(() => {
+    if (!agentContextSummarizationModelId) return undefined
+    const model = find(allModels, (m) => m.id === agentContextSummarizationModelId)
+    return model ? JSON.stringify({ id: model.id, provider: model.provider }) : undefined
+  }, [agentContextSummarizationModelId, allModels])
 
   const handleStrategyChange = (config: ContextStrategyConfig) => {
     dispatch(setContextStrategy(config))
@@ -87,12 +109,29 @@ const ContextManagementSettings: FC = () => {
     dispatch(setContextSummarizationModelId(modelData.id))
   }
 
+  const handleAgentStrategyChange = (config: ContextStrategyConfig) => {
+    dispatch(setAgentContextStrategy(config))
+  }
+
+  const handleAgentEnableToggle = (enabled: boolean) => {
+    if (enabled) {
+      dispatch(setAgentContextStrategy({ ...agentStrategy, type: 'sliding_window' }))
+    } else {
+      dispatch(setAgentContextStrategy({ ...agentStrategy, type: 'none' }))
+    }
+  }
+
+  const handleAgentSummarizationModelChange = (value: string) => {
+    const modelData = JSON.parse(value)
+    dispatch(setAgentContextSummarizationModelId(modelData.id))
+  }
+
   return (
     <SettingContainer theme={theme}>
       {/* Enable/Disable Section */}
       <SettingGroup theme={theme}>
-        <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <HStack alignItems="center" gap={10}>
+        <SpaceBetweenRowFlex className="items-center">
+          <RowFlex className="items-center gap-2.5">
             <Layers size={18} color="var(--color-text)" />
             <SettingRowTitle style={{ fontWeight: 'bold' }}>
               {t('settings.contextStrategy.title', { defaultValue: 'Context Management' })}
@@ -104,9 +143,9 @@ const ContextManagementSettings: FC = () => {
                 fontSize: 10
               }}
             />
-          </HStack>
-          <Switch checked={isEnabled} onChange={handleEnableToggle} />
-        </HStack>
+          </RowFlex>
+          <Switch checked={isEnabled} onCheckedChange={handleEnableToggle} />
+        </SpaceBetweenRowFlex>
         <SettingDescription>
           {t('settings.contextStrategy.globalDescription', {
             defaultValue:
@@ -119,15 +158,15 @@ const ContextManagementSettings: FC = () => {
       {isEnabled && (
         <SettingGroup theme={theme}>
           <SettingTitle style={{ marginBottom: 16 }}>
-            <HStack alignItems="center" gap={10}>
+            <RowFlex className="items-center gap-2.5">
               {t('settings.contextStrategy.configuration', { defaultValue: 'Strategy Configuration' })}
               <InfoTooltip
-                title={t('settings.contextStrategy.configurationHelp', {
+                content={t('settings.contextStrategy.configurationHelp', {
                   defaultValue:
                     'Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.'
                 })}
               />
-            </HStack>
+            </RowFlex>
           </SettingTitle>
           <ContextStrategySelector value={strategy} onChange={handleStrategyChange} />
         </SettingGroup>
@@ -137,16 +176,16 @@ const ContextManagementSettings: FC = () => {
       {isEnabled && (strategy.type === 'summarize' || strategy.type === 'hierarchical') && (
         <SettingGroup theme={theme}>
           <SettingTitle style={{ marginBottom: 16 }}>
-            <HStack alignItems="center" gap={10}>
+            <RowFlex className="items-center gap-2.5">
               <Sparkles size={16} color="var(--color-text)" />
               {t('settings.contextStrategy.summarizationModel', { defaultValue: 'Summarization Model' })}
               <InfoTooltip
-                title={t('settings.contextStrategy.summarizationModelHelp', {
+                content={t('settings.contextStrategy.summarizationModelHelp', {
                   defaultValue:
                     'Select a fast, lightweight model for generating summaries. Recommended: Claude Haiku, GPT-3.5 Turbo, or similar quick models.'
                 })}
               />
-            </HStack>
+            </RowFlex>
           </SettingTitle>
           <SettingRow>
             <SettingRowTitle>{t('settings.contextStrategy.selectModel', { defaultValue: 'Model' })}</SettingRowTitle>
@@ -169,6 +208,66 @@ const ContextManagementSettings: FC = () => {
                 'This model will be used to generate conversation summaries. Choose a fast model to minimize latency. If not set, the current conversation model will be used.'
             })}
           </SettingDescription>
+        </SettingGroup>
+      )}
+
+      {/* Agent sessions (Claude Code SDK) */}
+      <SettingGroup theme={theme}>
+        <SpaceBetweenRowFlex className="items-center">
+          <RowFlex className="items-center gap-2.5">
+            <Bot size={18} color="var(--color-text)" />
+            <SettingRowTitle style={{ fontWeight: 'bold' }}>
+              {t('settings.contextStrategy.agentSessionsTitle', { defaultValue: 'Agent context (SDK sessions)' })}
+            </SettingRowTitle>
+            <Badge
+              count={isAgentEnabled ? t('common.on', { defaultValue: 'ON' }) : t('common.off', { defaultValue: 'OFF' })}
+              style={{
+                backgroundColor: isAgentEnabled ? 'var(--color-primary)' : 'var(--color-text-tertiary)',
+                fontSize: 10
+              }}
+            />
+          </RowFlex>
+          <Switch checked={isAgentEnabled} onCheckedChange={handleAgentEnableToggle} />
+        </SpaceBetweenRowFlex>
+        <SettingDescription>
+          {t('settings.contextStrategy.agentSessionsDescription', {
+            defaultValue:
+              'Optional defaults for autonomous agents. Per-agent and per-session settings can override. Uses SDK resume and may run /compact when token usage exceeds your threshold.'
+          })}
+        </SettingDescription>
+      </SettingGroup>
+
+      {isAgentEnabled && (
+        <SettingGroup theme={theme}>
+          <SettingTitle style={{ marginBottom: 16 }}>
+            {t('settings.contextStrategy.agentConfiguration', { defaultValue: 'Agent strategy defaults' })}
+          </SettingTitle>
+          <ContextStrategySelector variant="agent" value={agentStrategy} onChange={handleAgentStrategyChange} />
+        </SettingGroup>
+      )}
+
+      {isAgentEnabled && (agentStrategy.type === 'summarize' || agentStrategy.type === 'hierarchical') && (
+        <SettingGroup theme={theme}>
+          <SettingTitle style={{ marginBottom: 16 }}>
+            <RowFlex className="items-center gap-2.5">
+              <Sparkles size={16} color="var(--color-text)" />
+              {t('settings.contextStrategy.agentSummarizationModel', { defaultValue: 'Agent summarization model' })}
+            </RowFlex>
+          </SettingTitle>
+          <SettingRow>
+            <SettingRowTitle>{t('settings.contextStrategy.selectModel', { defaultValue: 'Model' })}</SettingRowTitle>
+            <ModelSelector
+              providers={providers}
+              predicate={modelPredicate}
+              value={agentSummarizationModelValue}
+              defaultValue={agentSummarizationModelValue}
+              style={{ width: 300 }}
+              onChange={handleAgentSummarizationModelChange}
+              placeholder={t('settings.contextStrategy.selectModelPlaceholder', {
+                defaultValue: 'Select summarization model'
+              })}
+            />
+          </SettingRow>
         </SettingGroup>
       )}
 
