@@ -25,6 +25,7 @@ export const sessionsTable = sqliteTable('sessions', {
   slash_commands: text('slash_commands'), // JSON array of slash command objects from SDK init
 
   configuration: text('configuration'), // JSON, extensible settings
+  last_total_tokens: integer('last_total_tokens'),
 
   sort_order: integer('sort_order').notNull().default(0), // Manual sort order (lower = first)
 

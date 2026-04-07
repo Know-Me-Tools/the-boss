@@ -17,7 +17,10 @@ import { isEmbeddingModel, isRerankModel } from '@renderer/config/models'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { SettingRow } from '@renderer/pages/settings'
 import { DEFAULT_ASSISTANT_SETTINGS } from '@renderer/services/AssistantService'
+import { resolveEffectiveChatContextStrategy } from '@renderer/services/chatContextStrategy'
+import { useAppSelector } from '@renderer/store'
 import type { Assistant, AssistantSettingCustomParameters, AssistantSettings, Model } from '@renderer/types'
+import { CONTEXT_STRATEGY_LABELS, DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import { modalConfirm } from '@renderer/utils'
 import { Button, Col, Divider, Input, InputNumber, Row, Select, Slider, Switch, Tooltip } from 'antd'
 import { isNull } from 'lodash'
@@ -31,9 +34,15 @@ interface Props {
   assistant: Assistant
   updateAssistant: (assistant: Assistant) => void
   updateAssistantSettings: (settings: Partial<AssistantSettings>) => void
+  onOpenContextSettings?: () => void
 }
 
-const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateAssistantSettings }) => {
+const AssistantModelSettings: FC<Props> = ({
+  assistant,
+  updateAssistant,
+  updateAssistantSettings,
+  onOpenContextSettings
+}) => {
   const [temperature, setTemperature] = useState(assistant?.settings?.temperature ?? DEFAULT_TEMPERATURE)
   const [contextCount, setContextCount] = useState(assistant?.settings?.contextCount ?? DEFAULT_CONTEXTCOUNT)
   const enableMaxTokens = useMemo(
@@ -70,6 +79,18 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
     () => assistant?.settings?.enableTemperature ?? DEFAULT_ASSISTANT_SETTINGS.enableTemperature,
     [assistant?.settings?.enableTemperature]
   )
+  const globalContextStrategy = useAppSelector(
+    (state) => state.settings.contextStrategy || DEFAULT_CONTEXT_STRATEGY_CONFIG
+  )
+  const effectiveContextStrategy = useMemo(
+    () =>
+      resolveEffectiveChatContextStrategy({
+        globalStrategy: globalContextStrategy,
+        assistant: assistant?.settings?.contextStrategy
+      }),
+    [assistant?.settings?.contextStrategy, globalContextStrategy]
+  )
+  const isInheritedContextStrategy = !assistant?.settings?.contextStrategy
 
   const customParametersRef = useRef(customParameters)
 
@@ -420,6 +441,20 @@ const AssistantModelSettings: FC<Props> = ({ assistant, updateAssistant, updateA
           </ContextSliderWrapper>
         </Col>
       </Row>
+      <SettingRow style={{ minHeight: 30 }}>
+        <HStack alignItems="center">
+          <Label>{t('settings.contextStrategy.title', { defaultValue: 'Chat Context Management' })}</Label>
+        </HStack>
+        <HStack alignItems="center" gap={10}>
+          <span style={{ color: 'var(--color-text-2)', fontSize: 12 }}>
+            {CONTEXT_STRATEGY_LABELS[effectiveContextStrategy.type]}
+            {isInheritedContextStrategy ? ` · ${t('common.defaultValue', { defaultValue: 'Inherited' })}` : ''}
+          </span>
+          <Button onClick={onOpenContextSettings}>
+            {t('settings.contextStrategy.configure', { defaultValue: 'Configure' })}
+          </Button>
+        </HStack>
+      </SettingRow>
       <Divider style={{ margin: '10px 0' }} />
       <SettingRow style={{ minHeight: 30 }}>
         <HStack alignItems="center">

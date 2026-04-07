@@ -2274,9 +2274,13 @@
         "activation_method": "Method",
         "context_method": "Context method",
         "injected_content": "Injected context",
+        "managed_tokens": "Final tokens",
+        "original_tokens": "Original tokens",
         "selection_reason": "Why selected",
+        "skill_id": "Skill ID",
         "token_count": "Tokens injected",
         "token_count_value": "{{value}} tokens injected",
+        "tokens_saved": "Tokens saved",
         "trigger_tokens": "Matched terms"
       }
     },

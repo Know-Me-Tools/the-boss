@@ -2274,9 +2274,13 @@
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
         "injected_content": "[to be translated]:Injected context",
+        "managed_tokens": "[to be translated]:Final tokens",
+        "original_tokens": "[to be translated]:Original tokens",
         "selection_reason": "[to be translated]:Why selected",
+        "skill_id": "[to be translated]:Skill ID",
         "token_count": "[to be translated]:Tokens injected",
         "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "tokens_saved": "[to be translated]:Tokens saved",
         "trigger_tokens": "[to be translated]:Matched terms"
       }
     },

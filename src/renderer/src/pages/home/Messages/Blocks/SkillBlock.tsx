@@ -94,6 +94,10 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
                 </Tooltip>
               )}
               <MetaSection>
+                <MetaRow>
+                  <MetaLabel>{t('message.block.skill.skill_id')}:</MetaLabel>
+                  <MetaValue>{block.skillId}</MetaValue>
+                </MetaRow>
                 {block.selectionReason && (
                   <MetaRow>
                     <MetaLabel>{t('message.block.skill.selection_reason')}:</MetaLabel>
@@ -110,14 +114,21 @@ const SkillBlock: React.FC<Props> = ({ block }) => {
                     </TagsWrapper>
                   </MetaRow>
                 )}
-                {block.tokenCount !== undefined && (
+                {block.originalTokenCount !== undefined && (
                   <MetaRow>
-                    <MetaLabel>{t('message.block.skill.token_count')}:</MetaLabel>
-                    <MetaValue>
-                      {t('message.block.skill.token_count_value', { value: block.tokenCount.toLocaleString() })}
-                    </MetaValue>
+                    <MetaLabel>{t('message.block.skill.original_tokens')}:</MetaLabel>
+                    <MetaValue>{block.originalTokenCount.toLocaleString()}</MetaValue>
                   </MetaRow>
                 )}
+                <MetaRow>
+                  <MetaLabel>{t('message.block.skill.managed_tokens')}:</MetaLabel>
+                  <MetaValue>{(block.managedTokenCount ?? block.tokenCount).toLocaleString()}</MetaValue>
+                  {block.truncated && <Tag color="orange">{t('error.truncatedBadge')}</Tag>}
+                </MetaRow>
+                <MetaRow>
+                  <MetaLabel>{t('message.block.skill.tokens_saved')}:</MetaLabel>
+                  <MetaValue>{block.tokensSaved.toLocaleString()}</MetaValue>
+                </MetaRow>
                 {block.contextManagementMethod && (
                   <MetaRow>
                     <MetaLabel>{t('message.block.skill.context_method')}:</MetaLabel>

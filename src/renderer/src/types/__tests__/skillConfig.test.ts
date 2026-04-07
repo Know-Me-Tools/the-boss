@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { ContextManagementMethod, DEFAULT_SKILL_CONFIG, resolveSkillConfig, SkillSelectionMethod } from '../skillConfig'
+import {
+  ContextManagementMethod,
+  DEFAULT_SKILL_CONFIG,
+  deriveSkillConfigOverride,
+  getSkillMethodConfig,
+  normalizeSkillConfig,
+  resolveSkillConfig,
+  SkillSelectionMethod
+} from '../skillConfig'
 
 describe('SkillSelectionMethod', () => {
   it('exposes all five method values', () => {
@@ -26,47 +34,109 @@ describe('DEFAULT_SKILL_CONFIG', () => {
   it('defaults to EMBEDDING selection and PREFIX_CACHE_AWARE context', () => {
     expect(DEFAULT_SKILL_CONFIG.selectionMethod).toBe(SkillSelectionMethod.EMBEDDING)
     expect(DEFAULT_SKILL_CONFIG.contextManagementMethod).toBe(ContextManagementMethod.PREFIX_CACHE_AWARE)
-    expect(DEFAULT_SKILL_CONFIG.similarityThreshold).toBe(0.35)
-    expect(DEFAULT_SKILL_CONFIG.topK).toBe(3)
     expect(DEFAULT_SKILL_CONFIG.maxSkillTokens).toBe(4096)
+    expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.35)
+    expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).topK).toBe(3)
+    expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.HYBRID).topK).toBe(3)
+  })
+})
+
+describe('normalizeSkillConfig', () => {
+  it('reads legacy flat config and applies it to the relevant method buckets', () => {
+    const normalized = normalizeSkillConfig({
+      selectionMethod: SkillSelectionMethod.LLM_ROUTER,
+      embeddingModelId: 'legacy-embedding-id',
+      llmModelId: 'legacy-router-id',
+      similarityThreshold: 0.72,
+      topK: 9,
+      contextManagementMethod: ContextManagementMethod.CHUNKED_RAG,
+      maxSkillTokens: 2048
+    })
+
+    expect(normalized.selectionMethod).toBe(SkillSelectionMethod.LLM_ROUTER)
+    expect(normalized.contextManagementMethod).toBe(ContextManagementMethod.CHUNKED_RAG)
+    expect(normalized.maxSkillTokens).toBe(2048)
+    expect(getSkillMethodConfig(normalized, SkillSelectionMethod.EMBEDDING).embeddingModelId).toBe(
+      'legacy-embedding-id'
+    )
+    expect(getSkillMethodConfig(normalized, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.72)
+    expect(getSkillMethodConfig(normalized, SkillSelectionMethod.HYBRID).topK).toBe(9)
+    expect(getSkillMethodConfig(normalized, SkillSelectionMethod.LLM_ROUTER).llmModelId).toBe('legacy-router-id')
+    expect(getSkillMethodConfig(normalized, SkillSelectionMethod.LLM_DELEGATED).llmModelId).toBe('legacy-router-id')
   })
 })
 
 describe('resolveSkillConfig', () => {
-  it('returns global config unchanged when no override is passed', () => {
+  it('returns the normalized global config when no override is passed', () => {
     const result = resolveSkillConfig(DEFAULT_SKILL_CONFIG)
-    expect(result).toBe(DEFAULT_SKILL_CONFIG)
+    expect(result).toEqual(DEFAULT_SKILL_CONFIG)
   })
 
-  it('returns global config unchanged when override is empty', () => {
-    expect(resolveSkillConfig(DEFAULT_SKILL_CONFIG, {})).toEqual(DEFAULT_SKILL_CONFIG)
+  it('applies method-specific overrides without erasing other method buckets', () => {
+    const result = resolveSkillConfig(DEFAULT_SKILL_CONFIG, {
+      selectionMethod: SkillSelectionMethod.LLM_ROUTER,
+      methods: {
+        [SkillSelectionMethod.LLM_ROUTER]: {
+          llmModelId: 'router-model',
+          embeddingModelId: 'router-embedding',
+          similarityThreshold: 0.8,
+          topK: 7
+        }
+      }
+    })
+
+    expect(result.selectionMethod).toBe(SkillSelectionMethod.LLM_ROUTER)
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.LLM_ROUTER).llmModelId).toBe('router-model')
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.LLM_ROUTER).embeddingModelId).toBe('router-embedding')
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.LLM_ROUTER).similarityThreshold).toBe(0.8)
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.LLM_ROUTER).topK).toBe(7)
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.EMBEDDING).topK).toBe(3)
   })
 
-  it('applies only the overridden field and inherits the rest from global when a partial override is passed', () => {
-    const result = resolveSkillConfig(DEFAULT_SKILL_CONFIG, { topK: 10 })
-    expect(result.topK).toBe(10)
-    expect(result.selectionMethod).toBe(DEFAULT_SKILL_CONFIG.selectionMethod)
-    expect(result.embeddingModelId).toBe(DEFAULT_SKILL_CONFIG.embeddingModelId)
-    expect(result.similarityThreshold).toBe(DEFAULT_SKILL_CONFIG.similarityThreshold)
-    expect(result.contextManagementMethod).toBe(DEFAULT_SKILL_CONFIG.contextManagementMethod)
-    expect(result.maxSkillTokens).toBe(DEFAULT_SKILL_CONFIG.maxSkillTokens)
+  it('applies later scoped overrides after earlier ones', () => {
+    const result = resolveSkillConfig(
+      DEFAULT_SKILL_CONFIG,
+      {
+        methods: {
+          [SkillSelectionMethod.EMBEDDING]: { topK: 4, similarityThreshold: 0.5 }
+        }
+      },
+      {
+        methods: {
+          [SkillSelectionMethod.EMBEDDING]: { topK: 9 }
+        }
+      }
+    )
+
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.EMBEDDING).topK).toBe(9)
+    expect(getSkillMethodConfig(result, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.5)
+  })
+})
+
+describe('deriveSkillConfigOverride', () => {
+  it('returns only the fields that differ from the base config', () => {
+    const next = resolveSkillConfig(DEFAULT_SKILL_CONFIG, {
+      selectionMethod: SkillSelectionMethod.LLM_DELEGATED,
+      methods: {
+        [SkillSelectionMethod.LLM_DELEGATED]: {
+          llmModelId: 'delegate-model',
+          topK: 5
+        }
+      }
+    })
+
+    expect(deriveSkillConfigOverride(DEFAULT_SKILL_CONFIG, next)).toEqual({
+      selectionMethod: SkillSelectionMethod.LLM_DELEGATED,
+      methods: {
+        [SkillSelectionMethod.LLM_DELEGATED]: {
+          llmModelId: 'delegate-model',
+          topK: 5
+        }
+      }
+    })
   })
 
-  it('takes every field from override when a full override is passed', () => {
-    const fullOverride = {
-      selectionMethod: SkillSelectionMethod.HYBRID,
-      embeddingModelId: 'custom-model-id',
-      similarityThreshold: 0.75,
-      topK: 8,
-      contextManagementMethod: ContextManagementMethod.CHUNKED_RAG,
-      maxSkillTokens: 2048
-    }
-    const result = resolveSkillConfig(DEFAULT_SKILL_CONFIG, fullOverride)
-    expect(result.selectionMethod).toBe(SkillSelectionMethod.HYBRID)
-    expect(result.embeddingModelId).toBe('custom-model-id')
-    expect(result.similarityThreshold).toBe(0.75)
-    expect(result.topK).toBe(8)
-    expect(result.contextManagementMethod).toBe(ContextManagementMethod.CHUNKED_RAG)
-    expect(result.maxSkillTokens).toBe(2048)
+  it('returns undefined when nothing differs from the base config', () => {
+    expect(deriveSkillConfigOverride(DEFAULT_SKILL_CONFIG, DEFAULT_SKILL_CONFIG)).toBeUndefined()
   })
 })

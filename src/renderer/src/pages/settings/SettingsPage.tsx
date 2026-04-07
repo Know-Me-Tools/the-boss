@@ -13,6 +13,7 @@ import {
   FileCode,
   HardDrive,
   Info,
+  Layers,
   MonitorCog,
   Package,
   PictureInPicture2,
@@ -32,6 +33,7 @@ import styled from 'styled-components'
 
 import AboutSettings from './AboutSettings'
 import ChannelsSettings from './ChannelsSettings'
+import ContextManagementSettings from './ContextManagementSettings/ContextManagementSettings'
 import DataSettings from './DataSettings/DataSettings'
 import DisplaySettings from './DisplaySettings/DisplaySettings'
 import DocProcessSettings from './DocProcessSettings'
@@ -124,6 +126,12 @@ const SettingsPage: FC = () => {
               {t('settings.skill.title')}
             </MenuItem>
           </MenuItemLink>
+          <MenuItemLink to="/settings/context-management">
+            <MenuItem className={isRoute('/settings/context-management')}>
+              <Layers size={18} />
+              {t('settings.contextStrategy.title', { defaultValue: 'Context Management' })}
+            </MenuItem>
+          </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
             <MenuItem className={isRoute('/settings/websearch')}>
               <Search size={18} />
@@ -206,6 +214,7 @@ const SettingsPage: FC = () => {
             <Route path="mcp/*" element={<MCPSettings />} />
             <Route path="skills" element={<SkillsSettings />} />
             <Route path="skill" element={<SkillSettings />} />
+            <Route path="context-management" element={<ContextManagementSettings />} />
             <Route path="memory" element={<MemorySettings />} />
             <Route path="general/*" element={<GeneralSettings />} />
             <Route path="display" element={<DisplaySettings />} />

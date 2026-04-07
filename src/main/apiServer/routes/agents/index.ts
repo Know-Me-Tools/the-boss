@@ -1,6 +1,8 @@
 import express from 'express'
 
 import { agentHandlers, messageHandlers, sessionHandlers } from './handlers'
+import { createAgUiMessage } from './handlers/messagesAgUi'
+import { createBufferedMessageWithA2ui } from './handlers/messagesRestA2ui'
 import { checkAgentExists, handleValidationErrors } from './middleware'
 import {
   validateAgent,
@@ -955,6 +957,64 @@ const createMessagesRouter = (): express.Router => {
    *               $ref: '#/components/schemas/ErrorResponse'
    */
   messagesRouter.post('/', validateSessionMessage, handleValidationErrors, messageHandlers.createMessage)
+
+  /**
+   * @swagger
+   * /agents/{agentId}/sessions/{sessionId}/messages/ag-ui:
+   *   post:
+   *     summary: Create a new message in a session and stream AG-UI events
+   *     tags: [Messages]
+   *     parameters:
+   *       - in: path
+   *         name: agentId
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: sessionId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateSessionMessageRequest'
+   *     responses:
+   *       200:
+   *         description: AG-UI event stream
+   */
+  messagesRouter.post('/ag-ui', validateSessionMessage, handleValidationErrors, createAgUiMessage)
+
+  /**
+   * @swagger
+   * /agents/{agentId}/sessions/{sessionId}/messages/buffer:
+   *   post:
+   *     summary: Create a new message in a session and return buffered text plus extracted A2UI JSON
+   *     tags: [Messages]
+   *     parameters:
+   *       - in: path
+   *         name: agentId
+   *         required: true
+   *         schema:
+   *           type: string
+   *       - in: path
+   *         name: sessionId
+   *         required: true
+   *         schema:
+   *           type: string
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/CreateSessionMessageRequest'
+   *     responses:
+   *       200:
+   *         description: Buffered assistant response with optional extracted A2UI payload
+   */
+  messagesRouter.post('/buffer', validateSessionMessage, handleValidationErrors, createBufferedMessageWithA2ui)
 
   /**
    * @swagger

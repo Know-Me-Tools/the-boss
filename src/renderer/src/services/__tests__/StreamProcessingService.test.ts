@@ -27,10 +27,13 @@ const baseSkillActivatedChunk: SkillActivatedChunk = {
   skillName: 'My Test Skill',
   triggerTokens: ['hello', 'world'],
   selectionReason: 'keyword match',
-  estimatedTokens: 512,
   content: 'Injected skill content here.',
   activationMethod: SkillSelectionMethod.EMBEDDING,
-  contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+  contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
+  originalTokenCount: 640,
+  managedTokenCount: 512,
+  tokensSaved: 128,
+  truncated: true
 }
 
 const baseSkillContentDeltaChunk: SkillContentDeltaChunk = {

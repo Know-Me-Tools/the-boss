@@ -26,7 +26,11 @@ describe('SkillMessageBlock shape', () => {
       content: 'This skill provides AG-UI patterns.',
       activationMethod: SkillSelectionMethod.EMBEDDING,
       similarityScore: 0.87,
-      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE
+      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
+      originalTokenCount: 1520,
+      managedTokenCount: 1240,
+      tokensSaved: 280,
+      truncated: true
     }
     expect(block.type).toBe(MessageBlockType.SKILL)
     expect(block.skillId).toBe('agent-ui-patterns')
@@ -48,7 +52,11 @@ describe('SkillMessageBlock shape', () => {
       tokenCount: 100,
       content: 'content',
       activationMethod: SkillSelectionMethod.LLM_DELEGATED,
-      contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+      contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
+      originalTokenCount: 100,
+      managedTokenCount: 100,
+      tokensSaved: 0,
+      truncated: false
     }
     expect(block.similarityScore).toBeUndefined()
   })

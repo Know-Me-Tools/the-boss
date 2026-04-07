@@ -20,6 +20,7 @@ import { AgentApiClient } from '@renderer/api/agent'
 import db from '@renderer/databases'
 import { getModel } from '@renderer/hooks/useModel'
 import { fetchMessagesSummary, transformMessagesAndFetch } from '@renderer/services/ApiService'
+import { filterConversationMessagesForContext } from '@renderer/services/chatContextStrategy'
 import { dbService } from '@renderer/services/db'
 import { DbService } from '@renderer/services/db/DbService'
 import FileManager from '@renderer/services/FileManager'
@@ -30,7 +31,7 @@ import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
-import { selectResolvedSkillConfig } from '@renderer/store/skillConfig'
+import { selectResolvedSkillConfigFromOverrides } from '@renderer/store/skillConfig'
 import { type ApiServerConfig, type Assistant, type FileMetadata, type Model, type Topic } from '@renderer/types'
 import type {
   AgentEffort,
@@ -39,6 +40,7 @@ import type {
   GetAgentSessionResponse
 } from '@renderer/types/agent'
 import { ChunkType } from '@renderer/types/chunk'
+import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import type { FileMessageBlock, ImageMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
 import {
   AssistantMessageStatus,
@@ -657,16 +659,12 @@ const fetchAndProcessAgentResponseImpl = async (
     const state = getState()
     const userMessageEntity = state.messages.entities[userMessageId]
     const userContent = userMessageEntity ? getMainTextContent(userMessageEntity) : ''
+    const apiServer = state.settings.apiServer
 
     const abortController = new AbortController()
     addAbortController(userMessageId, () => abortController.abort())
 
-    const stream = await createAgentMessageStream(
-      state.settings.apiServer,
-      agentSession,
-      userContent,
-      abortController.signal
-    )
+    const stream = await createAgentMessageStream(apiServer, agentSession, userContent, abortController.signal)
 
     // Store the previous session ID to detect /clear command
     let latestAgentSessionId = agentSession.agentSessionId || ''
@@ -902,7 +900,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
     // Get skill config from Redux state
-    const skillConfig = selectResolvedSkillConfig(getState(), origAssistant.id)
+    const skillConfig = selectResolvedSkillConfigFromOverrides(getState(), topic?.skillConfig)
 
     // Extract the last user message as the prompt
     const lastUserMsg = messagesForContext.filter((m) => m.role === 'user').at(-1)
@@ -913,7 +911,22 @@ const fetchAndProcessAssistantResponseImpl = async (
       await emitSkillChunks({
         prompt: userPrompt,
         config: skillConfig,
-        processChunk: streamProcessorCallbacks
+        processChunk: streamProcessorCallbacks,
+        activeModel: assistant.model || assistant.defaultModel
+      })
+    }
+
+    const assistantContextTelemetry = filterConversationMessagesForContext(
+      messagesForContext,
+      assistant,
+      getState().settings?.contextStrategy || DEFAULT_CONTEXT_STRATEGY_CONFIG,
+      topicId
+    ).telemetry
+
+    if (assistantContextTelemetry) {
+      streamProcessorCallbacks({
+        type: ChunkType.CONTEXT_MANAGEMENT,
+        payload: assistantContextTelemetry
       })
     }
 

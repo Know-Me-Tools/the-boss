@@ -4,6 +4,24 @@
 
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
+type SkillMethodOverride = {
+  llmModelId?: string
+  embeddingModelId?: string
+  similarityThreshold?: number
+  topK?: number
+}
+
+type SkillConfigOverride = {
+  selectionMethod?: string
+  contextManagementMethod?: string
+  maxSkillTokens?: number
+  methods?: Partial<Record<string, SkillMethodOverride>>
+  llmModelId?: string
+  embeddingModelId?: string
+  similarityThreshold?: number
+  topK?: number
+}
+
 export const agentsTable = sqliteTable('agents', {
   id: text('id').primaryKey(),
   type: text('type').notNull(),
@@ -23,14 +41,7 @@ export const agentsTable = sqliteTable('agents', {
   configuration: text('configuration'), // JSON, extensible settings
 
   // Type for per-agent skill config override (mirrors AgentSkillConfigOverride from renderer)
-  skill_config: text('skill_config', { mode: 'json' }).$type<{
-    selectionMethod?: string
-    embeddingModelId?: string
-    similarityThreshold?: number
-    topK?: number
-    contextManagementMethod?: string
-    maxSkillTokens?: number
-  } | null>(),
+  skill_config: text('skill_config', { mode: 'json' }).$type<SkillConfigOverride | null>(),
 
   sort_order: integer('sort_order').notNull().default(0), // Manual sort order (lower = first)
 

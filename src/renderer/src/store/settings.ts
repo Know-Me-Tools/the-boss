@@ -23,6 +23,7 @@ import type {
   ApiServerConfig,
   AssistantsSortType,
   CodeStyleVarious,
+  ContextStrategyConfig,
   LanguageVarious,
   MathEngine,
   MinAppRegionFilter,
@@ -38,6 +39,7 @@ import type {
   OpenAIReasoningSummary,
   OpenAIVerbosity
 } from '@renderer/types/aiCoreTypes'
+import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG, DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import { API_SERVER_DEFAULTS, UpgradeChannel } from '@shared/config/constant'
 import { v4 as uuid } from 'uuid'
 
@@ -247,6 +249,11 @@ export interface SettingsState {
   navbarPosition: 'left' | 'top'
   // API Server
   apiServer: ApiServerConfig
+  // Context strategy defaults
+  contextStrategy: ContextStrategyConfig
+  contextSummarizationModelId?: string
+  agentContextStrategy: ContextStrategyConfig
+  agentContextSummarizationModelId?: string | null
   showMessageOutline: boolean
 }
 
@@ -449,6 +456,10 @@ export const initialState: SettingsState = {
     port: API_SERVER_DEFAULTS.PORT,
     apiKey: `cs-sk-${uuid()}`
   },
+  contextStrategy: DEFAULT_CONTEXT_STRATEGY_CONFIG,
+  contextSummarizationModelId: undefined,
+  agentContextStrategy: DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG,
+  agentContextSummarizationModelId: null,
   showMessageOutline: false
 }
 
@@ -899,6 +910,18 @@ const settingsSlice = createSlice({
     },
     setShowMessageOutline: (state, action: PayloadAction<boolean>) => {
       state.showMessageOutline = action.payload
+    },
+    setContextStrategy: (state, action: PayloadAction<ContextStrategyConfig>) => {
+      state.contextStrategy = action.payload
+    },
+    setContextSummarizationModelId: (state, action: PayloadAction<string | undefined>) => {
+      state.contextSummarizationModelId = action.payload
+    },
+    setAgentContextStrategy: (state, action: PayloadAction<ContextStrategyConfig>) => {
+      state.agentContextStrategy = action.payload
+    },
+    setAgentContextSummarizationModelId: (state, action: PayloadAction<string | null | undefined>) => {
+      state.agentContextSummarizationModelId = action.payload ?? null
     }
   }
 })
@@ -1030,6 +1053,10 @@ export const {
   setEnableDeveloperMode,
   setNavbarPosition,
   setShowMessageOutline,
+  setContextStrategy,
+  setContextSummarizationModelId,
+  setAgentContextStrategy,
+  setAgentContextSummarizationModelId,
   // API Server actions
   setApiServerEnabled,
   setApiServerPort,

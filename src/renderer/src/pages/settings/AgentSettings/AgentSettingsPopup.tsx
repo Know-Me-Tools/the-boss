@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 
 import { BaseSettingsPopup, type SettingsMenuItem, type SettingsPopupTab } from './BaseSettingsPopup'
 import AdvancedSettings from './components/AdvancedSettings'
+import ContextSkillsSettings from './components/ContextSkillsSettings'
 import EssentialSettings from './components/EssentialSettings'
 import PermissionModeSettings from './components/PermissionModeSettings'
 import PromptSettings from './components/PromptSettings'
@@ -34,6 +35,7 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
       [
         { key: 'essential', label: t('agent.settings.essential') },
         { key: 'prompt', label: t('agent.settings.prompt') },
+        { key: 'context-skills', label: t('agent.settings.contextSkills.tab', 'Context & Skills') },
         !isSoul && { key: 'permission-mode', label: t('agent.settings.permissionMode.tab', 'Permission Mode') },
         { key: 'tools-mcp', label: t('agent.settings.toolsMcp.tab', 'Tools & MCP') },
         { key: 'installed', label: t('agent.settings.skills.tab', 'Skills') },
@@ -50,6 +52,8 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
         return <EssentialSettings agentBase={agent} update={updateAgent} />
       case 'prompt':
         return <PromptSettings agentBase={agent} update={updateAgent} />
+      case 'context-skills':
+        return <ContextSkillsSettings agentBase={agent} update={updateAgent} />
       case 'permission-mode':
         return <PermissionModeSettings agentBase={agent} update={updateAgent} />
       case 'tools-mcp':

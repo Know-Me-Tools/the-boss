@@ -13,11 +13,37 @@ import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
 import type { IdleTimeoutHandle } from '@renderer/utils/IdleTimeoutController'
 import { convertLinks, flushLinkConverterBuffer } from '@renderer/utils/linkConverter'
 import type { ClaudeCodeRawValue } from '@shared/agents/claudecode/types'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+import type {
+  SkillActivatedStreamPayload,
+  SkillCompleteStreamPayload,
+  SkillContentDeltaStreamPayload
+} from '@shared/skillStream'
 import { AISDKError, type TextStreamPart, type ToolSet } from 'ai'
 
 import { ToolCallChunkHandler } from './handleToolCallChunk'
 
 const logger = loggerService.withContext('AiSdkToChunkAdapter')
+
+type ContextManagementStreamPart = {
+  type: 'data-context-management'
+  data: ContextManagementStreamPayload
+}
+
+type SkillActivatedStreamPart = {
+  type: 'data-skill-activated'
+  data: SkillActivatedStreamPayload
+}
+
+type SkillContentDeltaStreamPart = {
+  type: 'data-skill-content-delta'
+  data: SkillContentDeltaStreamPayload
+}
+
+type SkillCompleteStreamPart = {
+  type: 'data-skill-complete'
+  data: SkillCompleteStreamPayload
+}
 
 /**
  * AI SDK 到 The Boss Chunk 适配器类
@@ -96,7 +122,15 @@ export class AiSdkToChunkAdapter {
    * 读取 fullStream 并转换为 The Boss chunks
    * @param fullStream AI SDK 的 fullStream (ReadableStream)
    */
-  private async readFullStream(fullStream: ReadableStream<TextStreamPart<ToolSet>>) {
+  private async readFullStream(
+    fullStream: ReadableStream<
+      | TextStreamPart<ToolSet>
+      | ContextManagementStreamPart
+      | SkillActivatedStreamPart
+      | SkillContentDeltaStreamPart
+      | SkillCompleteStreamPart
+    >
+  ) {
     const reader = fullStream.getReader()
     const final = {
       text: '',
@@ -164,7 +198,12 @@ export class AiSdkToChunkAdapter {
    * @param chunk AI SDK 的 chunk 数据
    */
   private convertAndEmitChunk(
-    chunk: TextStreamPart<any>,
+    chunk:
+      | TextStreamPart<any>
+      | ContextManagementStreamPart
+      | SkillActivatedStreamPart
+      | SkillContentDeltaStreamPart
+      | SkillCompleteStreamPart,
     final: {
       text: string
       reasoningContent: string
@@ -420,6 +459,34 @@ export class AiSdkToChunkAdapter {
           }
         })
         break
+      case 'data-context-management': {
+        this.onChunk({
+          type: ChunkType.CONTEXT_MANAGEMENT,
+          payload: chunk.data
+        })
+        break
+      }
+      case 'data-skill-activated': {
+        this.onChunk({
+          type: ChunkType.SKILL_ACTIVATED,
+          ...chunk.data
+        })
+        break
+      }
+      case 'data-skill-content-delta': {
+        this.onChunk({
+          type: ChunkType.SKILL_CONTENT_DELTA,
+          ...chunk.data
+        })
+        break
+      }
+      case 'data-skill-complete': {
+        this.onChunk({
+          type: ChunkType.SKILL_COMPLETE,
+          ...chunk.data
+        })
+        break
+      }
       case 'abort':
         this.onChunk({
           type: ChunkType.ERROR,

@@ -8,6 +8,7 @@ const { downloadWithRedirects } = require('./download')
 // Base URL for downloading uv binaries
 const UV_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/uv/releases/download'
 const DEFAULT_UV_VERSION = '0.9.5'
+const APP_HOME_DIR = process.env.THE_BOSS_HOME_DIR || '.the-boss'
 
 // Mapping of platform+arch to binary package name
 const UV_PACKAGES = {
@@ -49,7 +50,7 @@ async function downloadUvBinary(platform, arch, version = DEFAULT_UV_VERSION, is
   }
 
   // Create output directory structure
-  const binDir = path.join(os.homedir(), '.theboss', 'bin')
+  const binDir = path.join(os.homedir(), APP_HOME_DIR, 'bin')
   // Ensure directories exist
   fs.mkdirSync(binDir, { recursive: true })
 

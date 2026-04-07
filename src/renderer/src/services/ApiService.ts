@@ -174,7 +174,11 @@ export async function transformMessagesAndFetch(
   const { messages, assistant } = request
 
   try {
-    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(messages, assistant)
+    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
+      messages,
+      assistant,
+      request.topicId
+    )
 
     // replace prompt variables
     assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)

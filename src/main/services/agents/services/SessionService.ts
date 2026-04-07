@@ -18,6 +18,7 @@ import { and, asc, count, desc, eq, type SQL, sql } from 'drizzle-orm'
 import { BaseService } from '../BaseService'
 import { agentsTable, type InsertSessionRow, type SessionRow, sessionsTable } from '../database/schema'
 import type { AgentModelField } from '../errors'
+import { getAgentSessionLastTotalTokens, setAgentSessionLastTotalTokens } from './agentContextStrategy/usageCache'
 import { builtinSlashCommands } from './claudecode/commands'
 
 const logger = loggerService.withContext('SessionService')
@@ -155,6 +156,7 @@ export class SessionService extends BaseService {
       mcps: serializedData.mcps || null,
       allowed_tools: serializedData.allowed_tools || null,
       configuration: serializedData.configuration || null,
+      last_total_tokens: null,
       sort_order: 0,
       created_at: now,
       updated_at: now
@@ -193,6 +195,10 @@ export class SessionService extends BaseService {
     }
 
     const session = this.deserializeJsonFields(result[0]) as GetAgentSessionResponse
+    if (typeof result[0].last_total_tokens === 'number') {
+      session.last_total_tokens = result[0].last_total_tokens
+      setAgentSessionLastTotalTokens(session.id, result[0].last_total_tokens)
+    }
     const { tools, legacyIdMap } = await this.listMcpTools(session.agent_type, session.mcps)
     session.tools = tools
     session.allowed_tools = this.normalizeAllowedTools(session.allowed_tools, session.tools, legacyIdMap)
@@ -204,6 +210,42 @@ export class SessionService extends BaseService {
     }
 
     return session
+  }
+
+  async ensureLastTotalTokensInMemory(agentId: string, sessionId: string): Promise<void> {
+    if (getAgentSessionLastTotalTokens(sessionId) !== undefined) {
+      return
+    }
+
+    const database = await this.getDatabase()
+    const result = await database
+      .select({ id: sessionsTable.id, last_total_tokens: sessionsTable.last_total_tokens })
+      .from(sessionsTable)
+      .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.agent_id, agentId)))
+      .limit(1)
+
+    const lastTotalTokens = result[0]?.last_total_tokens
+    if (typeof lastTotalTokens === 'number') {
+      setAgentSessionLastTotalTokens(sessionId, lastTotalTokens)
+    }
+  }
+
+  async persistSessionLastTotalTokens(agentId: string, sessionId: string, totalTokens: number): Promise<void> {
+    if (!Number.isFinite(totalTokens) || totalTokens < 0) {
+      return
+    }
+
+    const normalizedTokens = Math.floor(totalTokens)
+    setAgentSessionLastTotalTokens(sessionId, normalizedTokens)
+
+    const database = await this.getDatabase()
+    await database
+      .update(sessionsTable)
+      .set({
+        last_total_tokens: normalizedTokens,
+        updated_at: new Date().toISOString()
+      })
+      .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.agent_id, agentId)))
   }
 
   async listSessions(

@@ -15,12 +15,14 @@ import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/co
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
 import type {
   CodeToolsRunResult,
+  DependencyStatus,
   FileChangeEvent,
   LanClientEvent,
   LanFileCompleteMessage,
   LanHandshakeAckMessage,
   LocalTransferConnectPayload,
   LocalTransferState,
+  ManagedDependencyName,
   OperationResult,
   WebviewKeyEvent
 } from '@shared/config/types'
@@ -539,6 +541,12 @@ const api = {
   // Binary related APIs
   isBinaryExist: (name: string) => ipcRenderer.invoke(IpcChannel.App_IsBinaryExist, name),
   getBinaryPath: (name: string) => ipcRenderer.invoke(IpcChannel.App_GetBinaryPath, name),
+  dependencies: {
+    getStatus: (name: ManagedDependencyName): Promise<DependencyStatus> =>
+      ipcRenderer.invoke(IpcChannel.App_GetDependencyStatus, name),
+    getStatuses: (names?: ManagedDependencyName[]): Promise<DependencyStatus[]> =>
+      ipcRenderer.invoke(IpcChannel.App_GetDependencyStatuses, names)
+  },
   installUVBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallUvBinary),
   installBunBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallBunBinary),
   installOvmsBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallOvmsBinary),

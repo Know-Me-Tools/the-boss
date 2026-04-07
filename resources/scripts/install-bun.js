@@ -8,6 +8,7 @@ const { downloadWithRedirects } = require('./download')
 // Base URL for downloading bun binaries
 const BUN_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/bun/releases/download'
 const DEFAULT_BUN_VERSION = '1.3.1' // Default fallback version
+const APP_HOME_DIR = process.env.THE_BOSS_HOME_DIR || '.the-boss'
 
 // Mapping of platform+arch to binary package name
 const BUN_PACKAGES = {
@@ -47,7 +48,7 @@ async function downloadBunBinary(platform, arch, version = DEFAULT_BUN_VERSION, 
   }
 
   // Create output directory structure
-  const binDir = path.join(os.homedir(), '.theboss', 'bin')
+  const binDir = path.join(os.homedir(), APP_HOME_DIR, 'bin')
   // Ensure directories exist
   fs.mkdirSync(binDir, { recursive: true })
 

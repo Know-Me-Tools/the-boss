@@ -1,5 +1,6 @@
 // src/renderer/src/services/skills/emitSkillChunks.ts
 import { loggerService } from '@logger'
+import type { Model } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
@@ -9,6 +10,10 @@ import { skillRegistry } from './skillRegistry'
 import { SkillSelector } from './skillSelector'
 
 const logger = loggerService.withContext('emitSkillChunks')
+
+function estimateRawTokenCount(text: string): number {
+  return Math.ceil(text.length / 4)
+}
 
 /**
  * Runs skill selection and context management for the given prompt,
@@ -21,8 +26,9 @@ export async function emitSkillChunks(params: {
   prompt: string
   config: SkillGlobalConfig
   processChunk: (chunk: Chunk) => void
+  activeModel?: Model | string
 }): Promise<void> {
-  const { prompt, config, processChunk } = params
+  const { prompt, config, processChunk, activeModel } = params
 
   const allSkills = skillRegistry.getAll()
   if (allSkills.length === 0) {
@@ -30,7 +36,7 @@ export async function emitSkillChunks(params: {
     return
   }
 
-  const selector = new SkillSelector(config)
+  const selector = new SkillSelector(config, undefined, undefined, undefined, activeModel)
   const results = await selector.select(prompt, allSkills)
 
   if (results.length === 0) {
@@ -57,12 +63,15 @@ export async function emitSkillChunks(params: {
         skillName: result.skill.name,
         triggerTokens: result.matchedKeywords,
         selectionReason: result.selectionReason,
-        estimatedTokens: managed.tokenCount,
         content: managed.content,
         activationMethod: result.activationMethod,
         similarityScore: result.score,
         matchedKeywords: result.matchedKeywords,
-        contextManagementMethod: config.contextManagementMethod
+        contextManagementMethod: config.contextManagementMethod,
+        originalTokenCount: estimateRawTokenCount(rawContent),
+        managedTokenCount: managed.tokenCount,
+        tokensSaved: Math.max(0, estimateRawTokenCount(rawContent) - managed.tokenCount),
+        truncated: managed.truncated
       })
 
       // 2. Emit SKILL_CONTENT_DELTA (stream content in chunks of ~100 chars)

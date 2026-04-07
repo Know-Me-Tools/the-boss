@@ -11,15 +11,18 @@ import * as z from 'zod'
 
 import type { StreamTextParams } from './aiCoreTypes'
 import type { Chunk } from './chunk'
+import type { ContextStrategyConfig, TopicContextMetadata } from './contextStrategy'
 import type { FileMetadata } from './file'
 import type { KnowledgeBase, KnowledgeReference } from './knowledge'
 import type { MCPConfigSample, MCPServerInstallSource, McpServerType } from './mcp'
 import type { Message } from './newMessage'
+import type { SkillConfigOverride } from './skillConfig'
 import type { BaseTool, MCPTool } from './tool'
 
 export * from './agent'
 export * from './apiModels'
 export * from './apiServer'
+export * from './contextStrategy'
 export * from './knowledge'
 export * from './mcp'
 export * from './notification'
@@ -179,6 +182,7 @@ export type AssistantSettings = {
   topP: number
   enableTopP?: boolean
   contextCount: number
+  contextStrategy?: Partial<ContextStrategyConfig>
   streamOutput: boolean
   defaultModel?: Model
   customParameters?: AssistantSettingCustomParameters[]
@@ -275,6 +279,9 @@ export type Topic = {
   pinned?: boolean
   prompt?: string
   isNameManuallyEdited?: boolean
+  skillConfig?: SkillConfigOverride
+  contextStrategy?: Partial<ContextStrategyConfig>
+  contextMetadata?: TopicContextMetadata
 }
 
 export type User = {

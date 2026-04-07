@@ -5,8 +5,9 @@ import path from 'node:path'
 import { loggerService } from '@logger'
 import { isMac, isWin } from '@main/constant'
 import { removeEnvProxy } from '@main/utils'
+import { getDependencyStatus } from '@main/utils/dependencyStatus'
 import { isUserInChina } from '@main/utils/ipService'
-import { findCommandInShellEnv, getBinaryName, getBinaryPath, isBinaryExists } from '@main/utils/process'
+import { findCommandInShellEnv, getBinaryPath, isBinaryExists } from '@main/utils/process'
 import getShellEnv from '@main/utils/shell-env'
 import type { TerminalConfig, TerminalConfigWithCommand } from '@shared/config/constant'
 import {
@@ -77,10 +78,12 @@ class CodeToolsService {
   }
 
   public async getBunPath() {
-    const dir = path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
-    const bunName = await getBinaryName('bun')
-    const bunPath = path.join(dir, bunName)
-    return bunPath
+    const bunStatus = await getDependencyStatus('bun')
+    if (!bunStatus.available || !bunStatus.resolvedPath) {
+      throw new Error('Bun is not available')
+    }
+
+    return bunStatus.resolvedPath
   }
 
   public async getPackageName(cliTool: string) {

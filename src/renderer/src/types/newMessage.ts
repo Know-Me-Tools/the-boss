@@ -1,4 +1,5 @@
 import type { CompletionUsage } from '@cherrystudio/openai/resources'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type { ProviderMetadata } from 'ai'
 
 import type {
@@ -34,6 +35,7 @@ export enum MessageBlockType {
   CITATION = 'citation', // 引用类型 (Now includes web search, grounding, etc.)
   VIDEO = 'video', // 视频内容
   COMPACT = 'compact', // Compact command response
+  CONTEXT_MANAGEMENT = 'context_management', // Context strategy / compacting event
   SKILL = 'skill' // Skill activation block
 }
 
@@ -155,6 +157,11 @@ export interface CompactMessageBlock extends BaseMessageBlock {
   compactedContent: string // 从 <local-command-stdout> 提取的内容
 }
 
+export interface ContextManagementMessageBlock extends BaseMessageBlock {
+  type: MessageBlockType.CONTEXT_MANAGEMENT
+  payload: ContextManagementStreamPayload
+}
+
 /** Skill activation block — shows which skill fired and what content was injected */
 export interface SkillMessageBlock extends BaseMessageBlock {
   type: MessageBlockType.SKILL
@@ -176,6 +183,14 @@ export interface SkillMessageBlock extends BaseMessageBlock {
   similarityScore?: number
   /** Which context management method was applied */
   contextManagementMethod: ContextManagementMethod
+  /** Estimated raw token count before skill context management */
+  originalTokenCount: number
+  /** Final managed token count after skill context management */
+  managedTokenCount: number
+  /** Tokens saved by skill context management */
+  tokensSaved: number
+  /** Whether the contributed context was truncated or compacted */
+  truncated: boolean
 }
 
 // MessageBlock 联合类型
@@ -192,6 +207,7 @@ export type MessageBlock =
   | CitationMessageBlock
   | VideoMessageBlock
   | CompactMessageBlock
+  | ContextManagementMessageBlock
   | SkillMessageBlock
 
 export enum UserMessageStatus {

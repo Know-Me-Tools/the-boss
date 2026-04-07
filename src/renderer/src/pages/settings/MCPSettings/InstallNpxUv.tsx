@@ -1,10 +1,9 @@
 import { CheckCircleOutlined, QuestionCircleOutlined, WarningOutlined } from '@ant-design/icons'
 import { Center, VStack } from '@renderer/components/Layout'
-import { useAppDispatch, useAppSelector } from '@renderer/store'
-import { setIsBunInstalled, setIsUvInstalled } from '@renderer/store/mcp'
+import type { DependencyStatus } from '@shared/config/types'
 import { Alert, Button } from 'antd'
 import type { FC } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import styled from 'styled-components'
@@ -15,65 +14,56 @@ interface Props {
   mini?: boolean
 }
 
-const InstallNpxUv: FC<Props> = ({ mini = false }) => {
-  const dispatch = useAppDispatch()
-  const isUvInstalled = useAppSelector((state) => state.mcp.isUvInstalled)
-  const isBunInstalled = useAppSelector((state) => state.mcp.isBunInstalled)
+function getDependencyLabel(name: 'uv' | 'bun', status: DependencyStatus | null): string {
+  if (!status || status.source === 'missing') {
+    return `${name.toUpperCase()} is Missing, please install it to continue.`
+  }
 
+  if (status.source === 'environment') {
+    return `${name.toUpperCase()} is available from environment.`
+  }
+
+  return `${name.toUpperCase()} is installed by The Boss.`
+}
+
+const InstallNpxUv: FC<Props> = ({ mini = false }) => {
   const [isInstallingUv, setIsInstallingUv] = useState(false)
   const [isInstallingBun, setIsInstallingBun] = useState(false)
-  const [uvPath, setUvPath] = useState<string | null>(null)
-  const [bunPath, setBunPath] = useState<string | null>(null)
-  const [binariesDir, setBinariesDir] = useState<string | null>(null)
+  const [uvStatus, setUvStatus] = useState<DependencyStatus | null>(null)
+  const [bunStatus, setBunStatus] = useState<DependencyStatus | null>(null)
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const checkBinariesTimerRef = useRef<NodeJS.Timeout>(undefined)
-
-  // 清理定时器
-  useEffect(() => {
-    return () => {
-      clearTimeout(checkBinariesTimerRef.current)
-    }
-  }, [])
 
   const checkBinaries = useCallback(async () => {
-    const uvExists = await window.api.isBinaryExist('uv')
-    const bunExists = await window.api.isBinaryExist('bun')
-    const { uvPath, bunPath, dir } = await window.api.mcp.getInstallInfo()
-
-    dispatch(setIsUvInstalled(uvExists))
-    dispatch(setIsBunInstalled(bunExists))
-    setUvPath(uvPath)
-    setBunPath(bunPath)
-    setBinariesDir(dir)
-  }, [dispatch])
+    const [nextUvStatus, nextBunStatus] = await window.api.dependencies.getStatuses(['uv', 'bun'])
+    setUvStatus(nextUvStatus)
+    setBunStatus(nextBunStatus)
+  }, [])
 
   const installUV = async () => {
     try {
       setIsInstallingUv(true)
       await window.api.installUVBinary()
-      setIsInstallingUv(false)
-      dispatch(setIsUvInstalled(true))
+      window.toast.success(t('settings.mcp.installSuccess'))
     } catch (error: any) {
       window.toast.error(`${t('settings.mcp.installError')}: ${error.message}`)
+    } finally {
       setIsInstallingUv(false)
+      await checkBinaries()
     }
-    clearTimeout(checkBinariesTimerRef.current)
-    checkBinariesTimerRef.current = setTimeout(checkBinaries, 1000)
   }
 
   const installBun = async () => {
     try {
       setIsInstallingBun(true)
       await window.api.installBunBinary()
-      setIsInstallingBun(false)
-      dispatch(setIsBunInstalled(true))
+      window.toast.success(t('settings.mcp.installSuccess'))
     } catch (error: any) {
       window.toast.error(`${t('settings.mcp.installError')}: ${error.message}`)
+    } finally {
       setIsInstallingBun(false)
+      await checkBinaries()
     }
-    clearTimeout(checkBinariesTimerRef.current)
-    checkBinariesTimerRef.current = setTimeout(checkBinaries, 1000)
   }
 
   useEffect(() => {
@@ -81,7 +71,7 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
   }, [checkBinaries])
 
   if (mini) {
-    const installed = isUvInstalled && isBunInstalled
+    const installed = (uvStatus?.available ?? false) && (bunStatus?.available ?? false)
     return (
       <Button
         type="primary"
@@ -95,15 +85,12 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
     )
   }
 
-  const openBinariesDir = () => {
-    if (binariesDir) {
-      void window.api.openPath(binariesDir)
-    }
-  }
-
   const onHelp = () => {
     window.open('https://the-boss.know-me.tools/docs/advanced-basic/mcp', '_blank')
   }
+
+  const isUvInstalled = uvStatus?.available ?? false
+  const isBunInstalled = bunStatus?.available ?? false
 
   return (
     <Container>
@@ -114,9 +101,9 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
           <VStack>
             <SettingRow style={{ width: '100%' }}>
               <SettingSubtitle style={{ margin: 0, fontWeight: 'normal' }}>
-                {isUvInstalled ? 'UV Installed' : `UV ${t('settings.mcp.missingDependencies')}`}
+                {getDependencyLabel('uv', uvStatus)}
               </SettingSubtitle>
-              {!isUvInstalled && (
+              {uvStatus?.installSupported && uvStatus.source !== 'bundled' && (
                 <Button
                   type="primary"
                   onClick={installUV}
@@ -128,10 +115,8 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
               )}
             </SettingRow>
             <SettingRow style={{ width: '100%' }}>
-              <SettingDescription
-                onClick={openBinariesDir}
-                style={{ margin: 0, fontWeight: 'normal', cursor: 'pointer' }}>
-                {uvPath}
+              <SettingDescription style={{ margin: 0, fontWeight: 'normal' }}>
+                {uvStatus?.resolvedPath || uvStatus?.bundledPath}
               </SettingDescription>
             </SettingRow>
           </VStack>
@@ -144,9 +129,9 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
           <VStack>
             <SettingRow style={{ width: '100%' }}>
               <SettingSubtitle style={{ margin: 0, fontWeight: 'normal' }}>
-                {isBunInstalled ? 'Bun Installed' : `Bun ${t('settings.mcp.missingDependencies')}`}
+                {getDependencyLabel('bun', bunStatus)}
               </SettingSubtitle>
-              {!isBunInstalled && (
+              {bunStatus?.installSupported && bunStatus.source !== 'bundled' && (
                 <Button
                   type="primary"
                   onClick={installBun}
@@ -158,10 +143,8 @@ const InstallNpxUv: FC<Props> = ({ mini = false }) => {
               )}
             </SettingRow>
             <SettingRow style={{ width: '100%' }}>
-              <SettingDescription
-                onClick={openBinariesDir}
-                style={{ margin: 0, fontWeight: 'normal', cursor: 'pointer' }}>
-                {bunPath}
+              <SettingDescription style={{ margin: 0, fontWeight: 'normal' }}>
+                {bunStatus?.resolvedPath || bunStatus?.bundledPath}
               </SettingDescription>
             </SettingRow>
           </VStack>
