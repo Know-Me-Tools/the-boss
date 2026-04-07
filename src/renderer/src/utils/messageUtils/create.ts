@@ -1,6 +1,6 @@
 import { loggerService } from '@logger'
-import type { Assistant, FileMetadata, Topic } from '@renderer/types'
-import { ContextManagementMethod, FILE_TYPE, SkillSelectionMethod } from '@renderer/types'
+import type { Assistant, ContextManagementMethod, FileMetadata, SkillSelectionMethod, Topic } from '@renderer/types'
+import { FILE_TYPE } from '@renderer/types'
 import type { SerializedError } from '@renderer/types/error'
 import type {
   BaseMessageBlock,
