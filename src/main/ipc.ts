@@ -812,6 +812,11 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     }
   })
 
+  ipcMain.handle(IpcChannel.Skill_EmbedText, async (_, payload: { modelId?: string; text: string }) => {
+    const { embedTextInMainProcess } = await import('./services/skills/skillEmbedText')
+    return embedTextInMainProcess(payload)
+  })
+
   ipcMain.handle(IpcChannel.APP_CrashRenderProcess, () => {
     mainWindow.webContents.forcefullyCrashRenderer()
   })

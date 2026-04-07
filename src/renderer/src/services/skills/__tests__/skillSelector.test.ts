@@ -18,12 +18,6 @@ vi.mock('@logger', () => ({
   }
 }))
 
-// Mock fastembed + ai to avoid WASM in tests
-vi.mock('@mastra/fastembed', () => ({ fastembed: {} }))
-vi.mock('ai', () => ({
-  embed: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
-}))
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Test helpers
 // ─────────────────────────────────────────────────────────────────────────────

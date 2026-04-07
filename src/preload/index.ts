@@ -956,6 +956,8 @@ const api = {
       return () => ipcRenderer.off(channel, listener)
     }
   },
+  embedText: (payload: { modelId?: string; text: string }): Promise<number[]> =>
+    ipcRenderer.invoke(IpcChannel.Skill_EmbedText, payload),
   apiServer: {
     getStatus: (): Promise<GetApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_GetStatus),
     start: (): Promise<StartApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_Start),

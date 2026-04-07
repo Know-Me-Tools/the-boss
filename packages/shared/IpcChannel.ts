@@ -474,6 +474,7 @@ export enum IpcChannel {
   Skill_ReadFile = 'skill:read-file',
   Skill_ListFiles = 'skill:list-files',
   Skill_ListLocal = 'skill:list-local',
+  Skill_EmbedText = 'skill:embed-text',
 
   // LAN Transfer
   LanTransfer_ListServices = 'lan-transfer:list',

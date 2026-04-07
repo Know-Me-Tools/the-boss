@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { action } from 'storybook/actions'
 
-import { CodeEditor, getCmThemeByName, getCmThemeNames } from '../../../src/components'
+import { CodeEditor, getCmThemeNames } from '../../../src/components'
 import type { LanguageConfig } from '../../../src/components/composites/CodeEditor/types'
 
 // 示例语言配置 - 为 Storybook 提供更丰富的语言支持演示
@@ -100,7 +100,7 @@ export const Default: Story = {
         value={args.value}
         language={args.language}
         languageConfig={exampleLanguageConfig}
-        theme={getCmThemeByName(args.theme || 'light')}
+        theme={args.theme || 'light'}
         fontSize={args.fontSize as number}
         editable={args.editable as boolean}
         readOnly={args.readOnly as boolean}
@@ -130,7 +130,7 @@ export const JSONLint: Story = {
       <CodeEditor
         value={args.value}
         language="json"
-        theme={getCmThemeByName(args.theme || 'light')}
+        theme={args.theme || 'light'}
         options={{ lint: true }}
         wrapped
         onChange={action('change')}
@@ -154,7 +154,7 @@ export const SaveShortcut: Story = {
         value={args.value}
         language={args.language}
         languageConfig={exampleLanguageConfig}
-        theme={getCmThemeByName(args.theme || 'light')}
+        theme={args.theme || 'light'}
         options={{ keymap: true }}
         onSave={action('save')}
         onChange={action('change')}
@@ -185,7 +185,7 @@ console.log(fibonacci(10));`,
         value={args.value}
         language={args.language}
         // 注意：这里没有传入 languageConfig，使用默认配置
-        theme={getCmThemeByName(args.theme || 'light')}
+        theme={args.theme || 'light'}
         onChange={action('change')}
         wrapped
       />
