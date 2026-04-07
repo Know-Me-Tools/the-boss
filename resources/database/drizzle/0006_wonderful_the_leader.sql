@@ -1,0 +1,1 @@
+ALTER TABLE `agents` ADD `skill_config` text;

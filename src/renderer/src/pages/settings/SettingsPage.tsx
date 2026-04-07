@@ -1,10 +1,7 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
-import ArtifactSettings from '@renderer/pages/settings/ArtifactSettings'
-import ContextManagementSettings from '@renderer/pages/settings/ContextManagementSettings'
-import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
-import ServicesSettings from '@renderer/pages/settings/ServicesSettings'
+import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { Divider as AntDivider } from 'antd'
 import {
   Brain,
@@ -14,7 +11,6 @@ import {
   FileCode,
   HardDrive,
   Info,
-  Layers,
   MonitorCog,
   Package,
   PictureInPicture2,
@@ -22,35 +18,18 @@ import {
   Search,
   Server,
   Settings2,
+  SlidersHorizontal,
   Sparkles,
   TextCursorInput,
   Zap
 } from 'lucide-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import styled from 'styled-components'
 
-import AboutSettings from './AboutSettings'
-import ChannelsSettings from './ChannelsSettings'
-import DataSettings from './DataSettings/DataSettings'
-import DisplaySettings from './DisplaySettings/DisplaySettings'
-import DocProcessSettings from './DocProcessSettings'
-import GeneralSettings from './GeneralSettings'
-import MCPSettings from './MCPSettings'
-import MemorySettings from './MemorySettings'
-import { ProviderList } from './ProviderSettings'
-import QuickAssistantSettings from './QuickAssistantSettings'
-import QuickPhraseSettings from './QuickPhraseSettings'
-import SelectionAssistantSettings from './SelectionAssistantSettings/SelectionAssistantSettings'
-import ShortcutSettings from './ShortcutSettings'
-import SkillsSettings from './SkillsSettings'
-import TasksSettings from './TasksSettings'
-import { ApiServerSettings } from './ToolSettings/ApiServerSettings'
-import WebSearchSettings from './WebSearchSettings'
-
 const SettingsPage: FC = () => {
-  const { pathname } = useLocation()
+  const location = useLocation()
+  const { pathname } = location
   const { t } = useTranslation()
 
   const isRoute = (path: string): string => (pathname.startsWith(path) ? 'active' : '')
@@ -74,12 +53,6 @@ const SettingsPage: FC = () => {
               {t('settings.model')}
             </MenuItem>
           </MenuItemLink>
-          <MenuItemLink to="/settings/context">
-            <MenuItem className={isRoute('/settings/context')}>
-              <Layers size={18} />
-              {t('settings.contextStrategy.nav_title')}
-            </MenuItem>
-          </MenuItemLink>
           <Divider />
           <MenuItemLink to="/settings/general">
             <MenuItem className={isRoute('/settings/general')}>
@@ -99,18 +72,6 @@ const SettingsPage: FC = () => {
               {t('settings.data.title')}
             </MenuItem>
           </MenuItemLink>
-          <MenuItemLink to="/settings/artifacts">
-            <MenuItem className={isRoute('/settings/artifacts')}>
-              <FileCode size={18} />
-              {t('settings.artifacts.title')}
-            </MenuItem>
-          </MenuItemLink>
-          <MenuItemLink to="/settings/services">
-            <MenuItem className={isRoute('/settings/services')}>
-              <Server size={18} />
-              Services
-            </MenuItem>
-          </MenuItemLink>
           <Divider />
           <MenuItemLink to="/settings/mcp">
             <MenuItem className={isRoute('/settings/mcp')}>
@@ -122,6 +83,12 @@ const SettingsPage: FC = () => {
             <MenuItem className={isRoute('/settings/skills')}>
               <Sparkles size={18} />
               {t('settings.skills.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/skill">
+            <MenuItem className={isRoute('/settings/skill')}>
+              <SlidersHorizontal size={18} />
+              {t('settings.skill.title')}
             </MenuItem>
           </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
@@ -194,29 +161,7 @@ const SettingsPage: FC = () => {
           </MenuItemLink>
         </SettingMenus>
         <SettingContent>
-          <Routes>
-            <Route path="provider" element={<ProviderList />} />
-            <Route path="model" element={<ModelSettings />} />
-            <Route path="context" element={<ContextManagementSettings />} />
-            <Route path="websearch/*" element={<WebSearchSettings />} />
-            <Route path="api-server" element={<ApiServerSettings />} />
-            <Route path="channels" element={<ChannelsSettings />} />
-            <Route path="scheduled-tasks" element={<TasksSettings />} />
-            <Route path="docprocess" element={<DocProcessSettings />} />
-            <Route path="quickphrase" element={<QuickPhraseSettings />} />
-            <Route path="mcp/*" element={<MCPSettings />} />
-            <Route path="skills" element={<SkillsSettings />} />
-            <Route path="memory" element={<MemorySettings />} />
-            <Route path="general/*" element={<GeneralSettings />} />
-            <Route path="display" element={<DisplaySettings />} />
-            <Route path="shortcut" element={<ShortcutSettings />} />
-            <Route path="quickAssistant" element={<QuickAssistantSettings />} />
-            <Route path="selectionAssistant" element={<SelectionAssistantSettings />} />
-            <Route path="data" element={<DataSettings />} />
-            <Route path="artifacts" element={<ArtifactSettings />} />
-            <Route path="services" element={<ServicesSettings />} />
-            <Route path="about" element={<AboutSettings />} />
-          </Routes>
+          <Outlet />
         </SettingContent>
       </ContentContainer>
     </Container>

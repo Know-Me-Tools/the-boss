@@ -1,6 +1,6 @@
-import { resolveBrandPrimary, resolveBrandTheme } from '@renderer/config/brand'
-import { useSettings } from '@renderer/hooks/useSettings'
-import type { LanguageVarious } from '@renderer/types'
+import { usePreference } from '@data/hooks/usePreference'
+import { defaultLanguage } from '@shared/config/constant'
+import type { LanguageVarious } from '@shared/data/preference/preferenceTypes'
 import { ConfigProvider, theme } from 'antd'
 import deDE from 'antd/locale/de_DE'
 import elGR from 'antd/locale/el_GR'
@@ -18,16 +18,13 @@ import type { FC, PropsWithChildren } from 'react'
 import { useTheme } from './ThemeProvider'
 
 const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
-  const {
-    language,
-    userTheme: { colorPrimary }
-  } = useSettings()
+  const [language] = usePreference('app.language')
+  const [colorPrimary] = usePreference('ui.theme_user.color_primary')
   const { theme: _theme } = useTheme()
-  const resolvedTheme = resolveBrandTheme(_theme)
 
   return (
     <ConfigProvider
-      locale={getAntdLocale(language)}
+      locale={getAntdLocale((language || navigator.language || defaultLanguage) as LanguageVarious)}
       theme={{
         cssVar: true,
         hashed: false,
@@ -111,7 +108,7 @@ const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
           }
         },
         token: {
-          colorPrimary: resolveBrandPrimary(resolvedTheme, colorPrimary),
+          colorPrimary: colorPrimary,
           fontFamily: 'var(--font-family)',
           colorBgMask: _theme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.8)',
           motionDurationMid: '100ms'

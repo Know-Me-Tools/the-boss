@@ -1,3 +1,5 @@
+//TODO [v2] 类型将转移至 packages/shared/data/types/message.ts。 转移后此文件将废弃(deprecated)
+
 import type { CompletionUsage } from '@cherrystudio/openai/resources'
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type { ProviderMetadata } from 'ai'
@@ -19,6 +21,7 @@ import type {
   WebSearchSource
 } from '.'
 import type { SerializedError } from './error'
+import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
 
 // MessageBlock 类型枚举 - 根据实际API返回特性优化
 export enum MessageBlockType {
@@ -34,6 +37,7 @@ export enum MessageBlockType {
   CITATION = 'citation', // 引用类型 (Now includes web search, grounding, etc.)
   VIDEO = 'video', // 视频内容
   COMPACT = 'compact', // Compact command response
+  SKILL = 'skill', // Skill activation block
   CONTEXT_MANAGEMENT = 'context_management' // Context strategy / compaction notice
 }
 
@@ -155,6 +159,29 @@ export interface CompactMessageBlock extends BaseMessageBlock {
   compactedContent: string // 从 <local-command-stdout> 提取的内容
 }
 
+/** Skill activation block — shows which skill fired and what content was injected */
+export interface SkillMessageBlock extends BaseMessageBlock {
+  type: MessageBlockType.SKILL
+  /** Registry ID of the activated skill */
+  skillId: string
+  /** Display name */
+  skillName: string
+  /** Keywords/phrases that triggered selection */
+  triggerTokens: string[]
+  /** Human-readable explanation of why this skill was selected */
+  selectionReason: string
+  /** Estimated token count of the injected content after context management */
+  tokenCount: number
+  /** The content that was injected into the LLM context */
+  content: string
+  /** Which selection algorithm activated this skill */
+  activationMethod: SkillSelectionMethod
+  /** Similarity score (available for EMBEDDING / HYBRID / TWO_STAGE methods) */
+  similarityScore?: number
+  /** Which context management method was applied */
+  contextManagementMethod: ContextManagementMethod
+}
+
 /** Notice when chat or agent context policy altered the prompt / SDK session */
 export interface ContextManagementMessageBlock extends BaseMessageBlock {
   type: MessageBlockType.CONTEXT_MANAGEMENT
@@ -175,6 +202,7 @@ export type MessageBlock =
   | CitationMessageBlock
   | VideoMessageBlock
   | CompactMessageBlock
+  | SkillMessageBlock
   | ContextManagementMessageBlock
 
 export enum UserMessageStatus {

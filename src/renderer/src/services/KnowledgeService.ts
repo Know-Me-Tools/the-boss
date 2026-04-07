@@ -4,7 +4,6 @@ import { AiProvider } from '@renderer/aiCore'
 import { getMessageContent } from '@renderer/aiCore/plugins/searchOrchestrationPlugin'
 import { DEFAULT_KNOWLEDGE_DOCUMENT_COUNT, DEFAULT_KNOWLEDGE_THRESHOLD } from '@renderer/config/constant'
 import { getEmbeddingMaxContext } from '@renderer/config/embedings'
-import { REFERENCE_PROMPT } from '@renderer/config/prompts'
 import { addSpan, endSpan } from '@renderer/services/SpanManagerService'
 import store from '@renderer/store'
 import type { Assistant, Message } from '@renderer/types'
@@ -24,6 +23,7 @@ import type { ExtractResults } from '@renderer/utils/extract'
 import { createCitationBlock } from '@renderer/utils/messageUtils/create'
 import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { isAzureOpenAIProvider, isGeminiProvider } from '@renderer/utils/provider'
+import { REFERENCE_PROMPT } from '@shared/config/prompts'
 import type { ModelMessage, UserModelMessage } from 'ai'
 import { isEmpty } from 'lodash'
 
@@ -164,7 +164,7 @@ export const searchKnowledgeBase = async (
     const threshold = base.threshold || DEFAULT_KNOWLEDGE_THRESHOLD
 
     if (topicId) {
-      currentSpan = addSpan({
+      currentSpan = await addSpan({
         topicId,
         name: `${base.name}-search`,
         inputs: {
@@ -261,7 +261,7 @@ export const processKnowledgeSearch = async (
     return []
   }
 
-  const span = addSpan({
+  const span = await addSpan({
     topicId,
     name: 'knowledgeSearch',
     inputs: {

@@ -75,7 +75,9 @@ asarUnpack:
   - "node_modules/@esbuild/**"
   - "node_modules/esbuild/**"
   - "node_modules/@img/sharp-libvips-*/**"
-
+extraResources:
+  - from: "migrations/sqlite-drizzle"
+    to: "migrations/sqlite-drizzle"
 win:
   executableName: The Boss
   artifactName: ${productName}-${version}-${arch}-setup.${ext}

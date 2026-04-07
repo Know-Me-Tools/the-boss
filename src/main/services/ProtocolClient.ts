@@ -4,16 +4,15 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 
 import { loggerService } from '@logger'
-import { APP_NAME, APP_PROTOCOL, APP_URL_HANDLER_DESKTOP_FILE } from '@shared/config/branding'
+import { application } from '@main/core/application'
 import { app } from 'electron'
 
 import { handleProvidersProtocolUrl } from './urlschema/handle-providers'
 import { handleMcpProtocolUrl } from './urlschema/mcp-install'
-import { windowService } from './WindowService'
 
 const logger = loggerService.withContext('ProtocolClient')
 
-export const CHERRY_STUDIO_PROTOCOL = APP_PROTOCOL
+export const CHERRY_STUDIO_PROTOCOL = 'cherrystudio'
 
 export function registerProtocolClient(app: Electron.App) {
   if (process.defaultApp) {
@@ -28,7 +27,7 @@ export function registerProtocolClient(app: Electron.App) {
 export function handleProtocolUrl(url: string) {
   if (!url) return
   // Process the URL that was used to open the app
-  // The url will be in the format: theboss://data?param1=value1&param2=value2
+  // The url will be in the format: cherrystudio://data?param1=value1&param2=value2
 
   // Parse the URL and extract parameters
   const urlObj = new URL(url)
@@ -44,7 +43,7 @@ export function handleProtocolUrl(url: string) {
   }
 
   // You can send the data to your renderer process
-  const mainWindow = windowService.getMainWindow()
+  const mainWindow = application.get('WindowService').getMainWindow()
 
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('protocol-data', {
@@ -56,11 +55,11 @@ export function handleProtocolUrl(url: string) {
 
 const execAsync = promisify(exec)
 
-const DESKTOP_FILE_NAME = APP_URL_HANDLER_DESKTOP_FILE
+const DESKTOP_FILE_NAME = 'cherrystudio-url-handler.desktop'
 
 /**
  * Sets up deep linking for the AppImage build on Linux by creating a .desktop file.
- * This allows the OS to open theboss:// URLs with this App.
+ * This allows the OS to open cherrystudio:// URLs with this App.
  */
 export async function setupAppImageDeepLink(): Promise<void> {
   // Only run on Linux and when packaged as an AppImage
@@ -88,7 +87,7 @@ export async function setupAppImageDeepLink(): Promise<void> {
     // %U allows passing the URL to the application
     // NoDisplay=true hides it from the regular application menu
     const desktopFileContent = `[Desktop Entry]
-Name=${APP_NAME}
+Name=Cherry Studio
 Exec=${escapePathForExec(appPath)} %U
 Terminal=false
 Type=Application

@@ -1,69 +1,77 @@
+/**
+ * Main Entry Point
+ *
+ * WARNING: This file currently lacks proper lifecycle management. Event handlers
+ * and initialization timing are fragmented — services are manually imported,
+ * initialized in scattered locations, and cleaned up across multiple exit hooks.
+ *
+ * The v2 refactoring is progressively migrating old services into the lifecycle
+ * system (see src/main/core/lifecycle/). During migration, the old manual pattern
+ * (import singleton → call init()) coexists with the new lifecycle-managed pattern
+ * (application.bootstrap() → application.get()). This file will be thoroughly
+ * refactored once all services have been migrated.
+ */
+
+// Boot config must be the first to load
+// eslint-disable-next-line
+import '@main/data/bootConfig'
+
+// [v2] the following code is to be refactored
 // don't reorder this file, it's used to initialize the app data dir and
 // other which should be run before the main process is ready
-// eslint-disable-next-line
+
 import './bootstrap'
 
 import '@main/config'
 
-import { loggerService } from '@logger'
-import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { replaceDevtoolsFont } from '@main/utils/windowUtil'
-import { APP_BUNDLE_ID, APP_NAME, APP_RUNTIME_NAME } from '@shared/config/branding'
-import { app, crashReporter } from 'electron'
-import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer'
-import { isDev, isLinux, isWin } from './constant'
-
 import process from 'node:process'
 
+import {
+  getAllMigrators,
+  migrationEngine,
+  migrationWindowManager,
+  registerMigrationIpcHandlers,
+  unregisterMigrationIpcHandlers
+} from '@data/migration/v2'
+import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { loggerService } from '@logger'
+import { bootConfigService } from '@main/data/bootConfig'
+import { app, crashReporter, dialog } from 'electron'
+import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer'
+
+import { isDev, isLinux, isWin } from './constant'
+import { application, serviceList } from './core/application'
 import { registerIpc } from './ipc'
-import { agentService } from './services/agents'
-import { schedulerService } from './services/agents/services/SchedulerService'
-import { bootstrapBuiltinAgents } from './services/agents/services/builtin/BuiltinAgentBootstrap'
-import { channelManager } from './services/agents/services/channels'
-import { registerSessionStreamIpc } from './services/agents/services/channels/sessionStreamIpc'
-import { analyticsService } from './services/AnalyticsService'
-import { apiServerService } from './services/ApiServerService'
-import { appMenuService } from './services/AppMenuService'
-import { configManager } from './services/ConfigManager'
-import { lanTransferClientService } from './services/lanTransfer'
-import mcpService from './services/MCPService'
-import { localTransferService } from './services/LocalTransferService'
-import { openClawService } from './services/OpenClawService'
-import { nodeTraceService } from './services/NodeTraceService'
-import powerMonitorService from './services/PowerMonitorService'
 import {
   CHERRY_STUDIO_PROTOCOL,
   handleProtocolUrl,
   registerProtocolClient,
   setupAppImageDeepLink
 } from './services/ProtocolClient'
-import selectionService, { initSelectionService } from './services/SelectionService'
-import { registerShortcuts } from './services/ShortcutService'
-import { TrayService } from './services/TrayService'
 import { versionService } from './services/VersionService'
-import { windowService } from './services/WindowService'
-import { initWebviewHotkeys } from './services/WebviewService'
-import { runAsyncFunction } from './utils'
-import { isOvmsSupported } from './services/OvmsManager'
 import { extractRtkBinaries } from './utils/rtk'
 
 const logger = loggerService.withContext('MainEntry')
 
+// [v2] Should handle earlier
+// Check for single instance lock
+if (!app.requestSingleInstanceLock()) {
+  application.quit()
+  process.exit(0)
+}
+
 // enable local crash reports
 crashReporter.start({
-  companyName: 'Know Me Tools',
-  productName: APP_RUNTIME_NAME,
+  companyName: 'CherryHQ',
+  productName: 'CherryStudio',
   submitURL: '',
   uploadToServer: false
 })
 
-app.setName(APP_NAME)
-
 /**
  * Disable hardware acceleration if setting is enabled
  */
-const disableHardwareAcceleration = configManager.getDisableHardwareAcceleration()
-if (disableHardwareAcceleration) {
+if (bootConfigService.get('app.disable_hardware_acceleration')) {
   app.disableHardwareAcceleration()
 }
 
@@ -90,8 +98,8 @@ if (isLinux && process.env.XDG_SESSION_TYPE === 'wayland') {
  * This ensures the window manager identifies the app correctly on both X11 and Wayland
  */
 if (isLinux) {
-  app.commandLine.appendSwitch('class', APP_RUNTIME_NAME)
-  app.commandLine.appendSwitch('name', APP_RUNTIME_NAME)
+  app.commandLine.appendSwitch('class', 'CherryStudio')
+  app.commandLine.appendSwitch('name', 'CherryStudio')
 }
 
 // DocumentPolicyIncludeJSCallStacksInCrashReports: Enable features for unresponsive renderer js call stacks
@@ -133,126 +141,86 @@ if (!isDev) {
   })
 }
 
-// Check for single instance lock
-if (!app.requestSingleInstanceLock()) {
-  app.quit()
-  process.exit(0)
-} else {
-  // This method will be called when Electron has finished
-  // initialization and is ready to create browser windows.
-  // Some APIs can only be used after this event occurs.
+// ============================================================================
+// V2 Migration Gate
+// Migration check runs BEFORE app.whenReady() so it doesn't block lifecycle's
+// parallel startup. Only a bare DB connection is used — no lifecycle services.
+// If migration is needed, the app shows a migration window and restarts after.
+// If not, the lifecycle starts normally with BeforeReady parallel to whenReady.
+// ============================================================================
+const startApp = async () => {
+  // ── Migration check (BEFORE whenReady — no Electron API needed) ──
+  let needsMigration = false
 
-  void app.whenReady().then(async () => {
-    // Record current version for tracking
-    // A preparation for v2 data refactoring
-    versionService.recordCurrentVersion()
+  try {
+    logger.info('Checking if data migration v2 is needed')
+    await migrationEngine.initialize()
+    migrationEngine.registerMigrators(getAllMigrators())
+    needsMigration = await migrationEngine.needsMigration()
+    logger.info('Migration status check result', { needsMigration })
+  } catch (error) {
+    logger.error('Migration status check failed', error as Error)
+    await app.whenReady()
+    dialog.showErrorBox(
+      'Migration Status Check Failed - Application Cannot Start',
+      `Could not determine if data migration is completed.\n\nThis may indicate a database connectivity issue: ${(error as Error).message}\n\nThe application will now exit. Please check your installation and try again.`
+    )
+    logger.error('Exiting application due to migration status check failure')
+    application.quit()
+    return
+  }
 
-    initWebviewHotkeys()
-    // Set app user model id for windows
-    electronApp.setAppUserModelId(import.meta.env.VITE_MAIN_BUNDLE_ID || APP_BUNDLE_ID)
+  // ── Migration path: lifecycle never starts ──
+  if (needsMigration) {
+    logger.info('Data Migration v2 needed, starting migration process')
+    registerMigrationIpcHandlers()
 
-    // Mac: Hide dock icon before window creation when launch to tray is set
-    const isLaunchToTray = configManager.getLaunchToTray()
-    if (isLaunchToTray) {
-      app.dock?.hide()
+    try {
+      await app.whenReady()
+      migrationWindowManager.create()
+      await migrationWindowManager.waitForReady()
+      logger.info('Migration window created successfully')
+    } catch (migrationError) {
+      logger.error('Failed to start migration process', migrationError as Error)
+      unregisterMigrationIpcHandlers()
+      dialog.showErrorBox(
+        'Migration Required - Application Cannot Start',
+        `This version of Cherry Studio requires data migration to function properly.\n\nMigration window failed to start: ${(migrationError as Error).message}\n\nThe application will now exit. Please try starting again or contact support if the problem persists.`
+      )
+      logger.error('Exiting application due to failed migration startup')
+      application.quit()
     }
+    return
+  }
 
-    // Check for backup restore marker and complete restoration (highest priority, before window creation)
-    const { BackupManager } = await import('./services/BackupManager')
-    await BackupManager.handleStartupRestore()
+  // ── Normal path: no migration needed ──
+  migrationEngine.close()
 
-    const mainWindow = windowService.createMainWindow()
+  // Check for backup restore marker and complete restoration BEFORE bootstrap.
+  // BackupManager physically removes/replaces IndexedDB and Local Storage directories.
+  // Must run before bootstrap creates the main window (which starts the renderer),
+  // otherwise Chromium holds file handles causing EBUSY on Windows or data corruption on macOS/Linux.
+  const { BackupManager } = await import('./services/BackupManager')
+  await BackupManager.handleStartupRestore()
 
-    new TrayService()
-
-    // Setup macOS application menu
-    appMenuService?.setupApplicationMenu()
-
-    nodeTraceService.init()
-    powerMonitorService.init()
-    analyticsService.init()
-
-    // Extract bundled rtk binary to ~/.theboss/bin/ on first run
-    extractRtkBinaries().catch((error) => {
-      logger.warn('Failed to extract rtk binaries (non-fatal)', {
-        error: error instanceof Error ? error.message : String(error)
-      })
-    })
-
-    app.on('activate', function () {
-      const mainWindow = windowService.getMainWindow()
-      if (!mainWindow || mainWindow.isDestroyed()) {
-        windowService.createMainWindow()
-      } else {
-        windowService.showMainWindow()
-      }
-    })
-
-    registerShortcuts(mainWindow)
-
-    await registerIpc(mainWindow, app)
-    localTransferService.startDiscovery({ resetList: true })
-
-    replaceDevtoolsFont(mainWindow)
-
-    // Setup deep link for AppImage on Linux
-    await setupAppImageDeepLink()
-
-    if (isDev) {
-      installExtension([REDUX_DEVTOOLS, REACT_DEVELOPER_TOOLS])
-        .then((name) => logger.info(`Added Extension:  ${name}`))
-        .catch((err) => logger.error('An error occurred: ', err))
-    }
-
-    //start selection assistant service
-    initSelectionService()
-
-    void runAsyncFunction(async () => {
-      // Initialize built-in skills and agents (sequential to avoid SQLITE_BUSY)
-      // TODO: v2 lifecycle
-      await bootstrapBuiltinAgents()
-
-      // Start API server if enabled or if agents exist
-      try {
-        const config = await apiServerService.getCurrentConfig()
-        logger.info('API server config:', config)
-
-        // Check if there are any agents
-        let shouldStart = config.enabled
-        if (!shouldStart) {
-          try {
-            const { total } = await agentService.listAgents({ limit: 1 })
-            if (total > 0) {
-              shouldStart = true
-              logger.info(`Detected ${total} agent(s), auto-starting API server`)
-            }
-          } catch (error: any) {
-            logger.warn('Failed to check agent count:', error)
-          }
-        }
-
-        if (shouldStart) {
-          await apiServerService.start()
-        }
-
-        // Restore CherryClaw schedulers after services are ready
-        await schedulerService.restoreSchedulers()
-
-        // Register IPC handlers for session stream before starting channels
-        registerSessionStreamIpc()
-
-        // Start CherryClaw channel adapters (Telegram, etc.)
-        await channelManager.start()
-      } catch (error: any) {
-        logger.error('Failed to check/start API server:', error)
-      }
+  // Extract bundled rtk binary to ~/.cherrystudio/bin/ on first run
+  // TODO: v2 refactor to use lifecycle
+  extractRtkBinaries().catch((error) => {
+    logger.warn('Failed to extract rtk binaries (non-fatal)', {
+      error: error instanceof Error ? error.message : String(error)
     })
   })
 
+  // Start lifecycle (BeforeReady runs parallel with app.whenReady)
+  application.registerAll(serviceList)
+  const bootstrapPromise = application.bootstrap().catch((error) => {
+    logger.error('Application lifecycle bootstrap failed:', error)
+  })
+
+  // Register protocol/event handlers while bootstrap runs in parallel (same as old code)
   registerProtocolClient(app)
 
   // macOS specific: handle protocol when app is already running
-
   app.on('open-url', (event, url) => {
     event.preventDefault()
     handleProtocolUrl(url)
@@ -268,7 +236,7 @@ if (!app.requestSingleInstanceLock()) {
 
   // Listen for second instance
   app.on('second-instance', (_event, argv) => {
-    windowService.showMainWindow()
+    application.get('WindowService').showMainWindow()
 
     // Protocol handler for Windows/Linux
     // The commandLine is an array of strings where the last item might be the URL
@@ -279,44 +247,34 @@ if (!app.requestSingleInstanceLock()) {
     optimizer.watchWindowShortcuts(window)
   })
 
-  app.on('before-quit', () => {
-    app.isQuitting = true
+  // This method will be called when Electron has finished
+  // initialization and is ready to create browser windows.
+  // Some APIs can only be used after this event occurs.
+  await app.whenReady()
+  // Wait for lifecycle bootstrap to complete
+  // (DbService, PreferenceService, CacheService, DataApiService are now ready)
+  await bootstrapPromise
 
-    // quit selection service
-    if (selectionService) {
-      selectionService.quit()
-    }
+  // Record current version for tracking
+  // A preparation for v2 data refactoring
+  versionService.recordCurrentVersion()
 
-    lanTransferClientService.dispose()
-    localTransferService.dispose()
-  })
+  // Set app user model id for windows
+  electronApp.setAppUserModelId(import.meta.env.VITE_MAIN_BUNDLE_ID || 'com.kangfenmao.CherryStudio')
 
-  app.on('will-quit', async () => {
-    // 简单的资源清理，不阻塞退出流程
-    if (isOvmsSupported) {
-      const { ovmsManager } = await import('./services/OvmsManager')
-      if (ovmsManager) {
-        await ovmsManager.stopOvms()
-      } else {
-        logger.warn('Unexpected behavior: undefined ovmsManager, but OVMS should be supported.')
-      }
-    }
+  // Main window was created by WindowService.onReady() during bootstrap.
+  // registerIpc still needs the window reference for legacy IPC handlers.
+  const mainWindow = application.get('WindowService').getMainWindow()!
+  await registerIpc(mainWindow, app)
 
-    try {
-      schedulerService.stopAll()
-      await channelManager.stop()
-      await analyticsService.destroy()
-      await openClawService.stopGateway()
-      await mcpService.cleanup()
-      await apiServerService.stop()
-    } catch (error) {
-      logger.warn('Error cleaning up services:', error as Error)
-    }
+  // Setup deep link for AppImage on Linux
+  await setupAppImageDeepLink()
 
-    // finish the logger
-    logger.finish()
-  })
-
-  // In this file you can include the rest of your app"s specific main process
-  // code. You can also put them in separate files and require them here.
+  if (isDev) {
+    installExtension([REDUX_DEVTOOLS, REACT_DEVELOPER_TOOLS])
+      .then((name) => logger.info(`Added Extension:  ${name}`))
+      .catch((err) => logger.error('An error occurred: ', err))
+  }
 }
+
+void startApp()

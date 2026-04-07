@@ -2,18 +2,17 @@ import { PlusOutlined } from '@ant-design/icons'
 import ListItem from '@renderer/components/ListItem'
 import Scrollbar from '@renderer/components/Scrollbar'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { cacheService } from '@renderer/data/CacheService'
 import { useAgentClient } from '@renderer/hooks/agents/useAgentClient'
 import { useChannels } from '@renderer/hooks/agents/useChannels'
 import { useTaskLogs } from '@renderer/hooks/agents/useTasks'
-import { useAppDispatch } from '@renderer/store'
-import { setActiveAgentId, setActiveSessionIdAction } from '@renderer/store/runtime'
 import type { CreateTaskRequest, ScheduledTaskEntity, TaskRunLogEntity, UpdateTaskRequest } from '@renderer/types'
+import { useNavigate } from '@tanstack/react-router'
 import { Alert, Button, DatePicker, Empty, Input, Modal, Popconfirm, Select, Spin, Table, Tag, Tooltip } from 'antd'
 import dayjs from 'dayjs'
 import { CalendarClock, Clock, ExternalLink, History, Maximize2, Pause, Play, Search, Trash2 } from 'lucide-react'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 import { mutate } from 'swr'
 
 import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '.'
@@ -410,7 +409,6 @@ const TaskLogsInline: FC<{ taskId: string; agentId: string }> = ({ taskId, agent
   const { t, i18n } = useTranslation()
   const locale = i18n.language
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
   const { logs, isLoading } = useTaskLogs(taskId)
   const [searchText, setSearchText] = useState('')
 
@@ -428,11 +426,12 @@ const TaskLogsInline: FC<{ taskId: string; agentId: string }> = ({ taskId, agent
 
   const navigateToSession = useCallback(
     (sessionId: string) => {
-      dispatch(setActiveAgentId(agentId))
-      dispatch(setActiveSessionIdAction({ agentId, sessionId }))
-      navigate('/agents')
+      cacheService.set('agent.active_id', agentId)
+      const currentMap = cacheService.get('agent.session.active_id_map') ?? {}
+      cacheService.set('agent.session.active_id_map', { ...currentMap, [agentId]: sessionId })
+      void navigate({ to: '/app/chat' })
     },
-    [agentId, dispatch, navigate]
+    [agentId, navigate]
   )
 
   const columns = [

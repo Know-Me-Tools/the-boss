@@ -1,7 +1,6 @@
+import { InfoTooltip, RowFlex, SpaceBetweenRowFlex, Switch } from '@cherrystudio/ui'
 import ContextStrategySelector from '@renderer/components/ContextStrategySelector'
-import { HStack } from '@renderer/components/Layout'
 import ModelSelector from '@renderer/components/ModelSelector'
-import { InfoTooltip } from '@renderer/components/TooltipIcons'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useProviders } from '@renderer/hooks/useProvider'
@@ -15,7 +14,7 @@ import {
 import type { Model } from '@renderer/types'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
 import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG, DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
-import { Badge, Switch } from 'antd'
+import { Badge } from 'antd'
 import { find } from 'lodash'
 import { Bot, Layers, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
@@ -131,8 +130,8 @@ const ContextManagementSettings: FC = () => {
     <SettingContainer theme={theme}>
       {/* Enable/Disable Section */}
       <SettingGroup theme={theme}>
-        <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <HStack alignItems="center" gap={10}>
+        <SpaceBetweenRowFlex className="items-center">
+          <RowFlex className="items-center gap-2.5">
             <Layers size={18} color="var(--color-text)" />
             <SettingRowTitle style={{ fontWeight: 'bold' }}>
               {t('settings.contextStrategy.title', { defaultValue: 'Context Management' })}
@@ -144,9 +143,9 @@ const ContextManagementSettings: FC = () => {
                 fontSize: 10
               }}
             />
-          </HStack>
-          <Switch checked={isEnabled} onChange={handleEnableToggle} />
-        </HStack>
+          </RowFlex>
+          <Switch checked={isEnabled} onCheckedChange={handleEnableToggle} />
+        </SpaceBetweenRowFlex>
         <SettingDescription>
           {t('settings.contextStrategy.globalDescription', {
             defaultValue:
@@ -159,15 +158,15 @@ const ContextManagementSettings: FC = () => {
       {isEnabled && (
         <SettingGroup theme={theme}>
           <SettingTitle style={{ marginBottom: 16 }}>
-            <HStack alignItems="center" gap={10}>
+            <RowFlex className="items-center gap-2.5">
               {t('settings.contextStrategy.configuration', { defaultValue: 'Strategy Configuration' })}
               <InfoTooltip
-                title={t('settings.contextStrategy.configurationHelp', {
+                content={t('settings.contextStrategy.configurationHelp', {
                   defaultValue:
                     'Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.'
                 })}
               />
-            </HStack>
+            </RowFlex>
           </SettingTitle>
           <ContextStrategySelector value={strategy} onChange={handleStrategyChange} />
         </SettingGroup>
@@ -177,16 +176,16 @@ const ContextManagementSettings: FC = () => {
       {isEnabled && (strategy.type === 'summarize' || strategy.type === 'hierarchical') && (
         <SettingGroup theme={theme}>
           <SettingTitle style={{ marginBottom: 16 }}>
-            <HStack alignItems="center" gap={10}>
+            <RowFlex className="items-center gap-2.5">
               <Sparkles size={16} color="var(--color-text)" />
               {t('settings.contextStrategy.summarizationModel', { defaultValue: 'Summarization Model' })}
               <InfoTooltip
-                title={t('settings.contextStrategy.summarizationModelHelp', {
+                content={t('settings.contextStrategy.summarizationModelHelp', {
                   defaultValue:
                     'Select a fast, lightweight model for generating summaries. Recommended: Claude Haiku, GPT-3.5 Turbo, or similar quick models.'
                 })}
               />
-            </HStack>
+            </RowFlex>
           </SettingTitle>
           <SettingRow>
             <SettingRowTitle>{t('settings.contextStrategy.selectModel', { defaultValue: 'Model' })}</SettingRowTitle>
@@ -214,8 +213,8 @@ const ContextManagementSettings: FC = () => {
 
       {/* Agent sessions (Claude Code SDK) */}
       <SettingGroup theme={theme}>
-        <HStack style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <HStack alignItems="center" gap={10}>
+        <SpaceBetweenRowFlex className="items-center">
+          <RowFlex className="items-center gap-2.5">
             <Bot size={18} color="var(--color-text)" />
             <SettingRowTitle style={{ fontWeight: 'bold' }}>
               {t('settings.contextStrategy.agentSessionsTitle', { defaultValue: 'Agent context (SDK sessions)' })}
@@ -227,9 +226,9 @@ const ContextManagementSettings: FC = () => {
                 fontSize: 10
               }}
             />
-          </HStack>
-          <Switch checked={isAgentEnabled} onChange={handleAgentEnableToggle} />
-        </HStack>
+          </RowFlex>
+          <Switch checked={isAgentEnabled} onCheckedChange={handleAgentEnableToggle} />
+        </SpaceBetweenRowFlex>
         <SettingDescription>
           {t('settings.contextStrategy.agentSessionsDescription', {
             defaultValue:
@@ -250,10 +249,10 @@ const ContextManagementSettings: FC = () => {
       {isAgentEnabled && (agentStrategy.type === 'summarize' || agentStrategy.type === 'hierarchical') && (
         <SettingGroup theme={theme}>
           <SettingTitle style={{ marginBottom: 16 }}>
-            <HStack alignItems="center" gap={10}>
+            <RowFlex className="items-center gap-2.5">
               <Sparkles size={16} color="var(--color-text)" />
               {t('settings.contextStrategy.agentSummarizationModel', { defaultValue: 'Agent summarization model' })}
-            </HStack>
+            </RowFlex>
           </SettingTitle>
           <SettingRow>
             <SettingRowTitle>{t('settings.contextStrategy.selectModel', { defaultValue: 'Model' })}</SettingRowTitle>

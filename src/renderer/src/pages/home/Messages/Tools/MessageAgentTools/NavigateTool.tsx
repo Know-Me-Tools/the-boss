@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router'
 import { Compass } from 'lucide-react'
 
 interface NavigateToolInput {
@@ -112,10 +113,10 @@ export function NavigateToolInline({
         : ''
   const isSuccess = outputText.includes('Navigated to')
 
+  const navigate = useNavigate()
+
   const handleClick = () => {
-    if (typeof window.navigate === 'function') {
-      window.navigate(fullPath)
-    }
+    void navigate({ to: basePath })
   }
 
   return (

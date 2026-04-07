@@ -19,6 +19,7 @@ import FileBlock from './FileBlock'
 import ImageBlock from './ImageBlock'
 import MainTextBlock from './MainTextBlock'
 import PlaceholderBlock from './PlaceholderBlock'
+import SkillBlock from './SkillBlock'
 import ThinkingBlock from './ThinkingBlock'
 import ToolBlock from './ToolBlock'
 import ToolBlockGroup from './ToolBlockGroup'
@@ -229,6 +230,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
             break
           case MessageBlockType.THINKING:
             blockComponent = <ThinkingBlock key={block.id} block={block} />
+            break
+          case MessageBlockType.SKILL:
+            blockComponent = <SkillBlock key={block.id} block={block} />
             break
           case MessageBlockType.TRANSLATION:
             blockComponent = <TranslationBlock key={block.id} block={block} />

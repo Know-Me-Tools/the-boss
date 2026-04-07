@@ -1,6 +1,5 @@
-import { HStack } from '@renderer/components/Layout'
+import { InfoTooltip, RowFlex, Switch } from '@cherrystudio/ui'
 import Selector from '@renderer/components/Selector'
-import { InfoTooltip } from '@renderer/components/TooltipIcons'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { SettingDivider, SettingRow, SettingRowTitle } from '@renderer/pages/settings'
 import type { ContextStrategyConfig, ContextStrategyType } from '@renderer/types/contextStrategy'
@@ -28,7 +27,6 @@ const STRATEGY_DESC_I18N_KEY: Record<ContextStrategyType, string> = {
   hierarchical: 'settings.contextStrategy.descriptions.hierarchical',
   truncate_middle: 'settings.contextStrategy.descriptions.truncate_middle'
 }
-import { Switch } from 'antd'
 import { InputNumber, Slider } from 'antd'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -125,7 +123,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
             <RowTitle>
               {inheritLabel || t('settings.contextStrategy.useInherited', { defaultValue: 'Use Default' })}
             </RowTitle>
-            <Switch size="small" checked={useInherited} onChange={onInheritedChange} />
+            <Switch size="sm" checked={useInherited} onCheckedChange={onInheritedChange} />
           </SettingRow>
           {useInherited && inheritedStrategyType && (
             <InheritedInfo>
@@ -147,7 +145,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
           <SettingRow>
             <RowTitle>
               {t('settings.contextStrategy.strategy', { defaultValue: 'Strategy' })}
-              <InfoTooltip title={strategyTooltipDescription} />
+              <InfoTooltip content={strategyTooltipDescription} />
             </RowTitle>
             <Selector value={selectorStrategyType} onChange={handleStrategyChange} options={strategyOptions} />
           </SettingRow>
@@ -179,7 +177,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                     defaultValue: 'Compact when prior turn ≥ tokens'
                   })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.compactTriggerTokensHelp', {
+                    content={t('settings.contextStrategy.compactTriggerTokensHelp', {
                       defaultValue:
                         'Uses the Claude Agent SDK session. When the last turn’s total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).'
                     })}
@@ -209,7 +207,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.maxMessages', { defaultValue: 'Max Messages' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.maxMessagesHelp', {
+                    content={t('settings.contextStrategy.maxMessagesHelp', {
                       defaultValue:
                         'Maximum number of messages to keep. Leave empty for automatic (token-based) management.'
                     })}
@@ -236,12 +234,12 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.summaryMaxTokens', { defaultValue: 'Summary Budget' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.summaryMaxTokensHelp', {
+                    content={t('settings.contextStrategy.summaryMaxTokensHelp', {
                       defaultValue: 'Maximum tokens allocated for the conversation summary.'
                     })}
                   />
                 </RowTitle>
-                <HStack alignItems="center" gap={12} style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
+                <RowFlex className="items-center gap-3" style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
                   <Slider
                     min={200}
                     max={2000}
@@ -253,7 +251,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                   <span style={{ minWidth: 50, textAlign: 'right' }}>
                     {strategy.summaryMaxTokens ?? DEFAULT_CONTEXT_STRATEGY_CONFIG.summaryMaxTokens}
                   </span>
-                </HStack>
+                </RowFlex>
               </SettingRow>
               <SettingDivider />
               <SettingRow>
@@ -262,7 +260,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                     defaultValue: 'Min Messages Before Summarizing'
                   })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.summarizeThresholdHelp', {
+                    content={t('settings.contextStrategy.summarizeThresholdHelp', {
                       defaultValue: 'Minimum number of messages before summarization kicks in.'
                     })}
                   />
@@ -297,7 +295,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.shortTermTurns', { defaultValue: 'Short-term Turns' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.shortTermTurnsHelp', {
+                    content={t('settings.contextStrategy.shortTermTurnsHelp', {
                       defaultValue: 'Number of recent conversation turns to keep verbatim.'
                     })}
                   />
@@ -316,12 +314,12 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.midTermBudget', { defaultValue: 'Mid-term Budget' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.midTermBudgetHelp', {
+                    content={t('settings.contextStrategy.midTermBudgetHelp', {
                       defaultValue: 'Token budget for mid-term memory summaries.'
                     })}
                   />
                 </RowTitle>
-                <HStack alignItems="center" gap={12} style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
+                <RowFlex className="items-center gap-3" style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
                   <Slider
                     min={500}
                     max={5000}
@@ -333,19 +331,19 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                   <span style={{ minWidth: 50, textAlign: 'right' }}>
                     {strategy.midTermSummaryTokens ?? DEFAULT_CONTEXT_STRATEGY_CONFIG.midTermSummaryTokens}
                   </span>
-                </HStack>
+                </RowFlex>
               </SettingRow>
               <SettingDivider />
               <SettingRow>
                 <RowTitle>
                   {t('settings.contextStrategy.longTermBudget', { defaultValue: 'Long-term Budget' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.longTermBudgetHelp', {
+                    content={t('settings.contextStrategy.longTermBudgetHelp', {
                       defaultValue: 'Token budget for extracted long-term facts and preferences.'
                     })}
                   />
                 </RowTitle>
-                <HStack alignItems="center" gap={12} style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
+                <RowFlex className="items-center gap-3" style={{ flex: 1, maxWidth: compact ? 200 : 300 }}>
                   <Slider
                     min={100}
                     max={2000}
@@ -357,7 +355,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                   <span style={{ minWidth: 50, textAlign: 'right' }}>
                     {strategy.longTermFactsTokens ?? DEFAULT_CONTEXT_STRATEGY_CONFIG.longTermFactsTokens}
                   </span>
-                </HStack>
+                </RowFlex>
               </SettingRow>
             </>
           )}
@@ -370,7 +368,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.keepFirst', { defaultValue: 'Keep First Messages' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.keepFirstHelp', {
+                    content={t('settings.contextStrategy.keepFirstHelp', {
                       defaultValue: 'Number of initial messages to preserve (system context, instructions).'
                     })}
                   />
@@ -389,7 +387,7 @@ const ContextStrategySelector: FC<ContextStrategySelectorProps> = ({
                 <RowTitle>
                   {t('settings.contextStrategy.keepLast', { defaultValue: 'Keep Last Messages' })}
                   <InfoTooltip
-                    title={t('settings.contextStrategy.keepLastHelp', {
+                    content={t('settings.contextStrategy.keepLastHelp', {
                       defaultValue: 'Number of recent messages to preserve.'
                     })}
                   />

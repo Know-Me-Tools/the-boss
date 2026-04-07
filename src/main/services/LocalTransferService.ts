@@ -1,10 +1,9 @@
 import { loggerService } from '@logger'
-import type { LocalTransferPeer, LocalTransferState } from '@shared/config/types'
+import { application } from '@main/core/application'
+import type { LanTransferPeer, LanTransferState } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import type { Browser, Service } from 'bonjour-service'
 import Bonjour from 'bonjour-service'
-
-import { windowService } from './WindowService'
 
 const SERVICE_TYPE = 'theboss'
 const SERVICE_PROTOCOL = 'tcp' as const
@@ -19,7 +18,7 @@ class LocalTransferService {
   private static instance: LocalTransferService
   private bonjour: Bonjour | null = null
   private browser: Browser | null = null
-  private services = new Map<string, LocalTransferPeer>()
+  private services = new Map<string, LanTransferPeer>()
   private isScanning = false
   private lastScanStartedAt?: number
   private lastUpdatedAt = Date.now()
@@ -34,7 +33,7 @@ class LocalTransferService {
     return LocalTransferService.instance
   }
 
-  public startDiscovery(options?: StartDiscoveryOptions): LocalTransferState {
+  public startDiscovery(options?: StartDiscoveryOptions): LanTransferState {
     if (options?.resetList) {
       this.services.clear()
     }
@@ -48,7 +47,7 @@ class LocalTransferService {
     return this.getState()
   }
 
-  public stopDiscovery(): LocalTransferState {
+  public stopDiscovery(): LanTransferState {
     if (this.browser) {
       try {
         this.browser.stop()
@@ -62,7 +61,7 @@ class LocalTransferService {
     return this.getState()
   }
 
-  public getState(): LocalTransferState {
+  public getState(): LanTransferState {
     const services = Array.from(this.services.values()).sort((a, b) => a.name.localeCompare(b.name))
     return {
       services,
@@ -73,7 +72,7 @@ class LocalTransferService {
     }
   }
 
-  public getPeerById(id: string): LocalTransferPeer | undefined {
+  public getPeerById(id: string): LanTransferPeer | undefined {
     return this.services.get(id)
   }
 
@@ -161,7 +160,7 @@ class LocalTransferService {
     })
   }
 
-  private normalizeService(service: Service): LocalTransferPeer {
+  private normalizeService(service: Service): LanTransferPeer {
     const addressCandidates = [...(service.addresses || []), service.referer?.address].filter(
       (value): value is string => typeof value === 'string' && value.length > 0
     )
@@ -174,7 +173,7 @@ class LocalTransferService {
           )
         : undefined
 
-    const peer: LocalTransferPeer = {
+    const peer: LanTransferPeer = {
       id: this.buildServiceKey(service.fqdn || service.name, service.host, service.port),
       name: service.name,
       host: service.host,
@@ -196,11 +195,11 @@ class LocalTransferService {
   }
 
   private broadcastState() {
-    const mainWindow = windowService.getMainWindow()
+    const mainWindow = application.get('WindowService').getMainWindow()
     if (!mainWindow || mainWindow.isDestroyed()) {
       return
     }
-    mainWindow.webContents.send(IpcChannel.LocalTransfer_ServicesUpdated, this.getState())
+    mainWindow.webContents.send(IpcChannel.LanTransfer_ServicesUpdated, this.getState())
   }
 }
 

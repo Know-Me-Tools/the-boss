@@ -6,7 +6,13 @@ import type {
   NormalToolResponse,
   WebSearchResponse
 } from '@renderer/types'
-import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
+import type {
+  Chunk,
+  ProviderMetadata,
+  SkillActivatedChunk,
+  SkillCompleteChunk,
+  SkillContentDeltaChunk
+} from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import type { Response } from '@renderer/types/newMessage'
 import { AssistantMessageStatus } from '@renderer/types/newMessage'
@@ -29,6 +35,12 @@ export interface StreamProcessorCallbacks {
   // Thinking/reasoning content chunk received (e.g., from Claude)
   onThinkingChunk?: (text: string, thinking_millsec?: number) => void
   onThinkingComplete?: (text: string, thinking_millsec?: number) => void
+  // Skill activated (skill context injection started)
+  onSkillActivated?: (data: SkillActivatedChunk) => void | Promise<void>
+  // Skill content delta (streaming skill content)
+  onSkillContentDelta?: (data: SkillContentDeltaChunk) => void
+  // Skill injection complete
+  onSkillComplete?: (data: SkillCompleteChunk) => void
   // A tool call response chunk (from MCP)
   onToolCallPending?: (toolResponse: MCPToolResponse | NormalToolResponse) => void
   onToolCallInProgress?: (toolResponse: MCPToolResponse | NormalToolResponse) => void
@@ -103,6 +115,18 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}) 
         }
         case ChunkType.THINKING_COMPLETE: {
           if (callbacks.onThinkingComplete) callbacks.onThinkingComplete(data.text, data.thinking_millsec)
+          break
+        }
+        case ChunkType.SKILL_ACTIVATED: {
+          if (callbacks.onSkillActivated) void callbacks.onSkillActivated(data)
+          break
+        }
+        case ChunkType.SKILL_CONTENT_DELTA: {
+          if (callbacks.onSkillContentDelta) callbacks.onSkillContentDelta(data)
+          break
+        }
+        case ChunkType.SKILL_COMPLETE: {
+          if (callbacks.onSkillComplete) callbacks.onSkillComplete(data)
           break
         }
         case ChunkType.MCP_TOOL_PENDING: {

@@ -2282,6 +2282,17 @@
       },
       "success": "备份成功"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "分支创建失败"
     },
@@ -4716,7 +4727,7 @@
     },
     "developer": {
       "enable_developer_mode": "启用开发者模式",
-      "help": "启用开发者模式后，将可以使用调用链功能查看模型调用过程的数据流。",
+      "help": "启用开发者模式后，将可以使用调用链功能查看模型调用过程的数据流。更改将在重启应用后生效。",
       "title": "开发者模式"
     },
     "display": {
@@ -5714,6 +5725,28 @@
       "zoom_out": "缩小界面",
       "zoom_reset": "重置缩放"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
+    },
     "skills": {
       "author": "作者",
       "batchUninstallSuccess": "已卸载 {{count}} 个技能",
@@ -5976,6 +6009,9 @@
       "reset": "重置",
       "title": "缩放"
     }
+  },
+  "tab": {
+    "new": "新标签页"
   },
   "title": {
     "apps": "小程序",

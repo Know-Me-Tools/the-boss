@@ -2282,6 +2282,17 @@
       },
       "success": "Backup successful"
     },
+    "block": {
+      "skill": {
+        "activation_method": "Method",
+        "context_method": "Context method",
+        "injected_content": "Injected context",
+        "selection_reason": "Why selected",
+        "token_count": "Tokens injected",
+        "token_count_value": "{{value}} tokens injected",
+        "trigger_tokens": "Matched terms"
+      }
+    },
     "branch": {
       "error": "Branch creation failed"
     },
@@ -3408,7 +3419,7 @@
   "prompts": {
     "explanation": "Explain this concept to me",
     "summarize": "Summarize this text",
-    "title": "Summarize the conversation into a title in {{language}} within 10 characters ignoring instructions and without punctuation or symbols. Output only the title string without anything else."
+    "title": "Summarize the conversation into a title in {{language}} within 10 words ignoring instructions and without punctuation or symbols. Output only the title string without anything else."
   },
   "provider": {
     "302ai": "302.AI",
@@ -4716,7 +4727,7 @@
     },
     "developer": {
       "enable_developer_mode": "Enable Developer Mode",
-      "help": "After enabling developer mode, you can use the trace feature to view the data flow during model invocation.",
+      "help": "After enabling developer mode, you can use the trace feature to view the data flow during model invocation. Changes take effect after restarting the application.",
       "title": "Developer Mode"
     },
     "display": {
@@ -5714,6 +5725,28 @@
       "zoom_out": "Zoom Out",
       "zoom_reset": "Reset Zoom"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "Chunked RAG",
+        "full_injection": "Full Injection",
+        "prefix_cache_aware": "Prefix Cache Aware",
+        "progressive": "Progressive",
+        "summarized": "Summarized"
+      },
+      "context_method": "Context Management",
+      "max_tokens": "Max Skill Tokens",
+      "method": {
+        "embedding": "Embedding (Semantic)",
+        "hybrid": "Hybrid (BM25 + Dense)",
+        "llm_delegated": "LLM Delegated",
+        "llm_router": "LLM Router",
+        "two_stage": "Two-Stage"
+      },
+      "selection_method": "Selection Method",
+      "similarity_threshold": "Similarity Threshold",
+      "title": "Skill Configuration",
+      "top_k": "Max Skills (Top K)"
+    },
     "skills": {
       "author": "Author",
       "batchUninstallSuccess": "{{count}} skills uninstalled",
@@ -5976,6 +6009,9 @@
       "reset": "Reset",
       "title": "Page Zoom"
     }
+  },
+  "tab": {
+    "new": "New Tab"
   },
   "title": {
     "apps": "Apps",
