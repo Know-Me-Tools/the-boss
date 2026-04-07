@@ -20,6 +20,7 @@ import { AgentApiClient } from '@renderer/api/agent'
 import db from '@renderer/databases'
 import { getModel } from '@renderer/hooks/useModel'
 import { fetchMessagesSummary, transformMessagesAndFetch } from '@renderer/services/ApiService'
+import { filterConversationMessagesForContext } from '@renderer/services/chatContextStrategy'
 import { dbService } from '@renderer/services/db'
 import { DbService } from '@renderer/services/db/DbService'
 import FileManager from '@renderer/services/FileManager'
@@ -39,6 +40,7 @@ import type {
   GetAgentSessionResponse
 } from '@renderer/types/agent'
 import { ChunkType } from '@renderer/types/chunk'
+import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import type { FileMessageBlock, ImageMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
 import {
   AssistantMessageStatus,
@@ -46,7 +48,6 @@ import {
   MessageBlockType,
   UserMessageStatus
 } from '@renderer/types/newMessage'
-import type { SkillConfigOverride } from '@renderer/types/skillConfig'
 import { uuid } from '@renderer/utils'
 import { addAbortController } from '@renderer/utils/abortController'
 import {
@@ -660,44 +661,6 @@ const fetchAndProcessAgentResponseImpl = async (
     const userContent = userMessageEntity ? getMainTextContent(userMessageEntity) : ''
     const apiServer = state.settings.apiServer
 
-    let agentData: Awaited<ReturnType<AgentApiClient['getAgent']>> | undefined
-    let sessionData: Awaited<ReturnType<AgentApiClient['getSession']>> | undefined
-    let agentSkillOverride: SkillConfigOverride | undefined
-    let sessionSkillOverride: SkillConfigOverride | undefined
-
-    if (apiServer?.apiKey) {
-      try {
-        const baseURL = buildAgentBaseURL(apiServer)
-        const agentClient = new AgentApiClient({
-          baseURL,
-          headers: {
-            Authorization: `Bearer ${apiServer.apiKey}`
-          }
-        })
-
-        ;[agentData, sessionData] = await Promise.all([
-          agentClient.getAgent(agentSession.agentId),
-          agentClient.getSession(agentSession.agentId, agentSession.sessionId)
-        ])
-
-        agentSkillOverride = agentData?.configuration?.skill_config
-        sessionSkillOverride = sessionData?.configuration?.skill_config
-      } catch {
-        // Agent/session metadata fetch failed — continue without scoped overrides
-      }
-    }
-
-    const skillConfig = selectResolvedSkillConfigFromOverrides(getState(), agentSkillOverride, sessionSkillOverride)
-
-    if (userContent) {
-      await emitSkillChunks({
-        prompt: userContent,
-        config: skillConfig,
-        processChunk: streamProcessorCallbacks,
-        activeModel: getModel(sessionData?.model) || getModel(agentData?.model)
-      })
-    }
-
     const abortController = new AbortController()
     addAbortController(userMessageId, () => abortController.abort())
 
@@ -950,6 +913,20 @@ const fetchAndProcessAssistantResponseImpl = async (
         config: skillConfig,
         processChunk: streamProcessorCallbacks,
         activeModel: assistant.model || assistant.defaultModel
+      })
+    }
+
+    const assistantContextTelemetry = filterConversationMessagesForContext(
+      messagesForContext,
+      assistant,
+      getState().settings?.contextStrategy || DEFAULT_CONTEXT_STRATEGY_CONFIG,
+      topicId
+    ).telemetry
+
+    if (assistantContextTelemetry) {
+      streamProcessorCallbacks({
+        type: ChunkType.CONTEXT_MANAGEMENT,
+        payload: assistantContextTelemetry
       })
     }
 

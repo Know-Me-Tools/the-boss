@@ -498,6 +498,10 @@ export function createSkillBlock(params: {
   activationMethod: SkillSelectionMethod
   similarityScore?: number
   contextManagementMethod: ContextManagementMethod
+  originalTokenCount: number
+  managedTokenCount: number
+  tokensSaved: number
+  truncated: boolean
 }): SkillMessageBlock {
   const baseBlock = createBaseMessageBlock(params.messageId, MessageBlockType.SKILL, {
     status: MessageBlockStatus.STREAMING
@@ -512,6 +516,10 @@ export function createSkillBlock(params: {
     content: '',
     activationMethod: params.activationMethod,
     similarityScore: params.similarityScore,
-    contextManagementMethod: params.contextManagementMethod
+    contextManagementMethod: params.contextManagementMethod,
+    originalTokenCount: params.originalTokenCount,
+    managedTokenCount: params.managedTokenCount,
+    tokensSaved: params.tokensSaved,
+    truncated: params.truncated
   }
 }

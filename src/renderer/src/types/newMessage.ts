@@ -183,6 +183,14 @@ export interface SkillMessageBlock extends BaseMessageBlock {
   similarityScore?: number
   /** Which context management method was applied */
   contextManagementMethod: ContextManagementMethod
+  /** Estimated raw token count before skill context management */
+  originalTokenCount: number
+  /** Final managed token count after skill context management */
+  managedTokenCount: number
+  /** Tokens saved by skill context management */
+  tokensSaved: number
+  /** Whether the contributed context was truncated or compacted */
+  truncated: boolean
 }
 
 // MessageBlock 联合类型

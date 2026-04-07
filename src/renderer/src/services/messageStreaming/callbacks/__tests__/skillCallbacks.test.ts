@@ -35,10 +35,13 @@ describe('createSkillCallbacks', () => {
         skillName: 'Test Skill',
         triggerTokens: ['keyword'],
         selectionReason: 'High similarity',
-        estimatedTokens: 100,
         content: '',
         activationMethod: SkillSelectionMethod.EMBEDDING,
-        contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+        contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
+        originalTokenCount: 140,
+        managedTokenCount: 100,
+        tokensSaved: 40,
+        truncated: true
       }
 
       await callbacks.onSkillActivated(chunk)
@@ -53,6 +56,10 @@ describe('createSkillCallbacks', () => {
       expect(passedBlock.status).toBe(MessageBlockStatus.STREAMING)
       expect(passedBlock.tokenCount).toBe(0)
       expect(passedBlock.content).toBe('')
+      expect(passedBlock.originalTokenCount).toBe(140)
+      expect(passedBlock.managedTokenCount).toBe(100)
+      expect(passedBlock.tokensSaved).toBe(40)
+      expect(passedBlock.truncated).toBe(true)
     })
 
     it('stores the block id keyed by skillId for subsequent updates', async () => {
@@ -62,10 +69,13 @@ describe('createSkillCallbacks', () => {
         skillName: 'Another Skill',
         triggerTokens: [],
         selectionReason: 'Match',
-        estimatedTokens: 50,
         content: '',
         activationMethod: SkillSelectionMethod.HYBRID,
-        contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE
+        contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
+        originalTokenCount: 60,
+        managedTokenCount: 50,
+        tokensSaved: 10,
+        truncated: false
       }
 
       await callbacks.onSkillActivated(chunk)
@@ -89,10 +99,13 @@ describe('createSkillCallbacks', () => {
         skillName: 'Skill One',
         triggerTokens: ['foo'],
         selectionReason: 'reason',
-        estimatedTokens: 10,
         content: '',
         activationMethod: SkillSelectionMethod.EMBEDDING,
-        contextManagementMethod: ContextManagementMethod.CHUNKED_RAG
+        contextManagementMethod: ContextManagementMethod.CHUNKED_RAG,
+        originalTokenCount: 10,
+        managedTokenCount: 10,
+        tokensSaved: 0,
+        truncated: false
       }
       await callbacks.onSkillActivated(activatedChunk)
 
@@ -141,10 +154,13 @@ describe('createSkillCallbacks', () => {
         skillName: 'Done Skill',
         triggerTokens: [],
         selectionReason: 'done',
-        estimatedTokens: 200,
         content: '',
         activationMethod: SkillSelectionMethod.LLM_ROUTER,
-        contextManagementMethod: ContextManagementMethod.SUMMARIZED
+        contextManagementMethod: ContextManagementMethod.SUMMARIZED,
+        originalTokenCount: 280,
+        managedTokenCount: 200,
+        tokensSaved: 80,
+        truncated: true
       }
       await callbacks.onSkillActivated(activatedChunk)
 
@@ -163,6 +179,7 @@ describe('createSkillCallbacks', () => {
       expect(calledBlockId).toBe(blockId)
       expect(changes.status).toBe(MessageBlockStatus.SUCCESS)
       expect(changes.tokenCount).toBe(312)
+      expect(changes.managedTokenCount).toBe(312)
       expect(blockType).toBe(MessageBlockType.SKILL)
       expect(isComplete).toBe(true)
     })

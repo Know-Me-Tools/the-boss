@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto'
 
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+import type {
+  SkillActivatedStreamPayload,
+  SkillCompleteStreamPayload,
+  SkillContentDeltaStreamPayload
+} from '@shared/skillStream'
 import type { TextStreamPart } from 'ai'
 
 import { A2A_PROTOCOL_VERSION, A2UI_SCHEMA_VERSION, AG_UI_DOCS_REFERENCE } from './versions'
@@ -55,6 +60,18 @@ export type AgUiWireEvent =
   | {
       type: 'theboss.context_management'
       payload: ContextManagementStreamPayload
+    }
+  | {
+      type: 'theboss.skill_activated'
+      payload: SkillActivatedStreamPayload
+    }
+  | {
+      type: 'theboss.skill_content_delta'
+      payload: SkillContentDeltaStreamPayload
+    }
+  | {
+      type: 'theboss.skill_complete'
+      payload: SkillCompleteStreamPayload
     }
 
 export interface AgUiMapperState {
@@ -127,9 +144,28 @@ export function mapTextStreamPartToAgUiEvents(state: AgUiMapperState, part: Text
       out.push({ type: 'TEXT_MESSAGE_END', messageId: state.assistantMessageId })
       break
     default: {
-      const asRec = part as unknown as { type?: string; data?: ContextManagementStreamPayload }
+      const asRec = part as unknown as {
+        type?: string
+        data?:
+          | ContextManagementStreamPayload
+          | SkillActivatedStreamPayload
+          | SkillContentDeltaStreamPayload
+          | SkillCompleteStreamPayload
+      }
       if (asRec.type === 'data-context-management' && asRec.data) {
-        out.push({ type: 'theboss.context_management', payload: asRec.data })
+        out.push({ type: 'theboss.context_management', payload: asRec.data as ContextManagementStreamPayload })
+        break
+      }
+      if (asRec.type === 'data-skill-activated' && asRec.data) {
+        out.push({ type: 'theboss.skill_activated', payload: asRec.data as SkillActivatedStreamPayload })
+        break
+      }
+      if (asRec.type === 'data-skill-content-delta' && asRec.data) {
+        out.push({ type: 'theboss.skill_content_delta', payload: asRec.data as SkillContentDeltaStreamPayload })
+        break
+      }
+      if (asRec.type === 'data-skill-complete' && asRec.data) {
+        out.push({ type: 'theboss.skill_complete', payload: asRec.data as SkillCompleteStreamPayload })
         break
       }
       out.push({ type: 'theboss.raw.aiSdkPart', part })

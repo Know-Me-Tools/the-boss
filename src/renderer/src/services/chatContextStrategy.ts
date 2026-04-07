@@ -12,6 +12,8 @@ import {
   filterUserRoleStartMessages
 } from '@renderer/utils/messageUtils/filters'
 import { filterLastAssistantMessage } from '@renderer/utils/messageUtils/filters'
+import { getMainTextContent } from '@renderer/utils/messageUtils/find'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 
 const CONTEXT_STRATEGY_KEYS: Array<keyof ContextStrategyConfig> = [
   'type',
@@ -46,6 +48,53 @@ function takeLastMessages(messages: Message[], count: number): Message[] {
   }
 
   return messages.slice(-count)
+}
+
+function estimateMessagesTokenCount(messages: Message[]): number {
+  const text = messages
+    .map((message) => getMainTextContent(message))
+    .filter(Boolean)
+    .join('\n\n')
+
+  if (!text) {
+    return 0
+  }
+
+  return Math.ceil(text.length / 4)
+}
+
+function haveDifferentMessageWindows(a: Message[], b: Message[]): boolean {
+  if (a.length !== b.length) {
+    return true
+  }
+
+  return a.some((message, index) => message.id !== b[index]?.id)
+}
+
+function buildAssistantContextTelemetry(
+  originalMessages: Message[],
+  finalMessages: Message[],
+  strategy: ContextStrategyConfig
+): ContextManagementStreamPayload | undefined {
+  if (!haveDifferentMessageWindows(originalMessages, finalMessages)) {
+    return undefined
+  }
+
+  const tokensBefore = estimateMessagesTokenCount(originalMessages)
+  const tokensAfter = estimateMessagesTokenCount(finalMessages)
+
+  return {
+    surface: 'assistant',
+    strategyType: strategy.type,
+    originalMessageCount: originalMessages.length,
+    finalMessageCount: finalMessages.length,
+    messagesRemoved: Math.max(0, originalMessages.length - finalMessages.length),
+    tokensBefore,
+    tokensAfter,
+    tokensSaved: Math.max(0, tokensBefore - tokensAfter),
+    alterationSummary: `Chat context strategy "${strategy.type}" changed the messages sent to the model.`,
+    trigger: 'chat_pipeline'
+  }
 }
 
 export function normalizeContextStrategy(
@@ -164,7 +213,7 @@ export function filterConversationMessagesForContext(
   assistant: Assistant,
   globalStrategy: Partial<ContextStrategyConfig> | ContextStrategyConfig,
   topicOrId?: string | Topic | null
-): { messages: Message[]; strategy: ContextStrategyConfig; topic?: Topic } {
+): { messages: Message[]; strategy: ContextStrategyConfig; topic?: Topic; telemetry?: ContextManagementStreamPayload } {
   const topic = findTopicForConversation(assistant, topicOrId, messages)
   const strategy = resolveEffectiveChatContextStrategy({ globalStrategy, assistant, topic })
   const legacyContextCount = getLegacyContextCount(assistant)
@@ -186,7 +235,8 @@ export function filterConversationMessagesForContext(
   return {
     messages: userRoleStartMessages,
     strategy,
-    topic
+    topic,
+    telemetry: buildAssistantContextTelemetry(withoutAdjacentUsers, userRoleStartMessages, strategy)
   }
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { loggerService } from '@logger'
+import { buildSkillStreamParts } from '@main/services/skills/buildSkillStreamParts'
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type {
   AgentPersistedMessage,
@@ -8,8 +9,10 @@ import type {
   ContextStrategyConfig,
   CreateSessionMessageRequest,
   GetAgentSessionResponse,
-  ListOptions
+  ListOptions,
+  SkillGlobalConfig
 } from '@types'
+import { DEFAULT_SKILL_CONFIG, resolveSkillConfig } from '@types'
 import type { TextStreamPart } from 'ai'
 import { and, desc, eq, not } from 'drizzle-orm'
 
@@ -203,6 +206,16 @@ export class SessionMessageService extends BaseService {
     }
   }
 
+  private async loadGlobalSkillConfig(): Promise<SkillGlobalConfig> {
+    try {
+      const { reduxService } = await import('@main/services/ReduxService')
+      const globalSkillConfig = await reduxService.select('state.skillConfig.global')
+      return resolveSkillConfig(globalSkillConfig ?? DEFAULT_SKILL_CONFIG)
+    } catch {
+      return resolveSkillConfig(DEFAULT_SKILL_CONFIG)
+    }
+  }
+
   /**
    * Consume a Claude Code stream for a single-shot operation (e.g. `/compact`) without exposing SSE.
    */
@@ -261,6 +274,7 @@ export class SessionMessageService extends BaseService {
     })
 
     let agentContextNotice: ContextManagementStreamPayload | undefined
+    let skillStreamParts: Array<TextStreamPart<Record<string, any>>> = []
 
     if (
       shouldRunSdkCompactBeforeTurn({
@@ -306,6 +320,28 @@ export class SessionMessageService extends BaseService {
       }
     }
 
+    try {
+      const globalSkillConfig = await this.loadGlobalSkillConfig()
+      const effectiveSkillConfig = resolveSkillConfig(
+        globalSkillConfig,
+        agentEntity?.configuration?.skill_config,
+        session.configuration?.skill_config
+      )
+
+      if (req.content.trim()) {
+        skillStreamParts = await buildSkillStreamParts({
+          prompt: req.content,
+          config: effectiveSkillConfig,
+          activeModel: session.model || agentEntity?.model
+        })
+      }
+    } catch (error) {
+      logger.warn('Failed to prepare backend skill stream parts; continuing without skill metadata', {
+        sessionId: session.id,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
+
     const claudeStream = await claudeCodeService.invoke(
       req.content,
       session,
@@ -348,6 +384,9 @@ export class SessionMessageService extends BaseService {
             type: 'data-context-management',
             data: agentContextNotice
           } as unknown as TextStreamPart<Record<string, any>>)
+        }
+        for (const part of skillStreamParts) {
+          controller.enqueue(part)
         }
         claudeStream.on('data', async (event: AgentStreamEvent) => {
           if (finished) return

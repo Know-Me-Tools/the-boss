@@ -197,12 +197,15 @@ describe('emitSkillChunks', () => {
     expect(activatedChunk.skillName).toBe('Skill skill-z')
     expect(activatedChunk.triggerTokens).toEqual(['foo', 'bar'])
     expect(activatedChunk.selectionReason).toBe('Semantic similarity: 0.92')
-    expect(activatedChunk.estimatedTokens).toBe(3)
     expect(activatedChunk.content).toBe(content)
     expect(activatedChunk.activationMethod).toBe(SkillSelectionMethod.EMBEDDING)
     expect(activatedChunk.similarityScore).toBe(0.92)
     expect(activatedChunk.matchedKeywords).toEqual(['foo', 'bar'])
     expect(activatedChunk.contextManagementMethod).toBe(ContextManagementMethod.PREFIX_CACHE_AWARE)
+    expect(activatedChunk.originalTokenCount).toBe(3)
+    expect(activatedChunk.managedTokenCount).toBe(3)
+    expect(activatedChunk.tokensSaved).toBe(0)
+    expect(activatedChunk.truncated).toBe(false)
   })
 
   it('emits correct finalTokenCount in SKILL_COMPLETE', async () => {

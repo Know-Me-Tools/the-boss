@@ -24,14 +24,18 @@ describe('SkillActivatedChunk shape', () => {
       skillName: 'Agent UI Patterns',
       triggerTokens: ['streaming', 'AG-UI'],
       selectionReason: 'Matches streaming patterns',
-      estimatedTokens: 1240,
       content: 'full skill content',
       activationMethod: SkillSelectionMethod.EMBEDDING,
       similarityScore: 0.87,
-      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE
+      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
+      originalTokenCount: 1520,
+      managedTokenCount: 1240,
+      tokensSaved: 280,
+      truncated: true
     }
     expect(chunk.skillId).toBe('agent-ui-patterns')
     expect(chunk.activationMethod).toBe(SkillSelectionMethod.EMBEDDING)
+    expect(chunk.tokensSaved).toBe(280)
   })
 })
 

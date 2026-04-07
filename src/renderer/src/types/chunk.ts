@@ -1,8 +1,12 @@
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+import type {
+  SkillActivatedStreamPayload,
+  SkillCompleteStreamPayload,
+  SkillContentDeltaStreamPayload
+} from '@shared/skillStream'
 
 import type { ExternalToolResult, KnowledgeReference, MCPToolResponse, NormalToolResponse, WebSearchResponse } from '.'
 import type { Response, ResponseError } from './newMessage'
-import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
 
 /**
  * Provider metadata type for passing provider-specific data through chunks
@@ -460,30 +464,16 @@ export interface RawChunk {
   metadata?: Record<string, any>
 }
 
-export interface SkillActivatedChunk {
+export interface SkillActivatedChunk extends SkillActivatedStreamPayload {
   type: ChunkType.SKILL_ACTIVATED
-  skillId: string
-  skillName: string
-  triggerTokens: string[]
-  selectionReason: string
-  estimatedTokens: number
-  content: string
-  activationMethod: SkillSelectionMethod
-  similarityScore?: number
-  matchedKeywords?: string[]
-  contextManagementMethod: ContextManagementMethod
 }
 
-export interface SkillContentDeltaChunk {
+export interface SkillContentDeltaChunk extends SkillContentDeltaStreamPayload {
   type: ChunkType.SKILL_CONTENT_DELTA
-  skillId: string
-  delta: string
 }
 
-export interface SkillCompleteChunk {
+export interface SkillCompleteChunk extends SkillCompleteStreamPayload {
   type: ChunkType.SKILL_COMPLETE
-  skillId: string
-  finalTokenCount: number
 }
 
 export interface ContextManagementChunk {

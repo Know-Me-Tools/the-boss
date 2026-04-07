@@ -13,13 +13,21 @@ describe('createSkillBlock', () => {
       triggerTokens: ['keyword'],
       selectionReason: 'High similarity',
       activationMethod: SkillSelectionMethod.EMBEDDING,
-      contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+      contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
+      originalTokenCount: 140,
+      managedTokenCount: 100,
+      tokensSaved: 40,
+      truncated: true
     })
     expect(block.type).toBe(MessageBlockType.SKILL)
     expect(block.status).toBe(MessageBlockStatus.STREAMING)
     expect(block.tokenCount).toBe(0)
     expect(block.content).toBe('')
     expect(block.skillId).toBe('skill-abc')
+    expect(block.originalTokenCount).toBe(140)
+    expect(block.managedTokenCount).toBe(100)
+    expect(block.tokensSaved).toBe(40)
+    expect(block.truncated).toBe(true)
   })
 
   it('sets messageId, skillName, triggerTokens, and selectionReason correctly', () => {
@@ -30,7 +38,11 @@ describe('createSkillBlock', () => {
       triggerTokens: ['foo', 'bar'],
       selectionReason: 'Keyword match',
       activationMethod: SkillSelectionMethod.HYBRID,
-      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE
+      contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
+      originalTokenCount: 120,
+      managedTokenCount: 120,
+      tokensSaved: 0,
+      truncated: false
     })
     expect(block.messageId).toBe('msg-2')
     expect(block.skillName).toBe('My Skill')
@@ -49,7 +61,11 @@ describe('createSkillBlock', () => {
       selectionReason: 'Score above threshold',
       activationMethod: SkillSelectionMethod.EMBEDDING,
       similarityScore: 0.92,
-      contextManagementMethod: ContextManagementMethod.CHUNKED_RAG
+      contextManagementMethod: ContextManagementMethod.CHUNKED_RAG,
+      originalTokenCount: 320,
+      managedTokenCount: 240,
+      tokensSaved: 80,
+      truncated: true
     })
     expect(block.similarityScore).toBe(0.92)
   })
@@ -62,7 +78,11 @@ describe('createSkillBlock', () => {
       triggerTokens: [],
       selectionReason: 'Exact match',
       activationMethod: SkillSelectionMethod.LLM_ROUTER,
-      contextManagementMethod: ContextManagementMethod.SUMMARIZED
+      contextManagementMethod: ContextManagementMethod.SUMMARIZED,
+      originalTokenCount: 90,
+      managedTokenCount: 90,
+      tokensSaved: 0,
+      truncated: false
     })
     expect(block.similarityScore).toBeUndefined()
   })
@@ -75,7 +95,11 @@ describe('createSkillBlock', () => {
       triggerTokens: [],
       selectionReason: 'test',
       activationMethod: SkillSelectionMethod.EMBEDDING,
-      contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+      contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
+      originalTokenCount: 64,
+      managedTokenCount: 64,
+      tokensSaved: 0,
+      truncated: false
     }
     const block1 = createSkillBlock(params)
     const block2 = createSkillBlock(params)

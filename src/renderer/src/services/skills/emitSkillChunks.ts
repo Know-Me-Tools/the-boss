@@ -11,6 +11,10 @@ import { SkillSelector } from './skillSelector'
 
 const logger = loggerService.withContext('emitSkillChunks')
 
+function estimateRawTokenCount(text: string): number {
+  return Math.ceil(text.length / 4)
+}
+
 /**
  * Runs skill selection and context management for the given prompt,
  * then emits SKILL_ACTIVATED / SKILL_CONTENT_DELTA / SKILL_COMPLETE chunks
@@ -59,12 +63,15 @@ export async function emitSkillChunks(params: {
         skillName: result.skill.name,
         triggerTokens: result.matchedKeywords,
         selectionReason: result.selectionReason,
-        estimatedTokens: managed.tokenCount,
         content: managed.content,
         activationMethod: result.activationMethod,
         similarityScore: result.score,
         matchedKeywords: result.matchedKeywords,
-        contextManagementMethod: config.contextManagementMethod
+        contextManagementMethod: config.contextManagementMethod,
+        originalTokenCount: estimateRawTokenCount(rawContent),
+        managedTokenCount: managed.tokenCount,
+        tokensSaved: Math.max(0, estimateRawTokenCount(rawContent) - managed.tokenCount),
+        truncated: managed.truncated
       })
 
       // 2. Emit SKILL_CONTENT_DELTA (stream content in chunks of ~100 chars)

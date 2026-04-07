@@ -1,10 +1,18 @@
+import store from '@renderer/store'
+import { upsertOneBlock } from '@renderer/store/messageBlock'
 import type { Assistant, Topic } from '@renderer/types'
 import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import type { Message } from '@renderer/types/newMessage'
-import { describe, expect, it } from 'vitest'
+import { createMainTextBlock } from '@renderer/utils/messageUtils/create'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('@renderer/utils/messageUtils/find', () => ({
+  getMainTextContent: (message: Message & { content?: string }) => message.content ?? message.id
+}))
 
 import {
   applyChatContextStrategy,
+  filterConversationMessagesForContext,
   hasContextStrategyOverride,
   resolveEffectiveChatContextStrategy
 } from '../chatContextStrategy'
@@ -44,16 +52,20 @@ function createTopic(overrides: Partial<Topic> = {}): Topic {
   }
 }
 
-function createStrategyMessage(id: string): Message {
+function createStrategyMessage(id: string, role: Message['role'] = 'user'): Message {
+  const block = createMainTextBlock(id, `content-${id}`)
+  store.dispatch(upsertOneBlock(block))
+
   return {
     id,
-    role: 'user',
+    role,
     assistantId: 'assistant-1',
     topicId: 'topic-1',
     createdAt: new Date().toISOString(),
     status: 'success',
-    blocks: [],
-    type: 'text'
+    blocks: [block.id],
+    type: 'text',
+    content: `content-${id}`
   } as unknown as Message
 }
 
@@ -116,5 +128,52 @@ describe('chatContextStrategy', () => {
     })
 
     expect(filtered.map((message) => message.id)).toEqual(['m-0', 'm-1', 'm-5', 'm-6', 'm-7'])
+  })
+
+  it('returns context-management telemetry when the effective strategy changes the prompt', () => {
+    const assistant = createAssistant()
+    const messages = [
+      createStrategyMessage('m-0', 'user'),
+      createStrategyMessage('m-1', 'assistant'),
+      createStrategyMessage('m-2', 'user'),
+      createStrategyMessage('m-3', 'assistant'),
+      createStrategyMessage('m-4', 'user')
+    ]
+
+    const result = filterConversationMessagesForContext(
+      messages,
+      assistant,
+      { ...DEFAULT_CONTEXT_STRATEGY_CONFIG, type: 'sliding_window', maxMessages: 3 },
+      'topic-1'
+    )
+
+    expect(result.messages.map((message) => message.id)).toEqual(['m-2', 'm-3', 'm-4'])
+    expect(result.telemetry).toMatchObject({
+      surface: 'assistant',
+      strategyType: 'sliding_window',
+      originalMessageCount: 5,
+      finalMessageCount: 3,
+      messagesRemoved: 2,
+      trigger: 'chat_pipeline'
+    })
+  })
+
+  it('does not return context-management telemetry when the effective strategy leaves the prompt unchanged', () => {
+    const assistant = createAssistant()
+    const messages = [
+      createStrategyMessage('m-0', 'user'),
+      createStrategyMessage('m-1', 'assistant'),
+      createStrategyMessage('m-2', 'user')
+    ]
+
+    const result = filterConversationMessagesForContext(
+      messages,
+      assistant,
+      { ...DEFAULT_CONTEXT_STRATEGY_CONFIG, type: 'sliding_window', maxMessages: 5 },
+      'topic-1'
+    )
+
+    expect(result.messages.map((message) => message.id)).toEqual(['m-0', 'm-1', 'm-2'])
+    expect(result.telemetry).toBeUndefined()
   })
 })

@@ -15,6 +15,7 @@ import { loggerService } from '@logger'
 import type { SkillActivatedChunk, SkillCompleteChunk, SkillContentDeltaChunk } from '@renderer/types/chunk'
 import type { SkillMessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
+import type { ContextManagementMethod, SkillSelectionMethod } from '@renderer/types/skillConfig'
 import { createSkillBlock } from '@renderer/utils/messageUtils/create'
 
 import type { BlockManager } from '../BlockManager'
@@ -50,9 +51,13 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies): SkillCal
         skillName: chunk.skillName,
         triggerTokens: chunk.triggerTokens,
         selectionReason: chunk.selectionReason,
-        activationMethod: chunk.activationMethod,
+        activationMethod: chunk.activationMethod as SkillSelectionMethod,
         similarityScore: chunk.similarityScore,
-        contextManagementMethod: chunk.contextManagementMethod
+        contextManagementMethod: chunk.contextManagementMethod as ContextManagementMethod,
+        originalTokenCount: chunk.originalTokenCount,
+        managedTokenCount: chunk.managedTokenCount,
+        tokensSaved: chunk.tokensSaved,
+        truncated: chunk.truncated
       })
 
       skillIdToBlockIdMap.set(chunk.skillId, block.id)
@@ -90,7 +95,8 @@ export const createSkillCallbacks = (deps: SkillCallbacksDependencies): SkillCal
 
       const changes: Partial<SkillMessageBlock> = {
         status: MessageBlockStatus.SUCCESS,
-        tokenCount: chunk.finalTokenCount
+        tokenCount: chunk.finalTokenCount,
+        managedTokenCount: chunk.finalTokenCount
       }
       blockManager.smartBlockUpdate(blockId, changes, MessageBlockType.SKILL, true)
       skillContentAccumulator.delete(chunk.skillId)
