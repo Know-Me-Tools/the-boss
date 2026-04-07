@@ -287,7 +287,8 @@ const HomeWindow: FC<{ draggable?: boolean }> = ({ draggable = true }) => {
 
         const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
           messagesForContext,
-          newAssistant
+          newAssistant,
+          topicId
         )
 
         await fetchChatCompletion({

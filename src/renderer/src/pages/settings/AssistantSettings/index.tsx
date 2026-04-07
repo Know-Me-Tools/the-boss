@@ -9,6 +9,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import AssistantContextSettings from './AssistantContextSettings'
 import AssistantKnowledgeBaseSettings from './AssistantKnowledgeBaseSettings'
 import AssistantMCPSettings from './AssistantMCPSettings'
 import AssistantMemorySettings from './AssistantMemorySettings'
@@ -22,6 +23,7 @@ interface AssistantSettingPopupShowParams {
 }
 
 type AssistantSettingPopupTab =
+  | 'context'
   | 'prompt'
   | 'model'
   | 'messages'
@@ -67,6 +69,10 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
     {
       key: 'model',
       label: t('assistants.settings.model')
+    },
+    {
+      key: 'context',
+      label: t('settings.contextStrategy.title', { defaultValue: 'Context Management' })
     },
     {
       key: 'prompt',
@@ -128,7 +134,11 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
               assistant={assistant}
               updateAssistant={updateAssistant}
               updateAssistantSettings={updateAssistantSettings}
+              onOpenContextSettings={() => setMenu('context')}
             />
+          )}
+          {menu === 'context' && (
+            <AssistantContextSettings assistant={assistant} updateAssistantSettings={updateAssistantSettings} />
           )}
           {menu === 'prompt' && (
             <AssistantPromptSettings

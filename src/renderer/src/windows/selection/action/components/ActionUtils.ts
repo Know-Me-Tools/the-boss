@@ -77,7 +77,11 @@ export const processMessages = async (
     newAssistant.webSearchProviderId = undefined
     newAssistant.mcpServers = undefined
     newAssistant.knowledge_bases = undefined
-    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel([userMessage], newAssistant)
+    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel(
+      [userMessage],
+      newAssistant,
+      topic.id
+    )
 
     await fetchChatCompletion({
       messages: modelMessages,

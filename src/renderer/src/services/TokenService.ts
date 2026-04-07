@@ -1,12 +1,13 @@
 import type { Assistant, FileMetadata, Usage } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
+import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import type { Message } from '@renderer/types/newMessage'
 import { findFileBlocks, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
-import { flatten, takeRight } from 'lodash'
+import { flatten } from 'lodash'
 import { approximateTokenSize } from 'tokenx'
 
-import { getAssistantSettings } from './AssistantService'
-import { filterAfterContextClearMessages, filterMessages } from './MessagesService'
+import store from '../store'
+import { filterConversationMessagesForContext } from './chatContextStrategy'
 
 interface MessageItem {
   name?: string
@@ -148,14 +149,16 @@ export async function estimateMessageUsage(message: Partial<Message>): Promise<U
 
 export async function estimateMessagesUsage({
   assistant,
-  messages
+  messages,
+  topicId
 }: {
   assistant: Assistant
   messages: Message[]
+  topicId?: string
 }): Promise<Usage> {
   const outputMessage = messages.pop()!
 
-  const prompt_tokens = await estimateHistoryTokens(assistant, messages)
+  const prompt_tokens = await estimateHistoryTokens(assistant, messages, topicId)
   const { completion_tokens } = await estimateMessageUsage(outputMessage)
 
   return {
@@ -165,10 +168,13 @@ export async function estimateMessagesUsage({
   } as Usage
 }
 
-export async function estimateHistoryTokens(assistant: Assistant, msgs: Message[]) {
-  const { contextCount } = getAssistantSettings(assistant)
-  const maxContextCount = contextCount
-  const messages = filterMessages(filterAfterContextClearMessages(takeRight(msgs, maxContextCount)))
+export async function estimateHistoryTokens(assistant: Assistant, msgs: Message[], topicId?: string) {
+  const messages = filterConversationMessagesForContext(
+    msgs,
+    assistant,
+    store.getState().settings?.contextStrategy || DEFAULT_CONTEXT_STRATEGY_CONFIG,
+    topicId
+  ).messages
 
   // 有 usage 数据的消息，快速计算总数
   const uasageTokens = messages
