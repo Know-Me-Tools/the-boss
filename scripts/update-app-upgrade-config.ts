@@ -7,13 +7,13 @@ type UpdateMirror = 'github' | 'gitcode'
 
 const CHANNELS: UpgradeChannel[] = ['latest', 'rc', 'beta']
 const MIRRORS: UpdateMirror[] = ['github', 'gitcode']
-const GITHUB_REPO = 'CherryHQ/cherry-studio'
-const GITCODE_REPO = 'CherryHQ/cherry-studio'
+const GITHUB_REPO = 'Know-Me-Tools/the-boss'
+const GITCODE_REPO = 'Know-Me-Tools/the-boss'
 const DEFAULT_FEED_TEMPLATES: Record<UpdateMirror, string> = {
-  github: `https://github.com/${GITHUB_REPO}/releases/download/{{tag}}`,
-  gitcode: `https://gitcode.com/${GITCODE_REPO}/releases/download/{{tag}}`
+  github: 'https://the-boss.know-me.tools/releases/download/{{tag}}',
+  gitcode: 'https://the-boss.know-me.tools/releases/download/{{tag}}'
 }
-const GITCODE_LATEST_FALLBACK = 'https://releases.cherry-ai.com'
+const GITCODE_LATEST_FALLBACK = 'https://the-boss.know-me.tools/releases/latest/download'
 
 interface CliOptions {
   tag?: string
@@ -318,7 +318,10 @@ async function updateVersions(
 
   let entry: VersionEntry
   if (existingKey) {
-    entry = { ...versionsCopy[existingKey], channels: { ...versionsCopy[existingKey].channels } }
+    entry = {
+      ...versionsCopy[existingKey],
+      channels: { ...versionsCopy[existingKey].channels }
+    }
   } else {
     entry = createEmptyVersionEntry()
   }

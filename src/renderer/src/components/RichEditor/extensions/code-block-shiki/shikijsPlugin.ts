@@ -105,6 +105,7 @@ export function ShikiPlugin({
         })
       },
       apply: (transaction, decorationSet, oldState, newState) => {
+        const currentDecorationSet = decorationSet ?? DecorationSet.empty
         const oldNodeName = oldState.selection.$head.parent.type.name
         const newNodeName = newState.selection.$head.parent.type.name
         const oldNodes = findChildren(oldState.doc, (node) => node.type.name === name)
@@ -148,39 +149,63 @@ export function ShikiPlugin({
           })
         }
 
-        return decorationSet.map(transaction.mapping, transaction.doc)
+        return currentDecorationSet.map(transaction.mapping, transaction.doc)
       }
     },
 
     view: (view) => {
       class ShikiPluginView implements PluginView {
         private highlighter: HighlighterGeneric<any, any> | null = null
+        private destroyed = false
+        private runId = 0
         constructor() {
           void this.initDecorations()
         }
 
         update() {
+          if (!this.canDispatch()) {
+            return
+          }
           void this.checkUndecoratedBlocks()
         }
 
         destroy() {
+          this.destroyed = true
           this.highlighter = null
-          cachedHighlighter = null
+        }
+
+        private canDispatch() {
+          return !this.destroyed && !view.isDestroyed
+        }
+
+        private dispatchRefresh() {
+          if (!this.canDispatch()) {
+            return
+          }
+
+          const tr = view.state.tr.setMeta('shikiHighlighterReady', true)
+          view.dispatch(tr)
         }
 
         async initDecorations() {
-          this.highlighter = await getHighlighter()
-          cachedHighlighter = this.highlighter
-          const tr = view.state.tr.setMeta('shikiHighlighterReady', true)
-          view.dispatch(tr)
+          const highlighter = await getHighlighter()
+          if (!this.canDispatch()) {
+            return
+          }
+
+          this.highlighter = highlighter
+          cachedHighlighter = highlighter
+          this.dispatchRefresh()
         }
 
         async checkUndecoratedBlocks() {
           // If highlighter is not yet initialized, defer processing until it becomes available.
           try {
-            if (!this.highlighter) {
+            if (!this.canDispatch() || !this.highlighter) {
               return
             }
+
+            const currentRunId = ++this.runId
             const codeBlocks = findChildren(view.state.doc, (node) => node.type.name === name)
 
             // Only load themes or languages that the highlighter has not seen yet.
@@ -225,10 +250,11 @@ export function ShikiPlugin({
 
             await Promise.all(tasks)
 
-            if (didLoadSomething) {
-              const tr = view.state.tr.setMeta('shikiHighlighterReady', true)
-              view.dispatch(tr)
+            if (!didLoadSomething || currentRunId !== this.runId || !this.canDispatch()) {
+              return
             }
+
+            this.dispatchRefresh()
           } catch (error) {
             logger.error('Error in checkUndecoratedBlocks:', error as Error)
           }
@@ -240,7 +266,7 @@ export function ShikiPlugin({
 
     props: {
       decorations(state) {
-        return shikiPlugin.getState(state)
+        return shikiPlugin.getState(state) ?? DecorationSet.empty
       }
     }
   })

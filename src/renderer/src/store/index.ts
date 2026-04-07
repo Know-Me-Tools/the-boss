@@ -10,8 +10,8 @@
  * Any non-critical changes will conflict with the ongoing work.
  *
  * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
+ * - Contribution Hold: https://github.com/Know-Me-Tools/the-boss/issues/10954
+ * - v2 Refactor PR   : https://github.com/Know-Me-Tools/the-boss/pull/10162
  * --------------------------------------------------------------------------
  */
 import { loggerService } from '@logger'
@@ -46,6 +46,7 @@ import runtime from './runtime'
 import selectionStore from './selectionStore'
 import settings from './settings'
 import shortcuts from './shortcuts'
+import skillConfigReducer from './skillConfig'
 import tabs from './tabs'
 import toolPermissions from './toolPermissions'
 import translate from './translate'
@@ -79,12 +80,13 @@ const rootReducer = combineReducers({
   translate,
   ocr,
   note,
-  toolPermissions
+  toolPermissions,
+  skillConfig: skillConfigReducer
 })
 
 const persistedReducer = persistReducer(
   {
-    key: 'cherry-studio',
+    key: 'the-boss',
     storage,
     version: 206,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],

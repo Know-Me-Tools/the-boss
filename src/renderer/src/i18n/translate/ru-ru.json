@@ -695,7 +695,7 @@
     },
     "authHeaderText": "Использовать в заголовке авторизации:",
     "configuration": "Конфигурация",
-    "description": "Предоставляет возможности ИИ Cherry Studio через HTTP API, совместимые с OpenAI",
+    "description": "Предоставляет возможности ИИ The Boss через HTTP API, совместимые с OpenAI",
     "documentation": {
       "title": "Документация API"
     },
@@ -2269,6 +2269,17 @@
       },
       "success": "Резервная копия успешно создана"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "Создание ветви не удалось"
     },
@@ -2920,12 +2931,12 @@
       "select_other_provider": "Выбрать другого поставщика",
       "setup_hint": "Пожалуйста, настройте хотя бы одного поставщика для лучшего опыта",
       "subtitle": "Наслаждайтесь услугами ИИ высшего уровня с CherryIN",
-      "title": "Добро пожаловать в Cherry Studio"
+      "title": "Добро пожаловать в The Boss"
     }
   },
   "openclaw": {
     "checking_installation": "Проверка установки OpenClaw...",
-    "description": "Интегрируйте провайдеров Cherry Studio с шлюзом OpenClaw, чтобы включить агентов кодирования ИИ, таких как Claude Code, Qwen-Coder и другие.",
+    "description": "Интегрируйте провайдеров The Boss с шлюзом OpenClaw, чтобы включить агентов кодирования ИИ, таких как Claude Code, Qwen-Coder и другие.",
     "error": {
       "select_provider_model": "Пожалуйста, сначала выберите поставщика и модель"
     },
@@ -2963,7 +2974,7 @@
       "title": "Конфигурация модели"
     },
     "node_missing": {
-      "description": "OpenClaw требует Node.js/npm. Пожалуйста, сначала установите Node.js, затем перезапустите Cherry Studio.",
+      "description": "OpenClaw требует Node.js/npm. Пожалуйста, сначала установите Node.js, затем перезапустите The Boss.",
       "download_button": "Скачать Node.js",
       "hint": "macOS: brew install node | Windows: Скачайте LTS-версию с nodejs.org",
       "title": "Требуется Node.js"
@@ -3034,7 +3045,7 @@
       "stop": "Остановить OVMS",
       "stopping": "Остановка"
     },
-    "description": "<div><p>1. Загрузите модели OV.</p><p>2. Добавьте модели в 'Менеджер'.</p><p>Поддерживается только Windows!</p><p>Путь установки OVMS: '%USERPROFILE%\\.cherrystudio\\ovms'.</p><p>Пожалуйста, ознакомьтесь с <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>руководством Intel OVMS</a></p></dev>",
+    "description": "<div><p>1. Загрузите модели OV.</p><p>2. Добавьте модели в 'Менеджер'.</p><p>Поддерживается только Windows!</p><p>Путь установки OVMS: '%USERPROFILE%\\.theboss\\ovms'.</p><p>Пожалуйста, ознакомьтесь с <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>руководством Intel OVMS</a></p></dev>",
     "download": {
       "button": "Скачать",
       "error": "Ошибка загрузки",
@@ -3762,7 +3773,7 @@
           },
           "description": {
             "0": "Помощник выбора требует <strong>Права доступа</strong> для правильной работы.",
-            "1": "Пожалуйста, перейдите в \"<strong>Настройки</strong>\" и нажмите \"<strong>Открыть системные настройки</strong>\" в запросе разрешения, который появится позже. Затем найдите \"<strong>Cherry Studio</strong>\" в списке приложений, который появится позже, и включите переключатель разрешения.",
+            "1": "Пожалуйста, перейдите в \"<strong>Настройки</strong>\" и нажмите \"<strong>Открыть системные настройки</strong>\" в запросе разрешения, который появится позже. Затем найдите \"<strong>The Boss</strong>\" в списке приложений, который появится позже, и включите переключатель разрешения.",
             "2": "После завершения настроек, пожалуйста, перезапустите помощник выбора."
           },
           "title": "Права доступа"
@@ -3786,7 +3797,7 @@
         "wayland_checklist_subtitle": "Убедитесь, что выполнены следующие условия для оптимизации работы с Wayland:",
         "wayland_description": "Вы находитесь в сессии Wayland. Из-за ограничений системы панель инструментов может отображаться только в центре экрана вместо того, чтобы следовать за выделенным текстом в некоторых средах рабочего стола. Рекомендуется переключиться на сессию X11 для полноценного использования.",
         "wayland_title": "Уведомление о сессии Wayland",
-        "xwayland_fail": "Не включено, запустите Cherry Studio с флагом `--ozone-platform=x11`",
+        "xwayland_fail": "Не включено, запустите The Boss с флагом `--ozone-platform=x11`",
         "xwayland_label": "Режим XWayland:",
         "xwayland_pass": "Включено"
       },
@@ -3944,6 +3955,54 @@
       "auto_switch_to_topics": "Автоматически переключаться на топик",
       "title": "Расширенные настройки"
     },
+    "artifacts": {
+      "add_service": "[to be translated]:Add Service",
+      "base_css": "[to be translated]:Base CSS",
+      "custom_css": "[to be translated]:Custom CSS",
+      "default_grant": "[to be translated]:Default Grant",
+      "default_html_runtime": "[to be translated]:Default HTML Runtime",
+      "default_react_runtime": "[to be translated]:Default React/TSX Runtime",
+      "default_theme": "[to be translated]:Default Theme",
+      "description": "[to be translated]:Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
+      "internet_default": "[to be translated]:Internet Enabled By Default",
+      "library": {
+        "delete_success": "[to be translated]:Artifact deleted",
+        "description": "[to be translated]:Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
+        "empty": "[to be translated]:No saved artifacts yet. Save one from an artifact preview to build the local library.",
+        "filter_all": "[to be translated]:All Artifacts",
+        "filter_html": "[to be translated]:HTML",
+        "filter_react": "[to be translated]:React/TSX",
+        "fork_action": "[to be translated]:Fork",
+        "fork_success": "[to be translated]:Artifact forked",
+        "preview_loading": "[to be translated]:Preparing artifact preview...",
+        "rename_success": "[to be translated]:Artifact renamed",
+        "save_action": "[to be translated]:Save To Library",
+        "save_failed": "[to be translated]:Failed to save artifact to the local library",
+        "save_success": "[to be translated]:Artifact saved to the local library",
+        "search_placeholder": "[to be translated]:Search saved artifacts",
+        "title": "[to be translated]:Local Artifact Library",
+        "versions": "[to be translated]:{{count}} version",
+        "versions_other": "[to be translated]:{{count}} versions"
+      },
+      "no_services": "[to be translated]:No service profiles configured yet.",
+      "package_kind": "[to be translated]:Kind",
+      "package_name": "[to be translated]:Package",
+      "package_registry_description": "[to be translated]:Approved libraries and managed components available to artifact runtimes.",
+      "package_registry_title": "[to be translated]:Package Registry",
+      "package_runtime": "[to be translated]:Runtime",
+      "package_version": "[to be translated]:Version",
+      "react_compiling": "[to be translated]:Compiling React/TSX artifact...",
+      "service_label": "[to be translated]:Profile Label",
+      "services_description": "[to be translated]:Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
+      "services_title": "[to be translated]:Service Profiles",
+      "show_package_registry": "[to be translated]:Show Package Registry In Settings",
+      "styling_description": "[to be translated]:Shared CSS injected into HTML artifacts and React shadow roots before per-artifact overrides are applied.",
+      "styling_title": "[to be translated]:Styling",
+      "supabase_anon_key": "[to be translated]:Supabase ANON Key",
+      "supabase_service_role_key": "[to be translated]:Supabase Service Role Key (Optional)",
+      "supabase_url": "[to be translated]:Supabase URL",
+      "title": "[to be translated]:Artifacts"
+    },
     "assistant": {
       "icon": {
         "type": {
@@ -4053,7 +4112,7 @@
           "button": "Начать передачу",
           "connected": "Подключено",
           "connection_failed": "Соединение не удалось",
-          "content": "Убедитесь, что компьютер и телефон подключены к одной сети, чтобы использовать локальную передачу. Откройте приложение Cherry Studio и отсканируйте этот QR-код.",
+          "content": "Убедитесь, что компьютер и телефон подключены к одной сети, чтобы использовать локальную передачу. Откройте приложение The Boss и отсканируйте этот QR-код.",
           "device_list_title": "Устройства локальной сети",
           "discovered_devices": "Обнаруженные устройства",
           "error": {
@@ -4079,14 +4138,14 @@
             "test_message_received": "Получен понг от {{device}}",
             "test_message_sent": "Отправлен тестовый полезный груз \"hello world\""
           },
-          "idle_hint": "Сканирование приостановлено. Начните сканирование, чтобы найти пиры Cherry Studio в вашей локальной сети.",
+          "idle_hint": "Сканирование приостановлено. Начните сканирование, чтобы найти пиры The Boss в вашей локальной сети.",
           "ip_addresses": "IP-адреса",
           "last_seen": "В последний раз был(а) в сети в {{time}}",
           "metadata": "Метаданные",
-          "no_connection_warning": "Пожалуйста, откройте LAN Transfer в мобильном приложении Cherry Studio",
+          "no_connection_warning": "Пожалуйста, откройте LAN Transfer в мобильном приложении The Boss",
           "no_devices": "Пока не найдено участников локальной сети",
           "scan_devices": "Сканировать устройства",
-          "scanning_hint": "Сканирование локальной сети на наличие узлов Cherry Studio...",
+          "scanning_hint": "Сканирование локальной сети на наличие узлов The Boss...",
           "send_file": "Отправить файл",
           "status": {
             "completed": "Перевод завершён",
@@ -4436,7 +4495,7 @@
         },
         "root": {
           "label": "Каталог резервных копий (необязательно)",
-          "placeholder": "например: /cherry-studio"
+          "placeholder": "например: /the-boss"
         },
         "secretAccessKey": {
           "label": "Secret Access Key",
@@ -4472,7 +4531,7 @@
           "title": "Проверка соединения"
         },
         "root_path": "Корневой путь документа",
-        "root_path_placeholder": "Например: /CherryStudio",
+        "root_path_placeholder": "Например: /the-boss",
         "title": "Конфигурация SiYuan Note",
         "token": {
           "help": "Получите в SiYuan Note -> Настройки -> О программе",
@@ -4870,7 +4929,7 @@
       },
       "oauth": {
         "callback": {
-          "message": "Вы можете закрыть эту страницу и вернуться в Cherry Studio",
+          "message": "Вы можете закрыть эту страницу и вернуться в The Boss",
           "title": "Аутентификация Успешна"
         }
       },
@@ -5581,6 +5640,28 @@
       "zoom_in": "Увеличить",
       "zoom_out": "Уменьшить",
       "zoom_reset": "Сбросить масштаб"
+    },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
     },
     "skills": {
       "author": "Автор",

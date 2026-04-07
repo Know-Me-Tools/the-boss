@@ -22,6 +22,16 @@ export const agentsTable = sqliteTable('agents', {
 
   configuration: text('configuration'), // JSON, extensible settings
 
+  // Type for per-agent skill config override (mirrors AgentSkillConfigOverride from renderer)
+  skill_config: text('skill_config', { mode: 'json' }).$type<{
+    selectionMethod?: string
+    embeddingModelId?: string
+    similarityThreshold?: number
+    topK?: number
+    contextManagementMethod?: string
+    maxSkillTokens?: number
+  } | null>(),
+
   sort_order: integer('sort_order').notNull().default(0), // Manual sort order (lower = first)
 
   created_at: text('created_at').notNull(),

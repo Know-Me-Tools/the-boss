@@ -6,7 +6,7 @@ import Bonjour from 'bonjour-service'
 
 import { windowService } from './WindowService'
 
-const SERVICE_TYPE = 'cherrystudio'
+const SERVICE_TYPE = 'theboss'
 const SERVICE_PROTOCOL = 'tcp' as const
 
 const logger = loggerService.withContext('LocalTransferService')

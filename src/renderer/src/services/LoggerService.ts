@@ -80,6 +80,9 @@ class LoggerService {
    */
   public initWindowSource(window: string): LoggerService {
     if (this.window) {
+      if (this.window === window) {
+        return this
+      }
       console.warn(
         '[LoggerService] window source already initialized, current: %s, want to set: %s',
         this.window,

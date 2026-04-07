@@ -29,7 +29,10 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   const dispatch = useAppDispatch()
   const { agentssubscribeUrl } = useSettings()
   const [subscribeUrl, setSubscribeUrl] = useState(agentssubscribeUrl || '')
-  const [selectedFile, setSelectedFile] = useState<{ name: string; content: Uint8Array } | null>(null)
+  const [selectedFile, setSelectedFile] = useState<{
+    name: string
+    content: Uint8Array
+  } | null>(null)
   const [urlValue, setUrlValue] = useState('')
 
   const isImportDisabled = importType === 'url' ? !urlValue.trim() : !selectedFile
@@ -37,7 +40,12 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
 
   const handleSelectFile = async () => {
     const result = await window.api.file.open({
-      filters: [{ name: t('assistants.presets.import.file_filter'), extensions: ['json'] }]
+      filters: [
+        {
+          name: t('assistants.presets.import.file_filter'),
+          extensions: ['json']
+        }
+      ]
     })
 
     if (result) {
@@ -145,7 +153,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   }
 
   const handleHelpClick = () => {
-    window.open('https://docs.cherry-ai.com/data-settings/assistants-subscribe', '_blank')
+    window.open('https://the-boss.know-me.tools/docs/data-settings/assistants-subscribe', '_blank')
   }
 
   return (
@@ -169,7 +177,12 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
             {importType === 'url' && (
               <Form.Item
                 name="url"
-                rules={[{ required: true, message: t('assistants.presets.import.error.url_required') }]}
+                rules={[
+                  {
+                    required: true,
+                    message: t('assistants.presets.import.error.url_required')
+                  }
+                ]}
                 style={{ flex: 1, marginBottom: 0 }}>
                 <Input
                   placeholder={t('assistants.presets.import.url_placeholder')}

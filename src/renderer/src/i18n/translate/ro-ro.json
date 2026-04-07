@@ -695,7 +695,7 @@
     },
     "authHeaderText": "Utilizează în header-ul Authorization:",
     "configuration": "Configurare",
-    "description": "Expune capacitățile AI ale Cherry Studio prin API-uri HTTP compatibile cu OpenAI",
+    "description": "Expune capacitățile AI ale The Boss prin API-uri HTTP compatibile cu OpenAI",
     "documentation": {
       "title": "Documentație API"
     },
@@ -2269,6 +2269,17 @@
       },
       "success": "Backup reușit"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "Crearea ramurii a eșuat"
     },
@@ -2920,12 +2931,12 @@
       "select_other_provider": "Selectați alt furnizor",
       "setup_hint": "Vă rugăm să configurați cel puțin un furnizor pentru cea mai bună experiență",
       "subtitle": "Bucurați-vă de servicii AI de top cu CherryIN",
-      "title": "Bun venit la Cherry Studio"
+      "title": "Bun venit la The Boss"
     }
   },
   "openclaw": {
     "checking_installation": "Verificare instalare OpenClaw...",
-    "description": "Integrează furnizorii Cherry Studio cu Gateway-ul OpenClaw pentru a permite agenților de codificare AI precum Claude Code, Qwen-Coder și alții.",
+    "description": "Integrează furnizorii The Boss cu Gateway-ul OpenClaw pentru a permite agenților de codificare AI precum Claude Code, Qwen-Coder și alții.",
     "error": {
       "select_provider_model": "Vă rugăm să selectați mai întâi un furnizor și un model"
     },
@@ -3034,7 +3045,7 @@
       "stop": "Oprește OVMS",
       "stopping": "Se oprește"
     },
-    "description": "<div><p>1. Descarcă modele OV.</p><p>2. Adaugă modele în 'Manager'.</p><p>Suportă doar Windows!</p><p>Cale instalare OVMS: '%USERPROFILE%\\.cherrystudio\\ovms' .</p><p>Te rugăm să consulți <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>Ghidul Intel OVMS</a></p></dev>",
+    "description": "<div><p>1. Descarcă modele OV.</p><p>2. Adaugă modele în 'Manager'.</p><p>Suportă doar Windows!</p><p>Cale instalare OVMS: '%USERPROFILE%\\.theboss\\ovms' .</p><p>Te rugăm să consulți <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>Ghidul Intel OVMS</a></p></dev>",
     "download": {
       "button": "Descarcă",
       "error": "Eroare descărcare",
@@ -3762,7 +3773,7 @@
           },
           "description": {
             "0": "Asistentul de selecție necesită <strong>Permisiune de accesibilitate</strong> pentru a funcționa corect.",
-            "1": "Te rugăm să faci clic pe \"<strong>Mergi la Setări</strong>\" și să apeși butonul \"<strong>Deschide setările de sistem</strong>\" în fereastra pop-up de solicitare a permisiunii care apare ulterior. Apoi găsește \"<strong>Cherry Studio</strong>\" în lista de aplicații și activează comutatorul de permisiune.",
+            "1": "Te rugăm să faci clic pe \"<strong>Mergi la Setări</strong>\" și să apeși butonul \"<strong>Deschide setările de sistem</strong>\" în fereastra pop-up de solicitare a permisiunii care apare ulterior. Apoi găsește \"<strong>The Boss</strong>\" în lista de aplicații și activează comutatorul de permisiune.",
             "2": "După finalizarea setărilor, te rugăm să redeschizi asistentul de selecție."
           },
           "title": "Permisiune de accesibilitate"
@@ -3774,7 +3785,7 @@
         "title": "Listă filtrare aplicații",
         "user_tips": {
           "mac": "Te rugăm să introduci Bundle ID-ul aplicației, unul pe linie, nu este sensibil la majuscule/minuscule, poate fi potrivit aproximativ. De exemplu: com.google.Chrome, com.apple.mail etc.",
-          "windows": "Te rugăm să introduci numele fișierului executabil al aplicației, unul pe linie, nu este sensibil la majuscule/minuscule, poate fi potrivit aproximativ. De exemplu: chrome.exe, weixin.exe, Cherry Studio.exe etc."
+          "windows": "Te rugăm să introduci numele fișierului executabil al aplicației, unul pe linie, nu este sensibil la majuscule/minuscule, poate fi potrivit aproximativ. De exemplu: chrome.exe, weixin.exe, The Boss.exe etc."
         }
       },
       "linux": {
@@ -3786,7 +3797,7 @@
         "wayland_checklist_subtitle": "Asigurați-vă că sunt îndeplinite următoarele condiții pentru a optimiza experiența Wayland:",
         "wayland_description": "Vă aflați într-o sesiune Wayland. Din cauza limitărilor sistemului, bara de instrumente poate apărea doar în centrul ecranului în loc să urmărească textul selectat pe unele medii desktop. Se recomandă să treceți la o sesiune X11 pentru o experiență completă.",
         "wayland_title": "Notificare sesiune Wayland",
-        "xwayland_fail": "Nu este activat, vă rugăm să lansați Cherry Studio cu steagul `--ozone-platform=x11`",
+        "xwayland_fail": "Nu este activat, vă rugăm să lansați The Boss cu steagul `--ozone-platform=x11`",
         "xwayland_label": "Mod XWayland:",
         "xwayland_pass": "Activat"
       },
@@ -3944,6 +3955,54 @@
       "auto_switch_to_topics": "Comutare automată la subiect",
       "title": "Setări avansate"
     },
+    "artifacts": {
+      "add_service": "[to be translated]:Add Service",
+      "base_css": "[to be translated]:Base CSS",
+      "custom_css": "[to be translated]:Custom CSS",
+      "default_grant": "[to be translated]:Default Grant",
+      "default_html_runtime": "[to be translated]:Default HTML Runtime",
+      "default_react_runtime": "[to be translated]:Default React/TSX Runtime",
+      "default_theme": "[to be translated]:Default Theme",
+      "description": "[to be translated]:Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
+      "internet_default": "[to be translated]:Internet Enabled By Default",
+      "library": {
+        "delete_success": "[to be translated]:Artifact deleted",
+        "description": "[to be translated]:Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
+        "empty": "[to be translated]:No saved artifacts yet. Save one from an artifact preview to build the local library.",
+        "filter_all": "[to be translated]:All Artifacts",
+        "filter_html": "[to be translated]:HTML",
+        "filter_react": "[to be translated]:React/TSX",
+        "fork_action": "[to be translated]:Fork",
+        "fork_success": "[to be translated]:Artifact forked",
+        "preview_loading": "[to be translated]:Preparing artifact preview...",
+        "rename_success": "[to be translated]:Artifact renamed",
+        "save_action": "[to be translated]:Save To Library",
+        "save_failed": "[to be translated]:Failed to save artifact to the local library",
+        "save_success": "[to be translated]:Artifact saved to the local library",
+        "search_placeholder": "[to be translated]:Search saved artifacts",
+        "title": "[to be translated]:Local Artifact Library",
+        "versions": "[to be translated]:{{count}} version",
+        "versions_other": "[to be translated]:{{count}} versions"
+      },
+      "no_services": "[to be translated]:No service profiles configured yet.",
+      "package_kind": "[to be translated]:Kind",
+      "package_name": "[to be translated]:Package",
+      "package_registry_description": "[to be translated]:Approved libraries and managed components available to artifact runtimes.",
+      "package_registry_title": "[to be translated]:Package Registry",
+      "package_runtime": "[to be translated]:Runtime",
+      "package_version": "[to be translated]:Version",
+      "react_compiling": "[to be translated]:Compiling React/TSX artifact...",
+      "service_label": "[to be translated]:Profile Label",
+      "services_description": "[to be translated]:Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
+      "services_title": "[to be translated]:Service Profiles",
+      "show_package_registry": "[to be translated]:Show Package Registry In Settings",
+      "styling_description": "[to be translated]:Shared CSS injected into HTML artifacts and React shadow roots before per-artifact overrides are applied.",
+      "styling_title": "[to be translated]:Styling",
+      "supabase_anon_key": "[to be translated]:Supabase ANON Key",
+      "supabase_service_role_key": "[to be translated]:Supabase Service Role Key (Optional)",
+      "supabase_url": "[to be translated]:Supabase URL",
+      "title": "[to be translated]:Artifacts"
+    },
     "assistant": {
       "icon": {
         "type": {
@@ -4079,14 +4138,14 @@
             "test_message_received": "Primit pong de la {{device}}",
             "test_message_sent": "Trimis payload test hello world"
           },
-          "idle_hint": "Scanare în pauză. Începe scanarea pentru a găsi parteneri Cherry Studio în LAN.",
+          "idle_hint": "Scanare în pauză. Începe scanarea pentru a găsi parteneri The Boss în LAN.",
           "ip_addresses": "Adrese IP",
           "last_seen": "Văzut ultima dată la {{time}}",
           "metadata": "Metadate",
-          "no_connection_warning": "Te rugăm să deschizi Transfer LAN pe mobil în Cherry Studio",
+          "no_connection_warning": "Te rugăm să deschizi Transfer LAN pe mobil în The Boss",
           "no_devices": "Încă nu s-au găsit parteneri LAN",
           "scan_devices": "Scanează dispozitive",
-          "scanning_hint": "Se scanează rețeaua locală pentru parteneri Cherry Studio...",
+          "scanning_hint": "Se scanează rețeaua locală pentru parteneri The Boss...",
           "send_file": "Trimite fișier",
           "status": {
             "completed": "Transfer finalizat",
@@ -4436,7 +4495,7 @@
         },
         "root": {
           "label": "Director backup (Opțional)",
-          "placeholder": "de ex.: /cherry-studio"
+          "placeholder": "de ex.: /the-boss"
         },
         "secretAccessKey": {
           "label": "Cheie secretă de acces",
@@ -4472,7 +4531,7 @@
           "title": "Verificare conexiune"
         },
         "root_path": "Cale rădăcină SiYuan Note",
-        "root_path_placeholder": "de ex.: /CherryStudio",
+        "root_path_placeholder": "de ex.: /the-boss",
         "title": "Configurare SiYuan Note",
         "token": {
           "help": "Obține token SiYuan Note",
@@ -4870,7 +4929,7 @@
       },
       "oauth": {
         "callback": {
-          "message": "Poți închide această pagină și te poți întoarce la Cherry Studio",
+          "message": "Poți închide această pagină și te poți întoarce la The Boss",
           "title": "Autentificare reușită"
         }
       },
@@ -5582,6 +5641,28 @@
       "zoom_out": "Micșorează",
       "zoom_reset": "Resetează zoom-ul"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
+    },
     "skills": {
       "author": "Autor",
       "batchUninstallSuccess": "{{count}} competențe dezinstalate",
@@ -5844,6 +5925,9 @@
       "reset": "Resetează",
       "title": "Zoom pagină"
     }
+  },
+  "tab": {
+    "new": "[to be translated]:New Tab"
   },
   "title": {
     "apps": "Aplicații",

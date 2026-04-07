@@ -1,3 +1,12 @@
+import {
+  APP_HOME_DIR,
+  APP_NAME,
+  APP_PROTOCOL,
+  PUBLIC_SUPPORT_URL,
+  PUBLIC_WEBSITE_URL,
+  UPDATE_CONFIG_URL,
+  UPDATE_FEED_URL
+} from './branding'
 import { codeLanguages } from './code-languages'
 
 export const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
@@ -197,15 +206,15 @@ export const MB = 1024 * KB
 export const GB = 1024 * MB
 export const defaultLanguage = 'en-US'
 
-export enum FeedUrl {
-  PRODUCTION = 'https://releases.cherry-ai.com',
-  GITHUB_LATEST = 'https://github.com/CherryHQ/cherry-studio/releases/latest/download'
-}
+export const FeedUrl = {
+  PRODUCTION: UPDATE_FEED_URL,
+  GITHUB_LATEST: UPDATE_FEED_URL
+} as const
 
-export enum UpdateConfigUrl {
-  GITHUB = 'https://raw.githubusercontent.com/CherryHQ/cherry-studio/refs/heads/x-files/app-upgrade-config/app-upgrade-config.json',
-  GITCODE = 'https://raw.gitcode.com/CherryHQ/cherry-studio/raw/x-files%2Fapp-upgrade-config/app-upgrade-config.json'
-}
+export const UpdateConfigUrl = {
+  GITHUB: UPDATE_CONFIG_URL,
+  GITCODE: UPDATE_CONFIG_URL
+} as const
 
 export enum UpgradeChannel {
   LATEST = 'latest', // 最新稳定版本
@@ -485,7 +494,7 @@ export const MACOS_TERMINALS_WITH_COMMANDS: TerminalConfigWithCommand[] = [
 ]
 
 // resources/scripts should be maintained manually
-export const HOME_CHERRY_DIR = '.cherrystudio'
+export const HOME_CHERRY_DIR = APP_HOME_DIR
 
 // Git Bash path configuration types
 export type GitBashPathSource = 'manual' | 'auto'
@@ -499,8 +508,7 @@ export interface GitBashPathInfo {
 export const CHERRYIN_CONFIG = {
   CLIENT_ID: '2a348c87-bae1-4756-a62f-b2e97200fd6d',
   ALLOWED_HOSTS: ['https://open.cherryin.ai', 'https://open.cherryin.dev'],
-  REDIRECT_URI: 'cherrystudio://oauth/callback',
+  REDIRECT_URI: `${APP_PROTOCOL}://oauth/callback`,
   SCOPES: 'openid profile email offline_access balance:read usage:read tokens:read tokens:write'
 }
-
-export const APP_NAME = 'Cherry Studio'
+export { APP_NAME, PUBLIC_SUPPORT_URL, PUBLIC_WEBSITE_URL }

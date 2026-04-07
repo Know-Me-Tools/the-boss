@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="dark">
+<!-- THE BOSS — Brand Document Template · travisjames.ai · v2.2
+     Usage: Copy this file, update <title> and fill content sections.
+     All CSS variables switch with data-mode="dark|light" on <html>. -->
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Boss — [Document Title] · travisjames.ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Roboto:wght@300;400;500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* DESIGN TOKENS — DO NOT MODIFY */
+:root{--bg:#0B0F14;--fg:#E8EDF3;--card:#0F1620;--card-fg:#E8EDF3;--muted:#141C26;--muted-fg:#A7B0BC;--border:#233041;--input:#233041;--primary:#FF6A3D;--primary-fg:#0B0F14;--secondary:#1A2432;--secondary-fg:#E8EDF3;--accent:#2A1B17;--accent-fg:#FFB199;--ring:#FF6A3D;--ember:#FF6A3D;--ember-alt:#E04E28;--success:#22C55E;--warning:#F59E0B;--destructive:#EF4444;--info:#60A5FA;--logo-container:#FF6A3D;--logo-hex:#0B0F14;--logo-passive:#4A8EC7}
+[data-mode="light"]{--bg:#F7F7F8;--fg:#0B0F14;--card:#FFFFFF;--card-fg:#0B0F14;--muted:#EEF0F3;--muted-fg:#4B5563;--border:#D8DEE6;--input:#D8DEE6;--primary:#E04E28;--primary-fg:#FFFFFF;--secondary:#111827;--secondary-fg:#FFFFFF;--accent:#F2D6CF;--accent-fg:#3B1410;--ring:#E04E28;--ember:#E04E28;--ember-alt:#C94220;--success:#16A34A;--warning:#D97706;--destructive:#DC2626;--info:#2563EB;--logo-container:#111827;--logo-hex:#E04E28;--logo-passive:#E04E28}
+/* BASE */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+/* Navigation */
+.doc-nav{position:sticky;top:0;z-index:100;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:.75rem 2.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.doc-nav-brand{display:flex;align-items:center;gap:.55rem}
+.doc-nav-brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:-.02em;color:var(--fg)}
+.doc-nav-brand-name em{font-style:normal;color:var(--ember)}
+.doc-nav-title{font-family:'JetBrains Mono',monospace;font-size:.62rem;font-weight:500;letter-spacing:.06em;color:var(--muted-fg)}
+.doc-mode-btn{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .7rem;cursor:pointer;transition:border-color .15s,color .15s}
+.doc-mode-btn:hover{border-color:var(--ember);color:var(--ember)}
+/* Layout */
+.doc-container{max-width:1100px;margin:0 auto;padding:3rem 2.5rem 6rem}
+.doc-section{margin-bottom:5rem}
+/* Typography */
+.doc-eyebrow{font-family:'JetBrains Mono',monospace;font-size:.6rem;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ember);display:block;margin-bottom:.4rem}
+.doc-h1{font-family:'Space Grotesk',sans-serif;font-size:3rem;font-weight:700;letter-spacing:-.035em;line-height:1.05}
+.doc-h2{font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.doc-h3{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.doc-lead{font-family:'Roboto',sans-serif;font-size:1.1rem;font-weight:300;color:var(--muted-fg);line-height:1.7;max-width:65ch}
+.doc-body{font-family:'Roboto',sans-serif;font-size:1rem;color:var(--fg);line-height:1.7;max-width:65ch}
+.doc-rule{border:none;border-top:1px solid var(--border);margin:2rem 0}
+/* Cards */
+.doc-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.5rem}
+.doc-card-sm{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1rem}
+/* Buttons */
+.doc-btn-primary{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1.25rem;background:var(--ember);color:var(--primary-fg);font-family:'Inter',sans-serif;font-size:.85rem;font-weight:600;border:none;border-radius:8px;cursor:pointer;text-decoration:none;transition:opacity .15s}
+.doc-btn-primary:hover{opacity:.88}
+.doc-btn-outline{display:inline-flex;align-items:center;gap:.4rem;padding:.52rem 1.2rem;background:transparent;color:var(--fg);font-family:'Inter',sans-serif;font-size:.85rem;font-weight:600;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;text-decoration:none;transition:border-color .15s,color .15s}
+.doc-btn-outline:hover{border-color:var(--ember);color:var(--ember)}
+/* Badges */
+.doc-badge{font-family:'Inter',sans-serif;font-size:.65rem;font-weight:600;padding:.18rem .55rem;border-radius:999px;display:inline-flex;align-items:center}
+.doc-badge-success{background:#ECFDF5;color:#065F46}
+.doc-badge-warning{background:#FFFBEB;color:#92400E}
+.doc-badge-error{background:#FEF2F2;color:#991B1B}
+.doc-badge-info{background:#EFF6FF;color:#1E40AF}
+.doc-badge-muted{background:var(--muted);color:var(--muted-fg);border:1px solid var(--border)}
+/* Code */
+.doc-code{font-family:'JetBrains Mono',monospace;font-size:.8rem;background:var(--muted);border:1px solid var(--border);border-radius:4px;padding:.1rem .35rem;color:var(--ember)}
+.doc-pre{font-family:'JetBrains Mono',monospace;font-size:.78rem;background:var(--muted);border:1px solid var(--border);border-radius:8px;padding:1.25rem;overflow-x:auto;line-height:1.7;color:var(--muted-fg)}
+/* Grids */
+.doc-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.doc-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.doc-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem}
+/* Table */
+.doc-table{width:100%;border-collapse:collapse;font-family:'Roboto',sans-serif;font-size:.88rem}
+.doc-table th{text-align:left;padding:.6rem .85rem;font-family:'Inter',sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);background:var(--muted);border-bottom:1px solid var(--border)}
+.doc-table td{padding:.55rem .85rem;border-bottom:1px solid var(--border);color:var(--muted-fg)}
+.doc-table td:first-child{color:var(--fg);font-weight:500}
+.doc-table tr:last-child td{border-bottom:none}
+/* Footer */
+.doc-footer{border-top:1px solid var(--border);padding:1.5rem 2.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.doc-footer-note{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted-fg);letter-spacing:.06em}
+</style>
+</head>
+<body>
+<nav class="doc-nav">
+  <div class="doc-nav-brand">
+    <svg width="24" height="24" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="9" fill="#111827"/>
+      <polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+      <line x1="24" y1="24" x2="24" y2="8" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="37.86" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24" y1="24" x2="10.14" y2="16" stroke="#FFF" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+    </svg>
+    <span class="doc-nav-brand-name">The <em>Boss</em></span>
+  </div>
+  <span class="doc-nav-title">[Document Title]</span>
+  <button class="doc-mode-btn" onclick="toggleMode()" id="modeBtn">☀ Light</button>
+</nav>
+<main class="doc-container">
+  <section class="doc-section">
+    <span class="doc-eyebrow">§ 01 — Section Label</span>
+    <h2 class="doc-h2">Section Title</h2>
+    <hr class="doc-rule"/>
+    <p class="doc-lead">Lead paragraph. Use for section intros, summaries, or key statements. Max 65ch. Roboto 300.</p>
+    <p class="doc-body" style="margin-top:1.25rem">Body copy. Standard paragraph text. Max 65ch. Roboto 400.</p>
+    <div class="doc-grid-2" style="margin-top:2rem">
+      <div class="doc-card">
+        <span class="doc-eyebrow">Label</span>
+        <h3 class="doc-h3">Card Title</h3>
+        <p style="font-family:'Roboto',sans-serif;font-size:.88rem;color:var(--muted-fg);margin-top:.5rem;line-height:1.6">Card description text.</p>
+      </div>
+      <div class="doc-card">
+        <span class="doc-eyebrow">Label</span>
+        <h3 class="doc-h3">Card Title</h3>
+        <p style="font-family:'Roboto',sans-serif;font-size:.88rem;color:var(--muted-fg);margin-top:.5rem;line-height:1.6">Card description text.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap">
+      <a href="#" class="doc-btn-primary">Primary Action</a>
+      <a href="#" class="doc-btn-outline">Secondary Action</a>
+    </div>
+    <div style="display:flex;gap:.4rem;margin-top:1rem;flex-wrap:wrap">
+      <span class="doc-badge doc-badge-success">Active</span>
+      <span class="doc-badge doc-badge-warning">Beta</span>
+      <span class="doc-badge doc-badge-muted">v2.2</span>
+    </div>
+    <div class="doc-pre" style="margin-top:1.5rem">// Code block
+use the_boss::prelude::*;
+
+let agent = Agent::builder()
+    .model("claude-sonnet-4-5")
+    .build()?;</div>
+    <table class="doc-table" style="margin-top:1.5rem">
+      <thead><tr><th>Column A</th><th>Column B</th><th>Column C</th></tr></thead>
+      <tbody>
+        <tr><td>Value 1</td><td>Value 2</td><td>Value 3</td></tr>
+        <tr><td>Value 4</td><td>Value 5</td><td>Value 6</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+<footer class="doc-footer">
+  <div style="display:flex;align-items:center;gap:.65rem">
+    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <rect width="48" height="48" rx="9" fill="#111827"/>
+      <polygon points="24,8 37.86,16 37.86,32 24,40 10.14,32 10.14,16" fill="#E04E28"/>
+      <circle cx="24" cy="8" r="2.75" fill="#FFF"/><circle cx="37.86" cy="16" r="2.75" fill="#FFF"/>
+      <circle cx="10.14" cy="16" r="2.75" fill="#FFF"/><circle cx="24" cy="24" r="3" fill="#FFF" opacity="0.95"/>
+    </svg>
+    <span class="doc-footer-note">The Boss · [Document Title] · travisjames.ai</span>
+  </div>
+  <span class="doc-footer-note">2026 · Brand Template v2.2</span>
+</footer>
+<script>
+function toggleMode(){
+  const h=document.documentElement;
+  const b=document.getElementById('modeBtn');
+  const dark=h.getAttribute('data-mode')==='dark';
+  h.setAttribute('data-mode',dark?'light':'dark');
+  b.textContent=dark?'☽ Dark':'☀ Light';
+}
+</script>
+</body>
+</html>

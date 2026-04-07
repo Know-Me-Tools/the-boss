@@ -46,9 +46,10 @@ interface Props {
   block: MainTextMessageBlock | TranslationMessageBlock | ThinkingMessageBlock | CompactMessageBlock
   // 可选的后处理函数，用于在流式渲染过程中处理文本（如引用标签转换）
   postProcess?: (text: string) => string
+  allowArtifactCards?: boolean
 }
 
-const Markdown: FC<Props> = ({ block, postProcess }) => {
+const Markdown: FC<Props> = ({ block, postProcess, allowArtifactCards = true }) => {
   const { t } = useTranslation()
   const { mathEngine, mathEnableSingleDollar } = useSettings()
 
@@ -131,7 +132,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
   const components = useMemo(() => {
     return {
       a: (props: any) => <Link {...props} />,
-      code: (props: any) => <CodeBlock {...props} blockId={block.id} />,
+      code: (props: any) => <CodeBlock {...props} blockId={block.id} allowArtifactCards={allowArtifactCards} />,
       table: (props: any) => <Table {...props} blockId={block.id} />,
       img: (props: any) => <ImageViewer style={{ maxWidth: 500, maxHeight: 500 }} {...props} />,
       pre: (props: any) => <pre style={{ overflow: 'visible' }} {...props} />,
@@ -142,7 +143,7 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
       },
       svg: MarkdownSvgRenderer
     } as Partial<Components>
-  }, [block.id])
+  }, [allowArtifactCards, block.id])
 
   if (/<style\b[^>]*>/i.test(messageContent)) {
     components.style = MarkdownShadowDOMRenderer as any

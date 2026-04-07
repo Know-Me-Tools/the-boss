@@ -1,3 +1,5 @@
+import * as nodeModule from 'node:module'
+
 import { occupiedDirs } from '@shared/config/constant'
 import { app } from 'electron'
 import fs from 'fs'
@@ -5,6 +7,33 @@ import path from 'path'
 
 import { initAppDataDir } from './utils/init'
 
+function registerStartupNodeModulesFallback() {
+  if (!app.isPackaged) {
+    return
+  }
+
+  const fallbackNodeModulesPath = path.join(process.resourcesPath, 'node_modules')
+  if (!fs.existsSync(fallbackNodeModulesPath)) {
+    return
+  }
+
+  process.env.NODE_PATH = process.env.NODE_PATH
+    ? `${fallbackNodeModulesPath}${path.delimiter}${process.env.NODE_PATH}`
+    : fallbackNodeModulesPath
+
+  const internalModule = nodeModule as typeof nodeModule & {
+    _initPaths?: () => void
+    globalPaths?: string[]
+  }
+
+  internalModule._initPaths?.()
+
+  if (internalModule.globalPaths && !internalModule.globalPaths.includes(fallbackNodeModulesPath)) {
+    internalModule.globalPaths.unshift(fallbackNodeModulesPath)
+  }
+}
+
+registerStartupNodeModulesFallback()
 app.isPackaged && initAppDataDir()
 
 // 在主进程中复制 appData 中某些一直被占用的文件

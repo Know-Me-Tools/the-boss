@@ -695,7 +695,7 @@
     },
     "authHeaderText": "在授權標頭中使用：",
     "configuration": "設定",
-    "description": "透過 OpenAI 相容的 HTTP API 公開 Cherry Studio 的 AI 功能",
+    "description": "透過 OpenAI 相容的 HTTP API 公開 The Boss 的 AI 功能",
     "documentation": {
       "title": "API 文件"
     },
@@ -2269,6 +2269,17 @@
       },
       "success": "備份成功"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "selection_reason": "[to be translated]:Why selected",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "分支建立失敗"
     },
@@ -2920,12 +2931,12 @@
       "select_other_provider": "選擇其他供應商",
       "setup_hint": "請至少設定一個提供者以獲得最佳體驗",
       "subtitle": "享受頂尖 AI 服務，盡在 CherryIN",
-      "title": "歡迎來到 Cherry Studio"
+      "title": "歡迎來到 The Boss"
     }
   },
   "openclaw": {
     "checking_installation": "正在檢查 OpenClaw 安裝狀態...",
-    "description": "使用 Cherry Studio 服務商為 OpenClaw 提供支援，OpenClaw 是您的個人 AI 助手，可在 WhatsApp、Telegram、Slack、Discord 等平台上使用。",
+    "description": "使用 The Boss 服務商為 OpenClaw 提供支援，OpenClaw 是您的個人 AI 助手，可在 WhatsApp、Telegram、Slack、Discord 等平台上使用。",
     "error": {
       "select_provider_model": "請先選擇服務商和模型"
     },
@@ -2963,7 +2974,7 @@
       "title": "模型設定"
     },
     "node_missing": {
-      "description": "OpenClaw 需要 Node.js/npm。請先安裝 Node.js，然後重新啟動 Cherry Studio。",
+      "description": "OpenClaw 需要 Node.js/npm。請先安裝 Node.js，然後重新啟動 The Boss。",
       "download_button": "下載 Node.js",
       "hint": "macOS：brew install node | Windows：從 nodejs.org 下載 LTS 版本",
       "title": "需要 Node.js"
@@ -3034,7 +3045,7 @@
       "stop": "停止 OVMS",
       "stopping": "停止中"
     },
-    "description": "<div><p>1. 下載 OV 模型。</p><p>2. 在 'Manager' 中新增模型。</p><p>僅支援 Windows！</p><p>OVMS 安裝路徑：'%USERPROFILE%\\.cherrystudio\\ovms' 。</p><p>請參考 <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>Intel OVMS 指南</a></p></dev>",
+    "description": "<div><p>1. 下載 OV 模型。</p><p>2. 在 'Manager' 中新增模型。</p><p>僅支援 Windows！</p><p>OVMS 安裝路徑：'%USERPROFILE%\\.theboss\\ovms' 。</p><p>請參考 <a href=https://github.com/openvinotoolkit/model_server/blob/c55551763d02825829337b62c2dcef9339706f79/docs/deploying_server_baremetal.md>Intel OVMS 指南</a></p></dev>",
     "download": {
       "button": "下載",
       "error": "下載失敗",
@@ -3762,7 +3773,7 @@
           },
           "description": {
             "0": "劃詞助手需「<strong>輔助使用權限</strong>」才能正常工作。",
-            "1": "請點選「<strong>前往設定</strong>」，並在稍後出現的權限請求對話框中點選「<strong>開啟系統設定</strong>」按鈕，接著在應用程式清單中找到「<strong>Cherry Studio</strong>」，並開啟權限開關。",
+            "1": "請點選「<strong>前往設定</strong>」，並在稍後出現的權限請求對話框中點選「<strong>開啟系統設定</strong>」按鈕，接著在應用程式清單中找到「<strong>The Boss</strong>」，並開啟權限開關。",
             "2": "完成設定後，請再次開啟劃詞助手。"
           },
           "title": "輔助使用權限"
@@ -3774,7 +3785,7 @@
         "title": "應用篩選名單",
         "user_tips": {
           "mac": "請輸入應用程式的 Bundle ID（每行一個、不區分大小寫，可模糊比對）。例如：com.google.Chrome、com.apple.mail 等",
-          "windows": "請輸入應用程式的執行檔名稱（每行一個、不區分大小寫，可模糊比對）。例如：chrome.exe、weixin.exe、Cherry Studio.exe 等"
+          "windows": "請輸入應用程式的執行檔名稱（每行一個、不區分大小寫，可模糊比對）。例如：chrome.exe、weixin.exe、The Boss.exe 等"
         }
       },
       "linux": {
@@ -3786,7 +3797,7 @@
         "wayland_checklist_subtitle": "確認以下條件已滿足，以盡可能優化 Wayland 下的體驗：",
         "wayland_description": "目前為 Wayland 模式，受系統限制，部分桌面環境下工具列只能顯示在螢幕中央，無法跟隨選取文字定位。建議切換到 X11 模式以獲得完整體驗。",
         "wayland_title": "Wayland 模式提示",
-        "xwayland_fail": "未啟用，請使用 `--ozone-platform=x11` 參數啟動 Cherry Studio",
+        "xwayland_fail": "未啟用，請使用 `--ozone-platform=x11` 參數啟動 The Boss",
         "xwayland_label": "XWayland 模式：",
         "xwayland_pass": "已啟用"
       },
@@ -3944,6 +3955,54 @@
       "auto_switch_to_topics": "自動切換到話題",
       "title": "進階設定"
     },
+    "artifacts": {
+      "add_service": "[to be translated]:Add Service",
+      "base_css": "[to be translated]:Base CSS",
+      "custom_css": "[to be translated]:Custom CSS",
+      "default_grant": "[to be translated]:Default Grant",
+      "default_html_runtime": "[to be translated]:Default HTML Runtime",
+      "default_react_runtime": "[to be translated]:Default React/TSX Runtime",
+      "default_theme": "[to be translated]:Default Theme",
+      "description": "[to be translated]:Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
+      "internet_default": "[to be translated]:Internet Enabled By Default",
+      "library": {
+        "delete_success": "[to be translated]:Artifact deleted",
+        "description": "[to be translated]:Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
+        "empty": "[to be translated]:No saved artifacts yet. Save one from an artifact preview to build the local library.",
+        "filter_all": "[to be translated]:All Artifacts",
+        "filter_html": "[to be translated]:HTML",
+        "filter_react": "[to be translated]:React/TSX",
+        "fork_action": "[to be translated]:Fork",
+        "fork_success": "[to be translated]:Artifact forked",
+        "preview_loading": "[to be translated]:Preparing artifact preview...",
+        "rename_success": "[to be translated]:Artifact renamed",
+        "save_action": "[to be translated]:Save To Library",
+        "save_failed": "[to be translated]:Failed to save artifact to the local library",
+        "save_success": "[to be translated]:Artifact saved to the local library",
+        "search_placeholder": "[to be translated]:Search saved artifacts",
+        "title": "[to be translated]:Local Artifact Library",
+        "versions": "[to be translated]:{{count}} version",
+        "versions_other": "[to be translated]:{{count}} versions"
+      },
+      "no_services": "[to be translated]:No service profiles configured yet.",
+      "package_kind": "[to be translated]:Kind",
+      "package_name": "[to be translated]:Package",
+      "package_registry_description": "[to be translated]:Approved libraries and managed components available to artifact runtimes.",
+      "package_registry_title": "[to be translated]:Package Registry",
+      "package_runtime": "[to be translated]:Runtime",
+      "package_version": "[to be translated]:Version",
+      "react_compiling": "[to be translated]:Compiling React/TSX artifact...",
+      "service_label": "[to be translated]:Profile Label",
+      "services_description": "[to be translated]:Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
+      "services_title": "[to be translated]:Service Profiles",
+      "show_package_registry": "[to be translated]:Show Package Registry In Settings",
+      "styling_description": "[to be translated]:Shared CSS injected into HTML artifacts and React shadow roots before per-artifact overrides are applied.",
+      "styling_title": "[to be translated]:Styling",
+      "supabase_anon_key": "[to be translated]:Supabase ANON Key",
+      "supabase_service_role_key": "[to be translated]:Supabase Service Role Key (Optional)",
+      "supabase_url": "[to be translated]:Supabase URL",
+      "title": "[to be translated]:Artifacts"
+    },
     "assistant": {
       "icon": {
         "type": {
@@ -4079,14 +4138,14 @@
             "test_message_received": "收到來自 {{device}} 的 pong",
             "test_message_sent": "已送出 hello world 測試封包"
           },
-          "idle_hint": "掃描已暫停。開始掃描以尋找區域網路中的 Cherry Studio 裝置。",
+          "idle_hint": "掃描已暫停。開始掃描以尋找區域網路中的 The Boss 裝置。",
           "ip_addresses": "IP 位址",
           "last_seen": "上次看到：{{time}}",
           "metadata": "中繼資料",
-          "no_connection_warning": "請在 Cherry Studio 行動裝置開啟區域網路傳輸",
+          "no_connection_warning": "請在 The Boss 行動裝置開啟區域網路傳輸",
           "no_devices": "尚未找到區域網路節點",
           "scan_devices": "掃描裝置",
-          "scanning_hint": "正在掃描區域網路中的 Cherry Studio 裝置...",
+          "scanning_hint": "正在掃描區域網路中的 The Boss 裝置...",
           "send_file": "傳送檔案",
           "status": {
             "completed": "傳輸完成",
@@ -4436,7 +4495,7 @@
         },
         "root": {
           "label": "備份目錄（可選）",
-          "placeholder": "例如：/cherry-studio"
+          "placeholder": "例如：/the-boss"
         },
         "secretAccessKey": {
           "label": "Secret Access Key",
@@ -4472,7 +4531,7 @@
           "title": "連線檢查"
         },
         "root_path": "思源筆記根路徑",
-        "root_path_placeholder": "例如：/CherryStudio",
+        "root_path_placeholder": "例如：/the-boss",
         "title": "思源筆記設定",
         "token": {
           "help": "在思源筆記 → 設定 → 關於中取得",
@@ -4870,7 +4929,7 @@
       },
       "oauth": {
         "callback": {
-          "message": "關閉此頁面後即可回到 Cherry Studio",
+          "message": "關閉此頁面後即可回到 The Boss",
           "title": "認證成功"
         }
       },
@@ -5581,6 +5640,28 @@
       "zoom_in": "放大介面",
       "zoom_out": "縮小介面",
       "zoom_reset": "重設縮放"
+    },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": "[to be translated]:Embedding (Semantic)",
+        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
+        "llm_delegated": "[to be translated]:LLM Delegated",
+        "llm_router": "[to be translated]:LLM Router",
+        "two_stage": "[to be translated]:Two-Stage"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
     },
     "skills": {
       "author": "作者",

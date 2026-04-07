@@ -5,8 +5,9 @@
     <meta name="viewport" content="initial-scale=1, width=device-width" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src blob: *; script-src 'self' 'unsafe-eval' 'unsafe-inline' *; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' *; font-src 'self' data: *; img-src 'self' data: file: * blob:; media-src 'self' file:; frame-src * file:" />
-    <title>Cherry Studio</title>
+      content="default-src 'self'; connect-src blob: *; script-src 'self' 'unsafe-eval' 'unsafe-inline' *; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' *; font-src 'self' data: *; img-src 'self' data: file: * blob:; media-src 'self' file:; frame-src * file:"
+    />
+    <title>The Boss</title>
 
     <style>
       html,
@@ -25,8 +26,8 @@
       }
 
       #spinner img {
-        width: 100px;
-        border-radius: 50px;
+        width: min(260px, 52vw);
+        border-radius: 0;
       }
     </style>
   </head>
@@ -34,11 +35,15 @@
   <body>
     <div id="root"></div>
     <div id="spinner">
-      <img src="/src/assets/images/logo.png" />
+      <picture>
+        <source srcset="/src/assets/brand/lockup-dark.svg" media="(prefers-color-scheme: dark)" />
+        <img src="/src/assets/brand/lockup-light.svg" alt="The Boss" />
+      </picture>
     </div>
     <script>
-      console.time('init')
+      console.time("init");
     </script>
+    <script type="module" src="/src/bootstrapLogger.ts"></script>
     <script type="module" src="/src/init.ts"></script>
     <script type="module" src="/src/entryPoint.tsx"></script>
   </body>

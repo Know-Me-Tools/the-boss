@@ -1,12 +1,12 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Cherry Studio API",
+    "title": "The Boss API",
     "version": "1.0.0",
-    "description": "OpenAI-compatible API for Cherry Studio with additional Cherry-specific endpoints",
+    "description": "OpenAI-compatible API for The Boss with additional product-specific endpoints",
     "contact": {
-      "name": "Cherry Studio",
-      "url": "https://github.com/CherryHQ/cherry-studio"
+      "name": "The Boss",
+      "url": "https://github.com/Know-Me-Tools/the-boss"
     }
   },
   "servers": [
@@ -21,7 +21,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Use the API key from Cherry Studio settings"
+        "description": "Use the API key from The Boss settings"
       }
     },
     "schemas": {
@@ -49,7 +49,12 @@
         "properties": {
           "role": {
             "type": "string",
-            "enum": ["system", "user", "assistant", "tool"]
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool"
+            ]
           },
           "content": {
             "oneOf": [
@@ -112,7 +117,10 @@
       },
       "ChatCompletionRequest": {
         "type": "object",
-        "required": ["model", "messages"],
+        "required": [
+          "model",
+          "messages"
+        ],
         "properties": {
           "model": {
             "type": "string",
@@ -173,7 +181,9 @@
           },
           "object": {
             "type": "string",
-            "enum": ["model"]
+            "enum": [
+              "model"
+            ]
           },
           "created": {
             "type": "integer"
@@ -211,12 +221,20 @@
       },
       "PermissionMode": {
         "type": "string",
-        "enum": ["default", "acceptEdits", "bypassPermissions", "plan"],
+        "enum": [
+          "default",
+          "acceptEdits",
+          "bypassPermissions",
+          "plan"
+        ],
         "description": "Permission mode for agent operations"
       },
       "AgentType": {
         "type": "string",
-        "enum": ["claude-code", "cherry-claw"],
+        "enum": [
+          "claude-code",
+          "cherry-claw"
+        ],
         "description": "Type of agent"
       },
       "AgentConfiguration": {
@@ -286,7 +304,10 @@
             "$ref": "#/components/schemas/AgentConfiguration"
           }
         },
-        "required": ["model", "accessible_paths"]
+        "required": [
+          "model",
+          "accessible_paths"
+        ]
       },
       "AgentEntity": {
         "allOf": [
@@ -314,7 +335,12 @@
                 "description": "ISO timestamp of last update"
               }
             },
-            "required": ["id", "type", "created_at", "updated_at"]
+            "required": [
+              "id",
+              "type",
+              "created_at",
+              "updated_at"
+            ]
           }
         ]
       },
@@ -340,7 +366,11 @@
                 "description": "Main model ID (required)"
               }
             },
-            "required": ["type", "name", "model"]
+            "required": [
+              "type",
+              "name",
+              "model"
+            ]
           }
         ]
       },
@@ -431,7 +461,13 @@
                 "description": "ISO timestamp of last update"
               }
             },
-            "required": ["id", "agent_id", "agent_type", "created_at", "updated_at"]
+            "required": [
+              "id",
+              "agent_id",
+              "agent_type",
+              "created_at",
+              "updated_at"
+            ]
           }
         ]
       },
@@ -449,7 +485,9 @@
                 "description": "Main model ID (required)"
               }
             },
-            "required": ["model"]
+            "required": [
+              "model"
+            ]
           }
         ]
       },
@@ -521,7 +559,9 @@
                 "description": "Main model ID (required)"
               }
             },
-            "required": ["model"]
+            "required": [
+              "model"
+            ]
           }
         ]
       },
@@ -534,7 +574,9 @@
             "description": "Message content"
           }
         },
-        "required": ["content"]
+        "required": [
+          "content"
+        ]
       },
       "PaginationQuery": {
         "type": "object",
@@ -554,7 +596,13 @@
           },
           "status": {
             "type": "string",
-            "enum": ["idle", "running", "completed", "failed", "stopped"],
+            "enum": [
+              "idle",
+              "running",
+              "completed",
+              "failed",
+              "stopped"
+            ],
             "description": "Filter by session status"
           }
         }
@@ -581,7 +629,12 @@
             "description": "Number of items skipped"
           }
         },
-        "required": ["agents", "total", "limit", "offset"]
+        "required": [
+          "agents",
+          "total",
+          "limit",
+          "offset"
+        ]
       },
       "ListSessionsResponse": {
         "type": "object",
@@ -605,7 +658,12 @@
             "description": "Number of items skipped"
           }
         },
-        "required": ["sessions", "total", "limit", "offset"]
+        "required": [
+          "sessions",
+          "total",
+          "limit",
+          "offset"
+        ]
       },
       "ErrorResponse": {
         "type": "object",
@@ -626,10 +684,16 @@
                 "description": "Error code"
               }
             },
-            "required": ["message", "type", "code"]
+            "required": [
+              "message",
+              "type",
+              "code"
+            ]
           }
         },
-        "required": ["error"]
+        "required": [
+          "error"
+        ]
       },
       "KnowledgeBaseEntity": {
         "type": "object",
@@ -787,7 +851,9 @@
             "description": "Maximum number of results to return"
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       },
       "SearchKnowledgeResponse": {
         "type": "object",
@@ -842,7 +908,9 @@
       "post": {
         "summary": "Create a new agent",
         "description": "Creates a new autonomous agent with the specified configuration and automatically provisions an initial session that mirrors the agent's settings.",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -889,7 +957,9 @@
       "get": {
         "summary": "List all agents",
         "description": "Retrieves a paginated list of all agents",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -917,7 +987,12 @@
             "name": "sortBy",
             "schema": {
               "type": "string",
-              "enum": ["created_at", "updated_at", "name", "sort_order"],
+              "enum": [
+                "created_at",
+                "updated_at",
+                "name",
+                "sort_order"
+              ],
               "default": "sort_order"
             },
             "description": "Field to sort by"
@@ -927,7 +1002,10 @@
             "name": "orderBy",
             "schema": {
               "type": "string",
-              "enum": ["asc", "desc"],
+              "enum": [
+                "asc",
+                "desc"
+              ],
               "default": "desc"
             },
             "description": "Sort order (asc = ascending, desc = descending). Defaults to asc when sortBy is sort_order."
@@ -991,7 +1069,9 @@
       "get": {
         "summary": "Get agent by ID",
         "description": "Retrieves a specific agent by its ID",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1039,7 +1119,9 @@
       "put": {
         "summary": "Update agent",
         "description": "Updates an existing agent with the provided data",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1107,7 +1189,9 @@
       "patch": {
         "summary": "Partially update agent",
         "description": "Partially updates an existing agent with only the provided fields",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1188,7 +1272,11 @@
                   },
                   "permission_mode": {
                     "type": "string",
-                    "enum": ["readOnly", "acceptEdits", "bypassPermissions"],
+                    "enum": [
+                      "readOnly",
+                      "acceptEdits",
+                      "bypassPermissions"
+                    ],
                     "description": "Permission mode"
                   },
                   "max_steps": {
@@ -1247,7 +1335,9 @@
       "delete": {
         "summary": "Delete agent",
         "description": "Deletes an agent and all associated sessions and logs",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1290,7 +1380,9 @@
       "put": {
         "summary": "Reorder agents",
         "description": "Sets the display order of agents based on the provided array of agent IDs",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1306,7 +1398,9 @@
                     "description": "Array of agent IDs in the desired display order"
                   }
                 },
-                "required": ["ordered_ids"]
+                "required": [
+                  "ordered_ids"
+                ]
               }
             }
           }
@@ -1341,7 +1435,9 @@
     "/agents": {
       "post": {
         "summary": "Create a new agent",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1377,7 +1473,9 @@
       },
       "get": {
         "summary": "List all agents with pagination",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -1405,7 +1503,13 @@
             "name": "status",
             "schema": {
               "type": "string",
-              "enum": ["idle", "running", "completed", "failed", "stopped"]
+              "enum": [
+                "idle",
+                "running",
+                "completed",
+                "failed",
+                "stopped"
+              ]
             },
             "description": "Filter by agent status"
           }
@@ -1427,7 +1531,9 @@
     "/agents/{agentId}": {
       "get": {
         "summary": "Get agent by ID",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1464,7 +1570,9 @@
       },
       "put": {
         "summary": "Replace agent (full update)",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1521,7 +1629,9 @@
       },
       "patch": {
         "summary": "Update agent (partial update)",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1578,7 +1688,9 @@
       },
       "delete": {
         "summary": "Delete agent",
-        "tags": ["Agents"],
+        "tags": [
+          "Agents"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1610,7 +1722,9 @@
     "/agents/{agentId}/sessions": {
       "post": {
         "summary": "Create a new session for an agent",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1667,7 +1781,9 @@
       },
       "get": {
         "summary": "List sessions for an agent",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1704,7 +1820,13 @@
             "name": "status",
             "schema": {
               "type": "string",
-              "enum": ["idle", "running", "completed", "failed", "stopped"]
+              "enum": [
+                "idle",
+                "running",
+                "completed",
+                "failed",
+                "stopped"
+              ]
             },
             "description": "Filter by session status"
           }
@@ -1736,7 +1858,9 @@
     "/agents/{agentId}/sessions/reorder": {
       "put": {
         "summary": "Reorder sessions for an agent",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1763,7 +1887,9 @@
                     "description": "Array of session IDs in desired order"
                   }
                 },
-                "required": ["ordered_ids"]
+                "required": [
+                  "ordered_ids"
+                ]
               }
             }
           }
@@ -1800,7 +1926,9 @@
     "/agents/{agentId}/sessions/{sessionId}": {
       "get": {
         "summary": "Get session by ID",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1846,7 +1974,9 @@
       },
       "put": {
         "summary": "Replace session (full update)",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1912,7 +2042,9 @@
       },
       "patch": {
         "summary": "Update session (partial update)",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -1978,7 +2110,9 @@
       },
       "delete": {
         "summary": "Delete session",
-        "tags": ["Sessions"],
+        "tags": [
+          "Sessions"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2019,7 +2153,9 @@
     "/agents/{agentId}/sessions/{sessionId}/messages": {
       "post": {
         "summary": "Create a new message in a session",
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2068,7 +2204,12 @@
                     },
                     "role": {
                       "type": "string",
-                      "enum": ["assistant", "user", "system", "tool"],
+                      "enum": [
+                        "assistant",
+                        "user",
+                        "system",
+                        "tool"
+                      ],
                       "description": "Message role"
                     },
                     "content": {
@@ -2122,7 +2263,9 @@
     "/agents/{agentId}/sessions/{sessionId}/messages/{messageId}": {
       "delete": {
         "summary": "Delete a message from a session",
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2173,7 +2316,9 @@
       "post": {
         "summary": "Create chat completion",
         "description": "Create a chat completion response, compatible with OpenAI API",
-        "tags": ["Chat"],
+        "tags": [
+          "Chat"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2294,7 +2439,9 @@
       "get": {
         "summary": "List all knowledge bases",
         "description": "Returns a list of all configured knowledge bases",
-        "tags": ["Knowledge"],
+        "tags": [
+          "Knowledge"
+        ],
         "parameters": [
           {
             "in": "query",
@@ -2365,7 +2512,9 @@
     "/v1/knowledge-bases/{id}": {
       "get": {
         "summary": "Get a knowledge base by ID",
-        "tags": ["Knowledge"],
+        "tags": [
+          "Knowledge"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2425,7 +2574,9 @@
       "post": {
         "summary": "Search knowledge bases",
         "description": "Search across one or more knowledge bases and retrieve relevant document chunks.\n\nEach result includes:\n- `pageContent`: The text content of the matching chunk\n- `score`: Similarity score (higher = more relevant)\n- `metadata`: Additional information about the source document\n- `knowledge_base_id` & `knowledge_base_name`: Source of the result\n\nResults are sorted by relevance score in descending order.\n",
-        "tags": ["Knowledge"],
+        "tags": [
+          "Knowledge"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2435,7 +2586,10 @@
               },
               "example": {
                 "query": "How do I configure Ollama embedding?",
-                "knowledge_base_ids": ["kb-uuid-1", "kb-uuid-2"],
+                "knowledge_base_ids": [
+                  "kb-uuid-1",
+                  "kb-uuid-2"
+                ],
                 "document_count": 5
               }
             }
@@ -2511,7 +2665,9 @@
       "get": {
         "summary": "List MCP servers",
         "description": "Get a list of all configured Model Context Protocol servers",
-        "tags": ["MCP"],
+        "tags": [
+          "MCP"
+        ],
         "responses": {
           "200": {
             "description": "List of MCP servers",
@@ -2560,7 +2716,9 @@
       "get": {
         "summary": "Get MCP server info",
         "description": "Get detailed information about a specific MCP server",
-        "tags": ["MCP"],
+        "tags": [
+          "MCP"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2617,7 +2775,9 @@
       "post": {
         "summary": "MCP protocol proxy",
         "description": "Proxy endpoint for Model Context Protocol communication with a specific MCP server. Accepts all HTTP methods (GET, POST, DELETE, etc.).",
-        "tags": ["MCP"],
+        "tags": [
+          "MCP"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2676,14 +2836,20 @@
       "post": {
         "summary": "Create message",
         "description": "Create a message response using Anthropic's API format",
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model", "max_tokens", "messages"],
+                "required": [
+                  "model",
+                  "max_tokens",
+                  "messages"
+                ],
                 "properties": {
                   "model": {
                     "type": "string",
@@ -2703,7 +2869,10 @@
                       "properties": {
                         "role": {
                           "type": "string",
-                          "enum": ["user", "assistant"]
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
                         },
                         "content": {
                           "oneOf": [
@@ -2851,7 +3020,9 @@
       "post": {
         "summary": "Create message with provider in path",
         "description": "Create a message response using provider ID from URL path",
-        "tags": ["Messages"],
+        "tags": [
+          "Messages"
+        ],
         "parameters": [
           {
             "in": "path",
@@ -2870,7 +3041,11 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["model", "max_tokens", "messages"],
+                "required": [
+                  "model",
+                  "max_tokens",
+                  "messages"
+                ],
                 "properties": {
                   "model": {
                     "type": "string",
@@ -2890,7 +3065,10 @@
                       "properties": {
                         "role": {
                           "type": "string",
-                          "enum": ["user", "assistant"]
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
                         },
                         "content": {
                           "oneOf": [
@@ -3014,14 +3192,21 @@
       "get": {
         "summary": "List available models",
         "description": "Returns a list of available AI models from all configured providers with optional filtering",
-        "tags": ["Models"],
+        "tags": [
+          "Models"
+        ],
         "parameters": [
           {
             "in": "query",
             "name": "providerType",
             "schema": {
               "type": "string",
-              "enum": ["openai", "openai-response", "anthropic", "gemini"]
+              "enum": [
+                "openai",
+                "openai-response",
+                "anthropic",
+                "gemini"
+              ]
             },
             "description": "Filter models by provider type"
           },
@@ -3107,7 +3292,9 @@
       "get": {
         "summary": "Health check endpoint",
         "description": "Check server status (no authentication required)",
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -3141,7 +3328,9 @@
       "get": {
         "summary": "API information",
         "description": "Get basic API information and available endpoints",
-        "tags": ["General"],
+        "tags": [
+          "General"
+        ],
         "security": [],
         "responses": {
           "200": {
@@ -3153,7 +3342,7 @@
                   "properties": {
                     "name": {
                       "type": "string",
-                      "example": "Cherry Studio API"
+                      "example": "The Boss API"
                     },
                     "version": {
                       "type": "string",

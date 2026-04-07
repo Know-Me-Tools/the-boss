@@ -1,3 +1,4 @@
+import { resolveBrandPrimary, resolveBrandTheme } from '@renderer/config/brand'
 import { useSettings } from '@renderer/hooks/useSettings'
 import type { LanguageVarious } from '@renderer/types'
 import { ConfigProvider, theme } from 'antd'
@@ -22,6 +23,7 @@ const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
     userTheme: { colorPrimary }
   } = useSettings()
   const { theme: _theme } = useTheme()
+  const resolvedTheme = resolveBrandTheme(_theme)
 
   return (
     <ConfigProvider
@@ -109,7 +111,7 @@ const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
           }
         },
         token: {
-          colorPrimary: colorPrimary,
+          colorPrimary: resolveBrandPrimary(resolvedTheme, colorPrimary),
           fontFamily: 'var(--font-family)',
           colorBgMask: _theme === 'dark' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.8)',
           motionDurationMid: '100ms'

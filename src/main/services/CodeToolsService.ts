@@ -133,7 +133,7 @@ class CodeToolsService {
    * Generate opencode.json config file for OpenCode CLI
    * Merge approach:
    * 1. Parse existing config (if any) with JSONC support
-   * 2. Merge CherryStudio provider into provider object
+   * 2. Merge TheBoss provider into provider object
    * 3. Preserve other fields like $schema, model, etc.
    */
   private async generateOpenCodeConfig(
@@ -222,7 +222,7 @@ class CodeToolsService {
     }
     this.openCodeConfigBackups.set(configPath, backupContent)
 
-    // config with env variable Build CherryStudio provider reference for security
+    // config with env variable Build TheBoss provider reference for security
     const envVarKey = `OPENCODE_API_KEY_${providerName.toUpperCase().replace(/[-.]/g, '_')}`
     const cherryProviderConfig = {
       npm: npmPackage,
@@ -1068,7 +1068,7 @@ class CodeToolsService {
         const command = envPrefix ? `${envPrefix} && ${baseCommand}` : baseCommand
 
         // Create temp bat file for debugging and avoid complex command line escaping issues
-        const tempDir = path.join(os.tmpdir(), 'cherrystudio')
+        const tempDir = path.join(os.tmpdir(), 'theboss')
         const timestamp = Date.now()
         const batFileName = `launch_${cliTool}_${timestamp}.bat`
         const batFilePath = path.join(tempDir, batFileName)
@@ -1086,9 +1086,9 @@ class CodeToolsService {
         const batContent = [
           '@echo off',
           'chcp 65001 >nul 2>&1', // Switch to UTF-8 code page for international path support
-          `title ${cliTool} - Cherry Studio`,
+          `title ${cliTool} - The Boss`,
           'echo ================================================',
-          'echo Cherry Studio CLI Tool Launcher',
+          'echo The Boss CLI Tool Launcher',
           `echo Tool: ${CodeToolsService.escapeBatchTextForEcho(cliTool)}`,
           `echo Directory: ${CodeToolsService.escapeBatchTextForEcho(directory)}`,
           `echo Time: ${new Date().toLocaleString()}`,

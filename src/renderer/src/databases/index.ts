@@ -10,8 +10,8 @@
  * Any non-critical changes will conflict with the ongoing work.
  *
  * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
+ * - Contribution Hold: https://github.com/Know-Me-Tools/the-boss/issues/10954
+ * - v2 Refactor PR   : https://github.com/Know-Me-Tools/the-boss/pull/10162
  * --------------------------------------------------------------------------
  */
 import type {
@@ -23,12 +23,13 @@ import type {
 } from '@renderer/types'
 // Import necessary types for blocks and new message structure
 import type { Message as NewMessage, MessageBlock } from '@renderer/types/newMessage'
+import { APP_INDEXED_DB_NAME } from '@shared/config/branding'
 import { Dexie, type EntityTable } from 'dexie'
 
 import { upgradeToV5, upgradeToV7, upgradeToV8 } from './upgrades'
 
 // Database declaration (move this to its own module also)
-export const db = new Dexie('CherryStudio', {
+export const db = new Dexie(APP_INDEXED_DB_NAME, {
   chromeTransactionDurability: 'strict'
 }) as Dexie & {
   files: EntityTable<FileMetadata, 'id'>

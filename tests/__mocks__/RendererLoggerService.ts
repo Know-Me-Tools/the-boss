@@ -15,7 +15,9 @@ export class MockRendererLoggerService {
     MockRendererLoggerService.instance = new MockRendererLoggerService()
   }
 
-  public initWindowSource(): void {}
+  public initWindowSource(): MockRendererLoggerService {
+    return this
+  }
   public withContext(): MockRendererLoggerService {
     return this
   }

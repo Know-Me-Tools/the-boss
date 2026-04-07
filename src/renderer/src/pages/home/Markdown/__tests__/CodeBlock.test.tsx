@@ -13,6 +13,12 @@ const mocks = vi.hoisted(() => ({
   isOpenFenceBlock: vi.fn(),
   selectById: vi.fn(),
   useSettings: vi.fn().mockReturnValue({ codeFancyBlock: true }),
+  useArtifactSettings: vi.fn().mockReturnValue({
+    settings: {
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default'
+    }
+  }),
   CodeBlockView: vi.fn(({ onSave, children }) => (
     <div>
       <code>{children}</code>
@@ -26,6 +32,14 @@ const mocks = vi.hoisted(() => ({
       <div>{html}</div>
       <button type="button" onClick={() => onSave('new html content')}>
         Save HTML
+      </button>
+    </div>
+  )),
+  ReactArtifactsCard: vi.fn(({ onSave, code }) => (
+    <div>
+      <div>{code}</div>
+      <button type="button" onClick={() => onSave('new react content')}>
+        Save React
       </button>
     </div>
   ))
@@ -58,9 +72,14 @@ vi.mock('@renderer/hooks/useSettings', () => ({
   useSettings: () => mocks.useSettings()
 }))
 
+vi.mock('@renderer/hooks/useArtifactSettings', () => ({
+  useArtifactSettings: () => mocks.useArtifactSettings()
+}))
+
 vi.mock('@renderer/components/CodeBlockView', () => ({
   CodeBlockView: mocks.CodeBlockView,
-  HtmlArtifactsCard: mocks.HtmlArtifactsCard
+  HtmlArtifactsCard: mocks.HtmlArtifactsCard,
+  ReactArtifactsCard: mocks.ReactArtifactsCard
 }))
 
 // Mock ClickableFilePath
@@ -124,21 +143,26 @@ describe('CodeBlock', () => {
       expect(screen.getByText('/Users/foo/bar.tsx')).toBeInTheDocument()
     })
 
-    it.each(['/home/user/project/src/index.ts', '/tmp/test.log', '/var/log/app.log', '/etc/nginx/nginx.conf'])(
-      'should detect %s as a file path',
-      (path) => {
-        render(<CodeBlock {...defaultProps} className={undefined} children={path} />)
-        expect(screen.getByTestId('clickable-file-path')).toBeInTheDocument()
-      }
-    )
+    it.each([
+      '/home/user/project/src/index.ts',
+      '/tmp/test.log',
+      '/var/log/app.log',
+      '/etc/nginx/nginx.conf'
+    ])('should detect %s as a file path', (path) => {
+      render(<CodeBlock {...defaultProps} className={undefined} children={path} />)
+      expect(screen.getByTestId('clickable-file-path')).toBeInTheDocument()
+    })
 
-    it.each(['inline code', '/single-segment', '//comment style', 'not/absolute/path', '/path with spaces/file.ts'])(
-      'should NOT detect %s as a file path',
-      (text) => {
-        render(<CodeBlock {...defaultProps} className={undefined} children={text} />)
-        expect(screen.queryByTestId('clickable-file-path')).not.toBeInTheDocument()
-      }
-    )
+    it.each([
+      'inline code',
+      '/single-segment',
+      '//comment style',
+      'not/absolute/path',
+      '/path with spaces/file.ts'
+    ])('should NOT detect %s as a file path', (text) => {
+      render(<CodeBlock {...defaultProps} className={undefined} children={text} />)
+      expect(screen.queryByTestId('clickable-file-path')).not.toBeInTheDocument()
+    })
   })
 
   describe('save', () => {
@@ -183,6 +207,62 @@ describe('CodeBlock', () => {
         codeBlockId: 'test-code-block-id',
         newContent: 'new html content'
       })
+    })
+
+    it('should route React artifacts to the React artifact card', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-tsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }'
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
+    it('should keep jsx-artifact as a compatibility alias', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-jsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }'
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
+    it('should fall back to CodeBlockView for HTML artifacts when artifact cards are disabled', () => {
+      const htmlProps = {
+        ...defaultProps,
+        className: 'language-html',
+        children: '<h1>Hello</h1>',
+        allowArtifactCards: false
+      }
+
+      render(<CodeBlock {...htmlProps} />)
+
+      expect(mocks.HtmlArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.CodeBlockView).toHaveBeenCalledOnce()
+      expect(screen.getByText('<h1>Hello</h1>')).toBeInTheDocument()
+    })
+
+    it('should fall back to CodeBlockView for React artifacts when artifact cards are disabled', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-tsx-artifact',
+        children: 'export default function App() { return <div>Hello</div> }',
+        allowArtifactCards: false
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.CodeBlockView).toHaveBeenCalledOnce()
+      expect(screen.getByText('export default function App() { return <div>Hello</div> }')).toBeInTheDocument()
     })
   })
 })

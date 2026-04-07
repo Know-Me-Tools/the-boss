@@ -1,7 +1,9 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
 import { McpLogo } from '@renderer/components/Icons'
 import Scrollbar from '@renderer/components/Scrollbar'
+import ArtifactSettings from '@renderer/pages/settings/ArtifactSettings'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
+import ServicesSettings from '@renderer/pages/settings/ServicesSettings'
 import { Divider as AntDivider } from 'antd'
 import {
   Brain,
@@ -18,6 +20,7 @@ import {
   Search,
   Server,
   Settings2,
+  SlidersHorizontal,
   Sparkles,
   TextCursorInput,
   Zap
@@ -40,6 +43,7 @@ import QuickAssistantSettings from './QuickAssistantSettings'
 import QuickPhraseSettings from './QuickPhraseSettings'
 import SelectionAssistantSettings from './SelectionAssistantSettings/SelectionAssistantSettings'
 import ShortcutSettings from './ShortcutSettings'
+import SkillSettings from './SkillSettings'
 import SkillsSettings from './SkillsSettings'
 import TasksSettings from './TasksSettings'
 import { ApiServerSettings } from './ToolSettings/ApiServerSettings'
@@ -89,6 +93,18 @@ const SettingsPage: FC = () => {
               {t('settings.data.title')}
             </MenuItem>
           </MenuItemLink>
+          <MenuItemLink to="/settings/artifacts">
+            <MenuItem className={isRoute('/settings/artifacts')}>
+              <FileCode size={18} />
+              {t('settings.artifacts.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/services">
+            <MenuItem className={isRoute('/settings/services')}>
+              <Server size={18} />
+              Services
+            </MenuItem>
+          </MenuItemLink>
           <Divider />
           <MenuItemLink to="/settings/mcp">
             <MenuItem className={isRoute('/settings/mcp')}>
@@ -100,6 +116,12 @@ const SettingsPage: FC = () => {
             <MenuItem className={isRoute('/settings/skills')}>
               <Sparkles size={18} />
               {t('settings.skills.title')}
+            </MenuItem>
+          </MenuItemLink>
+          <MenuItemLink to="/settings/skill">
+            <MenuItem className={isRoute('/settings/skill')}>
+              <SlidersHorizontal size={18} />
+              {t('settings.skill.title')}
             </MenuItem>
           </MenuItemLink>
           <MenuItemLink to="/settings/websearch">
@@ -183,6 +205,7 @@ const SettingsPage: FC = () => {
             <Route path="quickphrase" element={<QuickPhraseSettings />} />
             <Route path="mcp/*" element={<MCPSettings />} />
             <Route path="skills" element={<SkillsSettings />} />
+            <Route path="skill" element={<SkillSettings />} />
             <Route path="memory" element={<MemorySettings />} />
             <Route path="general/*" element={<GeneralSettings />} />
             <Route path="display" element={<DisplaySettings />} />
@@ -190,6 +213,8 @@ const SettingsPage: FC = () => {
             <Route path="quickAssistant" element={<QuickAssistantSettings />} />
             <Route path="selectionAssistant" element={<SelectionAssistantSettings />} />
             <Route path="data" element={<DataSettings />} />
+            <Route path="artifacts" element={<ArtifactSettings />} />
+            <Route path="services" element={<ServicesSettings />} />
             <Route path="about" element={<AboutSettings />} />
           </Routes>
         </SettingContent>

@@ -1,7 +1,7 @@
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons'
 import { nanoid } from '@reduxjs/toolkit'
-import logo from '@renderer/assets/images/cherry-text-logo.svg'
 import { Center, HStack } from '@renderer/components/Layout'
+import { useBrandAssets } from '@renderer/config/brand'
 import { useMCPServers } from '@renderer/hooks/useMCPServers'
 import type { MCPServer } from '@renderer/types'
 import { getMcpConfigSampleFromReadme } from '@renderer/utils'
@@ -29,6 +29,7 @@ let _searchResults: SearchResult[] = []
 const NpxSearch: FC = () => {
   const { t } = useTranslation()
   const { Text, Link } = Typography
+  const { wordmark } = useBrandAssets()
 
   // Add new state variables for npm scope search
   const [npmScope, setNpmScope] = useState('@modelcontextprotocol')
@@ -104,7 +105,7 @@ const NpxSearch: FC = () => {
       <Center>
         <Space direction="vertical" style={{ marginBottom: 25, width: 500 }}>
           <Center style={{ marginBottom: 15 }}>
-            <img src={logo} alt="npm" width={120} />
+            <img src={wordmark} alt="The Boss" width={160} />
           </Center>
           <Space.Compact style={{ width: '100%' }}>
             <Input

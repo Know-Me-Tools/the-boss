@@ -263,7 +263,10 @@ class ClaudeCodeService implements AgentServiceInterface {
         }
       }
       if (pluginPaths.length > 0) {
-        plugins = pluginPaths.map((pluginPath) => ({ type: 'local', path: pluginPath }))
+        plugins = pluginPaths.map((pluginPath) => ({
+          type: 'local',
+          path: pluginPath
+        }))
       }
     } catch (error) {
       logger.warn('Failed to load plugin packages for Claude Code', {
@@ -402,7 +405,10 @@ class ClaudeCodeService implements AgentServiceInterface {
 
     if (soulEnabled && cwd) {
       soulSystemPrompt = await promptBuilder.buildSystemPrompt(cwd, agentConfig)
-      logger.info('Built Soul Mode system prompt', { cwd, promptLength: soulSystemPrompt.length })
+      logger.info('Built Soul Mode system prompt', {
+        cwd,
+        promptLength: soulSystemPrompt.length
+      })
     }
 
     // Inject channel security policy into system prompt when session is from an external channel
@@ -539,7 +545,11 @@ class ClaudeCodeService implements AgentServiceInterface {
     // Inject @cherry/browser MCP for all agents (replaces SDK built-in WebSearch/WebFetch)
     if (!options.mcpServers) options.mcpServers = {}
     const browserServer = new BrowserServer()
-    options.mcpServers.browser = { type: 'sdk', name: '@cherry/browser', instance: browserServer.mcpServer }
+    options.mcpServers.browser = {
+      type: 'sdk',
+      name: '@cherry/browser',
+      instance: browserServer.mcpServer
+    }
 
     // Inject Exa MCP for structured web search (free tier, no API key required)
     options.mcpServers.exa = {
@@ -551,7 +561,11 @@ class ClaudeCodeService implements AgentServiceInterface {
       // Find the channel that owns this session (if any) for context-aware cron defaults
       const sourceChannelId = await this.resolveSourceChannel(session.agent_id, session.id)
       const clawServer = new ClawServer(session.agent_id, sourceChannelId)
-      options.mcpServers.claw = { type: 'sdk', name: 'claw', instance: clawServer.mcpServer }
+      options.mcpServers.claw = {
+        type: 'sdk',
+        name: 'claw',
+        instance: clawServer.mcpServer
+      }
 
       // Ensure claw MCP tools are in allowed_tools whitelist
       if (Array.isArray(options.allowedTools) && options.allowedTools.length > 0) {
@@ -569,7 +583,11 @@ class ClaudeCodeService implements AgentServiceInterface {
     // Cherry Assistant: inject navigate + diagnose MCP server
     if (isAssistant) {
       const assistantServer = new AssistantServer()
-      options.mcpServers.assistant = { type: 'sdk', name: 'assistant', instance: assistantServer.mcpServer }
+      options.mcpServers.assistant = {
+        type: 'sdk',
+        name: 'assistant',
+        instance: assistantServer.mcpServer
+      }
 
       // Auto-approve assistant MCP tools
       if (Array.isArray(options.allowedTools) && options.allowedTools.length > 0) {
@@ -1014,7 +1032,7 @@ async function buildAssistantContext(): Promise<string> {
   const probeResults = await Promise.allSettled([
     probeHost('github.com'),
     probeHost('google.com'),
-    probeHost('docs.cherry-ai.com')
+    probeHost('the-boss.know-me.tools')
   ])
   const networkLines = probeResults.map((r) => {
     const v = r.status === 'fulfilled' ? r.value : { host: '?', ok: false, ms: 0 }
@@ -1023,7 +1041,7 @@ async function buildAssistantContext(): Promise<string> {
 
   return [
     '## Current Environment',
-    `- App: Cherry Studio v${appVersion}`,
+    `- App: The Boss v${appVersion}`,
     `- OS: ${platform}`,
     `- Language: ${language}, Theme: ${theme}`,
     proxy ? `- Proxy: ${proxy}` : '- Proxy: none',
@@ -1040,7 +1058,10 @@ async function probeHost(host: string): Promise<{ host: string; ok: boolean; ms:
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 2000)
-    await fetch(`https://${host}`, { method: 'HEAD', signal: controller.signal })
+    await fetch(`https://${host}`, {
+      method: 'HEAD',
+      signal: controller.signal
+    })
     clearTimeout(timeout)
     return { host, ok: true, ms: Date.now() - start }
   } catch {

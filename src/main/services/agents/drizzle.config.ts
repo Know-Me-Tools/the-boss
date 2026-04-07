@@ -10,19 +10,20 @@
  * Any non-critical changes will conflict with the ongoing work.
  *
  * 🔗 Context & Status:
- * - Contribution Hold: https://github.com/CherryHQ/cherry-studio/issues/10954
- * - v2 Refactor PR   : https://github.com/CherryHQ/cherry-studio/pull/10162
+ * - Contribution Hold: https://github.com/Know-Me-Tools/the-boss/issues/10954
+ * - v2 Refactor PR   : https://github.com/Know-Me-Tools/the-boss/pull/10162
  * --------------------------------------------------------------------------
  */
 /**
  * Drizzle Kit configuration for agents database
  */
+import { APP_USER_DATA_CONTAINER, APP_USER_DATA_CONTAINER_DEV } from '@shared/config/branding'
 import { defineConfig } from 'drizzle-kit'
 
 function getDefaultDbUrl(): string {
   const platform = process.platform
   const home = process.env.HOME ?? process.env.USERPROFILE ?? ''
-  const appName = process.env.NODE_ENV === 'development' ? 'CherryStudioDev' : 'CherryStudio'
+  const appName = process.env.NODE_ENV === 'development' ? APP_USER_DATA_CONTAINER_DEV : APP_USER_DATA_CONTAINER
 
   switch (platform) {
     case 'darwin':

@@ -4,6 +4,7 @@ import store from '@renderer/store'
 import { addMCPServer, hubMCPServer } from '@renderer/store/mcp'
 import type { MCPCallToolResponse, MCPServer, MCPTool, MCPToolResponse } from '@renderer/types'
 import { BuiltinMCPServerNames } from '@renderer/types'
+import { isServiceToolId } from '@shared/services'
 import { nanoid } from 'nanoid'
 
 const logger = loggerService.withContext('Utils:MCPTools')
@@ -42,6 +43,26 @@ export async function callMCPTool(
     toolResponse.tool
   )
   try {
+    if (isServiceToolId(toolResponse.tool.id)) {
+      const resp = await window.api.services.invokeTool(
+        toolResponse.tool.id,
+        typeof toolResponse.arguments === 'object' &&
+          toolResponse.arguments !== null &&
+          !Array.isArray(toolResponse.arguments)
+          ? toolResponse.arguments
+          : {}
+      )
+      return {
+        isError: !resp.ok,
+        content: [
+          {
+            type: 'text',
+            text: typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data ?? null, null, 2)
+          }
+        ]
+      }
+    }
+
     const server = getMcpServerByTool(toolResponse.tool)
 
     if (!server) {
@@ -108,6 +129,9 @@ export function getMcpServerByTool(tool: MCPTool) {
 export function isToolAutoApproved(tool: MCPTool, server?: MCPServer, allowedTools?: string[]): boolean {
   if (tool.isBuiltIn) {
     return true
+  }
+  if (isServiceToolId(tool.id)) {
+    return !!allowedTools?.includes(tool.id)
   }
   // Check agent-level pre-authorization (allowed_tools from Agent Settings)
   if (allowedTools?.includes(tool.id)) {

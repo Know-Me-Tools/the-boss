@@ -1,12 +1,18 @@
 import { CodeOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
+import {
+  buildHtmlArtifactPreviewDocument,
+  loadArtifactSettings,
+  parseArtifactDirectiveOverrides
+} from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import type { ThemeMode } from '@renderer/types'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
+import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
 import { Code, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
@@ -17,6 +23,9 @@ const logger = loggerService.withContext('HtmlArtifactsCard')
 
 interface Props {
   html: string
+  runtimeProfileId?: HtmlArtifactRuntimeProfileId
+  typeLabel?: string
+  origin?: ArtifactOriginRef
   onSave?: (html: string) => void
   isStreaming?: boolean
 }
@@ -27,18 +36,51 @@ const getTerminalStyles = (theme: ThemeMode) => ({
   promptColor: theme === 'dark' ? '#00ff00' : '#007700'
 })
 
-const HtmlArtifactsCard: FC<Props> = ({ html, onSave, isStreaming = false }) => {
+const HtmlArtifactsCard: FC<Props> = ({
+  html,
+  runtimeProfileId = 'html',
+  typeLabel = 'HTML Artifact',
+  origin,
+  onSave,
+  isStreaming = false
+}) => {
   const { t } = useTranslation()
   const title = extractHtmlTitle(html) || 'HTML Artifacts'
   const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const [previewDocument, setPreviewDocument] = useState(html)
   const { theme } = useTheme()
 
   const htmlContent = html || ''
   const hasContent = htmlContent.trim().length > 0
 
+  useEffect(() => {
+    let cancelled = false
+
+    void loadArtifactSettings().then((settings) => {
+      if (cancelled) {
+        return
+      }
+
+      const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
+      setPreviewDocument(
+        buildHtmlArtifactPreviewDocument({
+          source: htmlContent,
+          title,
+          runtimeProfileId,
+          settings,
+          overrides
+        })
+      )
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [htmlContent, runtimeProfileId, title])
+
   const handleOpenExternal = async () => {
     const path = await window.api.file.createTempFile('artifacts-preview.html')
-    await window.api.file.write(path, htmlContent)
+    await window.api.file.write(path, previewDocument)
     const filePath = `file://${path}`
 
     if (window.api.shell?.openExternal) {
@@ -65,7 +107,7 @@ const HtmlArtifactsCard: FC<Props> = ({ html, onSave, isStreaming = false }) => 
             <Title>{title}</Title>
             <TypeBadge>
               <Code size={12} />
-              <span>HTML</span>
+              <span>{typeLabel}</span>
             </TypeBadge>
           </TitleSection>
         </Header>
@@ -114,6 +156,25 @@ const HtmlArtifactsCard: FC<Props> = ({ html, onSave, isStreaming = false }) => 
         open={isPopupOpen}
         title={title}
         html={htmlContent}
+        previewDocument={previewDocument}
+        createLibraryDraft={async (source) => {
+          const settings = await loadArtifactSettings()
+          const overrides = parseArtifactDirectiveOverrides('html', source)
+
+          return {
+            title: extractHtmlTitle(source) || title,
+            kind: 'html',
+            runtimeProfileId,
+            sourceLanguage: 'html',
+            source,
+            themeId: overrides.themeId ?? settings.defaultThemeId,
+            accessPolicy: {
+              internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
+              serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+            },
+            origin
+          }
+        }}
         onSave={onSave}
         onClose={() => setIsPopupOpen(false)}
       />
@@ -184,7 +245,7 @@ const Title = styled.span`
   font-weight: bold;
   color: var(--color-text-1);
   line-height: 1.4;
-  font-family: 'Ubuntu';
+  font-family: var(--font-family-display);
   display: -webkit-box;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;

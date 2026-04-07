@@ -40,13 +40,13 @@
 3. **安装工具链**：安装 Node.js 22、启用 Corepack，并在 `main/` 目录执行 `pnpm install --frozen-lockfile`。
 4. **运行更新脚本**：执行 `pnpm tsx scripts/update-app-upgrade-config.ts --tag <tag> --config ../cs/app-upgrade-config.json --is-prerelease <flag>`。  
    - 脚本会标准化 tag（去掉 `v` 前缀等）、识别渠道、加载 `config/app-upgrade-segments.json` 中的分段规则。  
-   - 校验 prerelease 标志与语义后缀是否匹配、强制锁定的 segment 是否满足、生成镜像的下载地址，并检查 release 是否已经在 GitHub/GitCode 可用（latest 渠道在 GitCode 不可用时会回退到 `https://releases.cherry-ai.com`）。  
+   - 校验 prerelease 标志与语义后缀是否匹配、强制锁定的 segment 是否满足、生成镜像的下载地址，并检查 release 是否已经在 GitHub/GitCode 可用（latest 渠道在 GitCode 不可用时会回退到 `https://the-boss.know-me.tools/releases/latest/download`）。  
    - 更新对应的渠道配置后，脚本会按 semver 排序写回 JSON，并刷新 `lastUpdated`。
 5. **检测变更并创建 PR**：若 `cs/app-upgrade-config.json` 有变更，则创建 `chore/update-app-upgrade-config/<safe_tag>` 分支，提交信息为 `🤖 chore: sync app-upgrade-config for <tag>`，并向 `x-files/app-upgrade-config` 提 PR；无变更则输出提示。
 
 ### 手动触发指南
 
-1. 进入 Cherry Studio 仓库的 GitHub **Actions** 页面，选择 **Update App Upgrade Config** 工作流。
+1. 进入 The Boss 仓库的 GitHub **Actions** 页面，选择 **Update App Upgrade Config** 工作流。
 2. 点击 **Run workflow**，保持默认分支（通常为 `main`），填写 `tag`（如 `v2.1.0`）。  
 3. 只有在 tag 带 `-beta`/`-rc` 后缀时才勾选 `is_prerelease`，稳定版保持默认。  
 4. 启动运行并等待完成，随后到 `x-files/app-upgrade-config` 分支的 PR 查看 `app-upgrade-config.json` 的变更并在验证后合并。
@@ -55,8 +55,8 @@
 
 ### 文件位置
 
-- **GitHub**: `https://raw.githubusercontent.com/CherryHQ/cherry-studio/refs/heads/x-files/app-upgrade-config/app-upgrade-config.json`
-- **GitCode**: `https://gitcode.com/CherryHQ/cherry-studio/raw/x-files/app-upgrade-config/app-upgrade-config.json`
+- **GitHub**: `https://raw.githubusercontent.com/Know-Me-Tools/the-boss/refs/heads/x-files/app-upgrade-config/app-upgrade-config.json`
+- **GitCode**: `https://gitcode.com/Know-Me-Tools/the-boss/raw/x-files/app-upgrade-config/app-upgrade-config.json`
 
 **说明**：两个镜像源提供相同的配置文件，统一托管在 `x-files/app-upgrade-config` 分支上。客户端根据 IP 地理位置自动选择最优镜像源。
 
@@ -73,22 +73,22 @@
         "latest": {
           "version": "1.6.7",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.7",
-            "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v1.6.7"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.6.7",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.6.7"
           }
         },
         "rc": {
           "version": "1.6.0-rc.5",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.0-rc.5",
-            "gitcode": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.6.0-rc.5"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.6.0-rc.5",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.6.0-rc.5"
           }
         },
         "beta": {
           "version": "1.6.7-beta.3",
           "feedUrls": {
-            "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.7.0-beta.3",
-            "gitcode": "https://github.com/CherryHQ/cherry-studio/releases/download/v1.7.0-beta.3"
+            "github": "https://the-boss.know-me.tools/releases/download/v1.7.0-beta.3",
+            "gitcode": "https://the-boss.know-me.tools/releases/download/v1.7.0-beta.3"
           }
         }
       }
@@ -119,8 +119,8 @@
       "latest": {
         "version": "2.8.0",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v2.8.0",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v2.8.0"
+          "github": "https://the-boss.know-me.tools/releases/download/v2.8.0",
+          "gitcode": "https://the-boss.know-me.tools/releases/download/v2.8.0"
         }
       },
       "rc": null,
@@ -134,15 +134,15 @@
       "latest": {
         "version": "3.0.0",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/latest",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/latest"
+          "github": "https://github.com/Know-Me-Tools/the-boss/releases/latest",
+          "gitcode": "https://gitcode.com/Know-Me-Tools/the-boss/releases/latest"
         }
       },
       "rc": {
         "version": "3.0.0-rc.1",
         "feedUrls": {
-          "github": "https://github.com/CherryHQ/cherry-studio/releases/download/v3.0.0-rc.1",
-          "gitcode": "https://gitcode.com/CherryHQ/cherry-studio/releases/download/v3.0.0-rc.1"
+          "github": "https://the-boss.know-me.tools/releases/download/v3.0.0-rc.1",
+          "gitcode": "https://the-boss.know-me.tools/releases/download/v3.0.0-rc.1"
         }
       },
       "beta": null

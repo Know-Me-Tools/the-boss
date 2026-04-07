@@ -1,10 +1,10 @@
-# Cherry Studio AI Core 架构文档
+# The Boss AI Core 架构文档
 
 > **版本**: v4.0 (ToolFactory + providerToolPlugin 统一工具注入)
 > **更新日期**: 2026-03-20
-> **适用范围**: Cherry Studio v1.8.1+
+> **适用范围**: The Boss v1.8.1+
 
-本文档详细描述了 Cherry Studio 从用户交互到 AI SDK 调用的完整数据流和架构设计，是理解应用核心功能的关键文档。
+本文档详细描述了 The Boss 从用户交互到 AI SDK 调用的完整数据流和架构设计，是理解应用核心功能的关键文档。
 
 ---
 
@@ -28,7 +28,7 @@
 
 ### 1.1 架构分层
 
-Cherry Studio 的 AI 调用采用清晰的分层架构：
+The Boss 的 AI 调用采用清晰的分层架构：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -1894,7 +1894,7 @@ const exporter = new OTLPTraceExporter({
 // 配置 Trace Provider
 const provider = new WebTracerProvider({
   resource: new Resource({
-    "service.name": "cherry-studio",
+    "service.name": "the-boss",
     "service.version": app.getVersion(),
   }),
 });
@@ -2266,7 +2266,7 @@ describe("ProviderExtension", () => {
 
 **A**:
 
-- **Plugin**: Cherry Studio 层面的功能扩展（Reasoning, ToolUse, WebSearch）
+- **Plugin**: The Boss 层面的功能扩展（Reasoning, ToolUse, WebSearch）
 - **Middleware**: AI SDK 层面的请求/响应拦截器
 
 ### Q3: 什么时候用 Legacy Provider？
@@ -2285,4 +2285,4 @@ describe("ProviderExtension", () => {
 
 **文档版本**: v4.0
 **最后更新**: 2026-03-20
-**维护者**: Cherry Studio Team
+**维护者**: The Boss Team

@@ -81,10 +81,6 @@ export async function fetchAllActiveServerTools(): Promise<MCPTool[]> {
   const allMcpServers = store.getState().mcp.servers || []
   const activedMcpServers = allMcpServers.filter((s) => s.isActive)
 
-  if (activedMcpServers.length === 0) {
-    return []
-  }
-
   try {
     const toolPromises = activedMcpServers.map(async (mcpServer: MCPServer) => {
       try {
@@ -96,12 +92,31 @@ export async function fetchAllActiveServerTools(): Promise<MCPTool[]> {
       }
     })
     const results = await Promise.allSettled(toolPromises)
-    return results
+    const mcpTools = results
       .filter((result): result is PromiseFulfilledResult<MCPTool[]> => result.status === 'fulfilled')
       .map((result) => result.value)
       .flat()
+    return [...mcpTools, ...(await fetchServiceTools())]
   } catch (toolError) {
     logger.error('Error fetching all active server tools:', toolError as Error)
+    return fetchServiceTools()
+  }
+}
+
+async function fetchServiceTools(): Promise<MCPTool[]> {
+  try {
+    const projectedTools = await window.api.services.listProjectedTools()
+    return projectedTools.map((tool) => ({
+      id: tool.id,
+      serverId: `service:${tool.serviceId}`,
+      serverName: `Service · ${tool.serviceName}`,
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema as MCPTool['inputSchema'],
+      type: 'mcp'
+    }))
+  } catch (error) {
+    logger.error('Error fetching projected service tools:', error as Error)
     return []
   }
 }
@@ -130,7 +145,7 @@ export async function fetchMcpTools(assistant: Assistant) {
       logger.error('Error fetching MCP tools:', toolError as Error)
     }
   }
-  return mcpTools
+  return [...mcpTools, ...(await fetchServiceTools())]
 }
 
 /**
