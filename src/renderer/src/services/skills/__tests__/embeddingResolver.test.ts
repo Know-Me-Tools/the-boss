@@ -3,30 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { EmbeddingResolver } from '../embeddingResolver'
 
-// Mock fastembed to avoid loading WASM in test environment
-vi.mock('@mastra/fastembed', () => ({ fastembed: {} }))
-
-// Mock ai package's embed function
-vi.mock('ai', () => ({
-  embed: vi.fn().mockResolvedValue({ embedding: [0.1, 0.2, 0.3] })
-}))
-
 describe('EmbeddingResolver', () => {
   let resolver: EmbeddingResolver
 
   beforeEach(() => {
     resolver = new EmbeddingResolver()
     vi.clearAllMocks()
+    ;(window as any).api = {
+      embedText: vi.fn().mockResolvedValue([0.1, 0.2, 0.3])
+    }
   })
 
-  it('embed returns a number array via fastembed when no modelId is set', async () => {
+  it('embed returns a number array via window.api.embedText when no modelId is set', async () => {
     const vec = await resolver.embed('hello world')
-    expect(Array.isArray(vec)).toBe(true)
-    expect(typeof vec[0]).toBe('number')
-    expect(vec.length).toBeGreaterThan(0)
+    expect((window as any).api.embedText).toHaveBeenCalledWith({ modelId: undefined, text: 'hello world' })
+    expect(vec).toEqual([0.1, 0.2, 0.3])
   })
 
-  it('embed calls window.api.embedText when modelId is set', async () => {
+  it('embed calls window.api.embedText with modelId when set', async () => {
     const mockEmbedText = vi.fn().mockResolvedValue([0.4, 0.5, 0.6])
     ;(window as any).api = { embedText: mockEmbedText }
 
@@ -35,24 +29,15 @@ describe('EmbeddingResolver', () => {
 
     expect(mockEmbedText).toHaveBeenCalledWith({ modelId: 'my-model', text: 'hello world' })
     expect(vec).toEqual([0.4, 0.5, 0.6])
-
-    delete (window as any).api
   })
 
-  it('embed falls back to fastembed when window.api.embedText throws', async () => {
+  it('embed propagates when window.api.embedText throws', async () => {
     const mockEmbedText = vi.fn().mockRejectedValue(new Error('IPC error'))
     ;(window as any).api = { embedText: mockEmbedText }
 
-    const { embed: mockEmbed } = await import('ai')
-    vi.mocked(mockEmbed).mockResolvedValue({ embedding: [0.7, 0.8, 0.9] } as any)
-
     const resolverWithModel = new EmbeddingResolver('my-model')
-    const vec = await resolverWithModel.embed('fallback test')
-
+    await expect(resolverWithModel.embed('fallback test')).rejects.toThrow('IPC error')
     expect(mockEmbedText).toHaveBeenCalled()
-    expect(vec).toEqual([0.7, 0.8, 0.9])
-
-    delete (window as any).api
   })
 
   it('cosineSimilarity returns 1 for identical non-zero vectors', () => {

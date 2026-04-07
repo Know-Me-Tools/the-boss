@@ -1,12 +1,11 @@
 // src/renderer/src/services/skills/embeddingResolver.ts
 import { loggerService } from '@logger'
-import { embed } from 'ai'
 
 const logger = loggerService.withContext('EmbeddingResolver')
 
 /**
  * Resolves embeddings for skill descriptions and user prompts.
- * Priority chain: configured model via window.api → fastembed (local WASM, no API key needed).
+ * Embeddings run in the main process (`window.api.embedText`) because local fastembed uses native Node addons.
  */
 export class EmbeddingResolver {
   private readonly modelId: string | undefined
@@ -16,21 +15,21 @@ export class EmbeddingResolver {
   }
 
   async embed(text: string): Promise<number[]> {
-    if (this.modelId) {
-      try {
-        const result = await (window as any).api?.embedText?.({ modelId: this.modelId, text })
-        if (Array.isArray(result) && result.length > 0) return result
-      } catch (err) {
-        logger.warn('Configured embedding model failed, falling back to fastembed', err as Error)
-      }
+    const embedText = window.api?.embedText
+    if (!embedText) {
+      logger.error('window.api.embedText is not available')
+      throw new Error('Embedding is unavailable')
     }
-    return this.fastEmbed(text)
-  }
-
-  private async fastEmbed(text: string): Promise<number[]> {
-    const { fastembed } = await import('@mastra/fastembed')
-    const { embedding } = await embed({ model: fastembed, value: text })
-    return embedding
+    try {
+      const result = await embedText({ modelId: this.modelId, text })
+      if (Array.isArray(result) && result.length > 0) {
+        return result
+      }
+    } catch (err) {
+      logger.warn('embedText failed', err as Error)
+      throw err
+    }
+    throw new Error('Embedding returned an empty vector')
   }
 
   cosineSimilarity(a: number[], b: number[]): number {

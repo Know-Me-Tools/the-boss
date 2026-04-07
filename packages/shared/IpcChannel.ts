@@ -449,6 +449,7 @@ export enum IpcChannel {
   Skill_ReadFile = 'skill:read-file',
   Skill_ListFiles = 'skill:list-files',
   Skill_ListLocal = 'skill:list-local',
+  Skill_EmbedText = 'skill:embed-text',
 
   // Local Transfer
   LocalTransfer_ListServices = 'local-transfer:list',
