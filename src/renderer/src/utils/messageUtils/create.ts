@@ -7,6 +7,7 @@ import type {
   CitationMessageBlock,
   CodeMessageBlock,
   CompactMessageBlock,
+  ContextManagementMessageBlock,
   ErrorMessageBlock,
   FileMessageBlock,
   ImageMessageBlock,
@@ -24,6 +25,7 @@ import {
   MessageBlockType,
   UserMessageStatus
 } from '@renderer/types/newMessage'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import { v4 as uuidv4 } from 'uuid'
 
 type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
@@ -312,6 +314,18 @@ export function createCompactBlock(
     ...baseBlock,
     content,
     compactedContent
+  }
+}
+
+export function createContextManagementBlock(
+  messageId: string,
+  payload: ContextManagementStreamPayload,
+  overrides: Partial<Omit<ContextManagementMessageBlock, 'id' | 'messageId' | 'type' | 'payload'>> = {}
+): ContextManagementMessageBlock {
+  const baseBlock = createBaseMessageBlock(messageId, MessageBlockType.CONTEXT_MANAGEMENT, overrides)
+  return {
+    ...baseBlock,
+    payload
   }
 }
 

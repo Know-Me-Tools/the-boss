@@ -30,7 +30,7 @@ import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
-import { selectResolvedSkillConfig } from '@renderer/store/skillConfig'
+import { selectResolvedSkillConfigFromOverrides } from '@renderer/store/skillConfig'
 import { type ApiServerConfig, type Assistant, type FileMetadata, type Model, type Topic } from '@renderer/types'
 import type {
   AgentEffort,
@@ -46,6 +46,7 @@ import {
   MessageBlockType,
   UserMessageStatus
 } from '@renderer/types/newMessage'
+import type { SkillConfigOverride } from '@renderer/types/skillConfig'
 import { uuid } from '@renderer/utils'
 import { addAbortController } from '@renderer/utils/abortController'
 import {
@@ -657,16 +658,50 @@ const fetchAndProcessAgentResponseImpl = async (
     const state = getState()
     const userMessageEntity = state.messages.entities[userMessageId]
     const userContent = userMessageEntity ? getMainTextContent(userMessageEntity) : ''
+    const apiServer = state.settings.apiServer
+
+    let agentData: Awaited<ReturnType<AgentApiClient['getAgent']>> | undefined
+    let sessionData: Awaited<ReturnType<AgentApiClient['getSession']>> | undefined
+    let agentSkillOverride: SkillConfigOverride | undefined
+    let sessionSkillOverride: SkillConfigOverride | undefined
+
+    if (apiServer?.apiKey) {
+      try {
+        const baseURL = buildAgentBaseURL(apiServer)
+        const agentClient = new AgentApiClient({
+          baseURL,
+          headers: {
+            Authorization: `Bearer ${apiServer.apiKey}`
+          }
+        })
+
+        ;[agentData, sessionData] = await Promise.all([
+          agentClient.getAgent(agentSession.agentId),
+          agentClient.getSession(agentSession.agentId, agentSession.sessionId)
+        ])
+
+        agentSkillOverride = agentData?.configuration?.skill_config
+        sessionSkillOverride = sessionData?.configuration?.skill_config
+      } catch {
+        // Agent/session metadata fetch failed — continue without scoped overrides
+      }
+    }
+
+    const skillConfig = selectResolvedSkillConfigFromOverrides(getState(), agentSkillOverride, sessionSkillOverride)
+
+    if (userContent) {
+      await emitSkillChunks({
+        prompt: userContent,
+        config: skillConfig,
+        processChunk: streamProcessorCallbacks,
+        activeModel: getModel(sessionData?.model) || getModel(agentData?.model)
+      })
+    }
 
     const abortController = new AbortController()
     addAbortController(userMessageId, () => abortController.abort())
 
-    const stream = await createAgentMessageStream(
-      state.settings.apiServer,
-      agentSession,
-      userContent,
-      abortController.signal
-    )
+    const stream = await createAgentMessageStream(apiServer, agentSession, userContent, abortController.signal)
 
     // Store the previous session ID to detect /clear command
     let latestAgentSessionId = agentSession.agentSessionId || ''
@@ -902,7 +937,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
     // Get skill config from Redux state
-    const skillConfig = selectResolvedSkillConfig(getState(), origAssistant.id)
+    const skillConfig = selectResolvedSkillConfigFromOverrides(getState(), topic?.skillConfig)
 
     // Extract the last user message as the prompt
     const lastUserMsg = messagesForContext.filter((m) => m.role === 'user').at(-1)
@@ -913,7 +948,8 @@ const fetchAndProcessAssistantResponseImpl = async (
       await emitSkillChunks({
         prompt: userPrompt,
         config: skillConfig,
-        processChunk: streamProcessorCallbacks
+        processChunk: streamProcessorCallbacks,
+        activeModel: assistant.model || assistant.defaultModel
       })
     }
 

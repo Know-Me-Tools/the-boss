@@ -16,6 +16,7 @@ import type {
 import { ChunkType } from '@renderer/types/chunk'
 import type { Response } from '@renderer/types/newMessage'
 import { AssistantMessageStatus } from '@renderer/types/newMessage'
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 
 const logger = loggerService.withContext('StreamProcessingService')
 
@@ -34,6 +35,7 @@ export interface StreamProcessorCallbacks {
   // Thinking/reasoning content chunk received (e.g., from Claude)
   onThinkingChunk?: (text: string, thinking_millsec?: number) => void
   onThinkingComplete?: (text: string, thinking_millsec?: number) => void
+  onContextManagement?: (data: ContextManagementStreamPayload) => void | Promise<void>
   // Skill activated (skill context injection started)
   onSkillActivated?: (data: SkillActivatedChunk) => void | Promise<void>
   // Skill content delta (streaming skill content)
@@ -112,6 +114,10 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}) 
         }
         case ChunkType.THINKING_COMPLETE: {
           if (callbacks.onThinkingComplete) callbacks.onThinkingComplete(data.text, data.thinking_millsec)
+          break
+        }
+        case ChunkType.CONTEXT_MANAGEMENT: {
+          if (callbacks.onContextManagement) void callbacks.onContextManagement(data.payload)
           break
         }
         case ChunkType.SKILL_ACTIVATED: {

@@ -1,3 +1,5 @@
+import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
+
 import type { ExternalToolResult, KnowledgeReference, MCPToolResponse, NormalToolResponse, WebSearchResponse } from '.'
 import type { Response, ResponseError } from './newMessage'
 import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
@@ -44,6 +46,7 @@ export enum ChunkType {
   THINKING_START = 'thinking.start',
   THINKING_DELTA = 'thinking.delta',
   THINKING_COMPLETE = 'thinking.complete',
+  CONTEXT_MANAGEMENT = 'context.management',
   SKILL_ACTIVATED = 'skill.activated',
   SKILL_CONTENT_DELTA = 'skill.content_delta',
   SKILL_COMPLETE = 'skill.complete',
@@ -483,6 +486,11 @@ export interface SkillCompleteChunk {
   finalTokenCount: number
 }
 
+export interface ContextManagementChunk {
+  type: ChunkType.CONTEXT_MANAGEMENT
+  payload: ContextManagementStreamPayload
+}
+
 export type Chunk =
   | BlockCreatedChunk // 消息块创建，无意义
   | BlockInProgressChunk // 消息块进行中，无意义
@@ -510,6 +518,7 @@ export type Chunk =
   | ThinkingStartChunk // 思考内容生成开始
   | ThinkingDeltaChunk // 思考内容生成中
   | ThinkingCompleteChunk // 思考内容生成完成
+  | ContextManagementChunk // 上下文管理事件
   | SkillActivatedChunk // 技能激活
   | SkillContentDeltaChunk // 技能内容流式传输中
   | SkillCompleteChunk // 技能注入完成

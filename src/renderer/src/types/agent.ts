@@ -7,8 +7,10 @@
 import type { ModelMessage, TextStreamPart } from 'ai'
 import * as z from 'zod'
 
+import { ContextStrategyConfigSchema } from './contextStrategy'
 import type { Message, MessageBlock } from './newMessage'
 import { PluginMetadataSchema } from './plugin'
+import { SkillConfigOverrideSchema } from './skillConfig'
 
 // ------------------ Core enums and helper types ------------------
 export const PermissionModeSchema = z.enum(['default', 'acceptEdits', 'bypassPermissions', 'plan'])
@@ -90,7 +92,11 @@ export const AgentConfigurationSchema = z
 
     // Heartbeat
     heartbeat_enabled: z.boolean().optional(),
-    heartbeat_interval: z.number().optional() // minutes, default 30
+    heartbeat_interval: z.number().optional(), // minutes, default 30
+
+    // Skills + context
+    skill_config: SkillConfigOverrideSchema.optional(),
+    context_strategy: ContextStrategyConfigSchema.partial().optional()
   })
   .loose()
 
@@ -206,6 +212,7 @@ export const AgentSessionEntitySchema = AgentBaseSchema.extend({
   id: z.string(),
   agent_id: z.string(), // Primary agent ID for the session
   agent_type: AgentTypeSchema,
+  last_total_tokens: z.number().optional(),
   // sub_agent_ids?: string[] // Array of sub-agent IDs involved in the session
 
   created_at: z.iso.datetime(),

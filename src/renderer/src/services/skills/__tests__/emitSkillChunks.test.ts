@@ -1,8 +1,13 @@
 // src/renderer/src/services/skills/__tests__/emitSkillChunks.test.ts
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
-import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
-import { ContextManagementMethod, SkillSelectionMethod } from '@renderer/types/skillConfig'
+import type { SkillConfigOverride, SkillGlobalConfig } from '@renderer/types/skillConfig'
+import {
+  ContextManagementMethod,
+  DEFAULT_SKILL_CONFIG,
+  resolveSkillConfig,
+  SkillSelectionMethod
+} from '@renderer/types/skillConfig'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,15 +59,14 @@ import { emitSkillChunks } from '../emitSkillChunks'
 // Test helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function makeConfig(overrides: Partial<SkillGlobalConfig> = {}): SkillGlobalConfig {
-  return {
-    selectionMethod: SkillSelectionMethod.EMBEDDING,
-    similarityThreshold: 0.35,
-    topK: 3,
-    contextManagementMethod: ContextManagementMethod.FULL_INJECTION,
-    maxSkillTokens: 4096,
-    ...overrides
-  }
+function makeConfig(overrides: SkillConfigOverride = {}): SkillGlobalConfig {
+  return resolveSkillConfig(
+    {
+      ...DEFAULT_SKILL_CONFIG,
+      contextManagementMethod: ContextManagementMethod.FULL_INJECTION
+    },
+    overrides
+  )
 }
 
 function makeSkillDescriptor(id: string, content = `content of ${id}`) {

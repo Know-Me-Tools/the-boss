@@ -4,6 +4,7 @@ import type { BlockManager } from '../BlockManager'
 import { createBaseCallbacks } from './baseCallbacks'
 import { createCitationCallbacks } from './citationCallbacks'
 import { createCompactCallbacks } from './compactCallbacks'
+import { createContextManagementCallbacks } from './contextManagementCallbacks'
 import { createImageCallbacks } from './imageCallbacks'
 import { createSkillCallbacks } from './skillCallbacks'
 import { createTextCallbacks } from './textCallbacks'
@@ -72,6 +73,15 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     saveUpdatesToDB
   })
 
+  const contextManagementCallbacks = createContextManagementCallbacks({
+    blockManager,
+    assistantMsgId,
+    dispatch,
+    getState,
+    topicId,
+    saveUpdatesToDB
+  })
+
   const skillCallbacks = createSkillCallbacks({
     blockManager,
     assistantMsgId
@@ -97,6 +107,7 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     ...citationCallbacks,
     ...videoCallbacks,
     ...compactCallbacks,
+    ...contextManagementCallbacks,
     ...skillCallbacks,
     // 清理资源的方法
     cleanup: () => {

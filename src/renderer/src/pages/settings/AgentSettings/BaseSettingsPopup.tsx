@@ -10,6 +10,7 @@ import { LeftMenu, Settings, settingsModalStyles, StyledMenu, StyledModal } from
 export type SettingsPopupTab =
   | 'essential'
   | 'prompt'
+  | 'context-skills'
   | 'permission-mode'
   | 'tools-mcp'
   | 'mcp'

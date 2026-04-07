@@ -1,5 +1,6 @@
 // src/renderer/src/services/skills/emitSkillChunks.ts
 import { loggerService } from '@logger'
+import type { Model } from '@renderer/types'
 import type { Chunk } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
@@ -21,8 +22,9 @@ export async function emitSkillChunks(params: {
   prompt: string
   config: SkillGlobalConfig
   processChunk: (chunk: Chunk) => void
+  activeModel?: Model | string
 }): Promise<void> {
-  const { prompt, config, processChunk } = params
+  const { prompt, config, processChunk, activeModel } = params
 
   const allSkills = skillRegistry.getAll()
   if (allSkills.length === 0) {
@@ -30,7 +32,7 @@ export async function emitSkillChunks(params: {
     return
   }
 
-  const selector = new SkillSelector(config)
+  const selector = new SkillSelector(config, undefined, undefined, undefined, activeModel)
   const results = await selector.select(prompt, allSkills)
 
   if (results.length === 0) {

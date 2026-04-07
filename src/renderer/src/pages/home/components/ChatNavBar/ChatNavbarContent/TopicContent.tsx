@@ -1,7 +1,8 @@
 import EmojiIcon from '@renderer/components/EmojiIcon'
 import HorizontalScrollContainer from '@renderer/components/HorizontalScrollContainer'
 import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
-import type { Assistant } from '@renderer/types'
+import ConversationSettingsPopup from '@renderer/pages/settings/ConversationSettingsPopup'
+import type { Assistant, Topic } from '@renderer/types'
 import { getLeadingEmoji } from '@renderer/utils'
 import { ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
@@ -12,11 +13,13 @@ import Tools from '../Tools'
 
 type TopicContentProps = {
   assistant: Assistant
+  activeTopic: Topic
 }
 
-const TopicContent = ({ assistant }: TopicContentProps) => {
+const TopicContent = ({ assistant, activeTopic }: TopicContentProps) => {
   const { t } = useTranslation()
   const assistantName = useMemo(() => assistant.name || t('chat.default.name'), [assistant.name, t])
+  const topicName = useMemo(() => activeTopic.name || t('chat.default.topic.name'), [activeTopic.name, t])
 
   return (
     <>
@@ -28,6 +31,21 @@ const TopicContent = ({ assistant }: TopicContentProps) => {
             onClick={() => AssistantSettingsPopup.show({ assistant })}>
             <EmojiIcon emoji={assistant.emoji || getLeadingEmoji(assistantName)} size={24} />
             <span className="max-w-40 truncate text-xs">{assistantName}</span>
+          </div>
+
+          {/* Separator */}
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+
+          {/* Conversation Label */}
+          <div
+            className="flex h-full cursor-pointer items-center gap-1.5"
+            onClick={() =>
+              ConversationSettingsPopup.show({
+                assistantId: assistant.id,
+                topicId: activeTopic.id
+              })
+            }>
+            <span className="max-w-36 truncate text-xs opacity-70">{topicName}</span>
           </div>
 
           {/* Separator */}
