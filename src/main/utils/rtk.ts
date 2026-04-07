@@ -10,6 +10,7 @@ import { gte as semverGte } from 'semver'
 
 import { isWin } from '../constant'
 import { getResourcePath, toAsarUnpackedPath } from '.'
+import { getDependencyStatus } from './dependencyStatus'
 
 const execFileAsync = promisify(execFile)
 const logger = loggerService.withContext('Utils:Rtk')
@@ -90,29 +91,11 @@ export async function extractRtkBinaries(): Promise<void> {
   }
 }
 
-function resolveRtkPath(): string | null {
-  const userBinPath = path.join(getUserBinDir(), RTK_BINARY)
-  if (fs.existsSync(userBinPath)) {
-    return userBinPath
-  }
-
-  const bundledPath = path.join(getBundledBinariesDir(), RTK_BINARY)
-  if (fs.existsSync(bundledPath)) {
-    return bundledPath
-  }
-
-  return null
-}
-
 async function checkRtkAvailable(): Promise<boolean> {
   if (rtkAvailable !== null) return rtkAvailable
 
-  if (!isPlatformSupported()) {
-    rtkAvailable = false
-    return false
-  }
-
-  rtkPath = resolveRtkPath()
+  const dependencyStatus = await getDependencyStatus('rtk')
+  rtkPath = dependencyStatus.resolvedPath
   if (!rtkPath) {
     rtkAvailable = false
     logger.debug('rtk binary not found')

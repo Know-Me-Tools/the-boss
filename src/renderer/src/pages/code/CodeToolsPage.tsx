@@ -6,16 +6,15 @@ import { isMac, isWin } from '@renderer/config/constant'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { useCodeTools } from '@renderer/hooks/useCodeTools'
 import { useProviders } from '@renderer/hooks/useProvider'
-import { useTimer } from '@renderer/hooks/useTimer'
 import { getAssistantSettings, getProviderByModel } from '@renderer/services/AssistantService'
 import { loggerService } from '@renderer/services/LoggerService'
 import { getModelUniqId } from '@renderer/services/ModelService'
-import { useAppDispatch, useAppSelector } from '@renderer/store'
-import { setIsBunInstalled } from '@renderer/store/mcp'
+import { useAppSelector } from '@renderer/store'
 import type { EndpointType, Model } from '@renderer/types'
 import type { TerminalConfig } from '@shared/config/constant'
 import { codeTools, terminalApps } from '@shared/config/constant'
 import { CLAUDE_OFFICIAL_SUPPORTED_PROVIDERS, isSiliconAnthropicCompatibleModel } from '@shared/config/providers'
+import type { DependencyStatus } from '@shared/config/types'
 import { Alert, Button, Checkbox, Input, Select, Space, Tooltip } from 'antd'
 import { Download, FolderOpen, Terminal, X } from 'lucide-react'
 import type { FC } from 'react'
@@ -36,8 +35,6 @@ const logger = loggerService.withContext('CodeToolsPage')
 const CodeToolsPage: FC = () => {
   const { t } = useTranslation()
   const { providers } = useProviders()
-  const dispatch = useAppDispatch()
-  const isBunInstalled = useAppSelector((state) => state.mcp.isBunInstalled)
   const {
     selectedCliTool,
     selectedModel,
@@ -54,8 +51,6 @@ const CodeToolsPage: FC = () => {
     removeDir,
     selectFolder
   } = useCodeTools()
-  const { setTimeoutTimer } = useTimer()
-
   // Get default assistant settings for budget tokens calculation
   const defaultAssistant = useAppSelector((state) => state.assistants.defaultAssistant)
   const { maxTokens, reasoning_effort } = useMemo(() => {
@@ -67,10 +62,12 @@ const CodeToolsPage: FC = () => {
 
   const [isLaunching, setIsLaunching] = useState(false)
   const [isInstallingBun, setIsInstallingBun] = useState(false)
+  const [bunStatus, setBunStatus] = useState<DependencyStatus | null>(null)
   const [autoUpdateToLatest, setAutoUpdateToLatest] = useState(false)
   const [availableTerminals, setAvailableTerminals] = useState<TerminalConfig[]>([])
   const [isLoadingTerminals, setIsLoadingTerminals] = useState(false)
   const [terminalCustomPaths, setTerminalCustomPaths] = useState<Record<string, string>>({})
+  const isBunInstalled = bunStatus?.available ?? false
 
   const modelPredicate = useCallback(
     (m: Model) => {
@@ -178,13 +175,13 @@ const CodeToolsPage: FC = () => {
   // 检查 bun 是否安装
   const checkBunInstallation = useCallback(async () => {
     try {
-      const bunExists = await window.api.isBinaryExist('bun')
-      dispatch(setIsBunInstalled(bunExists))
+      const status = await window.api.dependencies.getStatus('bun')
+      setBunStatus(status)
     } catch (error) {
       logger.error('Failed to check bun installation status:', error as Error)
-      dispatch(setIsBunInstalled(false))
+      setBunStatus(null)
     }
-  }, [dispatch])
+  }, [])
 
   // 获取可用终端
   const loadAvailableTerminals = useCallback(async () => {
@@ -211,15 +208,13 @@ const CodeToolsPage: FC = () => {
     try {
       setIsInstallingBun(true)
       await window.api.installBunBinary()
-      dispatch(setIsBunInstalled(true))
       window.toast.success(t('settings.mcp.installSuccess'))
     } catch (error: any) {
       logger.error('Failed to install bun:', error as Error)
       window.toast.error(`${t('settings.mcp.installError')}: ${error.message}`)
     } finally {
       setIsInstallingBun(false)
-      // 重新检查安装状态
-      setTimeoutTimer('handleInstallBun', checkBunInstallation, 1000)
+      await checkBunInstallation()
     }
   }
 

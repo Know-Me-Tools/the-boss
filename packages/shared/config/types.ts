@@ -10,6 +10,20 @@ export interface CodeToolsRunResult {
   command: string
 }
 
+export type ManagedDependencyName = 'uv' | 'bun' | 'rtk'
+
+export type DependencyStatusSource = 'environment' | 'bundled' | 'missing'
+
+export interface DependencyStatus {
+  name: ManagedDependencyName
+  available: boolean
+  source: DependencyStatusSource
+  resolvedPath: string | null
+  bundledPath: string | null
+  environmentPath: string | null
+  installSupported: boolean
+}
+
 // =============================================================================
 // OpenClaw IPC Types
 // =============================================================================

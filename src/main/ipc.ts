@@ -7,6 +7,7 @@ import { loggerService } from '@logger'
 import { isLinux, isMac, isPortable, isWin } from '@main/constant'
 import { generateSignature } from '@main/integration/cherryai'
 import anthropicService from '@main/services/AnthropicService'
+import { getDependencyStatus, getDependencyStatuses } from '@main/utils/dependencyStatus'
 import { getIpCountry } from '@main/utils/ipService'
 import {
   autoDiscoverGitBash,
@@ -890,6 +891,8 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   ipcMain.handle(IpcChannel.App_IsBinaryExist, (_, name: string) => isBinaryExists(name))
   ipcMain.handle(IpcChannel.App_GetBinaryPath, (_, name: string) => getBinaryPath(name))
+  ipcMain.handle(IpcChannel.App_GetDependencyStatus, (_, name) => getDependencyStatus(name))
+  ipcMain.handle(IpcChannel.App_GetDependencyStatuses, (_, names) => getDependencyStatuses(names))
   ipcMain.handle(IpcChannel.App_InstallUvBinary, () => runInstallScript('install-uv.js'))
   ipcMain.handle(IpcChannel.App_InstallBunBinary, () => runInstallScript('install-bun.js'))
   ipcMain.handle(IpcChannel.App_InstallOvmsBinary, () => runInstallScript('install-ovms.js'))

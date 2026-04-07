@@ -35,7 +35,19 @@ vi.mock('@logger', () => ({
 }))
 
 vi.mock('@shared/config/constant', () => ({
-  HOME_CHERRY_DIR: '.theboss'
+  HOME_CHERRY_DIR: '.the-boss'
+}))
+
+vi.mock('../dependencyStatus', () => ({
+  getDependencyStatus: vi.fn(async () => ({
+    name: 'rtk',
+    available: false,
+    source: 'missing',
+    resolvedPath: null,
+    bundledPath: '/home/testuser/.the-boss/bin/rtk',
+    environmentPath: null,
+    installSupported: false
+  }))
 }))
 
 vi.mock('electron', () => ({
@@ -66,10 +78,12 @@ vi.mock('semver', () => ({
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 
+import { getDependencyStatus } from '../dependencyStatus'
 import { extractRtkBinaries, rtkRewrite } from '../rtk'
 
 const mockExecFile = vi.mocked(execFile)
 const mockFs = vi.mocked(fs)
+const mockGetDependencyStatus = vi.mocked(getDependencyStatus)
 
 describe('rtk utils', () => {
   beforeEach(() => {
@@ -93,9 +107,9 @@ describe('rtk utils', () => {
       mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
         const filePath = String(p)
         if (filePath.includes('resources/binaries')) return true
-        if (filePath.includes('rtk') && filePath.includes('.theboss')) return false
+        if (filePath.includes('rtk') && filePath.includes('.the-boss')) return false
         if (filePath.includes('.rtk-version') && filePath.includes('resources')) return true
-        if (filePath.includes('.rtk-version') && filePath.includes('.theboss')) return false
+        if (filePath.includes('.rtk-version') && filePath.includes('.the-boss')) return false
         return true
       })
       mockFs.readFileSync.mockReturnValue('0.30.1')
@@ -118,7 +132,15 @@ describe('rtk utils', () => {
 
   describe('rtkRewrite', () => {
     it('should return null when rtk binary is not found', async () => {
-      mockFs.existsSync.mockReturnValue(false)
+      mockGetDependencyStatus.mockResolvedValue({
+        name: 'rtk',
+        available: false,
+        source: 'missing',
+        resolvedPath: null,
+        bundledPath: '/home/testuser/.the-boss/bin/rtk',
+        environmentPath: null,
+        installSupported: false
+      })
 
       const result = await rtkRewrite('ls -la')
 
@@ -126,7 +148,15 @@ describe('rtk utils', () => {
     })
 
     it('should return null when rewritten command equals original', async () => {
-      mockFs.existsSync.mockReturnValue(true)
+      mockGetDependencyStatus.mockResolvedValue({
+        name: 'rtk',
+        available: true,
+        source: 'bundled',
+        resolvedPath: '/home/testuser/.the-boss/bin/rtk',
+        bundledPath: '/home/testuser/.the-boss/bin/rtk',
+        environmentPath: null,
+        installSupported: false
+      })
 
       // First call: version check, second call: rewrite
       let callCount = 0
@@ -147,7 +177,15 @@ describe('rtk utils', () => {
     })
 
     it('should return null when rtk exits with error (no rewrite available)', async () => {
-      mockFs.existsSync.mockReturnValue(true)
+      mockGetDependencyStatus.mockResolvedValue({
+        name: 'rtk',
+        available: true,
+        source: 'bundled',
+        resolvedPath: '/home/testuser/.the-boss/bin/rtk',
+        bundledPath: '/home/testuser/.the-boss/bin/rtk',
+        environmentPath: null,
+        installSupported: false
+      })
 
       let callCount = 0
       mockExecFile.mockImplementation((_cmd, _args, _opts, callback?) => {
