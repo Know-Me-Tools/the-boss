@@ -4,7 +4,13 @@
  */
 
 import { loggerService } from '@logger'
-import type { AISDKWebSearchResult, MCPTool, WebSearchResults, WebSearchSource } from '@renderer/types'
+import type {
+  AISDKWebSearchResult,
+  ExternalToolResult,
+  MCPTool,
+  WebSearchResults,
+  WebSearchSource
+} from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
 import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
@@ -43,6 +49,15 @@ type SkillContentDeltaStreamPart = {
 type SkillCompleteStreamPart = {
   type: 'data-skill-complete'
   data: SkillCompleteStreamPayload
+}
+
+type ExternalToolInProgressStreamPart = {
+  type: 'data-external-tool-in-progress'
+}
+
+type ExternalToolCompleteStreamPart = {
+  type: 'data-external-tool-complete'
+  data: ExternalToolResult
 }
 
 /**
@@ -129,6 +144,8 @@ export class AiSdkToChunkAdapter {
       | SkillActivatedStreamPart
       | SkillContentDeltaStreamPart
       | SkillCompleteStreamPart
+      | ExternalToolInProgressStreamPart
+      | ExternalToolCompleteStreamPart
     >
   ) {
     const reader = fullStream.getReader()
@@ -203,7 +220,9 @@ export class AiSdkToChunkAdapter {
       | ContextManagementStreamPart
       | SkillActivatedStreamPart
       | SkillContentDeltaStreamPart
-      | SkillCompleteStreamPart,
+      | SkillCompleteStreamPart
+      | ExternalToolInProgressStreamPart
+      | ExternalToolCompleteStreamPart,
     final: {
       text: string
       reasoningContent: string
@@ -484,6 +503,19 @@ export class AiSdkToChunkAdapter {
         this.onChunk({
           type: ChunkType.SKILL_COMPLETE,
           ...chunk.data
+        })
+        break
+      }
+      case 'data-external-tool-in-progress': {
+        this.onChunk({
+          type: ChunkType.EXTERNEL_TOOL_IN_PROGRESS
+        })
+        break
+      }
+      case 'data-external-tool-complete': {
+        this.onChunk({
+          type: ChunkType.EXTERNEL_TOOL_COMPLETE,
+          external_tool: chunk.data
         })
         break
       }

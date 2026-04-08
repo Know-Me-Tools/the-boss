@@ -36,6 +36,10 @@ const getTerminalStyles = (theme: ThemeMode) => ({
   promptColor: theme === 'dark' ? '#00ff00' : '#007700'
 })
 
+function buildLoadingDocument(message: string): string {
+  return `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${message}</body></html>`
+}
+
 const HtmlArtifactsCard: FC<Props> = ({
   html,
   runtimeProfileId = 'html',
@@ -47,36 +51,46 @@ const HtmlArtifactsCard: FC<Props> = ({
   const { t } = useTranslation()
   const title = extractHtmlTitle(html) || 'HTML Artifacts'
   const [isPopupOpen, setIsPopupOpen] = useState(false)
-  const [previewDocument, setPreviewDocument] = useState(html)
   const { theme } = useTheme()
-
   const htmlContent = html || ''
   const hasContent = htmlContent.trim().length > 0
+  const loadingDocument = buildLoadingDocument(t('settings.artifacts.library.preview_loading'))
+  const [previewDocument, setPreviewDocument] = useState(loadingDocument)
 
   useEffect(() => {
     let cancelled = false
+    setPreviewDocument(loadingDocument)
 
-    void loadArtifactSettings().then((settings) => {
-      if (cancelled) {
-        return
-      }
+    void loadArtifactSettings()
+      .then((settings) => {
+        if (cancelled) {
+          return
+        }
 
-      const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
-      setPreviewDocument(
-        buildHtmlArtifactPreviewDocument({
-          source: htmlContent,
-          title,
-          runtimeProfileId,
-          settings,
-          overrides
-        })
-      )
-    })
+        const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
+        setPreviewDocument(
+          buildHtmlArtifactPreviewDocument({
+            source: htmlContent,
+            title,
+            runtimeProfileId,
+            settings,
+            overrides
+          })
+        )
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return
+        }
+
+        logger.error('Failed to build HTML artifact preview document', error as Error)
+        setPreviewDocument(loadingDocument)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [htmlContent, runtimeProfileId, title])
+  }, [htmlContent, loadingDocument, runtimeProfileId, t, title])
 
   const handleOpenExternal = async () => {
     const path = await window.api.file.createTempFile('artifacts-preview.html')

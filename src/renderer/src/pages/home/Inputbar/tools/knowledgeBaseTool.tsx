@@ -1,3 +1,4 @@
+import { useUpdateSession } from '@renderer/hooks/agents/useUpdateSession'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { defineTool, registerTool, TopicType } from '@renderer/pages/home/Inputbar/types'
 import type { KnowledgeBase } from '@renderer/types'
@@ -18,8 +19,9 @@ const knowledgeBaseTool = defineTool({
   // ✅ 移除 icon 属性，不在 ToolDefinition 类型中
   // icon: FileSearch,
 
-  visibleInScopes: [TopicType.Chat],
-  condition: ({ assistant }) => isSupportedToolUse(assistant) || isPromptToolUse(assistant),
+  visibleInScopes: [TopicType.Chat, TopicType.Session],
+  condition: ({ assistant, scope }) =>
+    scope === TopicType.Session || isSupportedToolUse(assistant) || isPromptToolUse(assistant),
 
   dependencies: {
     state: ['selectedKnowledgeBases', 'files'] as const,
@@ -30,13 +32,24 @@ const knowledgeBaseTool = defineTool({
     const { assistant, state, actions, quickPanel } = context
 
     const { updateAssistant } = useAssistant(assistant.id)
+    const { updateSession } = useUpdateSession(context.session?.agentId ?? null)
 
     const handleSelect = useCallback(
       (bases: KnowledgeBase[]) => {
-        updateAssistant({ knowledge_bases: bases })
+        if (context.scope === TopicType.Session && context.session?.sessionId) {
+          void updateSession(
+            {
+              id: context.session.sessionId,
+              knowledge_bases: bases
+            },
+            { showSuccessToast: false }
+          )
+        } else {
+          updateAssistant({ knowledge_bases: bases })
+        }
         actions.setSelectedKnowledgeBases?.(bases)
       },
-      [updateAssistant, actions]
+      [actions, context.scope, context.session?.sessionId, updateAssistant, updateSession]
     )
 
     return (

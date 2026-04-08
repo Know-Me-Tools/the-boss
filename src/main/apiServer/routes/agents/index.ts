@@ -83,6 +83,15 @@ const agentsRouter = express.Router()
  *           items:
  *             type: string
  *           description: Array of allowed tool IDs (whitelist)
+ *         knowledge_bases:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/KnowledgeBaseEntity'
+ *           description: Selected knowledge bases for retrieval
+ *         knowledgeRecognition:
+ *           type: string
+ *           enum: [off, on]
+ *           description: Automatic knowledge retrieval mode
  *         configuration:
  *           $ref: '#/components/schemas/AgentConfiguration'
  *       required:
@@ -168,6 +177,15 @@ const agentsRouter = express.Router()
  *           items:
  *             type: string
  *           description: Array of allowed tool IDs (whitelist)
+ *         knowledge_bases:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/KnowledgeBaseEntity'
+ *           description: Selected knowledge bases for retrieval
+ *         knowledgeRecognition:
+ *           type: string
+ *           enum: [off, on]
+ *           description: Automatic knowledge retrieval mode
  *         configuration:
  *           $ref: '#/components/schemas/AgentConfiguration'
  *       description: Partial update - all fields are optional
@@ -251,6 +269,15 @@ const agentsRouter = express.Router()
  *           items:
  *             type: string
  *           description: Array of allowed tool IDs (whitelist)
+ *         knowledge_bases:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/KnowledgeBaseEntity'
+ *           description: Selected knowledge bases for retrieval
+ *         knowledgeRecognition:
+ *           type: string
+ *           enum: [off, on]
+ *           description: Automatic knowledge retrieval mode
  *         configuration:
  *           $ref: '#/components/schemas/AgentConfiguration'
  *       description: Partial update - all fields are optional

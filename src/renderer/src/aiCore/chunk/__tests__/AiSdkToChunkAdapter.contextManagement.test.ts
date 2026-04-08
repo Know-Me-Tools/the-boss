@@ -1,3 +1,4 @@
+import type { ExternalToolResult } from '@renderer/types'
 import { ChunkType } from '@renderer/types/chunk'
 import { ContextManagementMethod, SkillSelectionMethod } from '@renderer/types/skillConfig'
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
@@ -94,6 +95,45 @@ describe('AiSdkToChunkAdapter data-context-management', () => {
     expect(onChunk).toHaveBeenNthCalledWith(3, {
       type: ChunkType.SKILL_COMPLETE,
       ...complete
+    })
+  })
+
+  it('emits external tool citation chunks from backend knowledge retrieval events', async () => {
+    const onChunk = vi.fn()
+    const adapter = new AiSdkToChunkAdapter(onChunk, [], false, false)
+
+    const externalTool: ExternalToolResult = {
+      knowledge: [
+        {
+          id: 1,
+          content: 'Relevant paragraph',
+          sourceUrl: 'https://example.com/docs',
+          type: 'url',
+          metadata: {
+            source: 'https://example.com/docs',
+            type: 'url'
+          }
+        }
+      ]
+    }
+
+    await adapter.processStream({
+      fullStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'data-external-tool-in-progress' } as any)
+          controller.enqueue({ type: 'data-external-tool-complete', data: externalTool } as any)
+          controller.close()
+        }
+      }),
+      text: Promise.resolve('')
+    })
+
+    expect(onChunk).toHaveBeenNthCalledWith(1, {
+      type: ChunkType.EXTERNEL_TOOL_IN_PROGRESS
+    })
+    expect(onChunk).toHaveBeenNthCalledWith(2, {
+      type: ChunkType.EXTERNEL_TOOL_COMPLETE,
+      external_tool: externalTool
     })
   })
 })

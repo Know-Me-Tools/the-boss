@@ -8,6 +8,7 @@ import { BaseSettingsPopup, type SettingsMenuItem, type SettingsPopupTab } from 
 import AdvancedSettings from './components/AdvancedSettings'
 import ContextSkillsSettings from './components/ContextSkillsSettings'
 import EssentialSettings from './components/EssentialSettings'
+import KnowledgeBaseSettings from './components/KnowledgeBaseSettings'
 import PermissionModeSettings from './components/PermissionModeSettings'
 import PromptSettings from './components/PromptSettings'
 import ToolsSettings from './components/ToolsSettings'
@@ -32,6 +33,7 @@ const SessionSettingPopupContainer: React.FC<SessionSettingPopupParams> = ({ tab
     () => [
       { key: 'essential', label: t('agent.settings.essential') },
       { key: 'prompt', label: t('agent.settings.prompt') },
+      { key: 'knowledge', label: t('common.knowledge_base') },
       { key: 'context-skills', label: t('agent.settings.contextSkills.tab', 'Context & Skills') },
       { key: 'permission-mode', label: t('agent.settings.permissionMode.tab', 'Permission Mode') },
       { key: 'tools-mcp', label: t('agent.settings.toolsMcp.tab', 'Tools & MCP') },
@@ -48,6 +50,8 @@ const SessionSettingPopupContainer: React.FC<SessionSettingPopupParams> = ({ tab
         return <EssentialSettings agentBase={session} update={updateSession} />
       case 'prompt':
         return <PromptSettings agentBase={session} update={updateSession} />
+      case 'knowledge':
+        return <KnowledgeBaseSettings agentBase={session} update={updateSession} />
       case 'context-skills':
         return <ContextSkillsSettings agentBase={session} update={updateSession} />
       case 'permission-mode':

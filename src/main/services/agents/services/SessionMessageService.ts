@@ -1,14 +1,21 @@
 import { randomUUID } from 'node:crypto'
 
 import { loggerService } from '@logger'
+import knowledgeService from '@main/services/KnowledgeService'
 import { buildSkillStreamParts } from '@main/services/skills/buildSkillStreamParts'
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type {
+  AgentEntity,
   AgentPersistedMessage,
   AgentSessionMessageEntity,
   ContextStrategyConfig,
   CreateSessionMessageRequest,
+  ExternalToolResult,
   GetAgentSessionResponse,
+  KnowledgeBase,
+  KnowledgeBaseParams,
+  KnowledgeReference,
+  KnowledgeSearchResult,
   ListOptions,
   SkillGlobalConfig
 } from '@types'
@@ -17,7 +24,7 @@ import type { TextStreamPart } from 'ai'
 import { and, desc, eq, not } from 'drizzle-orm'
 
 import { BaseService } from '../BaseService'
-import { sessionMessagesTable } from '../database/schema'
+import { agentsTable, sessionMessagesTable, sessionsTable } from '../database/schema'
 import { agentMessageRepository } from '../database/sessionMessageRepository'
 import type { AgentStream, AgentStreamEvent } from '../interfaces/AgentStreamInterface'
 import {
@@ -27,13 +34,48 @@ import {
   setAgentSessionLastTotalTokens,
   shouldRunSdkCompactBeforeTurn
 } from './agentContextStrategy'
-import { agentService } from './AgentService'
 import ClaudeCodeService from './claudecode'
 import { sessionService } from './SessionService'
 
 const claudeCodeService = new ClaudeCodeService()
 
 const logger = loggerService.withContext('SessionMessageService')
+const DEFAULT_KNOWLEDGE_DOCUMENT_COUNT = 6
+const DEFAULT_KNOWLEDGE_THRESHOLD = 0
+const KNOWLEDGE_REFERENCE_PROMPT = `Please answer the question based on the reference materials
+
+## Citation Rules:
+- Please cite the context at the end of sentences when appropriate.
+- Please use the format of citation number [number] to reference the context in corresponding parts of your answer.
+- If a sentence comes from multiple contexts, please list all relevant citation numbers, e.g., [1][2]. Remember not to group citations at the end but list them in the corresponding parts of your answer.
+- If all reference content is not relevant to the user's question, please answer based on your knowledge.
+
+## My question is:
+
+{question}
+
+## Reference Materials:
+
+{references}
+
+Please respond in the same language as the user's question.
+`
+
+type KnowledgeBaseRuntimeConfig = Record<
+  string,
+  {
+    embedApiClient: KnowledgeBaseParams['embedApiClient']
+    rerankApiClient?: KnowledgeBaseParams['rerankApiClient']
+  }
+>
+
+type PersistedAgentKnowledgeEntity = AgentEntity & {
+  knowledge_base_configs?: KnowledgeBaseRuntimeConfig
+}
+
+type PersistedSessionKnowledgeEntity = GetAgentSessionResponse & {
+  knowledge_base_configs?: KnowledgeBaseRuntimeConfig
+}
 
 type SessionStreamResult = {
   stream: ReadableStream<TextStreamPart<Record<string, any>>>
@@ -189,6 +231,153 @@ export class SessionMessageService extends BaseService {
     return await this.startSessionMessageStream(session, messageData, abortController, options)
   }
 
+  private async getPersistedSession(sessionId: string): Promise<PersistedSessionKnowledgeEntity | null> {
+    const database = await this.getDatabase()
+    const result = await database.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1)
+    if (!result[0]) {
+      return null
+    }
+    return this.deserializeJsonFields(result[0]) as PersistedSessionKnowledgeEntity
+  }
+
+  private async getPersistedAgent(agentId: string): Promise<PersistedAgentKnowledgeEntity | null> {
+    const database = await this.getDatabase()
+    const result = await database.select().from(agentsTable).where(eq(agentsTable.id, agentId)).limit(1)
+    if (!result[0]) {
+      return null
+    }
+    return this.deserializeJsonFields(result[0]) as PersistedAgentKnowledgeEntity
+  }
+
+  private resolveEffectiveKnowledgeConfig(
+    session: PersistedSessionKnowledgeEntity,
+    agent: PersistedAgentKnowledgeEntity | null
+  ): {
+    knowledgeBases: KnowledgeBase[]
+    knowledgeRecognition: 'off' | 'on'
+    runtimeConfigs?: KnowledgeBaseRuntimeConfig
+  } {
+    const knowledgeBases = Array.isArray(session.knowledge_bases)
+      ? session.knowledge_bases
+      : (agent?.knowledge_bases ?? [])
+
+    return {
+      knowledgeBases,
+      knowledgeRecognition: session.knowledgeRecognition ?? agent?.knowledgeRecognition ?? 'off',
+      runtimeConfigs: session.knowledge_base_configs ?? agent?.knowledge_base_configs
+    }
+  }
+
+  private async searchKnowledgeReferences(
+    query: string,
+    knowledgeBases: KnowledgeBase[],
+    runtimeConfigs?: KnowledgeBaseRuntimeConfig
+  ): Promise<KnowledgeReference[]> {
+    if (!runtimeConfigs || !knowledgeBases.length) {
+      return []
+    }
+
+    const references: KnowledgeReference[] = []
+
+    for (const base of knowledgeBases) {
+      const runtimeConfig = runtimeConfigs[base.id]
+      if (!runtimeConfig?.embedApiClient) {
+        logger.warn('Skipping agent knowledge search due to missing runtime config', {
+          baseId: base.id,
+          baseName: base.name
+        })
+        continue
+      }
+
+      try {
+        const baseParams: KnowledgeBaseParams = {
+          id: base.id,
+          dimensions: base.dimensions,
+          chunkSize: base.chunkSize,
+          chunkOverlap: base.chunkOverlap,
+          documentCount: base.documentCount,
+          preprocessProvider: base.preprocessProvider,
+          embedApiClient: runtimeConfig.embedApiClient,
+          rerankApiClient: runtimeConfig.rerankApiClient
+        }
+
+        let results: KnowledgeSearchResult[] = await knowledgeService.search({} as Electron.IpcMainInvokeEvent, {
+          search: query,
+          base: baseParams
+        })
+
+        results = results.filter((item) => item.score >= (base.threshold ?? DEFAULT_KNOWLEDGE_THRESHOLD))
+
+        if (runtimeConfig.rerankApiClient && results.length > 0) {
+          results = await knowledgeService.rerank({} as Electron.IpcMainInvokeEvent, {
+            search: query,
+            base: baseParams,
+            results
+          })
+        }
+
+        const limitedResults = results.slice(0, base.documentCount || DEFAULT_KNOWLEDGE_DOCUMENT_COUNT)
+        references.push(
+          ...limitedResults.map((item) => ({
+            id: 0,
+            content: item.pageContent,
+            sourceUrl: typeof item.metadata?.source === 'string' ? item.metadata.source : base.name,
+            metadata: item.metadata,
+            type: (item.metadata?.type as KnowledgeReference['type']) || 'file'
+          }))
+        )
+      } catch (error) {
+        logger.warn('Agent knowledge search failed for base; continuing without it', {
+          baseId: base.id,
+          baseName: base.name,
+          error: error instanceof Error ? error.message : String(error)
+        })
+      }
+    }
+
+    return references.map((reference, index) => ({
+      ...reference,
+      id: index + 1
+    }))
+  }
+
+  private async prepareKnowledgeAugmentation(
+    prompt: string,
+    session: PersistedSessionKnowledgeEntity,
+    agent: PersistedAgentKnowledgeEntity | null
+  ): Promise<{
+    prompt: string
+    externalToolResult?: ExternalToolResult
+  }> {
+    const trimmedPrompt = prompt.trim()
+    if (!trimmedPrompt) {
+      return { prompt }
+    }
+
+    const { knowledgeBases, knowledgeRecognition, runtimeConfigs } = this.resolveEffectiveKnowledgeConfig(
+      session,
+      agent
+    )
+    if (knowledgeRecognition !== 'on' || knowledgeBases.length === 0) {
+      return { prompt }
+    }
+
+    const knowledgeReferences = await this.searchKnowledgeReferences(trimmedPrompt, knowledgeBases, runtimeConfigs)
+    if (knowledgeReferences.length === 0) {
+      return { prompt }
+    }
+
+    return {
+      prompt: KNOWLEDGE_REFERENCE_PROMPT.replace('{question}', prompt).replace(
+        '{references}',
+        JSON.stringify(knowledgeReferences, null, 2)
+      ),
+      externalToolResult: {
+        knowledge: knowledgeReferences
+      }
+    }
+  }
+
   private async loadGlobalAgentContextSettings(): Promise<{
     strategy: ContextStrategyConfig
     summarizationModelId: string | null
@@ -259,13 +448,16 @@ export class SessionMessageService extends BaseService {
 
     await sessionService.ensureLastTotalTokensInMemory(session.agent_id, session.id)
 
+    const persistedSession =
+      (await this.getPersistedSession(session.id)) ?? (session as PersistedSessionKnowledgeEntity)
+    const persistedAgent = await this.getPersistedAgent(session.agent_id)
+
     const globalAgent = await this.loadGlobalAgentContextSettings()
-    const agentEntity = await agentService.getAgent(session.agent_id)
     const effectiveContext = getEffectiveAgentContextStrategy({
       globalStrategy: globalAgent.strategy,
       globalSummarizationModelId: globalAgent.summarizationModelId,
-      agentConfiguration: agentEntity?.configuration ?? null,
-      sessionConfiguration: session.configuration ?? null
+      agentConfiguration: persistedAgent?.configuration ?? null,
+      sessionConfiguration: persistedSession.configuration ?? null
     })
 
     logger.debug('Effective agent context strategy', {
@@ -275,6 +467,7 @@ export class SessionMessageService extends BaseService {
 
     let agentContextNotice: ContextManagementStreamPayload | undefined
     let skillStreamParts: Array<TextStreamPart<Record<string, any>>> = []
+    const knowledgeAugmentation = await this.prepareKnowledgeAugmentation(req.content, persistedSession, persistedAgent)
 
     if (
       shouldRunSdkCompactBeforeTurn({
@@ -324,15 +517,15 @@ export class SessionMessageService extends BaseService {
       const globalSkillConfig = await this.loadGlobalSkillConfig()
       const effectiveSkillConfig = resolveSkillConfig(
         globalSkillConfig,
-        agentEntity?.configuration?.skill_config,
-        session.configuration?.skill_config
+        persistedAgent?.configuration?.skill_config,
+        persistedSession.configuration?.skill_config
       )
 
-      if (req.content.trim()) {
+      if (knowledgeAugmentation.prompt.trim()) {
         skillStreamParts = await buildSkillStreamParts({
-          prompt: req.content,
+          prompt: knowledgeAugmentation.prompt,
           config: effectiveSkillConfig,
-          activeModel: session.model || agentEntity?.model
+          activeModel: persistedSession.model || persistedAgent?.model
         })
       }
     } catch (error) {
@@ -343,8 +536,8 @@ export class SessionMessageService extends BaseService {
     }
 
     const claudeStream = await claudeCodeService.invoke(
-      req.content,
-      session,
+      knowledgeAugmentation.prompt,
+      persistedSession,
       abortController,
       agentSessionId,
       {
@@ -379,6 +572,15 @@ export class SessionMessageService extends BaseService {
 
     const stream = new ReadableStream<TextStreamPart<Record<string, any>>>({
       start: (controller) => {
+        if (knowledgeAugmentation.externalToolResult) {
+          controller.enqueue({
+            type: 'data-external-tool-in-progress'
+          } as unknown as TextStreamPart<Record<string, any>>)
+          controller.enqueue({
+            type: 'data-external-tool-complete',
+            data: knowledgeAugmentation.externalToolResult
+          } as unknown as TextStreamPart<Record<string, any>>)
+        }
         if (agentContextNotice) {
           controller.enqueue({
             type: 'data-context-management',
@@ -441,11 +643,12 @@ export class SessionMessageService extends BaseService {
                     resolved: resolvedSessionId
                   })
                   this.persistHeadlessExchange(
-                    session,
+                    persistedSession,
                     options?.displayContent ?? req.content,
                     accumulator.getText(),
                     resolvedSessionId,
-                    options?.images
+                    options?.images,
+                    knowledgeAugmentation.externalToolResult
                   )
                     .then(resolveCompletion)
                     .catch((err) => {
@@ -466,11 +669,12 @@ export class SessionMessageService extends BaseService {
                   const partialText = accumulator.getText()
                   if (partialText) {
                     this.persistHeadlessExchange(
-                      session,
+                      persistedSession,
                       options?.displayContent ?? req.content,
                       partialText,
                       resolvedSessionId,
-                      options?.images
+                      options?.images,
+                      knowledgeAugmentation.externalToolResult
                     )
                       .then(resolveCompletion)
                       .catch((err) => {
@@ -518,13 +722,15 @@ export class SessionMessageService extends BaseService {
     userContent: string,
     assistantContent: string,
     agentSessionId: string,
-    images?: Array<{ data: string; media_type: string }>
+    images?: Array<{ data: string; media_type: string }>,
+    externalToolResult?: ExternalToolResult
   ): Promise<{ userMessage?: AgentSessionMessageEntity; assistantMessage?: AgentSessionMessageEntity }> {
     const now = new Date().toISOString()
     const userMsgId = randomUUID()
     const assistantMsgId = randomUUID()
     const userBlockId = randomUUID()
     const assistantBlockId = randomUUID()
+    const citationBlockId = externalToolResult ? randomUUID() : null
     const topicId = `agent-session:${session.id}`
 
     // Build image blocks for user message
@@ -580,7 +786,7 @@ export class SessionMessageService extends BaseService {
         topicId,
         createdAt: now,
         status: 'success',
-        blocks: [assistantBlockId],
+        blocks: [assistantBlockId, ...(citationBlockId ? [citationBlockId] : [])],
         modelId: session.model
       },
       blocks: [
@@ -590,8 +796,23 @@ export class SessionMessageService extends BaseService {
           type: 'main_text',
           createdAt: now,
           status: 'success',
-          content: assistantContent
-        }
+          content: assistantContent,
+          citationReferences: citationBlockId ? [{ citationBlockId }] : undefined
+        },
+        ...(citationBlockId
+          ? [
+              {
+                id: citationBlockId,
+                messageId: assistantMsgId,
+                type: 'citation',
+                createdAt: now,
+                status: 'success',
+                response: externalToolResult?.webSearch,
+                knowledge: externalToolResult?.knowledge,
+                memories: externalToolResult?.memories
+              }
+            ]
+          : [])
       ]
     } as AgentPersistedMessage
 

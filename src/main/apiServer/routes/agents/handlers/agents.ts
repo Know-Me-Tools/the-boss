@@ -454,11 +454,15 @@ export const updateAgent = async (req: Request, res: Response): Promise<Response
  *                 items:
  *                   type: string
  *                 description: MCP tool IDs
- *               knowledges:
+ *               knowledge_bases:
  *                 type: array
  *                 items:
- *                   type: string
- *                 description: Knowledge base IDs
+ *                   $ref: '#/components/schemas/KnowledgeBaseEntity'
+ *                 description: Selected knowledge bases for retrieval
+ *               knowledgeRecognition:
+ *                 type: string
+ *                 enum: [off, on]
+ *                 description: Automatic knowledge retrieval mode
  *               configuration:
  *                 type: object
  *                 description: Extensible settings

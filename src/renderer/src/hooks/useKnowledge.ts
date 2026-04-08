@@ -17,7 +17,15 @@ import {
   updateNotes
 } from '@renderer/store/knowledge'
 import { addFilesThunk, addItemThunk, addNoteThunk, addVedioThunk } from '@renderer/store/thunk/knowledgeThunk'
-import type { FileMetadata, KnowledgeBase, KnowledgeItem, KnowledgeNoteItem, ProcessingStatus } from '@renderer/types'
+import type {
+  FileMetadata,
+  GetAgentResponse,
+  GetAgentSessionResponse,
+  KnowledgeBase,
+  KnowledgeItem,
+  KnowledgeNoteItem,
+  ProcessingStatus
+} from '@renderer/types'
 import { isKnowledgeFileItem, isKnowledgeNoteItem, isKnowledgeVideoItem } from '@renderer/types'
 import { runAsyncFunction, uuid } from '@renderer/utils'
 import dayjs from 'dayjs'
@@ -25,6 +33,8 @@ import { cloneDeep } from 'lodash'
 import { useCallback, useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
+import { useAgentClient } from './agents/useAgentClient'
+import { useApiServer } from './useApiServer'
 import { useAssistants } from './useAssistant'
 import { useAssistantPresets } from './useAssistantPresets'
 import { useTimer } from './useTimer'
@@ -343,6 +353,8 @@ export const useKnowledgeBases = () => {
   const bases = useSelector((state: RootState) => state.knowledge.bases)
   const { assistants, updateAssistants } = useAssistants()
   const { presets, setAssistantPresets } = useAssistantPresets()
+  const client = useAgentClient()
+  const { apiServerRunning } = useApiServer()
 
   const addKnowledgeBase = (base: KnowledgeBase) => {
     dispatch(addBase(base))
@@ -381,6 +393,58 @@ export const useKnowledgeBases = () => {
 
     updateAssistants(_assistants)
     setAssistantPresets(_presets)
+
+    if (!apiServerRunning) {
+      return
+    }
+
+    void runAsyncFunction(async () => {
+      const pageSize = 100
+      const agents: GetAgentResponse[] = []
+      let offset = 0
+
+      while (true) {
+        const page = await client.listAgents({ limit: pageSize, offset, sortBy: 'sort_order', orderBy: 'asc' })
+        agents.push(...page.data)
+        offset += page.data.length
+        if (page.data.length < pageSize) {
+          break
+        }
+      }
+
+      await Promise.all(
+        agents.map(async (agent) => {
+          if (agent.knowledge_bases?.some((kb) => kb.id === baseId)) {
+            await client.updateAgent({
+              id: agent.id,
+              knowledge_bases: agent.knowledge_bases.filter((kb) => kb.id !== baseId)
+            })
+          }
+
+          let sessionOffset = 0
+          while (true) {
+            const page = await client.listSessions(agent.id, { limit: pageSize, offset: sessionOffset })
+            const sessions: GetAgentSessionResponse[] = page.data
+
+            await Promise.all(
+              sessions
+                .filter((session) => session.knowledge_bases?.some((kb) => kb.id === baseId))
+                .map((session) =>
+                  client.updateSession(agent.id, {
+                    id: session.id,
+                    knowledge_bases: (session.knowledge_bases ?? []).filter((kb) => kb.id !== baseId)
+                  })
+                )
+            )
+
+            sessionOffset += page.data.length
+            if (page.data.length < pageSize) {
+              break
+            }
+          }
+        })
+      )
+    })
   }
 
   const updateKnowledgeBases = (bases: KnowledgeBase[]) => {
