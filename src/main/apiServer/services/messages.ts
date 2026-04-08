@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import type { MessageCreateParams, MessageStreamEvent } from '@anthropic-ai/sdk/resources'
+import type { MessageCreateParams } from '@anthropic-ai/sdk/resources'
+import type { MessageStreamEvent } from '@anthropic-ai/sdk/resources/messages'
 import { loggerService } from '@logger'
 import anthropicService from '@main/services/AnthropicService'
 import { buildClaudeCodeSystemMessage, getSdkClient } from '@shared/anthropic'

@@ -107,7 +107,7 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
       title={assistant.name}
       transitionName="animation-move-down"
       styles={{
-        content: {
+        container: {
           padding: 0,
           overflow: 'hidden'
         },

@@ -73,6 +73,12 @@ asarUnpack:
   - out/proxy/**
   - resources/**
   - "**/*.{metal,exp,lib}"
+  - "node_modules/@anthropic-ai/claude-agent-sdk/vendor/**"
+  - "node_modules/@libsql/**/*.node"
+  - "node_modules/@napi-rs/**/*.node"
+  - "node_modules/font-list/libs/**"
+  - "node_modules/selection-hook/**/*.node"
+  - "node_modules/sharp/**/*"
   - "node_modules/@img/sharp-libvips-*/**"
 
 win:

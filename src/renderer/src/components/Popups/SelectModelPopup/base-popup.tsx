@@ -452,7 +452,7 @@ const SelectModelPopupView: React.FC<Props> = ({
       width={600}
       transitionName="animation-move-down"
       styles={{
-        content: {
+        container: {
           borderRadius: 20,
           padding: 0,
           overflow: 'hidden',

@@ -3,17 +3,24 @@ import { builtinModules } from 'node:module'
 import { resolve } from 'path'
 import { build as viteBuild, type Plugin } from 'vite'
 
+import { getRuntimeExternalPackageNames } from './runtime-external-packages.js'
+
 interface BuildProxyBootstrapPluginOptions {
-  dependencies: string[]
   isProd: boolean
   rootDir: string
 }
 
-export const buildProxyBootstrapPlugin = ({
-  dependencies,
-  isProd,
-  rootDir
-}: BuildProxyBootstrapPluginOptions): Plugin => {
+const runtimeExternalPackages = getRuntimeExternalPackageNames()
+const proxyRollupExternals = [
+  'bufferutil',
+  'electron',
+  /^electron\/.+/,
+  'utf-8-validate',
+  ...builtinModules.flatMap((moduleName) => [moduleName, `node:${moduleName}`]),
+  ...runtimeExternalPackages
+]
+
+export const buildProxyBootstrapPlugin = ({ isProd, rootDir }: BuildProxyBootstrapPluginOptions): Plugin => {
   return {
     name: 'cherry-build-proxy-bootstrap',
     apply: 'build',
@@ -37,12 +44,7 @@ export const buildProxyBootstrapPlugin = ({
             fileName: () => 'index.js'
           },
           rollupOptions: {
-            external: [
-              'electron',
-              /^electron\/.+/,
-              ...builtinModules.flatMap((moduleName) => [moduleName, `node:${moduleName}`]),
-              ...dependencies
-            ]
+            external: proxyRollupExternals
           }
         },
         esbuild: isProd ? { legalComments: 'none' } : {}

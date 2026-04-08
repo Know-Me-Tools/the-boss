@@ -146,8 +146,9 @@ export class Runtime {
 
       worker.on('message', handleMessage)
       worker.on('error', (error) => {
-        logger.error('Worker execution error', error)
-        handleError(error instanceof Error ? error.message : String(error))
+        const loggedError = error instanceof Error ? error : new Error(String(error))
+        logger.error('Worker execution error', loggedError)
+        handleError(loggedError.message)
       })
       worker.on('exit', (code) => {
         if (finished || timedOut) {

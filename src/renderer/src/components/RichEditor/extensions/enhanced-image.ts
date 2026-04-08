@@ -1,5 +1,5 @@
 import { mergeAttributes, Node } from '@tiptap/core'
-import Image from '@tiptap/extension-image'
+import Image, { type ImageOptions } from '@tiptap/extension-image'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 
 import ImagePlaceholderNodeView from '../components/placeholder/ImagePlaceholderNodeView'
@@ -15,13 +15,18 @@ declare module '@tiptap/core' {
 // Enhanced Image extension that emits events for image upload
 export const EnhancedImage = Image.extend({
   addOptions() {
+    const parentOptions = this.parent?.()
+
     return {
-      ...this.parent?.(),
+      ...parentOptions,
+      inline: parentOptions?.inline ?? false,
       allowBase64: true,
+      resize: parentOptions?.resize ?? false,
       HTMLAttributes: {
+        ...parentOptions?.HTMLAttributes,
         class: 'rich-editor-image'
       }
-    }
+    } satisfies ImageOptions
   },
 
   addAttributes() {

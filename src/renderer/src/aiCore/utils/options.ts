@@ -40,7 +40,6 @@ import { isSupportServiceTierProvider, isSupportVerbosityProvider } from '@rende
 import type { JSONValue } from 'ai'
 import { t } from 'i18next'
 import { merge } from 'lodash'
-import type { OllamaProviderOptions } from 'ollama-ai-provider-v2'
 
 import { addAnthropicHeaders } from '../prepareParams/header'
 import { getAiSdkProviderId } from '../provider/factory'
@@ -59,6 +58,10 @@ import {
 import { getWebSearchParams } from './websearch'
 
 const logger = loggerService.withContext('aiCore.utils.options')
+
+type OllamaProviderOptions = {
+  think?: boolean | 'low' | 'medium' | 'high'
+}
 
 function toOpenAIServiceTier(model: Model, serviceTier: ServiceTier): OpenAIServiceTier {
   if (

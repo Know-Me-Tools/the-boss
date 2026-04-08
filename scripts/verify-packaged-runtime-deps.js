@@ -1,7 +1,10 @@
 const fs = require('fs')
 const path = require('path')
 const Module = require('module')
+const acorn = require('acorn')
 const asar = require('@electron/asar')
+
+const { getRuntimeExternalPackageNames, validateRuntimeExternalPackages } = require('./runtime-external-packages')
 
 const projectRoot = path.resolve(__dirname, '..')
 const builtinModules = new Set(
@@ -25,176 +28,331 @@ const normalizePackageName = (specifier) => {
   return PACKAGE_NAME_PATTERN.test(packageName) ? packageName : null
 }
 
-const extractBareSpecifiers = (source) => {
-  const specifiers = new Set()
-  const patterns = [
-    /require\((['"`])([^'"`]+)\1\)/g,
-    /import\((['"`])([^'"`]+)\1\)/g,
-    /\b(?:import|export)\s+(?:[^'"`]*?\s+from\s+)?(['"`])([^'"`]+)\1/g
-  ]
-
-  for (const pattern of patterns) {
-    for (const match of source.matchAll(pattern)) {
-      const packageName = normalizePackageName(match[2])
-      if (packageName && !builtinModules.has(packageName)) {
-        specifiers.add(packageName)
-      }
-    }
-  }
-
-  return [...specifiers]
-}
-
 const extractSpecifiers = (source) => {
   const specifiers = new Set()
-  const patterns = [
-    /require\((['"`])([^'"`]+)\1\)/g,
-    /import\((['"`])([^'"`]+)\1\)/g,
-    /\b(?:import|export)\s+(?:[^'"`]*?\s+from\s+)?(['"`])([^'"`]+)\1/g
-  ]
 
-  for (const pattern of patterns) {
+  try {
+    const ast = acorn.parse(source, {
+      allowHashBang: true,
+      ecmaVersion: 'latest',
+      sourceType: 'script'
+    })
+
+    const visitNode = (node) => {
+      if (!node || typeof node !== 'object') {
+        return
+      }
+
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          visitNode(child)
+        }
+        return
+      }
+
+      if (typeof node.type === 'string') {
+        if (
+          node.type === 'CallExpression' &&
+          node.callee?.type === 'Identifier' &&
+          node.callee.name === 'require' &&
+          node.arguments?.[0]?.type === 'Literal' &&
+          typeof node.arguments[0].value === 'string'
+        ) {
+          specifiers.add(node.arguments[0].value)
+        }
+
+        if (
+          node.type === 'ImportExpression' &&
+          node.source?.type === 'Literal' &&
+          typeof node.source.value === 'string'
+        ) {
+          specifiers.add(node.source.value)
+        }
+
+        if (
+          (node.type === 'ImportDeclaration' ||
+            node.type === 'ExportAllDeclaration' ||
+            node.type === 'ExportNamedDeclaration') &&
+          typeof node.source?.value === 'string'
+        ) {
+          specifiers.add(node.source.value)
+        }
+      }
+
+      for (const value of Object.values(node)) {
+        if (value && typeof value === 'object') {
+          visitNode(value)
+        }
+      }
+    }
+
+    visitNode(ast)
+
+    return [...specifiers]
+  } catch (_error) {
+    const patterns = [
+      /require\((['"`])([^'"`]+)\1\)/g,
+      /import\((['"`])([^'"`]+)\1\)/g,
+      /\b(?:import|export)\s+(?:[^'"`]*?\s+from\s+)?(['"`])([^'"`]+)\1/g
+    ]
+
+    for (const pattern of patterns) {
+      for (const match of source.matchAll(pattern)) {
+        if (match[2]) {
+          specifiers.add(match[2])
+        }
+      }
+    }
+
+    return [...specifiers]
+  }
+}
+
+const isCreateRequireCall = (node) => {
+  if (!node || typeof node !== 'object') {
+    return false
+  }
+
+  if (node.type === 'Identifier' && node.name === 'createRequire') {
+    return true
+  }
+
+  if (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property?.type === 'Identifier' &&
+    node.property.name === 'createRequire'
+  ) {
+    return true
+  }
+
+  return false
+}
+
+const extractCreateRequireSpecifiers = (source) => {
+  const specifiers = new Set()
+
+  try {
+    const ast = acorn.parse(source, {
+      allowHashBang: true,
+      ecmaVersion: 'latest',
+      sourceType: 'script'
+    })
+
+    const visitNode = (node) => {
+      if (!node || typeof node !== 'object') {
+        return
+      }
+
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          visitNode(child)
+        }
+        return
+      }
+
+      if (
+        node.type === 'CallExpression' &&
+        node.callee?.type === 'CallExpression' &&
+        isCreateRequireCall(node.callee.callee) &&
+        node.arguments?.[0]?.type === 'Literal' &&
+        typeof node.arguments[0].value === 'string'
+      ) {
+        specifiers.add(node.arguments[0].value)
+      }
+
+      for (const value of Object.values(node)) {
+        if (value && typeof value === 'object') {
+          visitNode(value)
+        }
+      }
+    }
+
+    visitNode(ast)
+
+    return [...specifiers]
+  } catch (_error) {
+    const pattern = /createRequire\([^)]*\)\((['"`])([^'"`]+)\1\)/g
+
     for (const match of source.matchAll(pattern)) {
       if (match[2]) {
         specifiers.add(match[2])
       }
     }
-  }
 
-  return [...specifiers]
+    return [...specifiers]
+  }
 }
 
-const readStartupRoots = () => {
-  const entryFiles = [path.join(projectRoot, 'out/main/index.js'), path.join(projectRoot, 'out/proxy/index.js')]
+const extractBarePackageSpecifiers = (source) => {
+  const packageNames = new Set()
 
-  const roots = new Set()
-
-  for (const file of entryFiles) {
-    if (!fs.existsSync(file)) {
-      continue
-    }
-
-    const source = fs.readFileSync(file, 'utf8')
-    for (const packageName of extractBareSpecifiers(source)) {
-      roots.add(packageName)
+  for (const specifier of extractSpecifiers(source)) {
+    const packageName = normalizePackageName(specifier)
+    if (packageName && !builtinModules.has(packageName)) {
+      packageNames.add(packageName)
     }
   }
 
-  return [...roots].sort()
+  return [...packageNames]
 }
 
-const resolveManifestFromResolvedPath = (resolvedPath) => {
-  let currentDir = path.dirname(resolvedPath)
-  const rootDir = path.parse(currentDir).root
+const resolveRuntimeRelativeSpecifier = (entryFile, specifier) => {
+  const basePath = path.resolve(path.dirname(entryFile), specifier)
+  const candidates = [
+    basePath,
+    `${basePath}.js`,
+    `${basePath}.cjs`,
+    `${basePath}.mjs`,
+    `${basePath}.json`,
+    `${basePath}.node`,
+    path.join(basePath, 'index.js'),
+    path.join(basePath, 'index.cjs'),
+    path.join(basePath, 'index.mjs'),
+    path.join(basePath, 'index.json'),
+    path.join(basePath, 'index.node')
+  ]
 
-  while (currentDir !== rootDir) {
-    const manifestPath = path.join(currentDir, 'package.json')
-    if (fs.existsSync(manifestPath)) {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-      if (manifest.name) {
-        return { manifest, manifestPath }
-      }
-    }
-    currentDir = path.dirname(currentDir)
-  }
-
-  throw new Error(`Unable to locate package.json from ${resolvedPath}`)
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
 }
 
-const resolvePackageRoot = (packageName, basedir) =>
-  path.dirname(resolveManifestFromResolvedPath(require.resolve(packageName, { paths: [basedir] })).manifestPath)
+const getStartupEntryFiles = () =>
+  [path.join(projectRoot, 'out/main/index.js'), path.join(projectRoot, 'out/proxy/index.js')].filter((file) =>
+    fs.existsSync(file)
+  )
 
-const getOwningPackageName = (filePath) => {
-  if (!filePath.includes(`${path.sep}node_modules${path.sep}`)) {
-    return '<startup>'
+const resolvePackageInfo = (packageName, basedir) => {
+  const manifestPath = require.resolve(`${packageName}/package.json`, { paths: [basedir] })
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+
+  if (!manifest.name) {
+    throw new Error(`Package ${packageName} does not declare a name in ${manifestPath}`)
   }
 
-  try {
-    return resolveManifestFromResolvedPath(filePath).manifest.name
-  } catch (_error) {
-    return extractPackageNameFromNodeModulesPath(filePath.split(path.sep).join('/')) || '<startup>'
+  return {
+    manifest,
+    manifestPath,
+    packageName: manifest.name,
+    packageRoot: path.dirname(manifestPath)
   }
 }
 
-const collectDependencyClosure = () => {
-  const startupEntryFiles = [
-    path.join(projectRoot, 'out/main/index.js'),
-    path.join(projectRoot, 'out/proxy/index.js')
-  ].filter((file) => fs.existsSync(file))
-  const queue = [...startupEntryFiles]
-  const visitedFiles = new Set()
-  const visitedPackageRoots = new Set()
-  const visited = new Set()
+const resolvePackageRoot = (packageName, basedir) => resolvePackageInfo(packageName, basedir).packageRoot
+
+const getManifestDependencyNames = (manifest) => [
+  ...Object.keys(manifest.dependencies || {}),
+  ...Object.keys(manifest.optionalDependencies || {})
+]
+
+const collectPackageDependencyClosure = (packageNames, basedir = projectRoot) => {
+  const queue = [...new Set(packageNames)].map((packageName) => ({ basedir, packageName }))
+  const packageNamesInClosure = new Set()
   const parents = new Map()
   const skippedPackages = new Set()
 
   while (queue.length > 0) {
-    const currentFile = queue.shift()
-    if (!currentFile || visitedFiles.has(currentFile) || currentFile.endsWith('.node')) {
+    const current = queue.shift()
+    if (!current) {
       continue
     }
 
-    visitedFiles.add(currentFile)
-
-    let source
+    let packageInfo
     try {
-      source = fs.readFileSync(currentFile, 'utf8')
+      packageInfo = resolvePackageInfo(current.packageName, current.basedir)
     } catch (_error) {
+      skippedPackages.add(current.packageName)
       continue
     }
 
-    const localRequire = Module.createRequire(currentFile)
+    if (packageNamesInClosure.has(packageInfo.packageName)) {
+      continue
+    }
 
-    for (const specifier of extractSpecifiers(source)) {
-      const packageSpecifier = normalizePackageName(specifier)
+    packageNamesInClosure.add(packageInfo.packageName)
 
-      if (packageSpecifier && !builtinModules.has(packageSpecifier)) {
-        let resolvedPath
-        try {
-          resolvedPath = localRequire.resolve(specifier, { paths: [path.dirname(currentFile)] })
-        } catch (_error) {
-          skippedPackages.add(packageSpecifier)
-          continue
-        }
-
-        let resolvedManifest
-        try {
-          resolvedManifest = resolveManifestFromResolvedPath(resolvedPath)
-        } catch (_error) {
-          skippedPackages.add(packageSpecifier)
-          continue
-        }
-
-        const packageName = resolvedManifest.manifest.name || packageSpecifier
-        const packageRoot = path.dirname(resolvedManifest.manifestPath)
-        const parentPackage = getOwningPackageName(currentFile)
-
-        visited.add(packageName)
-        if (!parents.has(packageName)) {
-          parents.set(packageName, parentPackage)
-        }
-
-        if (!visitedPackageRoots.has(packageRoot)) {
-          visitedPackageRoots.add(packageRoot)
-          queue.push(resolvedPath)
-        }
+    for (const dependencyName of getManifestDependencyNames(packageInfo.manifest)) {
+      let dependencyInfo
+      try {
+        dependencyInfo = resolvePackageInfo(dependencyName, packageInfo.packageRoot)
+      } catch (_error) {
+        skippedPackages.add(dependencyName)
         continue
       }
 
-      if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
+      if (!parents.has(dependencyInfo.packageName)) {
+        parents.set(dependencyInfo.packageName, packageInfo.packageName)
+      }
+
+      queue.push({
+        basedir: packageInfo.packageRoot,
+        packageName: dependencyInfo.packageName
+      })
+    }
+  }
+
+  return {
+    packageNames: packageNamesInClosure,
+    parents,
+    skippedPackages
+  }
+}
+
+const auditStartupBundleExternalReferences = ({
+  declaredExternalPackages = getRuntimeExternalPackageNames(),
+  entryFiles = getStartupEntryFiles()
+} = {}) => {
+  validateRuntimeExternalPackages(declaredExternalPackages)
+
+  if (entryFiles.length === 0) {
+    throw new Error('No startup entry dependencies were found in out/main/index.js or out/proxy/index.js')
+  }
+
+  const declaredPackageSet = new Set(declaredExternalPackages)
+  const missingBundledRelativeSpecifiers = []
+  const skippedPackages = new Set()
+  const startupRoots = new Set()
+  const undeclaredPackageNames = new Set()
+
+  for (const file of entryFiles) {
+    const source = fs.readFileSync(file, 'utf8')
+    const localRequire = Module.createRequire(file)
+
+    for (const specifier of extractCreateRequireSpecifiers(source)) {
+      if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
+        continue
+      }
+
+      if (!resolveRuntimeRelativeSpecifier(file, specifier)) {
+        missingBundledRelativeSpecifiers.push({
+          entryFile: file,
+          specifier
+        })
+      }
+    }
+
+    for (const packageName of extractBarePackageSpecifiers(source)) {
+      startupRoots.add(packageName)
+
+      if (declaredPackageSet.has(packageName)) {
         continue
       }
 
       try {
-        const resolvedPath = localRequire.resolve(specifier, { paths: [path.dirname(currentFile)] })
-        queue.push(resolvedPath)
+        localRequire.resolve(packageName, { paths: [path.dirname(file)] })
+        undeclaredPackageNames.add(packageName)
       } catch (_error) {
-        continue
+        skippedPackages.add(packageName)
       }
     }
   }
 
-  return { packageNames: visited, parents, skippedPackages }
+  return {
+    declaredExternalPackages: [...declaredPackageSet].sort(),
+    missingBundledRelativeSpecifiers,
+    skippedPackages,
+    startupRoots: [...startupRoots].sort(),
+    undeclaredPackageNames: [...undeclaredPackageNames].sort()
+  }
 }
 
 const extractPackageNameFromNodeModulesPath = (entryPath) => {
@@ -227,97 +385,12 @@ const extractPackageNameFromNodeModulesPath = (entryPath) => {
   return packageName
 }
 
-const collectPackagedPackageNames = (appOutDir) => {
-  const packagedNames = new Set()
-  const resourcesDir = resolveResourcesDir(appOutDir)
-  const archivePath = path.join(resourcesDir, 'app.asar')
-  const unpackedDir = path.join(resourcesDir, 'app.asar.unpacked')
-  const fallbackNodeModulesDir = path.join(resourcesDir, PACKAGED_RUNTIME_NODE_MODULES_DIR)
-
-  if (fs.existsSync(archivePath)) {
-    for (const entry of asar.listPackage(archivePath)) {
-      if (!entry.endsWith('/package.json') || !entry.includes('/node_modules/')) {
-        continue
-      }
-      const packageName = extractPackageNameFromNodeModulesPath(entry)
-      if (packageName) {
-        packagedNames.add(packageName)
-      }
-    }
-  }
-
-  if (fs.existsSync(unpackedDir)) {
-    const stack = [unpackedDir]
-    while (stack.length > 0) {
-      const currentDir = stack.pop()
-      for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          stack.push(fullPath)
-          continue
-        }
-        if (
-          entry.isFile() &&
-          entry.name === 'package.json' &&
-          fullPath.includes(`${path.sep}node_modules${path.sep}`)
-        ) {
-          const relativePath = fullPath.slice(unpackedDir.length).split(path.sep).join('/')
-          const packageName = extractPackageNameFromNodeModulesPath(relativePath)
-          if (packageName) {
-            packagedNames.add(packageName)
-          }
-        }
-      }
-    }
-  }
-
-  if (fs.existsSync(fallbackNodeModulesDir)) {
-    const stack = [fallbackNodeModulesDir]
-    while (stack.length > 0) {
-      const currentDir = stack.pop()
-      for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          stack.push(fullPath)
-          continue
-        }
-        if (
-          entry.isFile() &&
-          entry.name === 'package.json' &&
-          fullPath.includes(`${path.sep}node_modules${path.sep}`)
-        ) {
-          const relativePath = fullPath.slice(resourcesDir.length).split(path.sep).join('/')
-          const packageName = extractPackageNameFromNodeModulesPath(relativePath)
-          if (packageName) {
-            packagedNames.add(packageName)
-          }
-        }
-      }
-    }
-  }
-
-  return packagedNames
-}
-
-const formatMissingDependency = (packageName, parents) => {
-  const chain = [packageName]
-  let current = parents.get(packageName)
-
-  while (current && current !== '<startup>') {
-    chain.unshift(current)
-    current = parents.get(current)
-  }
-
-  return current === '<startup>' ? `<startup> -> ${chain.join(' -> ')}` : chain.join(' -> ')
-}
-
 const resolveResourcesDir = (appOutDir) => {
   const directResourcesDir = path.join(appOutDir, 'Contents/Resources')
   if (fs.existsSync(directResourcesDir)) {
     return directResourcesDir
   }
 
-  // Linux and Windows (electron-builder): app.asar lives under `resources/`
   const electronResourcesDir = path.join(appOutDir, 'resources')
   if (fs.existsSync(electronResourcesDir)) {
     return electronResourcesDir
@@ -345,29 +418,130 @@ const resolveResourcesDir = (appOutDir) => {
   return bundledResourcesDir
 }
 
-const analyzePackagedRuntimeDependencies = (appOutDir) => {
-  const startupRoots = readStartupRoots()
-  if (startupRoots.length === 0) {
-    throw new Error('No startup entry dependencies were found in out/main/index.js or out/proxy/index.js')
+const collectPackagedPackageLocations = (appOutDir) => {
+  const archivePackageNames = new Set()
+  const unpackedPackageNames = new Set()
+  const fallbackPackageNames = new Set()
+  const resourcesDir = resolveResourcesDir(appOutDir)
+  const archivePath = path.join(resourcesDir, 'app.asar')
+  const unpackedDir = path.join(resourcesDir, 'app.asar.unpacked')
+  const fallbackNodeModulesDir = path.join(resourcesDir, PACKAGED_RUNTIME_NODE_MODULES_DIR)
+
+  if (fs.existsSync(archivePath)) {
+    for (const entry of asar.listPackage(archivePath)) {
+      if (!entry.endsWith('/package.json') || !entry.includes('/node_modules/')) {
+        continue
+      }
+
+      const packageName = extractPackageNameFromNodeModulesPath(entry)
+      if (packageName) {
+        archivePackageNames.add(packageName)
+      }
+    }
   }
 
-  const { packageNames: expectedPackages, parents, skippedPackages } = collectDependencyClosure()
-  const packagedPackages = collectPackagedPackageNames(appOutDir)
-  const missingPackages = [...expectedPackages]
-    .filter((packageName) => !packagedPackages.has(packageName))
+  if (fs.existsSync(unpackedDir)) {
+    const stack = [unpackedDir]
+    while (stack.length > 0) {
+      const currentDir = stack.pop()
+      for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+        const fullPath = path.join(currentDir, entry.name)
+        if (entry.isDirectory()) {
+          stack.push(fullPath)
+          continue
+        }
+
+        if (
+          entry.isFile() &&
+          entry.name === 'package.json' &&
+          fullPath.includes(`${path.sep}node_modules${path.sep}`)
+        ) {
+          const relativePath = fullPath.slice(unpackedDir.length).split(path.sep).join('/')
+          const packageName = extractPackageNameFromNodeModulesPath(relativePath)
+          if (packageName) {
+            unpackedPackageNames.add(packageName)
+          }
+        }
+      }
+    }
+  }
+
+  if (fs.existsSync(fallbackNodeModulesDir)) {
+    const stack = [fallbackNodeModulesDir]
+    while (stack.length > 0) {
+      const currentDir = stack.pop()
+      for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+        const fullPath = path.join(currentDir, entry.name)
+        if (entry.isDirectory()) {
+          stack.push(fullPath)
+          continue
+        }
+
+        if (
+          entry.isFile() &&
+          entry.name === 'package.json' &&
+          fullPath.includes(`${path.sep}node_modules${path.sep}`)
+        ) {
+          const relativePath = fullPath.slice(resourcesDir.length).split(path.sep).join('/')
+          const packageName = extractPackageNameFromNodeModulesPath(relativePath)
+          if (packageName) {
+            fallbackPackageNames.add(packageName)
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    archivePackageNames,
+    fallbackPackageNames,
+    packagedPackageNames: new Set([...archivePackageNames, ...unpackedPackageNames, ...fallbackPackageNames]),
+    primaryPackagedPackageNames: new Set([...archivePackageNames, ...unpackedPackageNames]),
+    unpackedPackageNames
+  }
+}
+
+const computeFallbackPackageNames = ({ expectedPackages, primaryPackagedPackageNames }) =>
+  new Set([...expectedPackages].filter((packageName) => !primaryPackagedPackageNames.has(packageName)))
+
+const formatDependencyChain = (packageName, parents) => {
+  const chain = [packageName]
+  let current = parents.get(packageName)
+
+  while (current) {
+    chain.unshift(current)
+    current = parents.get(current)
+  }
+
+  return chain.join(' -> ')
+}
+
+const analyzePackagedRuntimeDependencies = (appOutDir) => {
+  const audit = auditStartupBundleExternalReferences()
+  const referencedDeclaredExternalPackages = audit.startupRoots.filter((packageName) =>
+    audit.declaredExternalPackages.includes(packageName)
+  )
+  const closure = collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot)
+  const packageLocations = collectPackagedPackageLocations(appOutDir)
+  const fallbackRequiredPackages = computeFallbackPackageNames({
+    expectedPackages: closure.packageNames,
+    primaryPackagedPackageNames: packageLocations.primaryPackagedPackageNames
+  })
+  const missingPackages = [...fallbackRequiredPackages]
+    .filter((packageName) => !packageLocations.fallbackPackageNames.has(packageName))
     .sort((left, right) => left.localeCompare(right))
     .map((packageName) => {
       try {
         return {
           availableLocally: true,
-          chain: formatMissingDependency(packageName, parents),
+          chain: formatDependencyChain(packageName, closure.parents),
           name: packageName,
           sourceDir: resolvePackageRoot(packageName, projectRoot)
         }
       } catch (_error) {
         return {
           availableLocally: false,
-          chain: formatMissingDependency(packageName, parents),
+          chain: formatDependencyChain(packageName, closure.parents),
           name: packageName,
           sourceDir: null
         }
@@ -375,11 +549,13 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
     })
 
   return {
-    expectedPackages,
+    audit,
+    expectedPackages: closure.packageNames,
+    fallbackRequiredPackages,
     missingPackages,
-    packagedPackages,
-    skippedPackages,
-    startupRoots
+    packagedPackages: packageLocations.packagedPackageNames,
+    packageLocations,
+    startupRoots: audit.startupRoots
   }
 }
 
@@ -412,30 +588,49 @@ const verifyPackagedRuntimeDependencies = (appOutDir) => {
   const actionableMissingPackages = analysis.missingPackages.filter((pkg) => pkg.availableLocally)
   const unavailableMissingPackages = analysis.missingPackages.filter((pkg) => !pkg.availableLocally)
 
+  if (analysis.audit.undeclaredPackageNames.length > 0) {
+    throw new Error(
+      `Startup bundles reference undeclared runtime external packages.\n` +
+        `Declare them in scripts/runtime-external-packages.js or bundle them.\n` +
+        `Undeclared packages: ${analysis.audit.undeclaredPackageNames.join(', ')}\n`
+    )
+  }
+
+  if (analysis.audit.missingBundledRelativeSpecifiers.length > 0) {
+    const details = analysis.audit.missingBundledRelativeSpecifiers
+      .map(({ entryFile, specifier }) => `- ${path.relative(projectRoot, entryFile)} -> ${specifier}`)
+      .join('\n')
+    throw new Error(
+      `Startup bundles reference relative runtime files that are not emitted beside the bundle.\n` +
+        `Externalize the owning package or ship the missing files.\n` +
+        `${details}\n`
+    )
+  }
+
   if (actionableMissingPackages.length > 0) {
     const details = actionableMissingPackages.map((pkg) => `- ${pkg.chain}`).join('\n')
     throw new Error(
-      `Packaged app is missing runtime dependencies required during startup.\n` +
+      `Packaged app is missing declared runtime external dependencies required during startup.\n` +
         `Startup roots: ${analysis.startupRoots.join(', ')}\n` +
         `Missing packages available in local node_modules:\n${details}\n`
     )
   }
 
-  if (analysis.skippedPackages.size > 0) {
+  if (analysis.audit.skippedPackages.size > 0) {
     process.stdout.write(
-      `[verify-packaged-runtime-deps] Skipped unresolved startup references: ${[...analysis.skippedPackages].sort().join(', ')}\n`
+      `[verify-packaged-runtime-deps] Skipped unresolved startup references: ${[...analysis.audit.skippedPackages].sort().join(', ')}\n`
     )
   }
 
   if (unavailableMissingPackages.length > 0) {
     const details = unavailableMissingPackages.map((pkg) => pkg.chain).join(', ')
     process.stdout.write(
-      `[verify-packaged-runtime-deps] Ignoring unavailable startup references on this machine: ${details}\n`
+      `[verify-packaged-runtime-deps] Ignoring unavailable declared runtime externals on this machine: ${details}\n`
     )
   }
 
   process.stdout.write(
-    `[verify-packaged-runtime-deps] Verified ${analysis.expectedPackages.size} startup runtime packages in ${appOutDir}\n`
+    `[verify-packaged-runtime-deps] Verified ${analysis.expectedPackages.size} declared startup runtime packages in ${appOutDir}\n`
   )
 }
 
@@ -450,6 +645,9 @@ if (require.main === module) {
 
 module.exports = {
   analyzePackagedRuntimeDependencies,
+  auditStartupBundleExternalReferences,
+  collectPackageDependencyClosure,
+  computeFallbackPackageNames,
   copyMissingStartupRuntimeDependencies,
   verifyPackagedRuntimeDependencies
 }

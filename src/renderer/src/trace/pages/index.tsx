@@ -176,7 +176,6 @@ export const TracePage: React.FC<TracePageProp> = ({ topicId, traceId, modelName
                       </GridItem>
                     </SimpleGrid>
                     <Divider
-                      orientation="end"
                       style={{
                         width: '100%',
                         marginTop: '36px',

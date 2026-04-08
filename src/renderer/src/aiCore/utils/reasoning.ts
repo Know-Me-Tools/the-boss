@@ -47,9 +47,12 @@ import type { OpenAIReasoningEffort, OpenAIReasoningSummary } from '@renderer/ty
 import { getLowerBaseModelName } from '@renderer/utils'
 import { isSupportEnableThinkingProvider } from '@renderer/utils/provider'
 import { toInteger } from 'lodash'
-import type { OllamaProviderOptions } from 'ollama-ai-provider-v2'
 
 const logger = loggerService.withContext('reasoning')
+
+type OllamaProviderOptions = {
+  think?: boolean | 'low' | 'medium' | 'high'
+}
 
 type ReasoningEffortOptionalParams = {
   thinking?: { type: 'disabled' | 'enabled' | 'auto'; budget_tokens?: number }

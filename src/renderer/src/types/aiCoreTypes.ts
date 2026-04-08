@@ -1,6 +1,9 @@
+import type {
+  GenerateTextParams as CoreGenerateTextParams,
+  StreamTextParams as CoreStreamTextParams
+} from '@cherrystudio/ai-core'
 import type OpenAI from '@cherrystudio/openai'
 import type { NotUndefined } from '@types'
-import type { generateText, ModelMessage, streamText } from 'ai'
 import * as z from 'zod'
 
 /**
@@ -9,14 +12,19 @@ import * as z from 'zod'
  * - @cherrystudio/ai-core 的 StreamTextParams: 完整的 AI SDK 参数（用于插件系统）
  * - 此处的 StreamTextParams: 去除 model/messages 的参数（用于渲染器参数构建）
  */
-export type StreamTextParams = Omit<Parameters<typeof streamText>[0], 'model' | 'messages'> &
+type CoreStreamPrompt = Extract<CoreStreamTextParams, { prompt: unknown }>['prompt']
+type CoreStreamMessages = Extract<CoreStreamTextParams, { messages: unknown }>['messages']
+type CoreGeneratePrompt = Extract<CoreGenerateTextParams, { prompt: unknown }>['prompt']
+type CoreGenerateMessages = Extract<CoreGenerateTextParams, { messages: unknown }>['messages']
+
+export type StreamTextParams = Omit<CoreStreamTextParams, 'model' | 'messages'> &
   (
     | {
-        prompt: string | Array<ModelMessage>
+        prompt: CoreStreamPrompt
         messages?: never
       }
     | {
-        messages: Array<ModelMessage>
+        messages: CoreStreamMessages
         prompt?: never
       }
   )
@@ -25,14 +33,14 @@ export type StreamTextParams = Omit<Parameters<typeof streamText>[0], 'model' | 
  * 渲染器侧参数类型（不包含 model 和 messages）
  * 注意：这与 @cherrystudio/ai-core 导出的完整参数类型不同
  */
-export type GenerateTextParams = Omit<Parameters<typeof generateText>[0], 'model' | 'messages'> &
+export type GenerateTextParams = Omit<CoreGenerateTextParams, 'model' | 'messages'> &
   (
     | {
-        prompt: string | Array<ModelMessage>
+        prompt: CoreGeneratePrompt
         messages?: never
       }
     | {
-        messages: Array<ModelMessage>
+        messages: CoreGenerateMessages
         prompt?: never
       }
   )

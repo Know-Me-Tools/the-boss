@@ -326,9 +326,8 @@ export const searchOrchestrationPlugin = (
         // }
 
         // 确保 tools 对象存在
-        if (!params.tools) {
-          params.tools = {}
-        }
+        const tools = params.tools ?? {}
+        params.tools = tools
 
         // 🌐 网络搜索工具配置
         if (analysisResult?.websearch && assistant.webSearchProviderId) {
@@ -337,7 +336,7 @@ export const searchOrchestrationPlugin = (
           if (needsSearch) {
             // onChunk({ type: ChunkType.EXTERNEL_TOOL_IN_PROGRESS })
             // logger.info('🌐 Adding web search tool with pre-extracted keywords')
-            params.tools['builtin_web_search'] = webSearchToolWithPreExtractedKeywords(
+            tools['builtin_web_search'] = webSearchToolWithPreExtractedKeywords(
               assistant.webSearchProviderId,
               analysisResult.websearch,
               context.requestId
@@ -351,7 +350,7 @@ export const searchOrchestrationPlugin = (
         if (knowledgeSearchMode === 'force') {
           const userMessage = userMessages[context.requestId]
           const directContent = getMessageContent(userMessage) || 'search'
-          params.tools['builtin_knowledge_search'] = knowledgeSearchTool(
+          tools['builtin_knowledge_search'] = knowledgeSearchTool(
             assistant,
             {
               question: [directContent],
@@ -370,7 +369,7 @@ export const searchOrchestrationPlugin = (
           if (needsKnowledgeSearch && analysisResult.knowledge) {
             // logger.info('📚 Adding knowledge search tool (intent-based)')
             const userMessage = userMessages[context.requestId]
-            params.tools['builtin_knowledge_search'] = knowledgeSearchTool(
+            tools['builtin_knowledge_search'] = knowledgeSearchTool(
               assistant,
               analysisResult.knowledge,
               topicId,
@@ -383,7 +382,7 @@ export const searchOrchestrationPlugin = (
         const globalMemoryEnabled = selectGlobalMemoryEnabled(store.getState())
         if (globalMemoryEnabled && assistant.enableMemory) {
           // logger.info('🧠 Adding memory search tool')
-          params.tools['builtin_memory_search'] = memorySearchTool(assistant.id)
+          tools['builtin_memory_search'] = memorySearchTool(assistant.id)
         }
 
         // logger.info('🔧 Tools configured:', Object.keys(params.tools))

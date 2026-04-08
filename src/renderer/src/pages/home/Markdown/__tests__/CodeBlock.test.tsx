@@ -143,21 +143,26 @@ describe('CodeBlock', () => {
       expect(screen.getByText('/Users/foo/bar.tsx')).toBeInTheDocument()
     })
 
-    it.each(['/home/user/project/src/index.ts', '/tmp/test.log', '/var/log/app.log', '/etc/nginx/nginx.conf'])(
-      'should detect %s as a file path',
-      (path) => {
-        render(<CodeBlock {...defaultProps} className={undefined} children={path} />)
-        expect(screen.getByTestId('clickable-file-path')).toBeInTheDocument()
-      }
-    )
+    it.each([
+      '/home/user/project/src/index.ts',
+      '/tmp/test.log',
+      '/var/log/app.log',
+      '/etc/nginx/nginx.conf'
+    ])('should detect %s as a file path', (path) => {
+      render(<CodeBlock {...defaultProps} className={undefined} children={path} />)
+      expect(screen.getByTestId('clickable-file-path')).toBeInTheDocument()
+    })
 
-    it.each(['inline code', '/single-segment', '//comment style', 'not/absolute/path', '/path with spaces/file.ts'])(
-      'should NOT detect %s as a file path',
-      (text) => {
-        render(<CodeBlock {...defaultProps} className={undefined} children={text} />)
-        expect(screen.queryByTestId('clickable-file-path')).not.toBeInTheDocument()
-      }
-    )
+    it.each([
+      'inline code',
+      '/single-segment',
+      '//comment style',
+      'not/absolute/path',
+      '/path with spaces/file.ts'
+    ])('should NOT detect %s as a file path', (text) => {
+      render(<CodeBlock {...defaultProps} className={undefined} children={text} />)
+      expect(screen.queryByTestId('clickable-file-path')).not.toBeInTheDocument()
+    })
   })
 
   describe('save', () => {
@@ -227,6 +232,28 @@ describe('CodeBlock', () => {
       render(<CodeBlock {...reactProps} />)
 
       expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
+    it('should prefer the React artifact card when a html fence contains React/TSX source', () => {
+      const reactProps = {
+        ...defaultProps,
+        className: 'language-html',
+        children: [
+          "import React, { useState } from 'react'",
+          '',
+          'type AgentStatus = "idle" | "running"',
+          '',
+          'export default function App() {',
+          '  return <div>Hello</div>',
+          '}'
+        ].join('\n')
+      }
+
+      render(<CodeBlock {...reactProps} />)
+
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(mocks.HtmlArtifactsCard).not.toHaveBeenCalled()
       expect(mocks.CodeBlockView).not.toHaveBeenCalled()
     })
 

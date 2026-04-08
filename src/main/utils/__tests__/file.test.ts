@@ -463,21 +463,20 @@ describe('file', () => {
         ['/home/user-data', '/home/user', false, true]
       ]
 
-      it.each(testCases)(
-        'should correctly handle %s vs %s',
-        (child: string, parent: string, expectedIsPathInside: boolean, expectedStartsWith: boolean) => {
-          const isPathInsideResult = isPathInside(child, parent)
-          const startsWithResult = child.startsWith(parent)
+      it.each(
+        testCases
+      )('should correctly handle %s vs %s', (child: string, parent: string, expectedIsPathInside: boolean, expectedStartsWith: boolean) => {
+        const isPathInsideResult = isPathInside(child, parent)
+        const startsWithResult = child.startsWith(parent)
 
-          expect(isPathInsideResult).toBe(expectedIsPathInside)
-          expect(startsWithResult).toBe(expectedStartsWith)
+        expect(isPathInsideResult).toBe(expectedIsPathInside)
+        expect(startsWithResult).toBe(expectedStartsWith)
 
-          // Verify that isPathInside gives different (correct) result in problematic cases
-          if (expectedIsPathInside !== expectedStartsWith) {
-            expect(isPathInsideResult).not.toBe(startsWithResult)
-          }
+        // Verify that isPathInside gives different (correct) result in problematic cases
+        if (expectedIsPathInside !== expectedStartsWith) {
+          expect(isPathInsideResult).not.toBe(startsWithResult)
         }
-      )
+      })
     })
   })
 

@@ -3,8 +3,8 @@ import type { ToolQuickPanelApi, ToolQuickPanelController } from '@renderer/page
 import type { FileMetadata, Model } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { AtSign } from 'lucide-react'
-import type { FC } from 'react'
 import type React from 'react'
+import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 

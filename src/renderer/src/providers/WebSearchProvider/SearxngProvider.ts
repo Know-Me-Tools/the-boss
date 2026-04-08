@@ -36,7 +36,7 @@ export default class SearxngProvider extends BaseWebSearchProvider {
         : undefined
       this.searxng = new SearxngClient({
         apiBaseUrl: this.apiHost,
-        ky: ky.create({ headers })
+        ky: ky.create({ headers }) as any
       })
     } catch (error) {
       throw new Error(

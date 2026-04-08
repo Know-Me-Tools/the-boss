@@ -87,7 +87,7 @@ const CitationsList: React.FC<CitationsListProps> = ({ citations }) => {
         placement="right"
         trigger="click"
         styles={{
-          body: {
+          content: {
             padding: '0 0 8px 0'
           }
         }}>

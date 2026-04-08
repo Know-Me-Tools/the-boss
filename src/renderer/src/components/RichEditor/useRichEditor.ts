@@ -344,7 +344,7 @@ export const useRichEditor = (options: UseRichEditorOptions = {}): UseRichEditor
             return true
           }
         }
-      }),
+      } as any),
       EnhancedImage,
       Placeholder.configure({
         placeholder,

@@ -20,7 +20,7 @@ const ConfirmDialog: FC<Props> = ({ x, y, message, onConfirm, onCancel }) => {
     <>
       <div className="fixed inset-0 z-[99998] bg-transparent" onClick={onCancel} />
       <div
-        className="-translate-x-1/2 -translate-y-full fixed z-[99999] mt-[-8px] transform"
+        className="fixed z-[99999] mt-[-8px] -translate-x-1/2 -translate-y-full transform"
         style={{
           left: `${x}px`,
           top: `${y}px`

@@ -24,7 +24,7 @@ export default class ProviderPopup {
           marginBottom: 0
         },
         body: { padding: 0, height: 'max(75vh, calc(100vh - var(--navbar-height) * 2))', display: 'flex' },
-        content: { paddingBottom: 0 }
+        container: { paddingBottom: 0 }
       }
     })
   }

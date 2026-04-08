@@ -20,6 +20,7 @@ import {
   type GitHubCopilotProviderSettings
 } from '@opeoginni/github-copilot-openai-compatible'
 import { SystemProviderIds } from '@types'
+import type { ToolSet } from 'ai'
 import type { OllamaProviderSettings } from 'ollama-ai-provider-v2'
 import { createOllama } from 'ollama-ai-provider-v2'
 import { createVoyage, type VoyageProviderSettings } from 'voyage-ai-provider'
@@ -39,12 +40,12 @@ export const GoogleVertexExtension = ProviderExtension.create({
     webSearch:
       (provider: GoogleVertexProvider) =>
       (config: NonNullable<Parameters<GoogleVertexProvider['tools']['googleSearch']>[0]>) => ({
-        tools: { webSearch: provider.tools.googleSearch(config) }
+        tools: { webSearch: provider.tools.googleSearch(config) } as ToolSet
       }),
     urlContext:
       (provider: GoogleVertexProvider) =>
       (config: NonNullable<Parameters<GoogleVertexProvider['tools']['urlContext']>[0]>) => ({
-        tools: { urlContext: provider.tools.urlContext(config) }
+        tools: { urlContext: provider.tools.urlContext(config) } as ToolSet
       })
   }
 } as const satisfies ProviderExtensionConfig<GoogleVertexProviderSettings, GoogleVertexProvider, 'google-vertex'>)
@@ -61,7 +62,7 @@ export const GoogleVertexAnthropicExtension = ProviderExtension.create({
     webSearch:
       (provider: GoogleVertexAnthropicProvider) =>
       (config: NonNullable<Parameters<GoogleVertexAnthropicProvider['tools']['webSearch_20250305']>[0]>) => ({
-        tools: { webSearch: provider.tools.webSearch_20250305(config) }
+        tools: { webSearch: provider.tools.webSearch_20250305(config) } as ToolSet
       })
   }
 } as const satisfies ProviderExtensionConfig<

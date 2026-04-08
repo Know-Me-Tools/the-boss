@@ -417,12 +417,15 @@ describe('Qwen & Gemini thinking coverage', () => {
     expect(isSupportedThinkingTokenQwenModel(createModel({ id }))).toBe(true)
   })
 
-  it.each(['qwen3-thinking', 'qwen3-instruct', 'qwen3-vl-thinking', 'qwen3.5-thinking', 'qwen3.5-instruct'])(
-    'blocks thinking tokens for %s',
-    (id) => {
-      expect(isSupportedThinkingTokenQwenModel(createModel({ id }))).toBe(false)
-    }
-  )
+  it.each([
+    'qwen3-thinking',
+    'qwen3-instruct',
+    'qwen3-vl-thinking',
+    'qwen3.5-thinking',
+    'qwen3.5-instruct'
+  ])('blocks thinking tokens for %s', (id) => {
+    expect(isSupportedThinkingTokenQwenModel(createModel({ id }))).toBe(false)
+  })
 
   it('supports thinking tokens for qwen3-max, qwen3-max-preview and qwen3-max-2026-01-23', () => {
     expect(isSupportedThinkingTokenQwenModel(createModel({ id: 'qwen3-max' }))).toBe(true)
@@ -440,12 +443,13 @@ describe('Qwen & Gemini thinking coverage', () => {
     expect(isQwenAlwaysThinkModel(createModel({ id }))).toBe(true)
   })
 
-  it.each(['gemini-2.5-flash-latest', 'gemini-pro-latest', 'gemini-flash-lite-latest'])(
-    'Gemini supports thinking tokens for %s',
-    (id) => {
-      expect(isSupportedThinkingTokenGeminiModel(createModel({ id }))).toBe(true)
-    }
-  )
+  it.each([
+    'gemini-2.5-flash-latest',
+    'gemini-pro-latest',
+    'gemini-flash-lite-latest'
+  ])('Gemini supports thinking tokens for %s', (id) => {
+    expect(isSupportedThinkingTokenGeminiModel(createModel({ id }))).toBe(true)
+  })
 
   it.each(['gemini-2.5-flash-image', 'gemini-2.0-tts', 'custom-model'])('Gemini excludes %s', (id) => {
     expect(isSupportedThinkingTokenGeminiModel(createModel({ id }))).toBe(false)
@@ -1605,12 +1609,13 @@ describe('findTokenLimit', () => {
         expect(findTokenLimit(modelId)).toEqual({ min: 1024, max: 64_000 })
       })
 
-      it.each(['CLAUDE-HAIKU-4.5', 'Claude-Sonnet-4-5-Preview', 'CLAUDE-OPUS-4.5-20250929'])(
-        'should be case insensitive for %s',
-        (modelId) => {
-          expect(findTokenLimit(modelId)).toEqual({ min: 1024, max: 64_000 })
-        }
-      )
+      it.each([
+        'CLAUDE-HAIKU-4.5',
+        'Claude-Sonnet-4-5-Preview',
+        'CLAUDE-OPUS-4.5-20250929'
+      ])('should be case insensitive for %s', (modelId) => {
+        expect(findTokenLimit(modelId)).toEqual({ min: 1024, max: 64_000 })
+      })
     })
 
     describe('Claude models that should NOT match', () => {

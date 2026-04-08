@@ -29,7 +29,7 @@ const AntdProvider: FC<PropsWithChildren> = ({ children }) => {
     <ConfigProvider
       locale={getAntdLocale(language)}
       theme={{
-        cssVar: true,
+        cssVar: { key: 'cherry-studio' },
         hashed: false,
         algorithm: [_theme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm],
         components: {

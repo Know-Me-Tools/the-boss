@@ -1,6 +1,6 @@
 import { InputNumber } from 'antd'
 import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
 
 export interface EditableNumberProps {
@@ -42,8 +42,6 @@ const EditableNumber: FC<EditableNumberProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [inputValue, setInputValue] = useState(value)
-  const inputRef = useRef<HTMLInputElement>(null)
-
   useEffect(() => {
     setInputValue(value)
   }, [value])
@@ -76,7 +74,6 @@ const EditableNumber: FC<EditableNumberProps> = ({
     <Container>
       <InputNumber
         style={{ ...style, opacity: isEditing ? 1 : 0 }}
-        ref={inputRef}
         value={inputValue}
         min={min}
         max={max}

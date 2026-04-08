@@ -217,7 +217,7 @@ export const StyledMenu = styled(Menu)`
  * Shared modal styles configuration for settings popups
  */
 export const settingsModalStyles: ModalProps['styles'] = {
-  content: {
+  container: {
     padding: 0,
     overflow: 'hidden',
     height: '80vh',

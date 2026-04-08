@@ -81,7 +81,7 @@ const CitationTooltip: React.FC<CitationTooltipProps> = ({ children, citation })
       placement="top"
       color="var(--color-background)"
       styles={{
-        body: {
+        container: {
           border: '1px solid var(--color-border)',
           padding: '12px',
           borderRadius: '8px'
