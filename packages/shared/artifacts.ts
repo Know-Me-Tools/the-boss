@@ -255,7 +255,7 @@ export const ARTIFACT_PACKAGE_REGISTRY: ArtifactPackageRegistryEntry[] = [
     id: 'html-htmx',
     kind: 'html-library',
     packageName: 'htmx.org',
-    version: '2.0.9',
+    version: '2.0.8',
     description: 'Pinned htmx runtime available to enhanced HTML artifacts.',
     runtimeKinds: ['html']
   },
@@ -370,6 +370,37 @@ const HTML_HTMX_ALPINE_ARTIFACT_LANGUAGE_ALIASES = new Set([
   'html-alpine-htmx'
 ])
 
+function looksLikeHtmlDocument(source: string | undefined): boolean {
+  if (!source) {
+    return false
+  }
+
+  const trimmed = source.trim()
+
+  return /^(?:<!doctype\s+html|<html\b|<head\b|<body\b)/i.test(trimmed)
+}
+
+function looksLikeReactArtifactSource(source: string | undefined): boolean {
+  if (!source || looksLikeHtmlDocument(source)) {
+    return false
+  }
+
+  const hasReactImport =
+    /\bfrom\s+['"]react['"]/.test(source) ||
+    /\brequire\(\s*['"]react['"]\s*\)/.test(source) ||
+    /\bfrom\s+['"]react-dom(?:\/client)?['"]/.test(source)
+  const hasModuleSyntax = /^\s*import\s.+from\s+['"][^'"]+['"]/m.test(source) || /^\s*export\s+default\b/m.test(source)
+  const hasTypeScriptDeclarations = /\btype\s+[A-Z]\w*\s*=/.test(source) || /\binterface\s+[A-Z]\w*\s*{/.test(source)
+  const hasJsx =
+    /return\s*\(\s*<[\w]/.test(source) ||
+    /return\s+<[\w]/.test(source) ||
+    /=>\s*<[\w]/.test(source) ||
+    /<[A-Za-z][A-Za-z0-9_.-]*(?:\s|>)/.test(source) ||
+    /<>\s*/.test(source)
+
+  return hasJsx && (hasReactImport || hasModuleSyntax || hasTypeScriptDeclarations)
+}
+
 function detectHtmlRuntimeProfileId(
   normalizedLanguage: string,
   source: string | undefined,
@@ -423,11 +454,31 @@ export function parseArtifactLanguage(
   defaults?: Pick<ArtifactSettings, 'defaultHtmlRuntimeProfileId' | 'defaultReactRuntimeProfileId'>,
   source?: string
 ): ArtifactLanguageDescriptor | null {
-  if (!language) {
-    return null
+  const normalized = language?.toLowerCase() ?? ''
+
+  if (REACT_ARTIFACT_LANGUAGE_ALIASES.has(normalized) || LEGACY_REACT_ARTIFACT_LANGUAGE_ALIASES.has(normalized)) {
+    const profileId = defaults?.defaultReactRuntimeProfileId ?? 'react-default'
+
+    return {
+      kind: 'react',
+      runtimeProfileId: profileId,
+      displayType: 'React/TSX Artifact',
+      editorLanguage: 'tsx',
+      sourceLanguage: normalized === 'jsx-artifact' ? 'jsx' : 'tsx'
+    }
   }
 
-  const normalized = language.toLowerCase()
+  if (looksLikeReactArtifactSource(source)) {
+    const profileId = defaults?.defaultReactRuntimeProfileId ?? 'react-default'
+
+    return {
+      kind: 'react',
+      runtimeProfileId: profileId,
+      displayType: 'React/TSX Artifact',
+      editorLanguage: 'tsx',
+      sourceLanguage: 'tsx'
+    }
+  }
 
   const htmlRuntimeProfileId = detectHtmlRuntimeProfileId(normalized, source, defaults)
 
@@ -440,18 +491,6 @@ export function parseArtifactLanguage(
       displayType: profile?.label ?? 'HTML',
       editorLanguage: 'html',
       sourceLanguage: 'html'
-    }
-  }
-
-  if (REACT_ARTIFACT_LANGUAGE_ALIASES.has(normalized) || LEGACY_REACT_ARTIFACT_LANGUAGE_ALIASES.has(normalized)) {
-    const profileId = defaults?.defaultReactRuntimeProfileId ?? 'react-default'
-
-    return {
-      kind: 'react',
-      runtimeProfileId: profileId,
-      displayType: 'React/TSX Artifact',
-      editorLanguage: 'tsx',
-      sourceLanguage: normalized === 'jsx-artifact' ? 'jsx' : 'tsx'
     }
   }
 

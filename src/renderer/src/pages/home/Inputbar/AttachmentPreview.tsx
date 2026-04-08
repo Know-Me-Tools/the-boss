@@ -98,7 +98,7 @@ export const FileNameRender: FC<{ file: FileMetadata }> = ({ file }) => {
   return (
     <Tooltip
       styles={{
-        body: {
+        container: {
           padding: 5
         }
       }}

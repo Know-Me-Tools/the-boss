@@ -8,26 +8,19 @@ import {
   sendToolApprovalNotification,
   setToolIdToNameMapping
 } from '@renderer/utils/userConfirmation'
-import { type Tool, type ToolSet } from 'ai'
+import type { ToolSet } from 'ai'
 import { jsonSchema, tool } from 'ai'
 import type { JSONSchema7 } from 'json-schema'
 
 const logger = loggerService.withContext('MCP-utils')
 
 // Setup tools configuration based on provided parameters
-export function setupToolsConfig(
-  mcpTools?: MCPTool[],
-  allowedTools?: string[]
-): Record<string, Tool<any, any>> | undefined {
-  let tools: ToolSet = {}
-
+export function setupToolsConfig(mcpTools?: MCPTool[], allowedTools?: string[]): ToolSet | undefined {
   if (!mcpTools?.length) {
     return undefined
   }
 
-  tools = convertMcpToolsToAiSdkTools(mcpTools, allowedTools)
-
-  return tools
+  return convertMcpToolsToAiSdkTools(mcpTools, allowedTools)
 }
 
 /**

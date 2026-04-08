@@ -265,8 +265,8 @@ export const ContentSearch = React.forwardRef<ContentSearchRef, Props>(
     }, [_searchHandlerDebounce])
 
     const userInputHandler = useCallback(
-      (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value.trim()
+      (event: React.FormEvent<HTMLInputElement>) => {
+        const value = event.currentTarget.value.trim()
         if (value.length === 0) {
           resetSearch()
         } else {

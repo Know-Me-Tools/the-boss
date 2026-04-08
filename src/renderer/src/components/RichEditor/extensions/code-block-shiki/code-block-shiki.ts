@@ -11,14 +11,19 @@ export interface CodeBlockShikiOptions extends CodeBlockOptions {
 }
 export const CodeBlockShiki = CodeBlock.extend<CodeBlockShikiOptions>({
   addOptions() {
+    const parentOptions = this.parent?.()
+
     return {
-      ...this.parent?.(),
-      languageClassPrefix: 'language-',
-      exitOnTripleEnter: true,
-      exitOnArrowDown: true,
+      ...parentOptions,
+      languageClassPrefix: parentOptions?.languageClassPrefix ?? 'language-',
+      exitOnTripleEnter: parentOptions?.exitOnTripleEnter ?? true,
+      exitOnArrowDown: parentOptions?.exitOnArrowDown ?? true,
+      enableTabIndentation: parentOptions?.enableTabIndentation ?? false,
+      tabSize: parentOptions?.tabSize ?? 4,
       defaultLanguage: 'text',
       theme: 'one-light',
       HTMLAttributes: {
+        ...parentOptions?.HTMLAttributes,
         class: 'code-block-shiki'
       }
     }

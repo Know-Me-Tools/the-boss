@@ -1,3 +1,4 @@
+import { renderArtifactCard } from '@renderer/components/CodeBlockView/renderArtifactCard'
 import CodeViewer from '@renderer/components/CodeViewer'
 import { getLanguageByFilePath } from '@renderer/utils/code-language'
 import { formatFileSize } from '@renderer/utils/file'
@@ -63,6 +64,13 @@ export function ReadTool({
   const language = getLanguageByFilePath(input?.file_path ?? '')
   const { data: truncatedOutput, isTruncated, originalLength } = truncateOutput(outputString)
   const strippedOutput = truncatedOutput ? stripLineNumbers(truncatedOutput) : null
+  const artifactCard =
+    strippedOutput && input?.file_path
+      ? renderArtifactCard({
+          filePath: input.file_path,
+          source: strippedOutput
+        })
+      : null
 
   return {
     key: AgentToolsType.Read,
@@ -86,14 +94,16 @@ export function ReadTool({
     ),
     children: strippedOutput ? (
       <div>
-        <CodeViewer
-          value={strippedOutput}
-          language={language}
-          expanded={false}
-          wrapped={false}
-          maxHeight={240}
-          options={{ lineNumbers: true }}
-        />
+        {artifactCard || (
+          <CodeViewer
+            value={strippedOutput}
+            language={language}
+            expanded={false}
+            wrapped={false}
+            maxHeight={240}
+            options={{ lineNumbers: true }}
+          />
+        )}
         {isTruncated && <TruncatedIndicator originalLength={originalLength} />}
       </div>
     ) : (

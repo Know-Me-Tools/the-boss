@@ -20,6 +20,10 @@
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
     "paths": {
+      "ai": ["./node_modules/ai"],
+      "@ai-sdk/provider": ["./node_modules/@ai-sdk/provider"],
+      "@ai-sdk/provider-utils": ["./node_modules/@ai-sdk/provider-utils"],
+      "@tiptap/*": ["./node_modules/@tiptap/*"],
       "@logger": ["./src/renderer/src/services/LoggerService"],
       "@renderer/*": ["./src/renderer/src/*"],
       "@shared/*": ["./packages/shared/*"],

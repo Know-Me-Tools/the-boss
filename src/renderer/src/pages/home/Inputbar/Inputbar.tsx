@@ -220,7 +220,6 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
   useEffect(() => {
     return () => onUnmount(assistant.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistant.id])
 
   const placeholderText = enableQuickPanelTriggers

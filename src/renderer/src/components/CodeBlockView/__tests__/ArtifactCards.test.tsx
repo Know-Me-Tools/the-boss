@@ -95,6 +95,12 @@ describe('artifact cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined)
+      }
+    })
+
     Object.defineProperty(window, 'api', {
       configurable: true,
       value: {
@@ -108,11 +114,20 @@ describe('artifact cards', () => {
         file: {
           createTempFile: vi.fn().mockResolvedValue('/tmp/artifact-preview.html'),
           write: vi.fn().mockResolvedValue(undefined),
+          openPath: vi.fn().mockResolvedValue(undefined),
           save: vi.fn().mockResolvedValue(undefined)
         },
         shell: {
           openExternal: vi.fn()
         }
+      }
+    })
+
+    Object.defineProperty(window, 'toast', {
+      configurable: true,
+      value: {
+        success: vi.fn(),
+        error: vi.fn()
       }
     })
   })
@@ -198,5 +213,124 @@ describe('artifact cards', () => {
         script: 'compiledReactArtifact()'
       })
     )
+  })
+
+  it('opens HTML artifact previews via the file-open IPC instead of file:// openExternal', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    render(<HtmlArtifactsCard html="<div>Hello</div>" runtimeProfileId="html" />)
+
+    await waitFor(() => {
+      expect(mocks.buildHtmlArtifactPreviewDocument).toHaveBeenCalled()
+    })
+
+    fireEvent.click(getButtonByText('chat.artifacts.button.openExternal'))
+
+    await waitFor(() => {
+      expect(window.api.file.write).toHaveBeenCalledWith(
+        '/tmp/artifact-preview.html',
+        '<!doctype html><html><body>wrapped html preview</body></html>'
+      )
+    })
+
+    expect(window.api.file.openPath).toHaveBeenCalledWith('/tmp/artifact-preview.html')
+    expect(window.api.shell.openExternal).not.toHaveBeenCalled()
+  })
+
+  it('copies HTML artifact source from the card action row', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    render(<HtmlArtifactsCard html="<div>Hello</div>" runtimeProfileId="html" />)
+
+    fireEvent.click(getButtonByText('code_block.copy.label'))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('<div>Hello</div>')
+    })
+
+    expect(window.toast.success).toHaveBeenCalledWith('code_block.copy.success')
+  })
+
+  it('opens React artifact previews via the file-open IPC instead of file:// openExternal', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    render(
+      <ReactArtifactsCard
+        code="export default function App() { return <div>Hello</div> }"
+        runtimeProfileId="react-default"
+        sourceLanguage="tsx"
+      />
+    )
+
+    fireEvent.click(getButtonByText('chat.artifacts.button.openExternal'))
+
+    await waitFor(() => {
+      expect(window.api.artifacts.compileReact).toHaveBeenCalled()
+    })
+
+    await waitFor(() => {
+      expect(window.api.file.write).toHaveBeenCalledWith(
+        '/tmp/artifact-preview.html',
+        '<!doctype html><html><body>wrapped react preview</body></html>'
+      )
+    })
+
+    expect(window.api.file.openPath).toHaveBeenCalledWith('/tmp/artifact-preview.html')
+    expect(window.api.shell.openExternal).not.toHaveBeenCalled()
+  })
+
+  it('copies React artifact source from the card action row', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    const source = 'export default function App() { return <div>Hello</div> }'
+    render(<ReactArtifactsCard code={source} runtimeProfileId="react-default" sourceLanguage="tsx" />)
+
+    fireEvent.click(getButtonByText('code_block.copy.label'))
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(source)
+    })
+
+    expect(window.toast.success).toHaveBeenCalledWith('code_block.copy.success')
   })
 })

@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { CopyIcon, FilePngIcon } from '@renderer/components/Icons'
@@ -6,12 +7,13 @@ import { useTemporaryValue } from '@renderer/hooks/useTemporaryValue'
 import { classNames } from '@renderer/utils'
 import { captureScrollableIframeAsBlob, captureScrollableIframeAsDataURL } from '@renderer/utils/image'
 import type { ArtifactRecordDraft } from '@shared/artifacts'
-import { Button, Dropdown, Modal, Splitter, Tooltip, Typography } from 'antd'
+import { Alert, Button, Dropdown, Modal, Splitter, Tooltip, Typography } from 'antd'
 import {
   BookMarked,
   Camera,
   Check,
   Code,
+  Copy,
   Eye,
   Maximize2,
   Minimize2,
@@ -22,6 +24,8 @@ import {
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
+
+const logger = loggerService.withContext('ArtifactPopup')
 
 interface CodePanelProps {
   codeEditorRef: React.RefObject<CodeEditorHandles | null>
@@ -130,9 +134,16 @@ const ArtifactPopup = ({
   const [isFullscreen, setIsFullscreen] = useState(true)
   const [saved, setSaved] = useTemporaryValue(false, 2000)
   const [savingToLibrary, setSavingToLibrary] = useState(false)
+  const [librarySaveError, setLibrarySaveError] = useState<string | null>(null)
   const [splitSizes, setSplitSizes] = useState<string[]>(['50%', '50%'])
   const codeEditorRef = useRef<CodeEditorHandles>(null)
   const previewFrameRef = useRef<HTMLIFrameElement>(null)
+
+  useEffect(() => {
+    if (!open) {
+      setLibrarySaveError(null)
+    }
+  }, [open])
 
   useEffect(() => {
     const disposeSubscriptionEvents = window.api.services.onSubscriptionEvent((event) => {
@@ -267,13 +278,28 @@ const ArtifactPopup = ({
       const source = codeEditorRef.current?.getContent?.() ?? code
       const draft = await createLibraryDraft(source)
       await window.api.artifacts.save(draft)
+      setLibrarySaveError(null)
       window.toast.success(t('settings.artifacts.library.save_success'))
     } catch (error) {
-      window.toast.error(error instanceof Error ? error.message : t('settings.artifacts.library.save_failed'))
+      const message = error instanceof Error ? error.message : t('settings.artifacts.library.save_failed')
+      logger.error('Failed to save artifact to library', error instanceof Error ? error : new Error(String(error)))
+      setLibrarySaveError(message)
+      window.toast.error(message)
     } finally {
       setSavingToLibrary(false)
     }
   }, [code, createLibraryDraft, t])
+
+  const handleCopySource = useCallback(async () => {
+    try {
+      const source = codeEditorRef.current?.getContent?.() ?? code
+      await navigator.clipboard.writeText(source)
+      window.toast.success(t('code_block.copy.success'))
+    } catch (error) {
+      logger.error('Failed to copy artifact source', error instanceof Error ? error : new Error(String(error)))
+      window.toast.error(t('code_block.copy.failed'))
+    }
+  }, [code, t])
 
   const handleCapture = useCallback(
     async (to: 'file' | 'clipboard') => {
@@ -334,12 +360,22 @@ const ArtifactPopup = ({
       </HeaderCenter>
 
       <HeaderRight onDoubleClick={(e) => e.stopPropagation()}>
+        <Tooltip title={t('code_block.copy.source')} mouseLeaveDelay={0}>
+          <Button
+            type="text"
+            icon={<Copy size={16} />}
+            className="nodrag"
+            aria-label={t('code_block.copy.source')}
+            onClick={() => void handleCopySource()}
+          />
+        </Tooltip>
         {createLibraryDraft && (
           <Tooltip title={t('settings.artifacts.library.save_action')} mouseLeaveDelay={0}>
             <Button
               type="text"
               icon={<BookMarked size={16} />}
               className="nodrag"
+              aria-label={t('settings.artifacts.library.save_action')}
               loading={savingToLibrary}
               onClick={() => void handleSaveToLibrary()}
             />
@@ -399,6 +435,16 @@ const ArtifactPopup = ({
       footer={null}
       closable={false}>
       <Container>
+        {librarySaveError && (
+          <ErrorBanner
+            banner
+            showIcon
+            type="error"
+            message={librarySaveError}
+            closable
+            onClose={() => setLibrarySaveError(null)}
+          />
+        )}
         <Splitter onResize={handlePanelResize}>
           <Splitter.Panel size={panelSizes[0]} min={viewMode === 'split' ? '25%' : 0}>
             <PanelWrapper $hidden={viewMode === 'preview'}>
@@ -572,11 +618,16 @@ const ViewButton = styled(Button)`
 
 const Container = styled.div`
   display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
   flex: 1;
   background: var(--color-background);
   overflow: hidden;
+`
+
+const ErrorBanner = styled(Alert)`
+  margin: 12px 12px 0;
 `
 
 const PanelWrapper = styled.div<{ $hidden: boolean }>`

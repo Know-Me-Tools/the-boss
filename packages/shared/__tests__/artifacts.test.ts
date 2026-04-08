@@ -79,4 +79,46 @@ describe('parseArtifactLanguage', () => {
       runtimeProfileId: 'html+htmx+alpine'
     })
   })
+
+  it('promotes mislabeled html fences that contain React/TSX source into the React runtime', () => {
+    expect(
+      parseArtifactLanguage(
+        'html',
+        {
+          defaultHtmlRuntimeProfileId: 'html',
+          defaultReactRuntimeProfileId: 'react-default'
+        },
+        [
+          "import React, { useState } from 'react'",
+          '',
+          'type AgentStatus = "idle" | "running"',
+          '',
+          'export default function App() {',
+          '  return <div>Hello</div>',
+          '}'
+        ].join('\n')
+      )
+    ).toMatchObject({
+      kind: 'react',
+      runtimeProfileId: 'react-default',
+      editorLanguage: 'tsx',
+      sourceLanguage: 'tsx'
+    })
+  })
+
+  it('detects React artifacts even when the fence has no explicit language', () => {
+    expect(
+      parseArtifactLanguage(
+        null,
+        {
+          defaultHtmlRuntimeProfileId: 'html',
+          defaultReactRuntimeProfileId: 'react-default'
+        },
+        "import React from 'react'\nexport default function App() { return <div>Hello</div> }"
+      )
+    ).toMatchObject({
+      kind: 'react',
+      runtimeProfileId: 'react-default'
+    })
+  })
 })

@@ -35,7 +35,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       width={700}
       transitionName="animation-move-down"
       styles={{
-        content: {
+        container: {
           borderRadius: 20,
           padding: 0,
           overflow: 'hidden',

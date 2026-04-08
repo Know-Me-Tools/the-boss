@@ -53,14 +53,14 @@ const baseSkillCompleteChunk: SkillCompleteChunk = {
 // ---------------------------------------------------------------------------
 
 describe('StreamProcessingService – SKILL_* routing', () => {
-  let onSkillActivated: ReturnType<typeof vi.fn>
-  let onSkillContentDelta: ReturnType<typeof vi.fn>
-  let onSkillComplete: ReturnType<typeof vi.fn>
+  let onSkillActivated: (data: SkillActivatedChunk) => void
+  let onSkillContentDelta: (data: SkillContentDeltaChunk) => void
+  let onSkillComplete: (data: SkillCompleteChunk) => void
 
   beforeEach(() => {
-    onSkillActivated = vi.fn()
-    onSkillContentDelta = vi.fn()
-    onSkillComplete = vi.fn()
+    onSkillActivated = vi.fn<(data: SkillActivatedChunk) => void>()
+    onSkillContentDelta = vi.fn<(data: SkillContentDeltaChunk) => void>()
+    onSkillComplete = vi.fn<(data: SkillCompleteChunk) => void>()
   })
 
   describe('SKILL_ACTIVATED chunk', () => {
@@ -77,7 +77,7 @@ describe('StreamProcessingService – SKILL_* routing', () => {
     })
 
     it('accepts async callbacks without throwing', () => {
-      const asyncCallback = vi.fn().mockResolvedValue(undefined)
+      const asyncCallback = vi.fn<(data: SkillActivatedChunk) => Promise<void>>().mockResolvedValue(undefined)
       const processor = createStreamProcessor({ onSkillActivated: asyncCallback })
       expect(() => processor(baseSkillActivatedChunk)).not.toThrow()
       expect(asyncCallback).toHaveBeenCalledWith(baseSkillActivatedChunk)

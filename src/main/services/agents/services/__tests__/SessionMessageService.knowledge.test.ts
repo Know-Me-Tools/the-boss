@@ -207,7 +207,7 @@ describe('SessionMessageService knowledge retrieval', () => {
     )
   })
 
-  it('uses the session override to disable retrieval even when the agent default is on', async () => {
+  it('uses the session override to force retrieval when force-search mode is selected', async () => {
     vi.spyOn(sessionMessageService as any, 'getLastAgentSessionId').mockResolvedValue('')
     vi.spyOn(sessionMessageService as any, 'getPersistedSession').mockResolvedValue({
       ...baseSession,
@@ -258,15 +258,17 @@ describe('SessionMessageService knowledge retrieval', () => {
     const parts = await readAllParts(stream)
     await completion
 
-    expect(knowledgeService.search).not.toHaveBeenCalled()
+    expect(knowledgeService.search).toHaveBeenCalledTimes(1)
     expect(invokeMock).toHaveBeenCalledWith(
-      'Where is the install guide?',
+      expect.stringContaining('Please answer the question based on the reference materials'),
       expect.objectContaining({ id: 'session-1' }),
       expect.any(AbortController),
       '',
       expect.any(Object),
       undefined
     )
-    expect(parts.map((part) => part.type)).not.toContain('data-external-tool-complete')
+    expect(parts.map((part) => part.type)).toEqual(
+      expect.arrayContaining(['data-external-tool-in-progress', 'data-external-tool-complete'])
+    )
   })
 })

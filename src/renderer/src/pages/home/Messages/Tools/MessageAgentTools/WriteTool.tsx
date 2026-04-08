@@ -1,3 +1,4 @@
+import { renderArtifactCard } from '@renderer/components/CodeBlockView/renderArtifactCard'
 import CodeViewer from '@renderer/components/CodeViewer'
 import { getLanguageByFilePath } from '@renderer/utils/code-language'
 import type { CollapseProps } from 'antd'
@@ -14,6 +15,12 @@ export function WriteTool({
 }): NonNullable<CollapseProps['items']>[number] {
   const filename = input?.file_path?.split('/').pop()
   const language = getLanguageByFilePath(input?.file_path ?? '')
+  const artifactCard = input
+    ? renderArtifactCard({
+        filePath: input.file_path,
+        source: input.content ?? ''
+      })
+    : null
 
   return {
     key: AgentToolsType.Write,
@@ -31,14 +38,16 @@ export function WriteTool({
       />
     ),
     children: input ? (
-      <CodeViewer
-        value={input.content ?? ''}
-        language={language}
-        expanded={false}
-        wrapped={false}
-        maxHeight={240}
-        options={{ lineNumbers: true }}
-      />
+      artifactCard || (
+        <CodeViewer
+          value={input.content ?? ''}
+          language={language}
+          expanded={false}
+          wrapped={false}
+          maxHeight={240}
+          options={{ lineNumbers: true }}
+        />
+      )
     ) : (
       <SkeletonValue value={null} width="100%" fallback={null} />
     )

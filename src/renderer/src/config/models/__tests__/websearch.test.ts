@@ -288,19 +288,23 @@ describe('websearch helpers', () => {
       expect(isOpenAIWebSearchModel(createModel({ id: 'o3-mini' }))).toBe(true)
     })
 
-    it.each(['gpt-4.1-preview', 'gpt-4o-2024-05-13', 'o4-mini', 'gpt-5-explorer'])(
-      'treats %s as an OpenAI web search model',
-      (id) => {
-        expect(isOpenAIWebSearchModel(createModel({ id }))).toBe(true)
-      }
-    )
+    it.each([
+      'gpt-4.1-preview',
+      'gpt-4o-2024-05-13',
+      'o4-mini',
+      'gpt-5-explorer'
+    ])('treats %s as an OpenAI web search model', (id) => {
+      expect(isOpenAIWebSearchModel(createModel({ id }))).toBe(true)
+    })
 
-    it.each(['gpt-4o-image-preview', 'gpt-4.1-nano', 'gpt-5.1-chat', 'gpt-image-1'])(
-      'excludes %s from OpenAI web search',
-      (id) => {
-        expect(isOpenAIWebSearchModel(createModel({ id }))).toBe(false)
-      }
-    )
+    it.each([
+      'gpt-4o-image-preview',
+      'gpt-4.1-nano',
+      'gpt-5.1-chat',
+      'gpt-image-1'
+    ])('excludes %s from OpenAI web search', (id) => {
+      expect(isOpenAIWebSearchModel(createModel({ id }))).toBe(false)
+    })
 
     it.each(['gpt-4o-search-preview', 'gpt-4o-mini-search-preview'])('flags %s as chat-completion-only', (id) => {
       expect(isOpenAIWebSearchChatCompletionOnlyModel(createModel({ id }))).toBe(true)
@@ -320,26 +324,31 @@ describe('websearch helpers', () => {
   })
 
   describe('provider-specific regex coverage', () => {
-    it.each(['qwen-turbo', 'qwen-max-0919', 'qwen3-max', 'qwen-plus-2024', 'qwq-32b'])(
-      'dashscope treats %s as searchable',
-      (id) => {
-        providerMock.mockReturnValue(createProvider({ id: 'dashscope' }))
-        expect(isWebSearchModel(createModel({ id }))).toBe(true)
-      }
-    )
+    it.each([
+      'qwen-turbo',
+      'qwen-max-0919',
+      'qwen3-max',
+      'qwen-plus-2024',
+      'qwq-32b'
+    ])('dashscope treats %s as searchable', (id) => {
+      providerMock.mockReturnValue(createProvider({ id: 'dashscope' }))
+      expect(isWebSearchModel(createModel({ id }))).toBe(true)
+    })
 
     it.each(['qwen-1.5-chat', 'custom-model'])('dashscope ignores %s', (id) => {
       providerMock.mockReturnValue(createProvider({ id: 'dashscope' }))
       expect(isWebSearchModel(createModel({ id }))).toBe(false)
     })
 
-    it.each(['sonar', 'sonar-pro', 'sonar-reasoning-pro', 'sonar-deep-research'])(
-      'perplexity provider supports %s',
-      (id) => {
-        providerMock.mockReturnValue(createProvider({ id: SystemProviderIds.perplexity }))
-        expect(isWebSearchModel(createModel({ id }))).toBe(true)
-      }
-    )
+    it.each([
+      'sonar',
+      'sonar-pro',
+      'sonar-reasoning-pro',
+      'sonar-deep-research'
+    ])('perplexity provider supports %s', (id) => {
+      providerMock.mockReturnValue(createProvider({ id: SystemProviderIds.perplexity }))
+      expect(isWebSearchModel(createModel({ id }))).toBe(true)
+    })
 
     it.each([
       'gemini-2.0-flash-latest',

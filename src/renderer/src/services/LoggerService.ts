@@ -33,6 +33,26 @@ class LoggerService {
   private module: string = ''
   private context: Record<string, any> = {}
 
+  private inferWindowSource(): string | undefined {
+    if (IS_WORKER) {
+      return undefined
+    }
+
+    const pathname = window.location?.pathname || ''
+    const entryFile = pathname.split('/').pop() || 'index.html'
+
+    const entryToWindowMap: Record<string, string> = {
+      '': 'mainWindow',
+      'index.html': 'mainWindow',
+      'miniWindow.html': 'MiniWindow',
+      'selectionToolbar.html': 'SelectionToolbar',
+      'selectionAction.html': 'SelectionActionWindow',
+      'traceWindow.html': 'TraceWindow'
+    }
+
+    return entryToWindowMap[entryFile]
+  }
+
   private constructor() {
     if (IS_DEV) {
       if (
@@ -117,8 +137,12 @@ class LoggerService {
    * @param data - Additional data to log
    */
   private processLog(level: LogLevel, message: string, data: any[]): void {
-    let windowSource = this.window
-    if (!this.window) {
+    let windowSource = this.window || this.inferWindowSource()
+    if (!this.window && windowSource) {
+      this.window = windowSource
+    }
+
+    if (!windowSource) {
       console.error('[LoggerService] window source not initialized, please initialize window source first')
       windowSource = 'UNKNOWN'
     }

@@ -1,4 +1,5 @@
 import { CodeOutlined } from '@ant-design/icons'
+import { loggerService } from '@logger'
 import {
   buildReactArtifactPreviewDocument,
   getThemeCss,
@@ -9,7 +10,7 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import type { ThemeMode } from '@renderer/types'
 import type { ArtifactOriginRef, ArtifactSourceLanguage, ReactArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
-import { Atom, DownloadIcon, LinkIcon, Sparkles } from 'lucide-react'
+import { Atom, Copy, DownloadIcon, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +18,8 @@ import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
 
 import ArtifactPopup from './ArtifactPopup'
+
+const logger = loggerService.withContext('ReactArtifactsCard')
 
 interface Props {
   code: string
@@ -146,13 +149,26 @@ const ReactArtifactsCard: FC<Props> = ({
     const document = previewDocument || (await compilePreview())
     const path = await window.api.file.createTempFile('react-artifact-preview.html')
     await window.api.file.write(path, document)
-    void window.api.shell.openExternal(`file://${path}`)
+    void window.api.file.openPath(path)
   }, [compilePreview, previewDocument])
 
   const handleDownload = async () => {
-    await window.api.file.save(`${title.replace(/[^\w.-]+/g, '-').toLowerCase() || 'react-artifact'}.tsx`, sourceCode)
+    await window.api.file.save(
+      `${title.replace(/[^\w.-]+/g, '-').toLowerCase() || 'react-artifact'}.${sourceLanguage}`,
+      sourceCode
+    )
     window.toast.success(t('message.download.success'))
   }
+
+  const handleCopySource = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(sourceCode)
+      window.toast.success(t('code_block.copy.success'))
+    } catch (error) {
+      logger.error('Failed to copy React artifact source', error as Error)
+      window.toast.error(t('code_block.copy.failed'))
+    }
+  }, [sourceCode, t])
 
   const loadingDocument = `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.react_compiling')}</body></html>`
 
@@ -186,7 +202,7 @@ const ReactArtifactsCard: FC<Props> = ({
               <TerminalPreview $theme={theme}>
                 <TerminalContent $theme={theme}>
                   <TerminalLine>
-                    <TerminalPrompt $theme={theme}>tsx</TerminalPrompt>
+                    <TerminalPrompt $theme={theme}>{sourceLanguage}</TerminalPrompt>
                     <TerminalCodeLine $theme={theme}>
                       {sourceCode.trim().split('\n').slice(-4).join('\n')}
                       <TerminalCursor $theme={theme} />
@@ -198,12 +214,26 @@ const ReactArtifactsCard: FC<Props> = ({
                 <Button icon={<CodeOutlined />} onClick={() => setIsPopupOpen(true)} type="primary">
                   {t('chat.artifacts.button.preview')}
                 </Button>
+                <Button
+                  icon={<Copy size={14} />}
+                  onClick={() => void handleCopySource()}
+                  type="text"
+                  disabled={!hasContent}>
+                  {t('code_block.copy.label')}
+                </Button>
               </ButtonContainer>
             </>
           ) : (
             <ButtonContainer>
               <Button icon={<CodeOutlined />} onClick={() => setIsPopupOpen(true)} type="text" disabled={!hasContent}>
                 {t('chat.artifacts.button.preview')}
+              </Button>
+              <Button
+                icon={<Copy size={14} />}
+                onClick={() => void handleCopySource()}
+                type="text"
+                disabled={!hasContent}>
+                {t('code_block.copy.label')}
               </Button>
               <Button icon={<LinkIcon size={14} />} onClick={handleOpenExternal} type="text" disabled={!hasContent}>
                 {t('chat.artifacts.button.openExternal')}
@@ -220,7 +250,7 @@ const ReactArtifactsCard: FC<Props> = ({
         open={isPopupOpen}
         title={title}
         code={sourceCode}
-        codeLanguage="tsx"
+        codeLanguage={sourceLanguage}
         typeLabel="React/TSX Artifact"
         previewDocument={previewDocument || loadingDocument}
         createLibraryDraft={async (source) => {

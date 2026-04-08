@@ -23,7 +23,7 @@ import {
 import { UpgradeChannel } from '@shared/config/constant'
 import { Button, Progress, Radio, Row, Switch, Tag, Tooltip } from 'antd'
 import { debounce } from 'lodash'
-import { Briefcase, Bug, Building2, Github, Globe, Mail, Rss } from 'lucide-react'
+import { Briefcase, Bug, Building2, Globe, Mail, Rss } from 'lucide-react'
 import { BadgeQuestionMark } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
@@ -307,7 +307,7 @@ const AboutSettings: FC = () => {
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>
-            <Github size={18} />
+            <GithubOutlined style={{ fontSize: 18 }} />
             {t('settings.about.feedback.title')}
           </SettingRowTitle>
           <Button onClick={() => onOpenWebsite(PUBLIC_ISSUES_URL)}>{t('settings.about.feedback.button')}</Button>

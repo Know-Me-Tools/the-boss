@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import { getModel } from '@renderer/hooks/useModel'
 import type { AssistantMessage } from '@renderer/types'
+import jaison from '@renderer/utils/jaison'
 import {
   FactRetrievalSchema,
   getFactRetrievalMessages,
@@ -9,7 +10,6 @@ import {
   updateMemorySystemPrompt
 } from '@renderer/utils/memory-prompts'
 import type { MemoryConfig, MemoryItem } from '@types'
-import jaison from 'jaison/lib/index.js'
 
 import { fetchGenerate } from './ApiService'
 import MemoryService from './MemoryService'

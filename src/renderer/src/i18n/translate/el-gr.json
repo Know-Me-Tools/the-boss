@@ -418,6 +418,9 @@
         },
         "title": "Ρυθμίσεις για προχωρημένους"
       },
+      "contextSkills": {
+        "tab": "[to be translated]:Context & Skills"
+      },
       "essential": "Βασικές Ρυθμίσεις",
       "permissionMode": {
         "tab": "Λειτουργία Αδειών",
@@ -4024,6 +4027,68 @@
       "description": "Συνδέστε πράκτορες με πλατφόρμες μηνυμάτων όπως το Telegram, το Feishu, το Discord και άλλες.",
       "title": "Κανάλια"
     },
+    "contextStrategy": {
+      "agentConfiguration": "[to be translated]:Agent strategy defaults",
+      "agentLegacyStrategyWarning": "[to be translated]:This session used a strategy type that is not yet implemented for SDK sessions; threshold + /compact still applies. Saving will use SDK compaction (threshold) going forward.",
+      "agentPhase1Notice": "[to be translated]:Agent strategies (Phase 1): enabling a non-None strategy applies a token threshold and may run SDK /compact before your next message. Chat-style summarize/hierarchical pipelines are not applied to SDK sessions yet.",
+      "agentSessionsDescription": "[to be translated]:Optional defaults for autonomous agents. Per-agent and per-session settings can override. Uses SDK resume and may run /compact when token usage exceeds your threshold.",
+      "agentSessionsTitle": "[to be translated]:Agent context (SDK sessions)",
+      "agentSummarizationModel": "[to be translated]:Agent summarization model",
+      "assistantDescription": "[to be translated]:Automatically manages the assistant's conversation context before requests are sent. Conversation-specific settings can still override this default.",
+      "compactTriggerPlaceholder": "[to be translated]:Default 180000",
+      "compactTriggerTokens": "[to be translated]:Compact when prior turn ≥ tokens",
+      "compactTriggerTokensHelp": "[to be translated]:Uses the Claude Agent SDK session. When the last turn's total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).",
+      "configuration": "[to be translated]:Strategy Configuration",
+      "configurationHelp": "[to be translated]:Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.",
+      "configure": "[to be translated]:Configure",
+      "descriptions": {
+        "agent_sliding_window": "[to be translated]:Runs the Claude Agent SDK /compact when the last turn's total token usage reaches your threshold (resumed sessions). This is not the same as chat sliding-window trimming.",
+        "hierarchical": "[to be translated]:Three-tier memory system: recent messages verbatim, older messages summarized, key facts extracted. Best for long-running conversations.",
+        "none": "[to be translated]:No context management. May exceed model limits on long conversations.",
+        "sliding_window": "[to be translated]:Keeps only the most recent messages within the token budget. Simple and predictable.",
+        "summarize": "[to be translated]:Progressively summarizes older messages to preserve key information while reducing tokens.",
+        "truncate_middle": "[to be translated]:Preserves initial instructions and recent context, removes middle messages."
+      },
+      "globalDescription": "[to be translated]:Automatically manages conversation context to prevent exceeding model limits. This setting applies globally and can be overridden per assistant or conversation.",
+      "howItWorks": "[to be translated]:How It Works",
+      "inheritedStrategy": "[to be translated]:Currently using:",
+      "keepFirst": "[to be translated]:Keep First Messages",
+      "keepFirstHelp": "[to be translated]:Number of initial messages to preserve, such as setup instructions or early context.",
+      "keepLast": "[to be translated]:Keep Last Messages",
+      "keepLastHelp": "[to be translated]:Number of most recent messages to keep verbatim.",
+      "longTermBudget": "[to be translated]:Long-term Budget",
+      "longTermBudgetHelp": "[to be translated]:Token budget reserved for extracted long-term facts and preferences.",
+      "maxMessages": "[to be translated]:Max Messages",
+      "maxMessagesHelp": "[to be translated]:Maximum number of messages to keep. Leave empty for automatic (token-based) management.",
+      "midTermBudget": "[to be translated]:Mid-term Budget",
+      "midTermBudgetHelp": "[to be translated]:Token budget reserved for summarized mid-term memory.",
+      "noSummarizationModel": "[to be translated]:Select a summarization model in Context Management settings to enable this strategy.",
+      "selectModel": "[to be translated]:Model",
+      "selectModelPlaceholder": "[to be translated]:Select summarization model",
+      "shortTermTurns": "[to be translated]:Short-term Turns",
+      "shortTermTurnsHelp": "[to be translated]:Number of recent turns to preserve verbatim before summarization begins.",
+      "strategy": "[to be translated]:Strategy",
+      "summarizationModel": "[to be translated]:Summarization Model",
+      "summarizationModelDescription": "[to be translated]:This model will be used to generate conversation summaries. Choose a fast model to minimize latency. If not set, the current conversation model will be used.",
+      "summarizationModelHelp": "[to be translated]:Select a fast, lightweight model for generating summaries. Recommended: Claude Haiku, GPT-3.5 Turbo, or similar quick models.",
+      "summarizeThreshold": "[to be translated]:Summarize After Messages",
+      "summarizeThresholdHelp": "[to be translated]:Minimum number of messages before progressive summarization starts.",
+      "summaryMaxTokens": "[to be translated]:Summary Budget",
+      "summaryMaxTokensHelp": "[to be translated]:Maximum tokens allocated for the conversation summary.",
+      "title": "[to be translated]:Context Management",
+      "topicDescription": "[to be translated]:Manage context for this conversation only. This overrides the assistant default while keeping the same global safety rails.",
+      "types": {
+        "agent_sliding_window": "[to be translated]:SDK compaction (token threshold)",
+        "hierarchical": "[to be translated]:Hierarchical Memory",
+        "none": "[to be translated]:None (No Management)",
+        "sliding_window": "[to be translated]:Sliding Window",
+        "summarize": "[to be translated]:Progressive Summarization",
+        "truncate_middle": "[to be translated]:Keep First & Last"
+      },
+      "useAssistantDefault": "[to be translated]:Use Assistant Default",
+      "useGlobalDefault": "[to be translated]:Use Global Default",
+      "useInherited": "[to be translated]:Use Default"
+    },
     "data": {
       "app_data": {
         "copy_data_option": "Αντιγραφή δεδομένων, θα γίνει αυτόματα επανεκκίνηση και τα δεδομένα από τον αρχικό κατάλογο θα αντιγραφούν στο νέο κατάλογο",
@@ -5654,13 +5719,36 @@
         "summarized": "[to be translated]:Summarized"
       },
       "context_method": "[to be translated]:Context Management",
+      "embedding_model": {
+        "label": "[to be translated]:Embedding Model",
+        "placeholder": "[to be translated]:Use fastembed default"
+      },
       "max_tokens": "[to be translated]:Max Skill Tokens",
       "method": {
-        "embedding": "[to be translated]:Embedding (Semantic)",
-        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
-        "llm_delegated": "[to be translated]:LLM Delegated",
-        "llm_router": "[to be translated]:LLM Router",
-        "two_stage": "[to be translated]:Two-Stage"
+        "embedding": {
+          "description": "[to be translated]:Pure semantic retrieval. Uses the selected embedding model to score every skill and activate the top matches.",
+          "label": "[to be translated]:Embedding (Semantic)"
+        },
+        "hybrid": {
+          "description": "[to be translated]:Reciprocal-rank fusion of keyword and dense retrieval. Useful when exact terms matter as much as semantic similarity.",
+          "label": "[to be translated]:Hybrid (BM25 + Dense)"
+        },
+        "llm_delegated": {
+          "description": "[to be translated]:Embedding prefilter plus an LLM that selects the final skills and explains why. If no delegation model is chosen, the current chat or agent model is used.",
+          "label": "[to be translated]:LLM Delegated"
+        },
+        "llm_router": {
+          "description": "[to be translated]:Embedding prefilter plus an LLM router that ranks candidate skills. If no routing model is chosen, the current chat or agent model is used.",
+          "label": "[to be translated]:LLM Router"
+        },
+        "two_stage": {
+          "description": "[to be translated]:Keyword and BM25 candidate generation followed by embedding re-ranking. Good when you want tighter candidate filtering before dense scoring.",
+          "label": "[to be translated]:Two-Stage"
+        }
+      },
+      "routing_model": {
+        "label": "[to be translated]:Routing LLM Model",
+        "placeholder": "[to be translated]:Use current chat or agent model"
       },
       "selection_method": "[to be translated]:Selection Method",
       "similarity_threshold": "[to be translated]:Similarity Threshold",

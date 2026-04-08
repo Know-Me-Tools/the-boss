@@ -37,6 +37,8 @@ import { webSearchToolWithPreExtractedKeywords } from '../tools/WebSearchTool'
 
 const logger = loggerService.withContext('SearchOrchestrationPlugin')
 
+type KnowledgeSearchMode = 'disabled' | 'force' | 'intent'
+
 export const getMessageContent = (message: ModelMessage) => {
   if (typeof message.content === 'string') return message.content
   return message.content.reduce((acc, part) => {
@@ -45,6 +47,15 @@ export const getMessageContent = (message: ModelMessage) => {
     }
     return acc
   }, '')
+}
+
+export const getKnowledgeSearchMode = (assistant: Assistant): KnowledgeSearchMode => {
+  const knowledgeBaseIds = assistant.knowledge_bases?.map((base) => base.id)
+  if (isEmpty(knowledgeBaseIds)) {
+    return 'disabled'
+  }
+
+  return assistant.knowledgeRecognition === 'on' ? 'intent' : 'force'
 }
 
 // === Schema Definitions ===
@@ -273,12 +284,10 @@ export const searchOrchestrationPlugin = (
         userMessages[context.requestId] = lastUserMessage
 
         // 判断是否需要各种搜索
-        const knowledgeBaseIds = assistant.knowledge_bases?.map((base) => base.id)
-        const hasKnowledgeBase = !isEmpty(knowledgeBaseIds)
-        const knowledgeRecognition = assistant.knowledgeRecognition || 'off'
+        const knowledgeSearchMode = getKnowledgeSearchMode(assistant)
         const globalMemoryEnabled = selectGlobalMemoryEnabled(store.getState())
         const shouldWebSearch = !!assistant.webSearchProviderId
-        const shouldKnowledgeSearch = hasKnowledgeBase && knowledgeRecognition === 'on'
+        const shouldKnowledgeSearch = knowledgeSearchMode === 'intent'
         const shouldMemorySearch = globalMemoryEnabled && assistant.enableMemory
 
         // 执行意图分析
@@ -317,9 +326,8 @@ export const searchOrchestrationPlugin = (
         // }
 
         // 确保 tools 对象存在
-        if (!params.tools) {
-          params.tools = {}
-        }
+        const tools = params.tools ?? {}
+        params.tools = tools
 
         // 🌐 网络搜索工具配置
         if (analysisResult?.websearch && assistant.webSearchProviderId) {
@@ -328,7 +336,7 @@ export const searchOrchestrationPlugin = (
           if (needsSearch) {
             // onChunk({ type: ChunkType.EXTERNEL_TOOL_IN_PROGRESS })
             // logger.info('🌐 Adding web search tool with pre-extracted keywords')
-            params.tools['builtin_web_search'] = webSearchToolWithPreExtractedKeywords(
+            tools['builtin_web_search'] = webSearchToolWithPreExtractedKeywords(
               assistant.webSearchProviderId,
               analysisResult.websearch,
               context.requestId
@@ -337,12 +345,21 @@ export const searchOrchestrationPlugin = (
         }
 
         // 📚 知识库搜索工具配置
-        const knowledgeBaseIds = assistant.knowledge_bases?.map((base) => base.id)
-        const hasKnowledgeBase = !isEmpty(knowledgeBaseIds)
-        const knowledgeRecognition = assistant.knowledgeRecognition || 'off'
-        const shouldKnowledgeSearch = hasKnowledgeBase && knowledgeRecognition === 'on'
+        const knowledgeSearchMode = getKnowledgeSearchMode(assistant)
 
-        if (shouldKnowledgeSearch) {
+        if (knowledgeSearchMode === 'force') {
+          const userMessage = userMessages[context.requestId]
+          const directContent = getMessageContent(userMessage) || 'search'
+          tools['builtin_knowledge_search'] = knowledgeSearchTool(
+            assistant,
+            {
+              question: [directContent],
+              rewrite: directContent
+            },
+            topicId,
+            directContent
+          )
+        } else if (knowledgeSearchMode === 'intent') {
           // on 模式：根据意图识别结果决定是否添加工具
           const needsKnowledgeSearch =
             analysisResult?.knowledge &&
@@ -352,7 +369,7 @@ export const searchOrchestrationPlugin = (
           if (needsKnowledgeSearch && analysisResult.knowledge) {
             // logger.info('📚 Adding knowledge search tool (intent-based)')
             const userMessage = userMessages[context.requestId]
-            params.tools['builtin_knowledge_search'] = knowledgeSearchTool(
+            tools['builtin_knowledge_search'] = knowledgeSearchTool(
               assistant,
               analysisResult.knowledge,
               topicId,
@@ -365,7 +382,7 @@ export const searchOrchestrationPlugin = (
         const globalMemoryEnabled = selectGlobalMemoryEnabled(store.getState())
         if (globalMemoryEnabled && assistant.enableMemory) {
           // logger.info('🧠 Adding memory search tool')
-          params.tools['builtin_memory_search'] = memorySearchTool(assistant.id)
+          tools['builtin_memory_search'] = memorySearchTool(assistant.id)
         }
 
         // logger.info('🔧 Tools configured:', Object.keys(params.tools))

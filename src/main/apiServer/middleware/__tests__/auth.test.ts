@@ -37,7 +37,7 @@ describe('authMiddleware', () => {
       header: vi.fn()
     }
     res = {
-      status: statusMock
+      status: statusMock as unknown as Response['status']
     }
     next = vi.fn()
 

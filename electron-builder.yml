@@ -68,10 +68,17 @@ files:
   - "!node_modules/tesseract.js-core/{tesseract-core-lstm.js,tesseract-core-lstm.wasm,tesseract-core-lstm.wasm.js}" # we don't need source files
   - "!node_modules/tesseract.js-core/{tesseract-core-simd-lstm.js,tesseract-core-simd-lstm.wasm,tesseract-core-simd-lstm.wasm.js}" # we don't need source files
   - "!**/*.{h,iobj,ipdb,tlog,recipe,vcxproj,vcxproj.filters,Makefile,*.Makefile}" # filter .node build files
+  - "resources/**/*" # include all files in resources, and unpack them from asar for runtime access
 asarUnpack:
   - out/proxy/**
   - resources/**
   - "**/*.{metal,exp,lib}"
+  - "node_modules/@anthropic-ai/claude-agent-sdk/vendor/**"
+  - "node_modules/@libsql/**/*.node"
+  - "node_modules/@napi-rs/**/*.node"
+  - "node_modules/font-list/libs/**"
+  - "node_modules/selection-hook/**/*.node"
+  - "node_modules/sharp/**/*"
   - "node_modules/@img/sharp-libvips-*/**"
 
 win:

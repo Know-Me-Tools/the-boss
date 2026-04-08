@@ -37,7 +37,7 @@ You can use this tool as-is, or provide additionalContext to refine the search f
       // 获取助手的知识库配置
       const knowledgeBaseIds = assistant.knowledge_bases?.map((base) => base.id)
       const hasKnowledgeBase = !isEmpty(knowledgeBaseIds)
-      const knowledgeRecognition = assistant.knowledgeRecognition || 'on'
+      const knowledgeRecognition = assistant.knowledgeRecognition || 'off'
 
       // 检查是否有知识库
       if (!hasKnowledgeBase) {

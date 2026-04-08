@@ -120,6 +120,14 @@ vi.mock('@renderer/components/CodeViewer', () => ({
   default: ({ value }: any) => <pre data-testid="code-viewer">{value}</pre>
 }))
 
+vi.mock('@renderer/components/CodeBlockView/HtmlArtifactsCard', () => ({
+  default: ({ html }: { html: string }) => <div data-testid="html-artifact-card">{html}</div>
+}))
+
+vi.mock('@renderer/components/CodeBlockView/ReactArtifactsCard', () => ({
+  default: ({ code }: { code: string }) => <div data-testid="react-artifact-card">{code}</div>
+}))
+
 // Mock LoadingIcon
 vi.mock('@renderer/components/Icons', () => ({
   LoadingIcon: () => <span data-testid="loading-icon" />
@@ -307,6 +315,69 @@ describe('MessageAgentTools', () => {
 
       // Should render the complete tool with output
       expect(screen.getByText('Read File')).toBeInTheDocument()
+    })
+
+    it('renders WriteTool TSX files as React artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Write', name: 'Write', description: 'Write a file', type: 'provider' },
+        status: 'done',
+        arguments: {
+          file_path: '/tmp/PMPOStudio.tsx',
+          content: 'export default function PMPOStudio() { return <div>Studio</div> }'
+        }
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('react-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
+    it('renders WriteTool HTML files with HTMX markers as HTML artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Write', name: 'Write', description: 'Write a file', type: 'provider' },
+        status: 'done',
+        arguments: {
+          file_path: '/tmp/dashboard.html',
+          content: '<button hx-get="/clicked">Click me</button>'
+        }
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('html-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
+    it('renders ReadTool TSX files as React artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Read', name: 'Read', description: 'Read a file', type: 'provider' },
+        status: 'done',
+        arguments: { file_path: '/tmp/widget.tsx' },
+        response: 'export default function Widget() { return <div>Widget</div> }'
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('react-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
+    it('falls back to CodeViewer for non-artifact tool files', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Write', name: 'Write', description: 'Write a file', type: 'provider' },
+        status: 'done',
+        arguments: {
+          file_path: '/tmp/server.ts',
+          content: 'export const server = true'
+        }
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('code-viewer')).toBeInTheDocument()
+      expect(screen.queryByTestId('react-artifact-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('html-artifact-card')).not.toBeInTheDocument()
     })
 
     it('should render error state correctly', () => {

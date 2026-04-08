@@ -20,7 +20,7 @@ export class OcrApiClientFactory {
     let instance: OcrBaseApiClient
 
     // Extend other clients here
-    // eslint-disable-next-line prefer-const
+
     instance = new OcrExampleApiClient(provider)
 
     return instance

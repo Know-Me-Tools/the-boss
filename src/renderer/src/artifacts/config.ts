@@ -8,19 +8,24 @@ import {
   type HtmlArtifactRuntimeProfileId
 } from '@shared/artifacts'
 
-const HTML_LIBRARY_URLS: Record<string, string> = {
-  htmx: 'https://cdn.jsdelivr.net/npm/htmx.org@2.0.9/dist/htmx.min.js',
-  alpinejs: 'https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js'
-}
+const HTML_LIBRARY_URLS = {
+  htmx: {
+    primary: 'https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js',
+    fallback: 'https://unpkg.com/htmx.org@2.0.8/dist/htmx.min.js'
+  },
+  alpinejs: {
+    primary: 'https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js'
+  }
+} as const
 
 const MANAGED_HTML_LIBRARIES = [
   {
     ids: ['htmx.org'],
-    normalizedUrl: HTML_LIBRARY_URLS.htmx
+    normalizedUrl: HTML_LIBRARY_URLS.htmx.primary
   },
   {
     ids: ['alpinejs'],
-    normalizedUrl: HTML_LIBRARY_URLS.alpinejs
+    normalizedUrl: HTML_LIBRARY_URLS.alpinejs.primary
   }
 ] as const
 
@@ -346,6 +351,10 @@ function getArtifactCsp(internetEnabled: boolean): string {
     : "default-src 'self' data: blob: filesystem:; img-src https: http: data: blob:; style-src 'unsafe-inline'; script-src https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; connect-src 'none';"
 }
 
+function shouldForceArtifactInternetAccess(runtimeProfileId: HtmlArtifactRuntimeProfileId): boolean {
+  return runtimeProfileId.includes('htmx')
+}
+
 function getResolvedArtifactSettings(value: unknown): ArtifactSettings {
   const parsed = ArtifactSettingsSchema.safeParse(value)
   if (parsed.success) {
@@ -589,6 +598,34 @@ function getArtifactServiceBridgeScript(settings: ArtifactSettings, overrides: A
             })
           }
         }
+
+        const unsupportedLlmMethod = (method) => () =>
+          Promise.reject(
+            new Error(
+              'Artifact preview does not expose llm.' +
+                method +
+                '. Use artifactServices.invokeOperation(serviceId, operationId, input) instead.'
+            )
+          )
+
+        const llmCompatibilityTarget = function (serviceId, operationId, input = {}) {
+          if (typeof serviceId === 'string' && typeof operationId === 'string') {
+            return window.artifactServices.invokeOperation(serviceId, operationId, input)
+          }
+
+          return unsupportedLlmMethod('call')()
+        }
+
+        llmCompatibilityTarget.serviceIds = Array.from(allowedIds)
+        llmCompatibilityTarget.invokeOperation = (...args) => window.artifactServices.invokeOperation(...args)
+        llmCompatibilityTarget.subscribe = (...args) => window.artifactServices.subscribe(...args)
+        llmCompatibilityTarget.call = (...args) => llmCompatibilityTarget(...args)
+        llmCompatibilityTarget.tool = (...args) => llmCompatibilityTarget(...args)
+        llmCompatibilityTarget.complete = unsupportedLlmMethod('complete')
+        llmCompatibilityTarget.generate = unsupportedLlmMethod('generate')
+        llmCompatibilityTarget.chat = unsupportedLlmMethod('chat')
+
+        window.llm = llmCompatibilityTarget
       })()
     </script>
   `
@@ -640,6 +677,72 @@ function normalizeExternalLibraryReferences(source: string): string {
   })
 }
 
+function stripManagedLibraryScripts(source: string, normalizedUrls: string[]): string {
+  if (normalizedUrls.length === 0) {
+    return source
+  }
+
+  const escapedUrls = normalizedUrls.map((url) => url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const scriptRegex = new RegExp(`<script\\b[^>]*\\bsrc\\s*=\\s*(["'])(?:${escapedUrls})\\1[^>]*>\\s*</script>`, 'gi')
+
+  return source.replace(scriptRegex, '')
+}
+
+function buildManagedLibraryScripts(runtimeProfileId: HtmlArtifactRuntimeProfileId): string[] {
+  const scripts: string[] = []
+
+  if (runtimeProfileId.includes('htmx')) {
+    scripts.push(`<script>
+      ;(() => {
+        if (window.htmx) {
+          return
+        }
+
+        const urls = ${JSON.stringify([HTML_LIBRARY_URLS.htmx.primary, HTML_LIBRARY_URLS.htmx.fallback])}
+        const load = (index) => {
+          if (index >= urls.length) {
+            console.error('[ArtifactPreview] Failed to load managed HTMX runtime.', urls)
+            return
+          }
+
+          const script = document.createElement('script')
+          script.src = urls[index]
+          script.defer = true
+          script.onload = () => {
+            if (!window.htmx) {
+              load(index + 1)
+            }
+          }
+          script.onerror = () => load(index + 1)
+          document.head.appendChild(script)
+        }
+
+        load(0)
+      })()
+    </script>`)
+  }
+
+  if (runtimeProfileId.includes('alpine')) {
+    scripts.push(`<script defer src="${HTML_LIBRARY_URLS.alpinejs.primary}"></script>`)
+  }
+
+  return scripts
+}
+
+function getManagedLibraryUrlsToStrip(runtimeProfileId: HtmlArtifactRuntimeProfileId): string[] {
+  const urls: string[] = []
+
+  if (runtimeProfileId.includes('htmx')) {
+    urls.push(HTML_LIBRARY_URLS.htmx.primary, HTML_LIBRARY_URLS.htmx.fallback)
+  }
+
+  if (runtimeProfileId.includes('alpine')) {
+    urls.push(HTML_LIBRARY_URLS.alpinejs.primary)
+  }
+
+  return urls
+}
+
 function normalizeHtmlDocument(source: string, head: string, title: string): string {
   const trimmed = source.trim()
   const titleTag = `<title>${escapeHtml(title)}</title>`
@@ -669,28 +772,26 @@ export function buildHtmlArtifactPreviewDocument({
   settings: ArtifactSettings
   overrides: ArtifactDirectiveOverrides
 }): string {
-  const internetEnabled = overrides.internetEnabled ?? settings.accessPolicy.internetEnabled
+  const internetEnabled =
+    shouldForceArtifactInternetAccess(runtimeProfileId) ||
+    overrides.internetEnabled ||
+    settings.accessPolicy.internetEnabled
   const themeId = resolveArtifactThemeId(settings, overrides)
   const css = getCombinedCss(settings, themeId)
-  const libraries: string[] = []
-
-  if (runtimeProfileId.includes('htmx')) {
-    libraries.push(HTML_LIBRARY_URLS.htmx)
-  }
-  if (runtimeProfileId.includes('alpine')) {
-    libraries.push(HTML_LIBRARY_URLS.alpinejs)
-  }
+  const normalizedSource = normalizeExternalLibraryReferences(source)
+  const strippedSource = stripManagedLibraryScripts(normalizedSource, getManagedLibraryUrlsToStrip(runtimeProfileId))
+  const libraries = buildManagedLibraryScripts(runtimeProfileId)
 
   const head = [
     `<meta charset="utf-8" />`,
     `<meta name="viewport" content="width=device-width, initial-scale=1" />`,
     `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(getArtifactCsp(internetEnabled))}" />`,
     `<style>${css}</style>`,
-    ...libraries.map((url) => `<script defer src="${url}"></script>`),
+    ...libraries,
     getArtifactServiceBridgeScript(settings, overrides)
   ].join('')
 
-  return normalizeHtmlDocument(normalizeExternalLibraryReferences(source), head, title)
+  return normalizeHtmlDocument(strippedSource, head, title)
 }
 
 export function buildReactArtifactPreviewDocument({

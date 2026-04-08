@@ -103,7 +103,6 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, handleClick, treeData, paddin
         </GridItem>
       </SimpleGrid>
       <Divider
-        orientation="end"
         style={{
           borderTop: '1px solid #ccc',
           width: '100%',

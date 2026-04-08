@@ -20,13 +20,12 @@ interface InputEmbeddingDimensionProps {
 }
 
 const InputEmbeddingDimension = ({
-  ref,
   value,
   onChange,
   model,
   disabled: _disabled,
   style
-}: InputEmbeddingDimensionProps & { ref?: React.RefObject<HTMLInputElement> | null }) => {
+}: InputEmbeddingDimensionProps) => {
   const { t } = useTranslation()
   const { provider } = useProvider(model?.provider ?? '')
   const [loading, setLoading] = useState(false)
@@ -50,10 +49,6 @@ const InputEmbeddingDimension = ({
     try {
       const aiProvider = new AiProvider(provider)
       const dimension = await aiProvider.getEmbeddingDimensions(model)
-      // for controlled input
-      if (ref?.current) {
-        ref.current.value = dimension.toString()
-      }
       onChange?.(dimension)
     } catch (error) {
       logger.error(t('message.error.get_embedding_dimensions'), error as Error)
@@ -61,12 +56,11 @@ const InputEmbeddingDimension = ({
     } finally {
       setLoading(false)
     }
-  }, [model, provider, t, onChange, ref])
+  }, [model, provider, t, onChange])
 
   return (
     <Space.Compact style={{ width: '100%', ...style }}>
       <InputNumber
-        ref={ref}
         min={1}
         style={{ flex: 1 }}
         placeholder={t('knowledge.dimensions_size_placeholder')}

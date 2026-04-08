@@ -31,6 +31,7 @@ const KnowledgeBaseFormModal: React.FC<KnowledgeBaseFormModalProps> = ({
 
   const generalPanel = panels.find((p) => p.key === 'general')
   const advancedPanel = panels.find((p) => p.key === 'advanced')
+  const handleCancelClick: React.MouseEventHandler<HTMLButtonElement> = (event) => onCancel?.(event)
 
   const footer = (
     <FooterContainer>
@@ -45,7 +46,7 @@ const KnowledgeBaseFormModal: React.FC<KnowledgeBaseFormModalProps> = ({
         {onMoreSettings && <Button onClick={onMoreSettings}>{t('settings.moresetting.title')}</Button>}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <Button onClick={onCancel}>{t('common.cancel')}</Button>
+        <Button onClick={handleCancelClick}>{t('common.cancel')}</Button>
         <Button type="primary" onClick={onOk}>
           {okText || t('common.confirm')}
         </Button>
@@ -68,7 +69,7 @@ const KnowledgeBaseFormModal: React.FC<KnowledgeBaseFormModalProps> = ({
           margin: 0,
           borderRadius: 0
         },
-        content: {
+        container: {
           padding: 0,
           overflow: 'hidden'
         },

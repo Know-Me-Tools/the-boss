@@ -1011,7 +1011,7 @@ const TranslateButton = ({
     <Tooltip
       mouseEnterDelay={0.5}
       placement="bottom"
-      styles={{ body: { fontSize: '12px' } }}
+      styles={{ container: { fontSize: '12px' } }}
       title={
         <div style={{ textAlign: 'center' }}>
           Enter: {t('translate.button.translate')}

@@ -46,11 +46,11 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   const { providers } = useProviders()
 
   const selectionMethodOptions = [
-    { value: SkillSelectionMethod.EMBEDDING, label: t('settings.skill.method.embedding') },
-    { value: SkillSelectionMethod.HYBRID, label: t('settings.skill.method.hybrid') },
-    { value: SkillSelectionMethod.LLM_ROUTER, label: t('settings.skill.method.llm_router') },
-    { value: SkillSelectionMethod.TWO_STAGE, label: t('settings.skill.method.two_stage') },
-    { value: SkillSelectionMethod.LLM_DELEGATED, label: t('settings.skill.method.llm_delegated') }
+    { value: SkillSelectionMethod.EMBEDDING, label: t('settings.skill.method.embedding.label') },
+    { value: SkillSelectionMethod.HYBRID, label: t('settings.skill.method.hybrid.label') },
+    { value: SkillSelectionMethod.LLM_ROUTER, label: t('settings.skill.method.llm_router.label') },
+    { value: SkillSelectionMethod.TWO_STAGE, label: t('settings.skill.method.two_stage.label') },
+    { value: SkillSelectionMethod.LLM_DELEGATED, label: t('settings.skill.method.llm_delegated.label') }
   ]
 
   const contextMethodOptions = [
@@ -112,7 +112,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
 
         <SettingRow>
           <SettingRowTitle>
-            {t('settings.skill.embedding_model', {
+            {t('settings.skill.embedding_model.label', {
               defaultValue: 'Embedding Model'
             })}
           </SettingRowTitle>
@@ -132,7 +132,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
         {isLlmSelectionMethod(selectedMethod) && (
           <SettingRow>
             <SettingRowTitle>
-              {t('settings.skill.routing_model', {
+              {t('settings.skill.routing_model.label', {
                 defaultValue: 'Routing LLM Model'
               })}
             </SettingRowTitle>
@@ -280,10 +280,7 @@ function looksLikeSerializedModelRef(value: string): boolean {
   }
 }
 
-function getSelectionMethodDescription(
-  t: ReturnType<typeof useTranslation>['t'],
-  method: SkillSelectionMethod
-): string {
+function getSelectionMethodDescription(t: ReturnType<typeof useTranslation>['t'], method: SkillSelectionMethod) {
   switch (method) {
     case SkillSelectionMethod.EMBEDDING:
       return t('settings.skill.method.embedding.description', {
