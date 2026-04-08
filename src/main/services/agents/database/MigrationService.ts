@@ -10,6 +10,11 @@ import { migrations, type NewMigration } from './schema/migrations.schema'
 
 const logger = loggerService.withContext('MigrationService')
 
+const CRITICAL_SCHEMA_COLUMNS = {
+  agents: ['knowledge_bases', 'knowledgeRecognition', 'knowledge_base_configs'],
+  sessions: ['knowledge_bases', 'knowledgeRecognition', 'knowledge_base_configs']
+} as const
+
 interface MigrationJournal {
   version: string
   dialect: string
@@ -69,6 +74,7 @@ export class MigrationService {
 
       if (pendingMigrations.length === 0) {
         logger.info('Database is up to date')
+        await this.ensureCriticalSchemaCompatibility()
         return
       }
 
@@ -79,11 +85,45 @@ export class MigrationService {
         await this.executeMigration(migration)
       }
 
+      await this.ensureCriticalSchemaCompatibility()
       logger.info('All migrations completed successfully')
     } catch (error) {
       logger.error('Migration failed:', { error })
       throw error
     }
+  }
+
+  private async ensureCriticalSchemaCompatibility(): Promise<void> {
+    for (const [tableName, columns] of Object.entries(CRITICAL_SCHEMA_COLUMNS)) {
+      const missingColumns = await this.findMissingColumns(tableName, columns)
+
+      if (missingColumns.length === 0) {
+        continue
+      }
+
+      logger.warn(`Detected schema drift for ${tableName}; repairing missing columns`, {
+        tableName,
+        missingColumns
+      })
+
+      for (const columnName of missingColumns) {
+        await this.client.execute(`ALTER TABLE \`${tableName}\` ADD \`${columnName}\` text;`)
+      }
+    }
+  }
+
+  private async findMissingColumns(tableName: string, requiredColumns: readonly string[]): Promise<string[]> {
+    const result = await this.client.execute(`PRAGMA table_info(\`${tableName}\`)`)
+    const existingColumns = new Set(
+      result.rows
+        .map((row) => {
+          const name = (row as Record<string, unknown>).name
+          return typeof name === 'string' ? name : null
+        })
+        .filter((value): value is string => value !== null)
+    )
+
+    return requiredColumns.filter((columnName) => !existingColumns.has(columnName))
   }
 
   private async migrationsTableExists(): Promise<boolean> {
