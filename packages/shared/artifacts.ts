@@ -255,7 +255,7 @@ export const ARTIFACT_PACKAGE_REGISTRY: ArtifactPackageRegistryEntry[] = [
     id: 'html-htmx',
     kind: 'html-library',
     packageName: 'htmx.org',
-    version: '2.0.9',
+    version: '2.0.8',
     description: 'Pinned htmx runtime available to enhanced HTML artifacts.',
     runtimeKinds: ['html']
   },

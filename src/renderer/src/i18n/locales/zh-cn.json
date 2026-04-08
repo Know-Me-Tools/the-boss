@@ -418,6 +418,9 @@
         },
         "title": "高级设置"
       },
+      "contextSkills": {
+        "tab": "上下文与技能"
+      },
       "essential": "基础设置",
       "permissionMode": {
         "tab": "权限模式",
@@ -4024,6 +4027,68 @@
       "description": "将 Agent 连接到 Telegram、飞书、Discord 等消息平台。",
       "title": "频道"
     },
+    "contextStrategy": {
+      "agentConfiguration": "Agent 策略默认值",
+      "agentLegacyStrategyWarning": "此会话使用了当前 SDK 会话尚未完整实现的策略类型；阈值 + /compact 仍会生效。保存后将统一使用 SDK 压缩（令牌阈值）模式。",
+      "agentPhase1Notice": "Agent 策略（第一阶段）：启用非“无管理”策略后，会应用令牌阈值，并可能在下一次发送前自动运行 SDK /compact。聊天场景的 summarize / hierarchical 管线暂未应用到 SDK 会话。",
+      "agentSessionsDescription": "为自治 Agent 设置可选默认值。每个 Agent 和每个会话都可以覆盖。基于 SDK resume 机制，在令牌使用量超过阈值时可能自动运行 /compact。",
+      "agentSessionsTitle": "Agent 上下文（SDK 会话）",
+      "agentSummarizationModel": "Agent 摘要模型",
+      "assistantDescription": "在请求发送前自动管理该助手的对话上下文。具体会话仍可覆盖这里的默认策略。",
+      "compactTriggerPlaceholder": "默认 180000",
+      "compactTriggerTokens": "上一轮令牌数达到该值时压缩",
+      "compactTriggerTokensHelp": "依赖 Claude Agent SDK 会话。当上一轮的总令牌使用量达到或超过该值时，会在下一次发送前自动运行 /compact（仅适用于恢复的会话）。",
+      "configuration": "策略配置",
+      "configurationHelp": "配置在对话接近模型上下文上限时如何管理历史消息。不同策略在保留上下文与节省令牌之间有不同取舍。",
+      "configure": "配置",
+      "descriptions": {
+        "agent_sliding_window": "当上一轮总令牌使用量达到阈值时，调用 Claude Agent SDK 的 /compact（仅适用于恢复会话）。这与聊天场景的滑动窗口裁剪不同。",
+        "hierarchical": "三层记忆系统：最近消息原样保留、较早消息生成摘要、关键事实单独提取。适合长时间运行的对话。",
+        "none": "不进行上下文管理。长对话中可能会超出模型上限。",
+        "sliding_window": "仅保留令牌预算内最近的消息，简单且可预测。",
+        "summarize": "逐步总结较早的消息，在减少令牌占用的同时尽量保留关键信息。",
+        "truncate_middle": "保留开头指令与最近上下文，移除中间消息。"
+      },
+      "globalDescription": "自动管理对话上下文，避免超过模型上限。该设置为全局默认值，可在助手或具体会话中覆盖。",
+      "howItWorks": "工作方式",
+      "inheritedStrategy": "当前使用：",
+      "keepFirst": "保留开头消息数",
+      "keepFirstHelp": "保留最前面的若干条消息，例如系统设定、初始说明等。",
+      "keepLast": "保留最近消息数",
+      "keepLastHelp": "原样保留最近的若干条消息。",
+      "longTermBudget": "长期记忆预算",
+      "longTermBudgetHelp": "为提取出的长期事实与偏好保留的令牌预算。",
+      "maxMessages": "最大消息数",
+      "maxMessagesHelp": "保留的最大消息数量。留空则自动按令牌预算管理。",
+      "midTermBudget": "中期记忆预算",
+      "midTermBudgetHelp": "为中期摘要记忆保留的令牌预算。",
+      "noSummarizationModel": "请先在上下文管理设置中选择摘要模型后再启用该策略。",
+      "selectModel": "模型",
+      "selectModelPlaceholder": "选择摘要模型",
+      "shortTermTurns": "短期轮次数",
+      "shortTermTurnsHelp": "在开始生成摘要前，原样保留的最近轮次数。",
+      "strategy": "策略",
+      "summarizationModel": "摘要模型",
+      "summarizationModelDescription": "该模型将用于生成对话摘要。建议选择响应快的模型以降低延迟。若未设置，将使用当前对话模型。",
+      "summarizationModelHelp": "选择一个轻量且速度快的模型来生成摘要。推荐 Claude Haiku、GPT-3.5 Turbo 或类似的快速模型。",
+      "summarizeThreshold": "达到多少条消息后开始摘要",
+      "summarizeThresholdHelp": "触发渐进摘要前所需的最少消息数量。",
+      "summaryMaxTokens": "摘要预算",
+      "summaryMaxTokensHelp": "为对话摘要分配的最大令牌数。",
+      "title": "上下文管理",
+      "topicDescription": "仅管理当前会话的上下文。它会覆盖助手默认策略，但仍遵循相同的全局安全边界。",
+      "types": {
+        "agent_sliding_window": "SDK 压缩（令牌阈值）",
+        "hierarchical": "分层记忆",
+        "none": "无管理",
+        "sliding_window": "滑动窗口",
+        "summarize": "渐进摘要",
+        "truncate_middle": "保留开头与结尾"
+      },
+      "useAssistantDefault": "使用助手默认值",
+      "useGlobalDefault": "使用全局默认值",
+      "useInherited": "使用默认值"
+    },
     "data": {
       "app_data": {
         "copy_data_option": "复制数据，会自动重启后将原始目录数据复制到新目录",
@@ -5647,25 +5712,48 @@
     },
     "skill": {
       "context": {
-        "chunked_rag": "[to be translated]:Chunked RAG",
-        "full_injection": "[to be translated]:Full Injection",
-        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
-        "progressive": "[to be translated]:Progressive",
-        "summarized": "[to be translated]:Summarized"
+        "chunked_rag": "分块检索增强",
+        "full_injection": "完整注入",
+        "prefix_cache_aware": "前缀缓存友好",
+        "progressive": "渐进式",
+        "summarized": "摘要式"
       },
-      "context_method": "[to be translated]:Context Management",
-      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "context_method": "上下文管理方式",
+      "embedding_model": {
+        "label": "嵌入模型",
+        "placeholder": "使用 fastembed 默认模型"
+      },
+      "max_tokens": "技能最大令牌数",
       "method": {
-        "embedding": "[to be translated]:Embedding (Semantic)",
-        "hybrid": "[to be translated]:Hybrid (BM25 + Dense)",
-        "llm_delegated": "[to be translated]:LLM Delegated",
-        "llm_router": "[to be translated]:LLM Router",
-        "two_stage": "[to be translated]:Two-Stage"
+        "embedding": {
+          "description": "纯语义检索。使用选定的嵌入模型为所有技能打分，并激活最匹配的结果。",
+          "label": "Embedding（语义）"
+        },
+        "hybrid": {
+          "description": "将关键词检索与稠密向量检索做倒数排名融合。适用于精确术语与语义相似度同样重要的场景。",
+          "label": "Hybrid（BM25 + Dense）"
+        },
+        "llm_delegated": {
+          "description": "先用嵌入模型进行预筛选，再由 LLM 决定最终启用哪些技能并解释原因。若未选择委托模型，则使用当前聊天或 Agent 模型。",
+          "label": "LLM 委托"
+        },
+        "llm_router": {
+          "description": "先用嵌入模型筛选候选技能，再由 LLM 路由器进行排序。若未选择路由模型，则使用当前聊天或 Agent 模型。",
+          "label": "LLM 路由"
+        },
+        "two_stage": {
+          "description": "先通过关键词和 BM25 生成候选集合，再用嵌入模型重新排序。适合先严格过滤候选，再进行稠密评分的场景。",
+          "label": "两阶段"
+        }
       },
-      "selection_method": "[to be translated]:Selection Method",
-      "similarity_threshold": "[to be translated]:Similarity Threshold",
-      "title": "[to be translated]:Skill Configuration",
-      "top_k": "[to be translated]:Max Skills (Top K)"
+      "routing_model": {
+        "label": "路由 LLM 模型",
+        "placeholder": "使用当前聊天或 Agent 模型"
+      },
+      "selection_method": "选择方法",
+      "similarity_threshold": "相似度阈值",
+      "title": "技能配置",
+      "top_k": "最大技能数（Top K）"
     },
     "skills": {
       "author": "作者",

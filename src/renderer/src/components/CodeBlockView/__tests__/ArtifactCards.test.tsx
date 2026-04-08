@@ -108,6 +108,7 @@ describe('artifact cards', () => {
         file: {
           createTempFile: vi.fn().mockResolvedValue('/tmp/artifact-preview.html'),
           write: vi.fn().mockResolvedValue(undefined),
+          openPath: vi.fn().mockResolvedValue(undefined),
           save: vi.fn().mockResolvedValue(undefined)
         },
         shell: {
@@ -198,5 +199,75 @@ describe('artifact cards', () => {
         script: 'compiledReactArtifact()'
       })
     )
+  })
+
+  it('opens HTML artifact previews via the file-open IPC instead of file:// openExternal', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    render(<HtmlArtifactsCard html="<div>Hello</div>" runtimeProfileId="html" />)
+
+    await waitFor(() => {
+      expect(mocks.buildHtmlArtifactPreviewDocument).toHaveBeenCalled()
+    })
+
+    fireEvent.click(getButtonByText('chat.artifacts.button.openExternal'))
+
+    await waitFor(() => {
+      expect(window.api.file.write).toHaveBeenCalledWith(
+        '/tmp/artifact-preview.html',
+        '<!doctype html><html><body>wrapped html preview</body></html>'
+      )
+    })
+
+    expect(window.api.file.openPath).toHaveBeenCalledWith('/tmp/artifact-preview.html')
+    expect(window.api.shell.openExternal).not.toHaveBeenCalled()
+  })
+
+  it('opens React artifact previews via the file-open IPC instead of file:// openExternal', async () => {
+    mocks.loadArtifactSettings.mockResolvedValue({
+      baseCss: 'body { color: red; }',
+      customCss: '',
+      defaultThemeId: 'boss-light',
+      defaultHtmlRuntimeProfileId: 'html',
+      defaultReactRuntimeProfileId: 'react-default',
+      accessPolicy: {
+        internetEnabled: false,
+        serviceIds: []
+      }
+    })
+
+    render(
+      <ReactArtifactsCard
+        code="export default function App() { return <div>Hello</div> }"
+        runtimeProfileId="react-default"
+        sourceLanguage="tsx"
+      />
+    )
+
+    fireEvent.click(getButtonByText('chat.artifacts.button.openExternal'))
+
+    await waitFor(() => {
+      expect(window.api.artifacts.compileReact).toHaveBeenCalled()
+    })
+
+    await waitFor(() => {
+      expect(window.api.file.write).toHaveBeenCalledWith(
+        '/tmp/artifact-preview.html',
+        '<!doctype html><html><body>wrapped react preview</body></html>'
+      )
+    })
+
+    expect(window.api.file.openPath).toHaveBeenCalledWith('/tmp/artifact-preview.html')
+    expect(window.api.shell.openExternal).not.toHaveBeenCalled()
   })
 })

@@ -146,7 +146,7 @@ const ReactArtifactsCard: FC<Props> = ({
     const document = previewDocument || (await compilePreview())
     const path = await window.api.file.createTempFile('react-artifact-preview.html')
     await window.api.file.write(path, document)
-    void window.api.shell.openExternal(`file://${path}`)
+    void window.api.file.openPath(path)
   }, [compilePreview, previewDocument])
 
   const handleDownload = async () => {
