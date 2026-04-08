@@ -13,6 +13,17 @@ const HTML_LIBRARY_URLS: Record<string, string> = {
   alpinejs: 'https://cdn.jsdelivr.net/npm/alpinejs@3.15.0/dist/cdn.min.js'
 }
 
+const MANAGED_HTML_LIBRARIES = [
+  {
+    ids: ['htmx.org'],
+    normalizedUrl: HTML_LIBRARY_URLS.htmx
+  },
+  {
+    ids: ['alpinejs'],
+    normalizedUrl: HTML_LIBRARY_URLS.alpinejs
+  }
+] as const
+
 export const DEFAULT_ARTIFACT_BASE_CSS = `
 :root {
   color-scheme: light;
@@ -587,6 +598,48 @@ function getCombinedCss(settings: ArtifactSettings, themeId: ArtifactThemeId): s
   return [settings.baseCss || DEFAULT_ARTIFACT_BASE_CSS, getThemeCss(themeId), settings.customCss].join('\n')
 }
 
+function normalizeExternalLibraryUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim()
+
+  if (!trimmed || /^(?:data|blob|file|javascript|mailto|tel):/i.test(trimmed)) {
+    return null
+  }
+
+  const withoutScheme = trimmed.replace(/^https?:\/\//i, '').replace(/^\/\//, '')
+
+  for (const library of MANAGED_HTML_LIBRARIES) {
+    if (library.ids.some((id) => withoutScheme.startsWith(`cdn.jsdelivr.net/npm/${id}`))) {
+      return library.normalizedUrl
+    }
+
+    if (library.ids.some((id) => withoutScheme.startsWith(`unpkg.com/${id}`))) {
+      return library.normalizedUrl
+    }
+  }
+
+  if (withoutScheme.startsWith('cdn.jsdelivr.net/')) {
+    return `https://${withoutScheme}`
+  }
+
+  if (withoutScheme.startsWith('unpkg.com/')) {
+    return `https://${withoutScheme}`
+  }
+
+  return null
+}
+
+function normalizeExternalLibraryReferences(source: string): string {
+  return source.replace(/\b(src|href)\s*=\s*(["'])([^"']+)\2/gi, (match, attribute, quote, rawUrl) => {
+    const normalizedUrl = normalizeExternalLibraryUrl(rawUrl)
+
+    if (!normalizedUrl) {
+      return match
+    }
+
+    return `${attribute}=${quote}${normalizedUrl}${quote}`
+  })
+}
+
 function normalizeHtmlDocument(source: string, head: string, title: string): string {
   const trimmed = source.trim()
   const titleTag = `<title>${escapeHtml(title)}</title>`
@@ -637,7 +690,7 @@ export function buildHtmlArtifactPreviewDocument({
     getArtifactServiceBridgeScript(settings, overrides)
   ].join('')
 
-  return normalizeHtmlDocument(source, head, title)
+  return normalizeHtmlDocument(normalizeExternalLibraryReferences(source), head, title)
 }
 
 export function buildReactArtifactPreviewDocument({

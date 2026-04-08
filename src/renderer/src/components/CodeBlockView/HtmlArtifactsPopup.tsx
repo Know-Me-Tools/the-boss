@@ -6,7 +6,7 @@ interface HtmlArtifactsPopupProps {
   open: boolean
   title: string
   html: string
-  previewDocument?: string
+  previewDocument: string
   onSave?: (html: string) => void
   createLibraryDraft?: (source: string) => Promise<ArtifactRecordDraft>
   onClose: () => void
@@ -28,7 +28,7 @@ const HtmlArtifactsPopup = ({
       code={html}
       codeLanguage="html"
       typeLabel="HTML Artifact"
-      previewDocument={previewDocument ?? html}
+      previewDocument={previewDocument}
       onSave={onSave}
       createLibraryDraft={createLibraryDraft}
       onClose={onClose}

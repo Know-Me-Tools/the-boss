@@ -46,6 +46,7 @@ export class AgentService extends BaseService {
     })
 
     const serializedReq = this.serializeJsonFields(req)
+    const knowledgeRuntimeConfigs = await this.buildKnowledgeBaseRuntimeConfigs(req.knowledge_bases)
 
     const insertData: InsertAgentRow = {
       id,
@@ -56,6 +57,9 @@ export class AgentService extends BaseService {
       model: req.model,
       plan_model: req.plan_model,
       small_model: req.small_model,
+      knowledge_bases: serializedReq.knowledge_bases,
+      knowledgeRecognition: req.knowledgeRecognition || null,
+      knowledge_base_configs: knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null,
       configuration: serializedReq.configuration,
       accessible_paths: serializedReq.accessible_paths,
       sort_order: 0,
@@ -74,7 +78,7 @@ export class AgentService extends BaseService {
       throw new Error('Failed to create agent')
     }
 
-    const agent = this.deserializeJsonFields(result[0]) as AgentEntity
+    const agent = this.stripInternalAgentFields(this.deserializeJsonFields(result[0])) as AgentEntity
 
     // Seed workspace templates for soul mode agents
     if ((req.configuration as Record<string, unknown> | undefined)?.soul_enabled === true) {
@@ -95,7 +99,7 @@ export class AgentService extends BaseService {
       return null
     }
 
-    const agent = this.deserializeJsonFields(result[0]) as GetAgentResponse
+    const agent = this.stripInternalAgentFields(this.deserializeJsonFields(result[0])) as GetAgentResponse
     const { tools, legacyIdMap } = await this.listMcpTools(agent.type, agent.mcps)
     agent.tools = tools
     agent.allowed_tools = this.normalizeAllowedTools(agent.allowed_tools, agent.tools, legacyIdMap)
@@ -127,7 +131,9 @@ export class AgentService extends BaseService {
           : await baseQuery.limit(options.limit)
         : await baseQuery
 
-    const agents = result.map((row) => this.deserializeJsonFields(row)) as GetAgentResponse[]
+    const agents = result.map((row) =>
+      this.stripInternalAgentFields(this.deserializeJsonFields(row))
+    ) as GetAgentResponse[]
 
     await Promise.all(
       agents.map(async (agent) => {
@@ -217,6 +223,7 @@ export class AgentService extends BaseService {
 
       await this.validateAgentModels(req.type, { model: req.model })
       const serialized = this.serializeJsonFields(req)
+      const knowledgeRuntimeConfigs = await this.buildKnowledgeBaseRuntimeConfigs(req.knowledge_bases)
 
       const insertData: InsertAgentRow = {
         id,
@@ -225,6 +232,9 @@ export class AgentService extends BaseService {
         description: req.description,
         instructions: req.instructions || 'You are a helpful assistant.',
         model: req.model,
+        knowledge_bases: serialized.knowledge_bases,
+        knowledgeRecognition: req.knowledgeRecognition || null,
+        knowledge_base_configs: knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null,
         configuration: serialized.configuration,
         accessible_paths: serialized.accessible_paths,
         sort_order: 0,
@@ -297,6 +307,7 @@ export class AgentService extends BaseService {
       await this.validateAgentModels(req.type, { model: req.model })
 
       const serialized = this.serializeJsonFields({ ...req, accessible_paths: resolvedPaths })
+      const knowledgeRuntimeConfigs = await this.buildKnowledgeBaseRuntimeConfigs(req.knowledge_bases)
 
       const insertData: InsertAgentRow = {
         id,
@@ -305,6 +316,9 @@ export class AgentService extends BaseService {
         description: req.description,
         instructions: 'You are a helpful assistant.',
         model: req.model,
+        knowledge_bases: serialized.knowledge_bases,
+        knowledgeRecognition: req.knowledgeRecognition || null,
+        knowledge_base_configs: knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null,
         configuration: serialized.configuration,
         accessible_paths: serialized.accessible_paths,
         sort_order: 0,
@@ -363,6 +377,9 @@ export class AgentService extends BaseService {
     }
 
     const serializedUpdates = this.serializeJsonFields(updates)
+    const knowledgeRuntimeConfigs = Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')
+      ? await this.buildKnowledgeBaseRuntimeConfigs(updates.knowledge_bases)
+      : undefined
 
     const updateData: Partial<AgentRow> = {
       updated_at: now
@@ -379,6 +396,10 @@ export class AgentService extends BaseService {
           ;(updateData as Record<string, unknown>)[field] = null
         }
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')) {
+      updateData.knowledge_base_configs = knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null
     }
 
     const database = await this.getDatabase()

@@ -141,6 +141,7 @@ export class SessionService extends BaseService {
     }
 
     const serializedData = this.serializeJsonFields(sessionData)
+    const knowledgeRuntimeConfigs = await this.buildKnowledgeBaseRuntimeConfigs(sessionData.knowledge_bases)
 
     const insertData: InsertSessionRow = {
       id,
@@ -155,6 +156,9 @@ export class SessionService extends BaseService {
       small_model: serializedData.small_model || null,
       mcps: serializedData.mcps || null,
       allowed_tools: serializedData.allowed_tools || null,
+      knowledge_bases: serializedData.knowledge_bases || null,
+      knowledgeRecognition: sessionData.knowledgeRecognition || null,
+      knowledge_base_configs: knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null,
       configuration: serializedData.configuration || null,
       last_total_tokens: null,
       sort_order: 0,
@@ -178,7 +182,7 @@ export class SessionService extends BaseService {
       throw new Error('Failed to create session')
     }
 
-    const session = this.deserializeJsonFields(result[0])
+    const session = this.stripInternalAgentFields(this.deserializeJsonFields(result[0]))
     return await this.getSession(agentId, session.id)
   }
 
@@ -194,7 +198,7 @@ export class SessionService extends BaseService {
       return null
     }
 
-    const session = this.deserializeJsonFields(result[0]) as GetAgentSessionResponse
+    const session = this.stripInternalAgentFields(this.deserializeJsonFields(result[0])) as GetAgentSessionResponse
     if (typeof result[0].last_total_tokens === 'number') {
       session.last_total_tokens = result[0].last_total_tokens
       setAgentSessionLastTotalTokens(session.id, result[0].last_total_tokens)
@@ -285,7 +289,9 @@ export class SessionService extends BaseService {
           : await baseQuery.limit(options.limit)
         : await baseQuery
 
-    const sessions = result.map((row) => this.deserializeJsonFields(row)) as GetAgentSessionResponse[]
+    const sessions = result.map((row) =>
+      this.stripInternalAgentFields(this.deserializeJsonFields(row))
+    ) as GetAgentSessionResponse[]
 
     await Promise.all(
       sessions.map(async (session) => {
@@ -333,6 +339,9 @@ export class SessionService extends BaseService {
     }
 
     const serializedUpdates = this.serializeJsonFields(updates)
+    const knowledgeRuntimeConfigs = Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')
+      ? await this.buildKnowledgeBaseRuntimeConfigs(updates.knowledge_bases)
+      : undefined
 
     const updateData: Partial<SessionRow> = {
       updated_at: now
@@ -344,6 +353,10 @@ export class SessionService extends BaseService {
         const value = serializedUpdates[field as keyof typeof serializedUpdates]
         ;(updateData as Record<string, unknown>)[field] = value ?? null
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')) {
+      updateData.knowledge_base_configs = knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null
     }
 
     const database = await this.getDatabase()

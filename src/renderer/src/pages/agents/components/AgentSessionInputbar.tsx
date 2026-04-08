@@ -19,6 +19,7 @@ import {
   useInputbarToolsState
 } from '@renderer/pages/home/Inputbar/context/InputbarToolsProvider'
 import InputbarTools from '@renderer/pages/home/Inputbar/InputbarTools'
+import KnowledgeBaseInput from '@renderer/pages/home/Inputbar/KnowledgeBaseInput'
 import { getInputbarConfig } from '@renderer/pages/home/Inputbar/registry'
 import type { ToolContext } from '@renderer/pages/home/Inputbar/types'
 import { TopicType } from '@renderer/pages/home/Inputbar/types'
@@ -30,7 +31,7 @@ import { estimateUserPromptUsage } from '@renderer/services/TokenService'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { newMessagesActions, selectMessagesForTopic } from '@renderer/store/newMessage'
 import { sendMessage as dispatchSendMessage } from '@renderer/store/thunk/messageThunk'
-import type { Assistant, Message, ThinkingOption } from '@renderer/types'
+import type { Assistant, KnowledgeBase, Message, ThinkingOption } from '@renderer/types'
 import type { FileMetadata } from '@renderer/types'
 import type { MessageBlock } from '@renderer/types/newMessage'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
@@ -57,7 +58,7 @@ type Props = {
 }
 
 const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
-  const { session } = useSession(agentId, sessionId)
+  const { session, updateSession } = useSession(agentId, sessionId)
   // FIXME: 不应该使用ref将action传到context提供给tool，权宜之计
   const actionsRef = useRef({
     resizeTextArea: () => {},
@@ -78,12 +79,17 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
       id: session.agent_id ?? agentId,
       name: session.name ?? 'Agent Session',
       prompt: session.instructions ?? '',
+      knowledge_bases: session.knowledge_bases ?? [],
       topics: [],
       type: 'agent-session',
       model: actualModel,
       defaultModel: actualModel,
       tags: [],
-      enableWebSearch: false
+      enableWebSearch: false,
+      knowledgeRecognition: session.knowledgeRecognition,
+      settings: {
+        toolUseMode: 'prompt'
+      }
     } satisfies Assistant
   }, [session, agentId])
 
@@ -102,11 +108,11 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
   const initialState = useMemo(
     () => ({
       mentionedModels: [],
-      selectedKnowledgeBases: [],
+      selectedKnowledgeBases: session?.knowledge_bases ?? [],
       files: [] as FileMetadata[],
       isExpanded: false
     }),
-    []
+    [session?.knowledge_bases]
   )
 
   if (!assistantStub) {
@@ -130,6 +136,7 @@ const AgentSessionInputbar = ({ agentId, sessionId }: Props) => {
         agentId={agentId}
         sessionId={sessionId}
         sessionData={sessionData}
+        updateSession={updateSession}
         actionsRef={actionsRef}
       />
     </InputbarToolsProvider>
@@ -141,6 +148,7 @@ interface InnerProps {
   agentId: string
   sessionId: string
   sessionData?: ToolContext['session']
+  updateSession: ReturnType<typeof useSession>['updateSession']
   actionsRef: React.MutableRefObject<{
     resizeTextArea: () => void
     onTextChange: (updater: React.SetStateAction<string> | ((prev: string) => string)) => void
@@ -148,7 +156,14 @@ interface InnerProps {
   }>
 }
 
-const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, sessionId, sessionData, actionsRef }) => {
+const AgentSessionInputbarInner: FC<InnerProps> = ({
+  assistant,
+  agentId,
+  sessionId,
+  sessionData,
+  updateSession,
+  actionsRef
+}) => {
   const { agent: agentBase } = useAgent(agentId)
   const scope = TopicType.Session
   const config = getInputbarConfig(scope)
@@ -179,8 +194,8 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
 
   const [reasoningEffort, setReasoningEffort] = useState<ThinkingOption>('default')
 
-  const { files } = useInputbarToolsState()
-  const { toolsRegistry, setIsExpanded, setFiles } = useInputbarToolsDispatch()
+  const { files, selectedKnowledgeBases } = useInputbarToolsState()
+  const { toolsRegistry, setIsExpanded, setFiles, setSelectedKnowledgeBases } = useInputbarToolsDispatch()
   const { setCouldAddImageFile } = useInputbarToolsInternalDispatch()
 
   const { setTimeoutTimer } = useTimer()
@@ -188,6 +203,10 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
   const sessionTopicId = buildAgentSessionTopicId(sessionId)
   const topicMessages = useAppSelector((state) => selectMessagesForTopic(state, sessionTopicId))
   const loading = useAppSelector((state) => selectNewTopicLoading(state, sessionTopicId))
+
+  useEffect(() => {
+    setSelectedKnowledgeBases(assistant.knowledge_bases ?? [])
+  }, [assistant.knowledge_bases, setSelectedKnowledgeBases])
 
   // Calculate vision and image generation support
   const isVisionAssistant = useMemo(() => (assistant.model ? isVisionModel(assistant.model) : false), [assistant.model])
@@ -224,6 +243,21 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
       focusTextarea()
     },
     [focusTextarea, syncExpandedState, textareaIsExpanded]
+  )
+
+  const handleRemoveKnowledgeBase = useCallback(
+    (knowledgeBase: KnowledgeBase) => {
+      const nextKnowledgeBases = (assistant.knowledge_bases ?? []).filter((base) => base.id !== knowledgeBase.id)
+      void updateSession(
+        {
+          id: sessionId,
+          knowledge_bases: nextKnowledgeBases
+        },
+        { showSuccessToast: false }
+      )
+      setSelectedKnowledgeBases(nextKnowledgeBases)
+    },
+    [assistant.knowledge_bases, sessionId, setSelectedKnowledgeBases, updateSession]
   )
 
   // Update actionsRef for InputbarTools
@@ -499,6 +533,14 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
     })
   }, [agentBase?.configuration, sendMessageShortcut, t])
 
+  const topContent =
+    selectedKnowledgeBases.length > 0 ? (
+      <KnowledgeBaseInput
+        selectedKnowledgeBases={selectedKnowledgeBases}
+        onRemoveKnowledgeBase={handleRemoveKnowledgeBase}
+      />
+    ) : null
+
   return (
     <InputbarCore
       scope={TopicType.Session}
@@ -514,6 +556,7 @@ const AgentSessionInputbarInner: FC<InnerProps> = ({ assistant, agentId, session
       onPause={abortAgentSession}
       isLoading={canAbort}
       handleSendMessage={sendMessage}
+      topContent={topContent}
       leftToolbar={leftToolbar}
       forceEnableQuickPanelTriggers
     />
