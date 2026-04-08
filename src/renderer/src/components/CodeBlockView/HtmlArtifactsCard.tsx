@@ -10,7 +10,7 @@ import type { ThemeMode } from '@renderer/types'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
-import { Code, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
+import { Code, Copy, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -104,6 +104,16 @@ const HtmlArtifactsCard: FC<Props> = ({
     window.toast.success(t('message.download.success'))
   }
 
+  const handleCopySource = async () => {
+    try {
+      await navigator.clipboard.writeText(htmlContent)
+      window.toast.success(t('code_block.copy.success'))
+    } catch (error) {
+      logger.error('Failed to copy HTML artifact source', error as Error)
+      window.toast.error(t('code_block.copy.failed'))
+    }
+  }
+
   return (
     <>
       <Container $isStreaming={isStreaming}>
@@ -142,12 +152,26 @@ const HtmlArtifactsCard: FC<Props> = ({
                 <Button icon={<CodeOutlined />} onClick={() => setIsPopupOpen(true)} type="primary">
                   {t('chat.artifacts.button.preview')}
                 </Button>
+                <Button
+                  icon={<Copy size={14} />}
+                  onClick={() => void handleCopySource()}
+                  type="text"
+                  disabled={!hasContent}>
+                  {t('code_block.copy.label')}
+                </Button>
               </ButtonContainer>
             </>
           ) : (
             <ButtonContainer>
               <Button icon={<CodeOutlined />} onClick={() => setIsPopupOpen(true)} type="text" disabled={!hasContent}>
                 {t('chat.artifacts.button.preview')}
+              </Button>
+              <Button
+                icon={<Copy size={14} />}
+                onClick={() => void handleCopySource()}
+                type="text"
+                disabled={!hasContent}>
+                {t('code_block.copy.label')}
               </Button>
               <Button icon={<LinkIcon size={14} />} onClick={handleOpenExternal} type="text" disabled={!hasContent}>
                 {t('chat.artifacts.button.openExternal')}

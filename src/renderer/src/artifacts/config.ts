@@ -598,6 +598,34 @@ function getArtifactServiceBridgeScript(settings: ArtifactSettings, overrides: A
             })
           }
         }
+
+        const unsupportedLlmMethod = (method) => () =>
+          Promise.reject(
+            new Error(
+              'Artifact preview does not expose llm.' +
+                method +
+                '. Use artifactServices.invokeOperation(serviceId, operationId, input) instead.'
+            )
+          )
+
+        const llmCompatibilityTarget = function (serviceId, operationId, input = {}) {
+          if (typeof serviceId === 'string' && typeof operationId === 'string') {
+            return window.artifactServices.invokeOperation(serviceId, operationId, input)
+          }
+
+          return unsupportedLlmMethod('call')()
+        }
+
+        llmCompatibilityTarget.serviceIds = Array.from(allowedIds)
+        llmCompatibilityTarget.invokeOperation = (...args) => window.artifactServices.invokeOperation(...args)
+        llmCompatibilityTarget.subscribe = (...args) => window.artifactServices.subscribe(...args)
+        llmCompatibilityTarget.call = (...args) => llmCompatibilityTarget(...args)
+        llmCompatibilityTarget.tool = (...args) => llmCompatibilityTarget(...args)
+        llmCompatibilityTarget.complete = unsupportedLlmMethod('complete')
+        llmCompatibilityTarget.generate = unsupportedLlmMethod('generate')
+        llmCompatibilityTarget.chat = unsupportedLlmMethod('chat')
+
+        window.llm = llmCompatibilityTarget
       })()
     </script>
   `

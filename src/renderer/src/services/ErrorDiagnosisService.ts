@@ -4,7 +4,7 @@ import store from '@renderer/store'
 import type { Model } from '@renderer/types'
 import type { SerializedError } from '@renderer/types/error'
 
-import { fetchGenerate, fetchModels } from './ApiService'
+import { fetchGenerate } from './ApiService'
 
 const logger = loggerService.withContext('ErrorDiagnosisService')
 
@@ -26,13 +26,7 @@ export interface DiagnosisContext {
 }
 
 async function getCherryAiFreeModel(): Promise<Model | undefined> {
-  try {
-    const models = await fetchModels(CHERRYAI_PROVIDER)
-    return models.length > 0 ? models[0] : undefined
-  } catch {
-    logger.warn('Failed to fetch CherryAI free models')
-    return undefined
-  }
+  return CHERRYAI_PROVIDER.models[0]
 }
 
 async function buildModelsToTry(context?: DiagnosisContext): Promise<Model[]> {

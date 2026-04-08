@@ -1,4 +1,5 @@
 import { CodeBlockView, HtmlArtifactsCard, ReactArtifactsCard } from '@renderer/components/CodeBlockView'
+import { resolveArtifactDescriptor } from '@renderer/components/CodeBlockView/renderArtifactCard'
 import { useArtifactSettings } from '@renderer/hooks/useArtifactSettings'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { ClickableFilePath } from '@renderer/pages/home/Messages/Tools/MessageAgentTools/ClickableFilePath'
@@ -7,7 +8,6 @@ import store from '@renderer/store'
 import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
 import { getCodeBlockId, isOpenFenceBlock } from '@renderer/utils/markdown'
-import { parseArtifactLanguage } from '@shared/artifacts'
 import type { Node } from 'mdast'
 import React, { memo, useCallback, useMemo } from 'react'
 
@@ -56,14 +56,14 @@ const CodeBlock: React.FC<Props> = ({ children, className, node, blockId, allowA
 
   const artifactLanguage = useMemo(
     () =>
-      parseArtifactLanguage(
+      resolveArtifactDescriptor({
         language,
-        {
+        source: children,
+        defaults: {
           defaultHtmlRuntimeProfileId: artifactSettings.defaultHtmlRuntimeProfileId,
           defaultReactRuntimeProfileId: artifactSettings.defaultReactRuntimeProfileId
-        },
-        children
-      ),
+        }
+      }),
     [artifactSettings.defaultHtmlRuntimeProfileId, artifactSettings.defaultReactRuntimeProfileId, children, language]
   )
   const artifactOrigin = useMemo(

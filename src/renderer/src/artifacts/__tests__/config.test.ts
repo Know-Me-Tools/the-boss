@@ -30,6 +30,7 @@ describe('artifact config helpers', () => {
     expect(document).toContain('https://unpkg.com/htmx.org@2.0.8/dist/htmx.min.js')
     expect(document).toContain('alpinejs@3.15.0')
     expect(document).toContain('artifactServices')
+    expect(document).toContain('window.llm')
     expect(document).not.toContain('htmx.org@2.0.9')
   })
 

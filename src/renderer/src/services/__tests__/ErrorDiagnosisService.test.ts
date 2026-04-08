@@ -1,15 +1,19 @@
 import type { SerializedError } from '@renderer/types/error'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock fetchGenerate and fetchModels
+// Mock fetchGenerate
 vi.mock('../ApiService', () => ({
-  fetchGenerate: vi.fn(),
-  fetchModels: vi.fn().mockResolvedValue([])
+  fetchGenerate: vi.fn()
 }))
 
 // Mock CHERRYAI_PROVIDER
 vi.mock('@renderer/config/providers', () => ({
-  CHERRYAI_PROVIDER: { id: 'cherryai', type: 'openai', apiHost: 'https://api.cherry-ai.com', models: [] }
+  CHERRYAI_PROVIDER: {
+    id: 'cherryai',
+    type: 'openai',
+    apiHost: 'https://api.cherry-ai.com',
+    models: [{ id: 'qwen', name: 'Qwen', provider: 'cherryai' }]
+  }
 }))
 
 // Mock store
@@ -35,13 +39,13 @@ vi.mock('@renderer/services/LoggerService', () => ({
   }
 }))
 
+import { CHERRYAI_PROVIDER } from '@renderer/config/providers'
 import store from '@renderer/store'
 
-import { fetchGenerate, fetchModels } from '../ApiService'
+import { fetchGenerate } from '../ApiService'
 import { diagnoseError } from '../ErrorDiagnosisService'
 
 const mockFetchGenerate = vi.mocked(fetchGenerate)
-const mockFetchModels = vi.mocked(fetchModels)
 const mockGetState = vi.mocked(store.getState)
 
 function makeError(overrides: Partial<SerializedError> = {}): SerializedError {
@@ -54,8 +58,7 @@ describe('ErrorDiagnosisService', () => {
     mockGetState.mockReturnValue({
       llm: { defaultModel: null }
     } as any)
-    // Default: CherryAI returns a free model as fallback
-    mockFetchModels.mockResolvedValue([{ id: 'qwen', name: 'Qwen', provider: 'cherryai' }] as any)
+    CHERRYAI_PROVIDER.models = [{ id: 'qwen', name: 'Qwen', provider: 'cherryai' }] as any
   })
 
   describe('diagnoseError', () => {
@@ -122,7 +125,7 @@ describe('ErrorDiagnosisService', () => {
     })
 
     it('falls back to defaultModel when CherryAI is unavailable', async () => {
-      mockFetchModels.mockResolvedValue([])
+      CHERRYAI_PROVIDER.models = []
       const customModel = { id: 'gpt-4', name: 'GPT-4', provider: 'openai' }
       mockGetState.mockReturnValue({ llm: { defaultModel: customModel } } as any)
 
