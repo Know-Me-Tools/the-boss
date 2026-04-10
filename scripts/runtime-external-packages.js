@@ -4,6 +4,7 @@ const runtimeExternalPackages = Object.freeze([
   '@anthropic-ai/claude-agent-sdk',
   '@libsql/client',
   '@napi-rs/system-ocr',
+  'esbuild',
   'font-list',
   'selection-hook',
   'sharp'
