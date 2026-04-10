@@ -47,6 +47,7 @@ describe('verify-packaged-runtime-deps', () => {
   it('validates the runtime external manifest', () => {
     expect(() => validateRuntimeExternalPackages(runtimeExternalPackages)).not.toThrow()
     expect(new Set(runtimeExternalPackages).size).toBe(runtimeExternalPackages.length)
+    expect(runtimeExternalPackages).toContain('esbuild')
   })
 
   it('collects the full dependency closure for declared runtime externals', () => {
