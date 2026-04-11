@@ -2,10 +2,24 @@ import { EventEmitter } from 'node:events'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { buildSkillStreamPartsMock, invokeMock, persistExchangeMock } = vi.hoisted(() => ({
+const { buildSkillStreamPartsMock, invokeMock, persistExchangeMock, reduxSelectMock, searchMock, rerankMock } =
+  vi.hoisted(() => ({
   buildSkillStreamPartsMock: vi.fn().mockResolvedValue([]),
   invokeMock: vi.fn(),
-  persistExchangeMock: vi.fn().mockResolvedValue({})
+  persistExchangeMock: vi.fn().mockResolvedValue({}),
+  reduxSelectMock: vi.fn(),
+  searchMock: vi.fn(),
+  rerankMock: vi.fn()
+}))
+
+vi.mock('@main/aiCore/provider/providerConfig', () => ({
+  formatProviderApiHost: vi.fn(async (provider) => provider)
+}))
+
+vi.mock('@main/services/ReduxService', () => ({
+  reduxService: {
+    select: reduxSelectMock
+  }
 }))
 
 vi.mock('@main/services/WindowService', () => ({
@@ -24,13 +38,18 @@ vi.mock('../../database/sessionMessageRepository', () => ({
   }
 }))
 
+vi.mock('@main/services/KnowledgeService', () => ({
+  default: {
+    search: searchMock,
+    rerank: rerankMock
+  }
+}))
+
 vi.mock('../claudecode', () => ({
   default: class MockClaudeCodeService {
     invoke = invokeMock
   }
 }))
-
-import knowledgeService from '@main/services/KnowledgeService'
 
 import { sessionMessageService } from '../SessionMessageService'
 import { sessionService } from '../SessionService'
@@ -55,9 +74,9 @@ const runtimeConfigs = {
   'kb-1': {
     embedApiClient: {
       apiKey: 'key',
-      apiHost: 'https://api.openai.com/v1',
+      baseURL: 'https://api.openai.com/v1',
       model: 'text-embedding-3-small',
-      provider: { id: 'openai', type: 'openai' }
+      provider: 'openai'
     }
   }
 }
@@ -71,7 +90,7 @@ const baseSession = {
   instructions: 'Use docs when needed',
   accessible_paths: ['/tmp'],
   allowed_tools: [],
-  model: 'openai:gpt-4.1',
+  model: 'anthropic:claude-sonnet-4',
   configuration: {},
   created_at: '2026-04-07T00:00:00.000Z',
   updated_at: '2026-04-07T00:00:00.000Z'
@@ -101,15 +120,16 @@ async function readAllParts(stream: ReadableStream<any>) {
 describe('SessionMessageService knowledge retrieval', () => {
   beforeEach(() => {
     buildSkillStreamPartsMock.mockResolvedValue([])
+    reduxSelectMock.mockReset()
     vi.spyOn(sessionService, 'ensureLastTotalTokensInMemory').mockResolvedValue(undefined)
-    vi.spyOn(knowledgeService, 'search').mockResolvedValue([
+    searchMock.mockResolvedValue([
       {
         pageContent: 'Knowledge base answer',
         metadata: { source: 'docs.md', type: 'file' },
         score: 0.9
       }
-    ] as any)
-    vi.spyOn(knowledgeService, 'rerank').mockImplementation(async (_event, params) => params.results)
+    ])
+    rerankMock.mockImplementation(async (_event, params) => params.results)
   })
 
   afterEach(() => {
@@ -117,6 +137,8 @@ describe('SessionMessageService knowledge retrieval', () => {
     invokeMock.mockReset()
     buildSkillStreamPartsMock.mockClear()
     persistExchangeMock.mockClear()
+    searchMock.mockReset()
+    rerankMock.mockReset()
   })
 
   it('falls back to agent default knowledge, augments the prompt, emits citation events, and persists citation blocks', async () => {
@@ -133,7 +155,7 @@ describe('SessionMessageService knowledge retrieval', () => {
       description: '',
       instructions: 'Use docs when needed',
       accessible_paths: ['/tmp'],
-      model: 'openai:gpt-4.1',
+      model: 'anthropic:claude-sonnet-4',
       configuration: {},
       knowledge_bases: [mockKnowledgeBase],
       knowledgeRecognition: 'on',
@@ -173,7 +195,7 @@ describe('SessionMessageService knowledge retrieval', () => {
     const parts = await readAllParts(stream)
     await completion
 
-    expect(knowledgeService.search).toHaveBeenCalledTimes(1)
+    expect(searchMock).toHaveBeenCalledTimes(1)
     expect(invokeMock).toHaveBeenCalledWith(
       expect.stringContaining('Please answer the question based on the reference materials'),
       expect.objectContaining({ id: 'session-1' }),
@@ -207,7 +229,7 @@ describe('SessionMessageService knowledge retrieval', () => {
     )
   })
 
-  it('uses the session override to force retrieval when force-search mode is selected', async () => {
+  it('uses the session override to disable retrieval even when the agent default is on', async () => {
     vi.spyOn(sessionMessageService as any, 'getLastAgentSessionId').mockResolvedValue('')
     vi.spyOn(sessionMessageService as any, 'getPersistedSession').mockResolvedValue({
       ...baseSession,
@@ -222,7 +244,7 @@ describe('SessionMessageService knowledge retrieval', () => {
       description: '',
       instructions: '',
       accessible_paths: ['/tmp'],
-      model: 'openai:gpt-4.1',
+      model: 'anthropic:claude-sonnet-4',
       configuration: {},
       knowledge_bases: [mockKnowledgeBase],
       knowledgeRecognition: 'on',
@@ -251,24 +273,21 @@ describe('SessionMessageService knowledge retrieval', () => {
 
     const { stream, completion } = await sessionMessageService.createSessionMessage(
       baseSession as any,
-      { content: 'Where is the install guide?' } as any,
+      { content: 'What changed?' } as any,
       new AbortController()
     )
 
-    const parts = await readAllParts(stream)
+    await readAllParts(stream)
     await completion
 
-    expect(knowledgeService.search).toHaveBeenCalledTimes(1)
+    expect(searchMock).not.toHaveBeenCalled()
     expect(invokeMock).toHaveBeenCalledWith(
-      expect.stringContaining('Please answer the question based on the reference materials'),
+      'What changed?',
       expect.objectContaining({ id: 'session-1' }),
       expect.any(AbortController),
       '',
       expect.any(Object),
       undefined
-    )
-    expect(parts.map((part) => part.type)).toEqual(
-      expect.arrayContaining(['data-external-tool-in-progress', 'data-external-tool-complete'])
     )
   })
 })

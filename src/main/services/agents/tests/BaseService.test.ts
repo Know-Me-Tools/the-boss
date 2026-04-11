@@ -21,6 +21,16 @@ vi.mock('@main/utils', () => ({
   getDataPath: () => '/mock/data'
 }))
 
+vi.mock('@main/aiCore/provider/providerConfig', () => ({
+  formatProviderApiHost: vi.fn(async (provider) => provider)
+}))
+
+vi.mock('@main/services/ReduxService', () => ({
+  reduxService: {
+    select: vi.fn()
+  }
+}))
+
 const mockValidateModelId = vi.fn()
 vi.mock('@main/apiServer/utils', () => ({
   validateModelId: (...args: unknown[]) => mockValidateModelId(...args)

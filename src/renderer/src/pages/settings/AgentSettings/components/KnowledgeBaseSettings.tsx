@@ -1,21 +1,16 @@
 import { CheckOutlined } from '@ant-design/icons'
 import { useAppSelector } from '@renderer/store'
-import type { AgentBaseWithId, KnowledgeBase, UpdateAgentBaseForm, UpdateAgentFunctionUnion } from '@renderer/types'
+import type { KnowledgeBase, UpdateAgentBaseForm } from '@renderer/types'
 import type { SelectProps } from 'antd'
 import { Row, Segmented, Select, Tooltip } from 'antd'
 import { CircleHelp } from 'lucide-react'
-import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import type { AgentOrSessionSettingsProps } from '../shared'
 import { SettingsContainer, SettingsTitle } from '../shared'
 
-interface KnowledgeBaseSettingsProps {
-  agentBase: AgentBaseWithId | undefined | null
-  update: UpdateAgentFunctionUnion
-}
-
-const KnowledgeBaseSettings: FC<KnowledgeBaseSettingsProps> = ({ agentBase, update }) => {
+const KnowledgeBaseSettings: React.FC<AgentOrSessionSettingsProps> = ({ agentBase, update }) => {
   const { t } = useTranslation()
   const knowledgeBases = useAppSelector((state) => state.knowledge.bases)
 
@@ -31,7 +26,7 @@ const KnowledgeBaseSettings: FC<KnowledgeBaseSettingsProps> = ({ agentBase, upda
   const handleKnowledgeBaseChange = (value: string[]) => {
     const selectedBases = value
       .map((id) => knowledgeBases.find((base) => base.id === id))
-      .filter((base): base is KnowledgeBase => !!base)
+      .filter((base): base is KnowledgeBase => Boolean(base))
 
     void update(
       {

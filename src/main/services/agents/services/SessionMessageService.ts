@@ -354,11 +354,11 @@ export class SessionMessageService extends BaseService {
       return { prompt }
     }
 
-    const { knowledgeBases, runtimeConfigs } = this.resolveEffectiveKnowledgeConfig(session, agent)
-    // Agent sessions currently only have direct prompt-based retrieval. Keep both
-    // "Force Search" and "Intent Recognition" modes retrieval-enabled until an
-    // agent-side intent gate exists; only an empty knowledge-base selection disables it.
-    if (knowledgeBases.length === 0) {
+    const { knowledgeBases, knowledgeRecognition, runtimeConfigs } = this.resolveEffectiveKnowledgeConfig(
+      session,
+      agent
+    )
+    if (knowledgeRecognition !== 'on' || knowledgeBases.length === 0) {
       return { prompt }
     }
 
