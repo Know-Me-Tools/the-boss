@@ -70,7 +70,7 @@ export const BaseSettingsPopup: React.FC<BaseSettingsPopupProps> = ({
     }
 
     return (
-      <div className="flex w-full flex-1">
+      <div className="flex min-h-0 w-full flex-1">
         <LeftMenu>
           <StyledMenu
             defaultSelectedKeys={[initialTab]}

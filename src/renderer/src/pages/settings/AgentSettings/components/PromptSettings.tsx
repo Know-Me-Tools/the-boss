@@ -45,7 +45,7 @@ const PromptSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update }) 
   if (!agentBase) return null
 
   return (
-    <SettingsContainer className="flex h-full flex-col overflow-hidden">
+    <SettingsContainer className="flex h-full flex-col">
       <SettingsItem divider={false} className="flex min-h-0 flex-1 flex-col">
         <SettingsTitle>
           {t('common.prompt')}
