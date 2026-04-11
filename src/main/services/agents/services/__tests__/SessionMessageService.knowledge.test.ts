@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { buildSkillStreamPartsMock, invokeMock, persistExchangeMock, reduxSelectMock, searchMock, rerankMock } =
   vi.hoisted(() => ({
-  buildSkillStreamPartsMock: vi.fn().mockResolvedValue([]),
-  invokeMock: vi.fn(),
-  persistExchangeMock: vi.fn().mockResolvedValue({}),
-  reduxSelectMock: vi.fn(),
-  searchMock: vi.fn(),
-  rerankMock: vi.fn()
-}))
+    buildSkillStreamPartsMock: vi.fn().mockResolvedValue([]),
+    invokeMock: vi.fn(),
+    persistExchangeMock: vi.fn().mockResolvedValue({}),
+    reduxSelectMock: vi.fn(),
+    searchMock: vi.fn(),
+    rerankMock: vi.fn()
+  }))
 
 vi.mock('@main/aiCore/provider/providerConfig', () => ({
   formatProviderApiHost: vi.fn(async (provider) => provider)

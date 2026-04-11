@@ -15,11 +15,11 @@ export const CodeBlockShiki = CodeBlock.extend<CodeBlockShikiOptions>({
 
     return {
       ...parentOptions,
+      enableTabIndentation: parentOptions?.enableTabIndentation ?? true,
+      tabSize: parentOptions?.tabSize ?? 4,
       languageClassPrefix: parentOptions?.languageClassPrefix ?? 'language-',
       exitOnTripleEnter: parentOptions?.exitOnTripleEnter ?? true,
       exitOnArrowDown: parentOptions?.exitOnArrowDown ?? true,
-      enableTabIndentation: parentOptions?.enableTabIndentation ?? false,
-      tabSize: parentOptions?.tabSize ?? 4,
       defaultLanguage: 'text',
       theme: 'one-light',
       HTMLAttributes: {

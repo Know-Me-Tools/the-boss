@@ -620,7 +620,7 @@ export const commandSuggestion: Omit<SuggestionOptions<Command, MentionNodeAttrs
         component.updateProps(props)
 
         // Update position when items change (might affect size)
-        if (component.element) {
+        if (component.element instanceof HTMLElement) {
           setTimeout(() => {
             updatePosition(props.editor, component.element)
           }, 0)

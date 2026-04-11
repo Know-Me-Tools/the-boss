@@ -242,7 +242,7 @@ const MessageGroup = ({ messages, topic, registerMessageElement }: Props) => {
             trigger={gridPopoverTrigger}
             styles={{
               root: { maxWidth: '60vw', overflowY: 'auto', zIndex: 1000 },
-              content: { padding: 2 }
+              container: { padding: 2 }
             }}>
             {messageContent}
           </Popover>
