@@ -1,10 +1,21 @@
 import { loggerService } from '@logger'
+import { formatProviderApiHost } from '@main/aiCore/provider/providerConfig'
 import { mcpApiService } from '@main/apiServer/services/mcp'
 import type { ModelValidationError } from '@main/apiServer/utils'
 import { validateModelId } from '@main/apiServer/utils'
+import { reduxService } from '@main/services/ReduxService'
 import { getDataPath } from '@main/utils'
 import { buildFunctionCallToolName } from '@shared/mcp'
-import type { AgentType, MCPTool, SlashCommand, SystemProviderId, Tool } from '@types'
+import type {
+  AgentType,
+  ApiClient,
+  KnowledgeBase,
+  MCPTool,
+  Provider,
+  SlashCommand,
+  SystemProviderId,
+  Tool
+} from '@types'
 import { objectKeys } from '@types'
 import fs from 'fs'
 import path from 'path'
@@ -19,6 +30,13 @@ import { builtinTools } from './services/claudecode/tools'
 const logger = loggerService.withContext('BaseService')
 const MCP_TOOL_ID_PREFIX = 'mcp__'
 const MCP_TOOL_LEGACY_PREFIX = 'mcp_'
+type KnowledgeBaseRuntimeConfig = Record<
+  string,
+  {
+    embedApiClient: ApiClient
+    rerankApiClient?: ApiClient
+  }
+>
 
 const buildMcpToolId = (serverId: string, toolName: string) => `${MCP_TOOL_ID_PREFIX}${serverId}__${toolName}`
 const toLegacyMcpToolId = (toolId: string) => {
@@ -46,8 +64,96 @@ export abstract class BaseService {
     'configuration',
     'accessible_paths',
     'allowed_tools',
-    'slash_commands'
+    'slash_commands',
+    'knowledge_bases',
+    'knowledge_base_configs'
   ]
+
+  private routeKnowledgeApiHost(apiHost: string): string {
+    const trimmedHost = apiHost.trim()
+    if (!trimmedHost.endsWith('#')) {
+      return trimmedHost.replace(/\/+$/, '')
+    }
+
+    const hostWithoutMarker = trimmedHost.slice(0, -1)
+    const endpointMatch = ['/v1', '/v1beta', '/openai', '/api'].find((endpoint) => hostWithoutMarker.endsWith(endpoint))
+    if (!endpointMatch) {
+      return hostWithoutMarker.replace(/\/+$/, '')
+    }
+
+    return hostWithoutMarker
+      .slice(0, hostWithoutMarker.length - endpointMatch.length)
+      .replace(/\/+$/, '')
+      .replace(/:$/, '')
+  }
+
+  private buildKnowledgeApiClient(modelId: string | undefined, provider: Provider): ApiClient {
+    let baseURL = this.routeKnowledgeApiHost(provider.apiHost || '')
+
+    if (provider.type === 'gemini') {
+      baseURL = `${baseURL}/openai`
+    } else if (provider.type === 'azure-openai') {
+      baseURL = `${baseURL}/v1`
+    } else if (provider.id === 'ollama') {
+      baseURL = baseURL.replace(/\/api$/, '')
+    }
+
+    return {
+      model: modelId || '',
+      provider: provider.id,
+      apiKey: provider.apiKey || provider.id || 'secret',
+      baseURL
+    }
+  }
+
+  protected async buildKnowledgeBaseRuntimeConfigs(
+    knowledgeBases?: KnowledgeBase[]
+  ): Promise<KnowledgeBaseRuntimeConfig | undefined> {
+    if (!knowledgeBases?.length) {
+      return undefined
+    }
+
+    let providers: Provider[] = []
+    try {
+      const rawProviders = await reduxService.select<Provider[]>('state.llm.providers')
+      const formatted = await Promise.allSettled(
+        (rawProviders || []).map((provider) => formatProviderApiHost(provider))
+      )
+      providers = formatted.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+    } catch (error) {
+      logger.warn('Failed to resolve provider snapshots for knowledge bases', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return undefined
+    }
+
+    const providerMap = new Map(providers.map((provider) => [provider.id, provider]))
+    const configs: KnowledgeBaseRuntimeConfig = {}
+
+    for (const base of knowledgeBases) {
+      const embedProvider = providerMap.get(base.model?.provider)
+      if (!embedProvider) {
+        logger.warn('Skipping knowledge runtime config due to missing embedding provider', {
+          baseId: base.id,
+          providerId: base.model?.provider
+        })
+        continue
+      }
+
+      configs[base.id] = {
+        embedApiClient: this.buildKnowledgeApiClient(base.model?.id, embedProvider)
+      }
+
+      if (base.rerankModel?.provider) {
+        const rerankProvider = providerMap.get(base.rerankModel.provider)
+        if (rerankProvider) {
+          configs[base.id].rerankApiClient = this.buildKnowledgeApiClient(base.rerankModel.id, rerankProvider)
+        }
+      }
+    }
+
+    return Object.keys(configs).length > 0 ? configs : undefined
+  }
 
   public async listMcpTools(
     agentType: AgentType,

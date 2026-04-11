@@ -19,6 +19,9 @@ export const agentsTable = sqliteTable('agents', {
 
   mcps: text('mcps'), // JSON array of MCP tool IDs
   allowed_tools: text('allowed_tools'), // JSON array of allowed tool IDs (whitelist)
+  knowledge_bases: text('knowledge_bases'), // JSON array of selected knowledge bases
+  knowledgeRecognition: text('knowledgeRecognition'), // Automatic knowledge retrieval mode
+  knowledge_base_configs: text('knowledge_base_configs'), // JSON map of provider snapshots used for headless retrieval
 
   configuration: text('configuration'), // JSON, extensible settings
 

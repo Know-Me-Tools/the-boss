@@ -49,6 +49,13 @@
       "when": 1775516622214,
       "tag": "0006_wonderful_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1775872800000,
+      "tag": "0007_fierce_knowledge_restore",
+      "breakpoints": true
     }
   ],
   "version": "7"

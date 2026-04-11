@@ -7,6 +7,7 @@
 import type { ModelMessage, TextStreamPart } from 'ai'
 import * as z from 'zod'
 
+import type { KnowledgeBase } from './knowledge'
 import type { Message, MessageBlock } from './newMessage'
 import { PluginMetadataSchema } from './plugin'
 
@@ -27,6 +28,9 @@ export type SessionMessageType = TextStreamPart<Record<string, any>>['type']
 
 export const AgentTypeSchema = z.enum(['claude-code'])
 export type AgentType = z.infer<typeof AgentTypeSchema>
+
+export const KnowledgeRecognitionSchema = z.enum(['off', 'on'])
+export type KnowledgeRecognition = z.infer<typeof KnowledgeRecognitionSchema>
 
 // ------------------ CherryClaw-specific types ------------------
 export const SchedulerTypeSchema = z.enum(['cron', 'interval', 'one-time'])
@@ -157,6 +161,8 @@ export const AgentBaseSchema = z.object({
   mcps: z.array(z.string()).optional(), // Array of MCP tool IDs
   allowed_tools: z.array(z.string()).optional(), // Array of allowed tool IDs (whitelist)
   slash_commands: z.array(SlashCommandSchema).optional(), // Array of slash commands merged from builtin and SDK
+  knowledge_bases: z.custom<KnowledgeBase[]>().optional(), // Selected knowledge bases for retrieval
+  knowledgeRecognition: KnowledgeRecognitionSchema.optional(), // Whether to automatically retrieve knowledge for this scope
 
   // Configuration
   configuration: AgentConfigurationSchema.optional() // Extensible settings like temperature, top_p, etc.
@@ -280,6 +286,8 @@ export type BaseAgentForm = {
   accessible_paths: string[]
   allowed_tools: string[]
   mcps?: string[]
+  knowledge_bases?: KnowledgeBase[]
+  knowledgeRecognition?: 'off' | 'on'
   configuration?: AgentConfiguration
 }
 

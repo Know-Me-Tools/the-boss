@@ -140,6 +140,7 @@ export class SessionService extends BaseService {
     }
 
     const serializedData = this.serializeJsonFields(sessionData)
+    const knowledgeRuntimeConfigs = await this.buildKnowledgeBaseRuntimeConfigs(sessionData.knowledge_bases)
 
     const insertData: InsertSessionRow = {
       id,
@@ -154,6 +155,9 @@ export class SessionService extends BaseService {
       small_model: serializedData.small_model || null,
       mcps: serializedData.mcps || null,
       allowed_tools: serializedData.allowed_tools || null,
+      knowledge_bases: serializedData.knowledge_bases || null,
+      knowledgeRecognition: sessionData.knowledgeRecognition || null,
+      knowledge_base_configs: knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null,
       configuration: serializedData.configuration || null,
       sort_order: 0,
       created_at: now,
@@ -291,6 +295,9 @@ export class SessionService extends BaseService {
     }
 
     const serializedUpdates = this.serializeJsonFields(updates)
+    const knowledgeRuntimeConfigs = Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')
+      ? await this.buildKnowledgeBaseRuntimeConfigs(updates.knowledge_bases)
+      : undefined
 
     const updateData: Partial<SessionRow> = {
       updated_at: now
@@ -302,6 +309,10 @@ export class SessionService extends BaseService {
         const value = serializedUpdates[field as keyof typeof serializedUpdates]
         ;(updateData as Record<string, unknown>)[field] = value ?? null
       }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updates, 'knowledge_bases')) {
+      updateData.knowledge_base_configs = knowledgeRuntimeConfigs ? JSON.stringify(knowledgeRuntimeConfigs) : null
     }
 
     const database = await this.getDatabase()
