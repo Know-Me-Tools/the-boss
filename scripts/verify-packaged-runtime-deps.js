@@ -4,6 +4,7 @@ const Module = require('module')
 const acorn = require('acorn')
 const asar = require('@electron/asar')
 
+const { getArtifactRuntimeRootPackageNames } = require('./artifact-runtime-packages')
 const { getRuntimeExternalPackageNames, validateRuntimeExternalPackages } = require('./runtime-external-packages')
 
 const projectRoot = path.resolve(__dirname, '..')
@@ -297,6 +298,34 @@ const collectPackageDependencyClosure = (packageNames, basedir = projectRoot) =>
   }
 }
 
+const mergeDependencyClosures = (closures) => {
+  const packageNames = new Set()
+  const parents = new Map()
+  const skippedPackages = new Set()
+
+  for (const closure of closures) {
+    for (const packageName of closure.packageNames) {
+      packageNames.add(packageName)
+    }
+
+    for (const [packageName, parentName] of closure.parents.entries()) {
+      if (!parents.has(packageName)) {
+        parents.set(packageName, parentName)
+      }
+    }
+
+    for (const packageName of closure.skippedPackages) {
+      skippedPackages.add(packageName)
+    }
+  }
+
+  return {
+    packageNames,
+    parents,
+    skippedPackages
+  }
+}
+
 const auditStartupBundleExternalReferences = ({
   declaredExternalPackages = getRuntimeExternalPackageNames(),
   entryFiles = getStartupEntryFiles()
@@ -521,7 +550,11 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
   const referencedDeclaredExternalPackages = audit.startupRoots.filter((packageName) =>
     audit.declaredExternalPackages.includes(packageName)
   )
-  const closure = collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot)
+  const dedicatedRuntimeRoots = getArtifactRuntimeRootPackageNames()
+  const closure = mergeDependencyClosures([
+    collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot),
+    collectPackageDependencyClosure(dedicatedRuntimeRoots, projectRoot)
+  ])
   const packageLocations = collectPackagedPackageLocations(appOutDir)
   const fallbackRequiredPackages = computeFallbackPackageNames({
     expectedPackages: closure.packageNames,
@@ -550,6 +583,7 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
 
   return {
     audit,
+    dedicatedRuntimeRoots,
     expectedPackages: closure.packageNames,
     fallbackRequiredPackages,
     missingPackages,

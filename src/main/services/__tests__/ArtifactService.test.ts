@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { ArtifactService } from '../ArtifactService'
+import { ArtifactService, getArtifactModuleResolvePaths } from '../ArtifactService'
 
 describe('ArtifactService', () => {
   it('compiles a simple React artifact', async () => {
@@ -66,6 +66,18 @@ describe('ArtifactService', () => {
 
     expect(result.ok).toBe(false)
     expect(result.diagnostics.join('\n')).toContain('not allowed')
+  })
+
+  it('prefers packaged resources when resolving artifact runtime modules', () => {
+    const resolvePaths = getArtifactModuleResolvePaths({
+      cwd: '/workspace/project',
+      resourcesPath: '/Applications/The Boss.app/Contents/Resources'
+    })
+
+    expect(resolvePaths).toEqual([
+      '/Applications/The Boss.app/Contents/Resources',
+      '/workspace/project'
+    ])
   })
 
   it('persists, updates, forks, and deletes artifacts in the local library', async () => {

@@ -1,8 +1,9 @@
-import { type ChildProcessWithoutNullStreams,execFileSync, spawn } from 'node:child_process'
+import { type ChildProcessByStdio, execFileSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
+import type { Readable } from 'node:stream'
 
 import { loggerService } from '@logger'
 import { isWin } from '@main/constant'
@@ -42,7 +43,7 @@ class OpenAIOAuthService {
   private readonly host = DEFAULT_HOST
   private readonly port = DEFAULT_PORT
   private readonly baseUrl = DEFAULT_BASE_URL
-  private proxyProcess: ChildProcessWithoutNullStreams | null = null
+  private proxyProcess: ChildProcessByStdio<null, Readable, Readable> | null = null
   private runState: OpenAIOAuthRunState = 'stopped'
 
   public async checkInstalled(): Promise<OpenAIOAuthInstallInfo> {
@@ -461,7 +462,7 @@ class OpenAIOAuthService {
     return false
   }
 
-  private killProcess(proc: ChildProcessWithoutNullStreams): void {
+  private killProcess(proc: ChildProcessByStdio<null, Readable, Readable>): void {
     if (proc.killed || !proc.pid) {
       return
     }

@@ -149,11 +149,29 @@ function formatDiagnostic(error: unknown): string[] {
   return [String(error)]
 }
 
+export function getArtifactModuleResolvePaths(options?: { cwd?: string; resourcesPath?: string }): string[] {
+  const resolvePaths = new Set<string>()
+  const resourcesPath = options?.resourcesPath ?? process.resourcesPath
+  const cwd = options?.cwd ?? process.cwd()
+
+  if (typeof resourcesPath === 'string' && resourcesPath.trim()) {
+    resolvePaths.add(resourcesPath)
+  }
+
+  if (typeof cwd === 'string' && cwd.trim()) {
+    resolvePaths.add(cwd)
+  }
+
+  return [...resolvePaths]
+}
+
 function resolveArtifactImport(specifier: string): string {
+  const resolvePaths = getArtifactModuleResolvePaths()
+
   try {
-    return require.resolve(specifier)
+    return require.resolve(specifier, { paths: resolvePaths })
   } catch {
-    return require.resolve(specifier, { paths: [process.cwd()] })
+    return require.resolve(specifier)
   }
 }
 
