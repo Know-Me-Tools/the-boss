@@ -5597,7 +5597,41 @@
         "usage_title": "用量"
       },
       "openai": {
-        "alert": "OpenAI 服务商不再支持旧的调用方式，如果使用第三方 API 请新建服务商"
+        "alert": "OpenAI 服务商不再支持旧的调用方式，如果使用第三方 API 请新建服务商",
+        "oauth": {
+          "action_failed": "OpenAI OAuth 操作失败",
+          "action_success": "OpenAI OAuth 状态已更新",
+          "api_key": "API 密钥",
+          "auth_file": "认证文件",
+          "auth_method": "认证方式",
+          "available_models": "可用模型",
+          "credential_status": "凭证状态",
+          "health_status": "健康状态",
+          "install": "检查侧车",
+          "install_status": "侧车状态",
+          "local_endpoint": "本地端点",
+          "oauth": "ChatGPT OAuth",
+          "proxy_status": "代理状态",
+          "refresh": "刷新",
+          "start": "启动代理",
+          "state": {
+            "error": "错误",
+            "healthy": "健康",
+            "installed": "已安装",
+            "invalid": "无效",
+            "missing": "缺失",
+            "running": "运行中",
+            "starting": "启动中",
+            "stopped": "已停止",
+            "unsupported": "不支持",
+            "unhealthy": "异常",
+            "valid": "有效"
+          },
+          "status_load_failed": "加载 OpenAI OAuth 状态失败",
+          "stop": "停止代理",
+          "warning_description": "该功能使用本地、非官方的社区代理，并复用文件型 Codex 认证缓存。仅应在可信机器上使用，且不得共享。",
+          "warning_title": "仅限本地侧车"
+        }
       },
       "remove_duplicate_keys": "移除重复密钥",
       "remove_invalid_keys": "删除无效密钥",
@@ -5780,7 +5814,7 @@
       "noInstalled": "暂无已安装的技能",
       "noResults": "未找到技能",
       "noSkillFile": "未找到 SKILL.md 文件",
-      "searchPlaceholder": "跨注册表搜索技能...",
+      "searchPlaceholder": "发现更多技能...",
       "searchRegistryTitle": "在线搜索技能注册表",
       "searchTitle": "搜索技能",
       "selectFile": "选择一个文件查看",

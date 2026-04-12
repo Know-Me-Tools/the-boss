@@ -414,6 +414,16 @@ export enum IpcChannel {
   Anthropic_HasCredentials = 'anthropic:has-credentials',
   Anthropic_ClearCredentials = 'anthropic:clear-credentials',
 
+  // OpenAI OAuth
+  OpenAIOAuth_CheckInstalled = 'openai-oauth:check-installed',
+  OpenAIOAuth_Install = 'openai-oauth:install',
+  OpenAIOAuth_StartProxy = 'openai-oauth:start-proxy',
+  OpenAIOAuth_StopProxy = 'openai-oauth:stop-proxy',
+  OpenAIOAuth_GetStatus = 'openai-oauth:get-status',
+  OpenAIOAuth_CheckHealth = 'openai-oauth:check-health',
+  OpenAIOAuth_GetBaseUrl = 'openai-oauth:get-base-url',
+  OpenAIOAuth_GetModels = 'openai-oauth:get-models',
+
   // ExternalApps
   ExternalApps_DetectInstalled = 'external-apps:detect-installed',
 

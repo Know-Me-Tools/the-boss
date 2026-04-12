@@ -94,12 +94,14 @@ const createWindowKeyv = () => {
 interface WindowMockApi {
   copilot?: { getToken: ReturnType<typeof vi.fn> }
   anthropic_oauth?: { getAccessToken: ReturnType<typeof vi.fn> }
+  openai_oauth?: { startProxy: ReturnType<typeof vi.fn>; getBaseUrl: ReturnType<typeof vi.fn> }
   cherryai?: { generateSignature: ReturnType<typeof vi.fn> }
 }
 
 const setupWindowMock = (options?: {
   withCopilotToken?: boolean
   withAnthropicOAuth?: boolean
+  withOpenAIOAuth?: boolean
   withCherryAI?: boolean
 }) => {
   const api: WindowMockApi = {}
@@ -111,6 +113,12 @@ const setupWindowMock = (options?: {
   if (options?.withAnthropicOAuth) {
     api.anthropic_oauth = {
       getAccessToken: vi.fn().mockResolvedValue('mock-oauth-token')
+    }
+  }
+  if (options?.withOpenAIOAuth) {
+    api.openai_oauth = {
+      startProxy: vi.fn().mockResolvedValue({ success: true }),
+      getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:10531/v1')
     }
   }
   if (options?.withCherryAI) {
@@ -293,6 +301,45 @@ describe('formatProviderApiHost', () => {
       const result = formatProviderApiHost(provider)
 
       expect(result.apiHost).toBe('https://api.perplexity.ai')
+    })
+  })
+
+  describe('NewAPI provider', () => {
+    // Regression: previously isNewApiProvider was matched in formatProviderApiHost and forced
+    it('appends /v1 when matched by type "new-api"', () => {
+      const provider = makeProvider({
+        id: 'some-newapi-instance',
+        type: 'new-api',
+        apiHost: 'https://api.example.com'
+      })
+
+      const result = formatProviderApiHost(provider)
+
+      expect(result.apiHost).toBe('https://api.example.com/v1')
+    })
+
+    it('does not double-append /v1', () => {
+      const provider = makeProvider({
+        id: 'new-api',
+        type: 'openai',
+        apiHost: 'https://api.newapi.com/v1'
+      })
+
+      const result = formatProviderApiHost(provider)
+
+      expect(result.apiHost).toBe('https://api.newapi.com/v1')
+    })
+
+    it('skips version append when trailing sharp is present', () => {
+      const provider = makeProvider({
+        id: 'new-api',
+        type: 'openai',
+        apiHost: 'https://api.newapi.com/custom#'
+      })
+
+      const result = formatProviderApiHost(provider)
+
+      expect(result.apiHost).toBe('https://api.newapi.com/custom')
     })
   })
 
@@ -529,6 +576,7 @@ describe('providerToAiSdkConfig', () => {
     setupWindowMock({
       withCopilotToken: true,
       withAnthropicOAuth: true,
+      withOpenAIOAuth: true,
       withCherryAI: true
     })
     setupStoreMock()
@@ -608,6 +656,27 @@ describe('providerToAiSdkConfig', () => {
       expect(settings.baseURL).toBe('https://api.anthropic.com/v1')
       expect(settings.headers.Authorization).toBe('Bearer mock-oauth-token')
       expect(settings.apiKey).toBe('')
+    })
+  })
+
+  describe('OpenAI OAuth builder', () => {
+    it('routes OpenAI through the local OAuth proxy', async () => {
+      const provider = makeProvider({
+        id: 'openai',
+        type: 'openai-response',
+        apiHost: 'https://api.openai.com/v1',
+        authType: 'oauth'
+      })
+
+      const config = await providerToAiSdkConfig(provider, makeModel('gpt-5.4', 'openai'))
+
+      expect(config.providerId).toBe('openai-compatible')
+      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      expect(settings.baseURL).toBe('http://127.0.0.1:10531/v1')
+      expect(settings.apiKey).toBe('oauth')
+      expect(settings.name).toBe('openai')
+      expect(window.api.openai_oauth.startProxy).toHaveBeenCalledTimes(1)
+      expect(window.api.openai_oauth.getBaseUrl).toHaveBeenCalledTimes(1)
     })
   })
 

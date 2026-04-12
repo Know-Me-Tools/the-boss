@@ -8,6 +8,7 @@ type TokenUsage = Usage | LanguageModelUsage
 interface TokenUsageParams {
   usage: TokenUsage | undefined
   model: Model | undefined
+  source?: 'chat' | 'agent'
 }
 
 /**

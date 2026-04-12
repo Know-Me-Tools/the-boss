@@ -30,6 +30,43 @@ export interface DependencyStatus {
 
 export type OperationResult = { success: true } | { success: false; message: string }
 
+export type OpenAIOAuthInstallState = 'installed' | 'missing'
+
+export type OpenAIOAuthRunState = 'stopped' | 'starting' | 'running' | 'error'
+
+export type OpenAIOAuthHealthState = 'healthy' | 'unhealthy'
+
+export type OpenAIOAuthCredentialState = 'valid' | 'missing' | 'invalid' | 'unsupported'
+
+export interface OpenAIOAuthCredentialStatus {
+  state: OpenAIOAuthCredentialState
+  authFilePath: string | null
+  message?: string
+}
+
+export interface OpenAIOAuthInstallInfo {
+  installed: boolean
+  path: string | null
+}
+
+export interface OpenAIOAuthHealthInfo {
+  status: OpenAIOAuthHealthState
+  models: string[]
+  message?: string
+}
+
+export interface OpenAIOAuthStatus {
+  installState: OpenAIOAuthInstallState
+  runState: OpenAIOAuthRunState
+  healthState: OpenAIOAuthHealthState
+  credentialStatus: OpenAIOAuthCredentialStatus
+  host: string
+  port: number
+  baseUrl: string
+  availableModels: string[]
+  message?: string
+}
+
 export type LoaderReturn = {
   entriesAdded: number
   uniqueId: string

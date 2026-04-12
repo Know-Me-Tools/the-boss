@@ -5597,7 +5597,41 @@
         "usage_title": "用量"
       },
       "openai": {
-        "alert": "OpenAI Provider 不再支援舊的呼叫方法。如果使用第三方 API，請建立新的服務供應商"
+        "alert": "OpenAI Provider 不再支援舊的呼叫方法。如果使用第三方 API，請建立新的服務供應商",
+        "oauth": {
+          "action_failed": "OpenAI OAuth 操作失敗",
+          "action_success": "OpenAI OAuth 狀態已更新",
+          "api_key": "API 金鑰",
+          "auth_file": "驗證檔案",
+          "auth_method": "驗證方式",
+          "available_models": "可用模型",
+          "credential_status": "憑證狀態",
+          "health_status": "健康狀態",
+          "install": "檢查側車",
+          "install_status": "側車狀態",
+          "local_endpoint": "本地端點",
+          "oauth": "ChatGPT OAuth",
+          "proxy_status": "代理狀態",
+          "refresh": "重新整理",
+          "start": "啟動代理",
+          "state": {
+            "error": "錯誤",
+            "healthy": "健康",
+            "installed": "已安裝",
+            "invalid": "無效",
+            "missing": "缺失",
+            "running": "執行中",
+            "starting": "啟動中",
+            "stopped": "已停止",
+            "unsupported": "不支援",
+            "unhealthy": "異常",
+            "valid": "有效"
+          },
+          "status_load_failed": "載入 OpenAI OAuth 狀態失敗",
+          "stop": "停止代理",
+          "warning_description": "此功能使用本地、非官方的社群代理，並重用檔案型 Codex 驗證快取。僅應在可信任的機器上使用，且不得分享。",
+          "warning_title": "僅限本地側車"
+        }
       },
       "remove_duplicate_keys": "移除重複金鑰",
       "remove_invalid_keys": "刪除無效金鑰",
@@ -5780,7 +5814,7 @@
       "noInstalled": "暫無已安裝的技能",
       "noResults": "未找到技能",
       "noSkillFile": "未找到 SKILL.md 檔案",
-      "searchPlaceholder": "跨登錄檔搜尋技能...",
+      "searchPlaceholder": "發現更多技能...",
       "searchRegistryTitle": "在線搜尋技能登錄檔",
       "searchTitle": "搜尋技能",
       "selectFile": "選擇一個檔案查看",

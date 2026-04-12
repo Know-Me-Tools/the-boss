@@ -272,6 +272,34 @@ describe('listModels', () => {
     })
   })
 
+  describe('OpenAI OAuth', () => {
+    it('lists models from the managed local proxy without using provider api keys', async () => {
+      mockGetFromApi.mockResolvedValue({ value: REAL_DEEPSEEK })
+      vi.stubGlobal('window', {
+        ...globalThis.window,
+        keyv: { get: vi.fn(), set: vi.fn() },
+        api: {
+          openai_oauth: {
+            startProxy: vi.fn().mockResolvedValue({ success: true }),
+            getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:10531/v1')
+          }
+        }
+      })
+
+      const models = await listModels(makeProvider({ id: 'openai', authType: 'oauth', apiKey: '' }))
+
+      expect(window.api.openai_oauth.startProxy).toHaveBeenCalledTimes(1)
+      expect(window.api.openai_oauth.getBaseUrl).toHaveBeenCalledTimes(1)
+      expect(mockGetFromApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'http://127.0.0.1:10531/v1/models',
+          headers: { 'X-App': 'TheBoss' }
+        })
+      )
+      expect(models.map((model) => model.id)).toEqual(['deepseek-chat', 'deepseek-reasoner'])
+    })
+  })
+
   describe('Gemini', () => {
     it('should strip models/ prefix and use displayName from real response', async () => {
       mockGetFromApi.mockResolvedValue({ value: REAL_GEMINI })

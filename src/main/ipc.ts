@@ -66,6 +66,7 @@ import NotificationService from './services/NotificationService'
 import * as NutstoreService from './services/NutstoreService'
 import ObsidianVaultService from './services/ObsidianVaultService'
 import { ocrService } from './services/ocr/OcrService'
+import { openAIOAuthService } from './services/OpenAIOAuthService'
 import { openClawService } from './services/OpenClawService'
 import { isOvmsSupported } from './services/OvmsManager'
 import powerMonitorService from './services/PowerMonitorService'
@@ -1029,6 +1030,16 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Anthropic_GetAccessToken, () => anthropicService.getValidAccessToken())
   ipcMain.handle(IpcChannel.Anthropic_HasCredentials, () => anthropicService.hasCredentials())
   ipcMain.handle(IpcChannel.Anthropic_ClearCredentials, () => anthropicService.clearCredentials())
+
+  // OpenAI OAuth
+  ipcMain.handle(IpcChannel.OpenAIOAuth_CheckInstalled, () => openAIOAuthService.checkInstalled())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_Install, () => openAIOAuthService.install())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_StartProxy, () => openAIOAuthService.startProxy())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_StopProxy, () => openAIOAuthService.stopProxy())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_GetStatus, () => openAIOAuthService.getStatus())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_CheckHealth, () => openAIOAuthService.checkHealth())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_GetBaseUrl, () => openAIOAuthService.getBaseUrl())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_GetModels, () => openAIOAuthService.getModels())
 
   // ExternalApps
   ipcMain.handle(IpcChannel.ExternalApps_DetectInstalled, () => externalAppsService.detectInstalledApps())

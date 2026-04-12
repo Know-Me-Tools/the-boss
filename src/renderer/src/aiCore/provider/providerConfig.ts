@@ -24,7 +24,6 @@ import {
   isAzureOpenAIProvider,
   isCherryAIProvider,
   isGeminiProvider,
-  isNewApiProvider,
   isOllamaProvider,
   isPerplexityProvider,
   isSupportStreamOptionsProvider,
@@ -85,7 +84,6 @@ export function formatProviderApiHost(provider: Provider): Provider {
     },
     { match: isCherryAIProvider, format: (p) => formatApiHost(p.apiHost, false) },
     { match: isPerplexityProvider, format: (p) => formatApiHost(p.apiHost, false) },
-    { match: isNewApiProvider, format: (p) => formatApiHost(p.apiHost, false) },
     { match: isOllamaProvider, format: (p) => formatOllamaApiHost(p.apiHost) },
     { match: isGeminiProvider, format: (p, av) => formatApiHost(p.apiHost, av, 'v1beta') },
     { match: isAzureOpenAIProvider, format: (p) => formatApiHost(p.apiHost, false) },
@@ -125,6 +123,7 @@ export function providerToAiSdkConfig(
   const builders: ConfigBuilderEntry[] = [
     { match: (p) => p.id === SystemProviderIds.copilot, build: buildCopilotConfig },
     { match: (p) => p.id === 'cherryai', build: buildCherryAIConfig },
+    { match: (p) => p.id === 'openai' && p.authType === 'oauth', build: buildOpenAIOAuthConfig },
     { match: (p) => p.id === 'anthropic' && p.authType === 'oauth', build: buildAnthropicConfig },
     { match: (p) => isOllamaProvider(p), build: buildOllamaConfig },
     { match: (p) => isAzureOpenAIProvider(p), build: buildAzureConfig },
@@ -346,6 +345,29 @@ async function buildAnthropicConfig(ctx: BuilderContext): Promise<ProviderConfig
         'anthropic-version': '2023-06-01',
         Authorization: `Bearer ${oauthToken}`
       }
+    }
+  }
+}
+
+async function buildOpenAIOAuthConfig(ctx: BuilderContext): Promise<ProviderConfig<'openai-compatible'>> {
+  const startResult = await window.api.openai_oauth.startProxy()
+  if (!startResult.success) {
+    throw new Error(startResult.message)
+  }
+
+  const includeUsage = isSupportStreamOptionsProvider(ctx.actualProvider)
+    ? store.getState().settings.openAI?.streamOptions?.includeUsage
+    : undefined
+
+  return {
+    providerId: 'openai-compatible',
+    endpoint: ctx.endpoint,
+    providerSettings: {
+      baseURL: await window.api.openai_oauth.getBaseUrl(),
+      apiKey: 'oauth',
+      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+      name: ctx.actualProvider.id,
+      includeUsage
     }
   }
 }

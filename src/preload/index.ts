@@ -23,6 +23,9 @@ import type {
   LocalTransferConnectPayload,
   LocalTransferState,
   ManagedDependencyName,
+  OpenAIOAuthHealthInfo,
+  OpenAIOAuthInstallInfo,
+  OpenAIOAuthStatus,
   OperationResult,
   WebviewKeyEvent
 } from '@shared/config/types'
@@ -787,6 +790,16 @@ const api = {
     getAccessToken: () => ipcRenderer.invoke(IpcChannel.Anthropic_GetAccessToken),
     hasCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_HasCredentials),
     clearCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_ClearCredentials)
+  },
+  openai_oauth: {
+    checkInstalled: (): Promise<OpenAIOAuthInstallInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckInstalled),
+    install: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_Install),
+    startProxy: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StartProxy),
+    stopProxy: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StopProxy),
+    getStatus: (): Promise<OpenAIOAuthStatus> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetStatus),
+    checkHealth: (): Promise<OpenAIOAuthHealthInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckHealth),
+    getBaseUrl: (): Promise<string> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetBaseUrl),
+    getModels: (): Promise<string[]> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetModels)
   },
   codeTools: {
     run: (

@@ -13,6 +13,7 @@ import { useAllProviders, useProvider, useProviders } from '@renderer/hooks/useP
 import { useTimer } from '@renderer/hooks/useTimer'
 import AnthropicSettings from '@renderer/pages/settings/ProviderSettings/AnthropicSettings'
 import { ModelList } from '@renderer/pages/settings/ProviderSettings/ModelList'
+import OpenAIOAuthSettings from '@renderer/pages/settings/ProviderSettings/OpenAIOAuthSettings'
 import { checkApi } from '@renderer/services/ApiService'
 import { isProviderSupportAuth } from '@renderer/services/ProviderService'
 import { useAppDispatch } from '@renderer/store'
@@ -442,6 +443,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       : t('settings.provider.api_host_tooltip')
 
   const isAnthropicOAuth = () => provider.id === 'anthropic' && provider.authType === 'oauth'
+  const isOpenAIOAuth = () => provider.id === 'openai' && provider.authType === 'oauth'
 
   return (
     <SettingContainer theme={theme} style={{ background: 'var(--color-background)' }}>
@@ -479,6 +481,21 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       {isProviderSupportAuth(provider) && <ProviderOAuth providerId={provider.id} />}
       {isCherryIN && <CherryINOAuth providerId={provider.id} />}
       {provider.id === 'openai' && <OpenAIAlert />}
+      {provider.id === 'openai' && (
+        <>
+          <SettingSubtitle style={{ marginTop: 5 }}>{t('settings.provider.openai.oauth.auth_method')}</SettingSubtitle>
+          <Select
+            style={{ width: '40%', marginTop: 5, marginBottom: 10 }}
+            value={provider.authType || 'apiKey'}
+            onChange={(value) => updateProvider({ authType: value })}
+            options={[
+              { value: 'apiKey', label: t('settings.provider.openai.oauth.api_key') },
+              { value: 'oauth', label: t('settings.provider.openai.oauth.oauth') }
+            ]}
+          />
+          {provider.authType === 'oauth' && <OpenAIOAuthSettings />}
+        </>
+      )}
       {provider.id === 'ovms' && <OVMSSettings />}
       {isDmxapi && <DMXAPISettings providerId={provider.id} />}
       {provider.id === 'anthropic' && (
@@ -496,7 +513,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
           {provider.authType === 'oauth' && <AnthropicSettings />}
         </>
       )}
-      {!hideApiInput && !isAnthropicOAuth() && (
+      {!hideApiInput && !isAnthropicOAuth() && !isOpenAIOAuth() && (
         <>
           {!hideApiKeyInput && (
             <>

@@ -5597,7 +5597,41 @@
         "usage_title": "Usage"
       },
       "openai": {
-        "alert": "OpenAI Provider no longer support the old calling methods. If using a third-party API, please create a new service provider."
+        "alert": "OpenAI Provider no longer support the old calling methods. If using a third-party API, please create a new service provider.",
+        "oauth": {
+          "action_failed": "OpenAI OAuth action failed",
+          "action_success": "OpenAI OAuth status updated",
+          "api_key": "API key",
+          "auth_file": "Auth file",
+          "auth_method": "Authentication method",
+          "available_models": "Available models",
+          "credential_status": "Credential status",
+          "health_status": "Health",
+          "install": "Check sidecar",
+          "install_status": "Sidecar",
+          "local_endpoint": "Local endpoint",
+          "oauth": "ChatGPT OAuth",
+          "proxy_status": "Proxy",
+          "refresh": "Refresh",
+          "start": "Start proxy",
+          "state": {
+            "error": "Error",
+            "healthy": "Healthy",
+            "installed": "Installed",
+            "invalid": "Invalid",
+            "missing": "Missing",
+            "running": "Running",
+            "starting": "Starting",
+            "stopped": "Stopped",
+            "unsupported": "Unsupported",
+            "unhealthy": "Unhealthy",
+            "valid": "Valid"
+          },
+          "status_load_failed": "Failed to load OpenAI OAuth status",
+          "stop": "Stop proxy",
+          "warning_description": "This uses a local, unofficial community proxy that reuses your file-backed Codex auth cache. It should be used only on a trusted machine and never shared.",
+          "warning_title": "Local sidecar only"
+        }
       },
       "remove_duplicate_keys": "Remove Duplicate Keys",
       "remove_invalid_keys": "Remove Invalid Keys",
@@ -5780,7 +5814,7 @@
       "noInstalled": "No skills installed",
       "noResults": "No skills found",
       "noSkillFile": "No SKILL.md found",
-      "searchPlaceholder": "Search skills across registries...",
+      "searchPlaceholder": "Discover more skills...",
       "searchRegistryTitle": "Search skill registries online",
       "searchTitle": "Search Skills",
       "selectFile": "Select a file to view",

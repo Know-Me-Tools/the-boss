@@ -6,6 +6,7 @@ const runtimeExternalPackages = Object.freeze([
   '@napi-rs/system-ocr',
   'esbuild',
   'font-list',
+  'openai-oauth',
   'selection-hook',
   'sharp'
 ])

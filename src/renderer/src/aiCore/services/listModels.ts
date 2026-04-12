@@ -109,6 +109,13 @@ function defaultHeaders(provider: Provider): Record<string, string> {
   }
 }
 
+function openAIOAuthHeaders(provider: Provider): Record<string, string> {
+  return {
+    ...defaultAppHeaders(),
+    ...provider.extra_headers
+  }
+}
+
 function defaultGroup(modelId: string, providerId: string): string {
   const parts = modelId.split('/')
   return parts.length > 1 ? parts[0] : providerId
@@ -336,6 +343,26 @@ const aiHubMixFetcher: ModelFetcher = {
   }
 }
 
+const openAIOAuthFetcher: ModelFetcher = {
+  match: (p) => p.id === 'openai' && p.authType === 'oauth',
+  fetch: async (provider, signal) => {
+    const startResult = await window.api.openai_oauth.startProxy()
+    if (!startResult.success) {
+      throw new Error(startResult.message)
+    }
+
+    const baseUrl = await window.api.openai_oauth.getBaseUrl()
+    const response = await getFromApi({
+      url: `${baseUrl}/models`,
+      headers: openAIOAuthHeaders(provider),
+      responseSchema: OpenAIModelsResponseSchema,
+      abortSignal: signal
+    })
+
+    return dedup(response.data, (m) => m.id).map((m) => toModel(m.id, provider, { owned_by: m.owned_by }))
+  }
+}
+
 /** Default fallback: OpenAI-compatible /models endpoint */
 const openAICompatibleFetcher: ModelFetcher = {
   match: () => true,
@@ -363,6 +390,7 @@ const fetchers: ModelFetcher[] = [
   newApiFetcher,
   openRouterFetcher,
   ppioFetcher,
+  openAIOAuthFetcher,
   openAICompatibleFetcher // always-match fallback, must be last
 ]
 
