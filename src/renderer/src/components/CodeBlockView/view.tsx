@@ -25,7 +25,6 @@ import { getFileIconName } from '@renderer/utils/fileIconName'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import dayjs from 'dayjs'
 import React, { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
 
 import { SPECIAL_VIEW_COMPONENTS, SPECIAL_VIEWS } from './constants'
@@ -57,7 +56,6 @@ interface Props {
  * - core 工具
  */
 export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave }) => {
-  const { t } = useTranslation()
   const { codeEditor, codeExecution, codeImageTools, codeCollapsible, codeWrappable } = useSettings()
 
   const [viewState, setViewState] = useState({
@@ -134,12 +132,11 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
       // Prioritize getting content from editor, fallback to children
       const content = sourceViewRef.current?.getContent?.() ?? children
       await navigator.clipboard.writeText(content.trimEnd())
-      window.toast.success(t('code_block.copy.success'))
     } catch (error) {
       logger.error('Failed to copy to clipboard:', { error })
-      window.toast.error(t('code_block.copy.failed'))
+      throw error
     }
-  }, [children, t])
+  }, [children])
   // Note: sourceViewRef not in deps because it's a stable ref,
   // and getContent reads content in real-time from editorViewRef.current.state.doc
 

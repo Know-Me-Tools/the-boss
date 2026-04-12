@@ -25,6 +25,28 @@ describe('ArtifactService', () => {
     expect(result.script).toContain('__artifact-host')
   })
 
+  it('compiles a React artifact that explicitly imports React', async () => {
+    const service = new ArtifactService()
+
+    const result = await service.compileReactArtifact({
+      source: `
+        import React from 'react'
+
+        export default function App() {
+          const [count] = React.useState(1)
+          return <div className="artifact-shell">count: {count}</div>
+        }
+      `,
+      baseCss: '',
+      themeCss: '',
+      customCss: '',
+      title: 'Explicit React Import'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.script).toContain('count:')
+  })
+
   it('rejects imports outside the approved registry', async () => {
     const service = new ArtifactService()
 

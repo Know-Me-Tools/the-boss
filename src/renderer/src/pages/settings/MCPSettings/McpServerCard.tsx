@@ -5,13 +5,13 @@ import Scrollbar from '@renderer/components/Scrollbar'
 import { getMcpTypeLabel } from '@renderer/i18n/label'
 import type { MCPServer } from '@renderer/types'
 import { formatErrorMessage } from '@renderer/utils/error'
-import { Alert, Button, Space, Switch, Tag, Tooltip, Typography } from 'antd'
+import { Alert, Button, Space, Switch, Tooltip, Typography } from 'antd'
 import { CircleXIcon, Settings2, SquareArrowOutUpRight } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import type { FallbackProps } from 'react-error-boundary'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 interface McpServerCardProps {
   server: MCPServer
@@ -21,6 +21,55 @@ interface McpServerCardProps {
   onDelete: () => void
   onEdit: () => void
   onOpenUrl: (url: string) => void
+}
+
+type BadgeTone = 'default' | 'info' | 'success' | 'warning'
+
+const getBadgeToneStyles = (tone: BadgeTone) => {
+  switch (tone) {
+    case 'info':
+      return css`
+        color: #93c5fd;
+        background: rgba(37, 99, 235, 0.18);
+        border-color: rgba(96, 165, 250, 0.38);
+
+        [theme-mode='light'] & {
+          color: #1d4ed8;
+          background: #eff6ff;
+          border-color: #bfdbfe;
+        }
+      `
+    case 'success':
+      return css`
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(74, 222, 128, 0.38);
+
+        [theme-mode='light'] & {
+          color: #15803d;
+          background: #f0fdf4;
+          border-color: #86efac;
+        }
+      `
+    case 'warning':
+      return css`
+        color: #fcd34d;
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(251, 191, 36, 0.38);
+
+        [theme-mode='light'] & {
+          color: #b45309;
+          background: #fffbeb;
+          border-color: #fcd34d;
+        }
+      `
+    default:
+      return css`
+        color: var(--color-text-2);
+        background: var(--color-background-mute);
+        border-color: var(--color-border);
+      `
+  }
 }
 
 const McpServerCard: FC<McpServerCardProps> = ({
@@ -153,16 +202,16 @@ const McpServerCard: FC<McpServerCardProps> = ({
         <ServerDescription>{server.description}</ServerDescription>
         <ServerFooter>
           {version && (
-            <VersionBadge color="#108ee9">
+            <VersionBadge $tone="info">
               <VersionText ellipsis={{ tooltip: true }}>{version}</VersionText>
             </VersionBadge>
           )}
-          <ServerTag color="processing">{getMcpTypeLabel(server.type ?? 'stdio')}</ServerTag>
-          {server.provider && <ServerTag color="success">{server.provider}</ServerTag>}
+          <ServerTag $tone="info">{getMcpTypeLabel(server.type ?? 'stdio')}</ServerTag>
+          {server.provider && <ServerTag $tone="success">{server.provider}</ServerTag>}
           {server.tags
             ?.filter((tag): tag is string => typeof tag === 'string') // Avoid existing non-string tags crash the UI
             .map((tag) => (
-              <ServerTag key={tag} color="default">
+              <ServerTag key={tag} $tone="default">
                 {tag}
               </ServerTag>
             ))}
@@ -258,19 +307,29 @@ const ServerFooter = styled(Scrollbar)`
   }
 `
 
-const ServerTag = styled(Tag)`
+const ServerTag = styled.span<{ $tone: BadgeTone }>`
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
   border-radius: 20px;
   margin: 0;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  ${({ $tone }) => getBadgeToneStyles($tone)}
 `
 
 const VersionBadge = styled(ServerTag)`
-  font-weight: 500;
   max-width: 6rem !important;
 `
 
 const VersionText = styled(Typography.Text)`
   font-size: inherit;
-  color: white;
+  color: inherit;
 `
 
 export default McpServerCard

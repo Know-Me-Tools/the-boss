@@ -551,12 +551,6 @@ class ClaudeCodeService implements AgentServiceInterface {
       instance: browserServer.mcpServer
     }
 
-    // Inject Exa MCP for structured web search (free tier, no API key required)
-    options.mcpServers.exa = {
-      type: 'http',
-      url: 'https://mcp.exa.ai/mcp'
-    }
-
     if (soulEnabled) {
       // Find the channel that owns this session (if any) for context-aware cron defaults
       const sourceChannelId = await this.resolveSourceChannel(session.agent_id, session.id)

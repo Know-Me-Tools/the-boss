@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 interface UseCopyToolProps {
   showPreviewTools?: boolean
   previewRef: React.RefObject<BasicPreviewHandles | null>
-  onCopySource: () => void
+  onCopySource: () => Promise<void> | void
   setTools: React.Dispatch<React.SetStateAction<ActionTool[]>>
 }
 
@@ -20,15 +20,16 @@ export const useCopyTool = ({ showPreviewTools, previewRef, onCopySource, setToo
   const { t } = useTranslation()
   const { registerTool, removeTool } = useToolManager(setTools)
 
-  const handleCopySource = useCallback(() => {
+  const handleCopySource = useCallback(async () => {
     try {
-      onCopySource()
+      await Promise.resolve(onCopySource())
       setCopiedTemporarily(true)
-    } catch (error) {
+      window.toast.success(t('code_block.copy.success'))
+    } catch {
       setCopiedTemporarily(false)
-      throw error
+      window.toast.error(t('code_block.copy.failed'))
     }
-  }, [onCopySource, setCopiedTemporarily])
+  }, [onCopySource, setCopiedTemporarily, t])
 
   const handleCopyImage = useCallback(() => {
     try {

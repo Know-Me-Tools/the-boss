@@ -149,6 +149,14 @@ function formatDiagnostic(error: unknown): string[] {
   return [String(error)]
 }
 
+function resolveArtifactImport(specifier: string): string {
+  try {
+    return require.resolve(specifier)
+  } catch {
+    return require.resolve(specifier, { paths: [process.cwd()] })
+  }
+}
+
 function getBootstrapEntry({ baseCss, themeCss, customCss }: { baseCss: string; themeCss: string; customCss: string }) {
   const combinedCss = `${baseCss}\n${themeCss}\n${customCss}`
 
@@ -458,7 +466,7 @@ export class ArtifactService {
 
                 if (APPROVED_REACT_IMPORTS.has(args.path)) {
                   return {
-                    path: require.resolve(args.path, { paths: [process.cwd()] })
+                    path: resolveArtifactImport(args.path)
                   }
                 }
 

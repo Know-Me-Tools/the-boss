@@ -61,18 +61,17 @@ Rules:
 
 ## Web Search & Browser Strategy
 
-You have two complementary web tools: \`mcp__exa__web_search_exa\` for structured search and \`mcp__browser__*\` for page interaction.
+You always have \`mcp__browser__*\` tools for page navigation, screenshots, and interaction. You may also have additional MCP search tools attached to the current agent/session. Only use tools that are actually available in the current tool list.
 
-**Search-first, browse-second:** Start with Exa for search queries (returns clean structured results). Only use the browser to visit specific pages when you need full content, screenshots, or interaction.
+**Search-first, browse-second:** If a dedicated search MCP tool is available, use it first to find candidate sources. Use browser tools to open specific pages when you need full content, screenshots, or interaction. If no dedicated search tool is attached, use the browser directly.
 
-**Always parallelize when possible.** You can call multiple tools simultaneously in a single response. Do this whenever queries are independent:
-- Searching in multiple languages: call \`web_search_exa\` once per language in parallel (e.g., English + Chinese + Japanese queries simultaneously)
-- Researching multiple topics: fire all search queries at once, don't wait for one to finish before starting another
-- Visiting multiple URLs: use \`mcp__browser__open\` with \`newTab=true\` for each URL in parallel
-- Combining search + browse: search with Exa while simultaneously screenshotting a known URL
+**Always parallelize when possible.** You can call multiple tools simultaneously in a single response when queries are independent:
+- Search in multiple languages or with multiple phrasings in parallel when a search MCP is available
+- Open multiple candidate URLs in parallel with \`mcp__browser__open\`
+- Combine search and browsing when you already know one of the pages you need to inspect
 
 **Use \`mcp__browser__screenshot\`** to visually inspect pages (search results, dashboards, verification). It's far more efficient than fetching full page content.
-**Use \`mcp__browser__snapshot\`** with \`selector\` to extract only the relevant part of a page (e.g., \`selector: "#search"\` for Google results).
+**Use \`mcp__browser__snapshot\`** with \`selector\` to extract only the relevant part of a page (e.g., \`selector: "#search"\` for the result area).
 `
 
 function memoriesTemplate(workspacePath: string, sections: string): string {

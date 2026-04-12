@@ -16,7 +16,7 @@
  */
 import { loggerService } from '@logger'
 import { AiSdkToChunkAdapter } from '@renderer/aiCore/chunk/AiSdkToChunkAdapter'
-import { AgentApiClient } from '@renderer/api/agent'
+import { AgentApiClient, DEFAULT_SESSION_PAGE_SIZE } from '@renderer/api/agent'
 import db from '@renderer/databases'
 import { getModel } from '@renderer/hooks/useModel'
 import { fetchMessagesSummary, transformMessagesAndFetch } from '@renderer/services/ApiService'
@@ -37,7 +37,8 @@ import type {
   AgentEffort,
   AgentSessionEntity,
   AgentThinkingConfig,
-  GetAgentSessionResponse
+  GetAgentSessionResponse,
+  ListAgentSessionsResponse
 } from '@renderer/types/agent'
 import { ChunkType } from '@renderer/types/chunk'
 import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
@@ -69,6 +70,7 @@ import { t } from 'i18next'
 import { isEmpty, throttle } from 'lodash'
 import { LRUCache } from 'lru-cache'
 import { mutate } from 'swr'
+import { unstable_serialize } from 'swr/infinite'
 
 import type { AppDispatch, RootState } from '../index'
 import { removeManyBlocks, updateOneBlock, upsertManyBlocks, upsertOneBlock } from '../messageBlock'
@@ -104,6 +106,8 @@ type AgentSessionContext = {
 
 const agentSessionRenameLocks = new Set<string>()
 const dbFacade = DbService.getInstance()
+
+type AgentSessionInfiniteData = ListAgentSessionsResponse[]
 
 const findExistingAgentSessionContext = (
   state: RootState,
@@ -177,10 +181,14 @@ export const renameAgentSessionIfNeeded = async (
       return
     }
 
-    const { text: summary } = await fetchMessagesSummary({ messages })
-    const summaryText = summary?.trim()
-    if (!summaryText) {
-      return
+    const getFallbackName = () => {
+      const firstNamedMessage = messages.find((message) => {
+        const mainText = getMainTextContent(message).trim()
+        return mainText.length > 0
+      })
+
+      const firstMessageText = firstNamedMessage ? getMainTextContent(firstNamedMessage).trim() : ''
+      return firstMessageText.split('\n')[0].trim().slice(0, 100) || null
     }
 
     const baseURL = buildAgentBaseURL(apiServer)
@@ -202,7 +210,17 @@ export const renameAgentSessionIfNeeded = async (
     }
 
     const currentName = (session.name ?? '').trim()
-    if (currentName === summaryText) {
+    const fallbackName = getFallbackName()
+    const isUnnamedSession = !currentName || currentName === t('common.unnamed')
+
+    let nextName = isUnnamedSession ? fallbackName : null
+
+    if (!nextName) {
+      const { text: summary } = await fetchMessagesSummary({ messages })
+      nextName = summary?.trim() || fallbackName
+    }
+
+    if (!nextName || currentName === nextName) {
       return
     }
 
@@ -210,7 +228,7 @@ export const renameAgentSessionIfNeeded = async (
     try {
       updatedSession = await client.updateSession(agentSession.agentId, {
         id: agentSession.sessionId,
-        name: summaryText
+        name: nextName
       })
     } catch (error) {
       logger.warn('Failed to update agent session name', error as Error)
@@ -218,23 +236,27 @@ export const renameAgentSessionIfNeeded = async (
     }
 
     const paths = client.getSessionPaths(agentSession.agentId)
+    const infKey = unstable_serialize(() => [paths.base, 0, DEFAULT_SESSION_PAGE_SIZE])
 
     try {
       await mutate(paths.withId(agentSession.sessionId), updatedSession, {
         revalidate: false
       })
 
-      await mutate<AgentSessionEntity[]>(
-        paths.base,
+      await mutate<AgentSessionInfiniteData>(
+        infKey,
         (prev) =>
-          prev?.map((sessionItem) =>
-            sessionItem.id === updatedSession.id
-              ? ({
-                  ...sessionItem,
-                  name: updatedSession.name
-                } as AgentSessionEntity)
-              : sessionItem
-          ) ?? prev,
+          prev?.map((page) => ({
+            ...page,
+            data: page.data.map((sessionItem) =>
+              sessionItem.id === updatedSession.id
+                ? ({
+                    ...sessionItem,
+                    name: updatedSession.name
+                  } as AgentSessionEntity)
+                : sessionItem
+            )
+          })) ?? prev,
         {
           revalidate: false
         }

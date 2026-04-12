@@ -151,7 +151,7 @@ export const SettingsContainer: React.FC<React.ComponentPropsWithRef<'div'> & Sc
   ...props
 }) => {
   return (
-    <Scrollbar className={cn('p-4', className)} {...props}>
+    <Scrollbar className={cn('h-full min-h-0 flex-1 p-4', className)} {...props}>
       {children}
     </Scrollbar>
   )
@@ -222,7 +222,8 @@ export const settingsModalStyles: ModalProps['styles'] = {
     overflow: 'hidden',
     height: '80vh',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    minHeight: 0
   },
   header: {
     padding: '10px 15px',
@@ -234,6 +235,7 @@ export const settingsModalStyles: ModalProps['styles'] = {
   body: {
     padding: 0,
     display: 'flex',
-    flex: 1
+    flex: 1,
+    minHeight: 0
   }
 }

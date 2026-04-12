@@ -63,6 +63,13 @@ const mockSetCopiedImageTemporarily = vi.fn()
 describe('useCopyTool', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(window, 'toast', {
+      configurable: true,
+      value: {
+        success: vi.fn(),
+        error: vi.fn()
+      }
+    })
     // Reset mocks for each test to ensure isolation
     mocks.useTemporaryValue
       .mockImplementationOnce(() => [false, mockSetCopiedTemporarily])
@@ -143,18 +150,19 @@ describe('useCopyTool', () => {
   })
 
   describe('copy functionality', () => {
-    it('should execute copy source behavior when copy-source tool is clicked', () => {
-      const mockOnCopySource = vi.fn()
+    it('should execute copy source behavior when copy-source tool is clicked', async () => {
+      const mockOnCopySource = vi.fn().mockResolvedValue(undefined)
       const props = createMockProps({ onCopySource: mockOnCopySource })
       renderHook(() => useCopyTool(props))
 
       const copySourceTool = mockRegisterTool.mock.calls[0][0]
-      act(() => {
-        copySourceTool.onClick()
+      await act(async () => {
+        await copySourceTool.onClick()
       })
 
       expect(mockOnCopySource).toHaveBeenCalledTimes(1)
       expect(mockSetCopiedTemporarily).toHaveBeenCalledWith(true)
+      expect(window.toast.success).toHaveBeenCalledWith('code_block.copy.success')
     })
 
     it('should execute copy image behavior when copy-image tool is clicked', () => {
@@ -206,23 +214,20 @@ describe('useCopyTool', () => {
   })
 
   describe('edge cases', () => {
-    it('should handle copy source failure gracefully', () => {
-      const mockOnCopySource = vi.fn().mockImplementation(() => {
-        throw new Error('Copy failed')
-      })
+    it('should handle copy source failure gracefully', async () => {
+      const mockOnCopySource = vi.fn().mockRejectedValue(new Error('Copy failed'))
       const props = createMockProps({ onCopySource: mockOnCopySource })
       renderHook(() => useCopyTool(props))
 
       const copySourceTool = mockRegisterTool.mock.calls[0][0]
 
-      expect(() => {
-        act(() => {
-          copySourceTool.onClick()
-        })
-      }).toThrow('Copy failed')
+      await act(async () => {
+        await copySourceTool.onClick()
+      })
 
       expect(mockOnCopySource).toHaveBeenCalledTimes(1)
       expect(mockSetCopiedTemporarily).toHaveBeenCalledWith(false)
+      expect(window.toast.error).toHaveBeenCalledWith('code_block.copy.failed')
     })
 
     it('should handle copy image failure gracefully', () => {

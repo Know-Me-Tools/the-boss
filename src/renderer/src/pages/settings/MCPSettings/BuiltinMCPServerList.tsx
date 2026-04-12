@@ -2,12 +2,61 @@ import { CheckOutlined, PlusOutlined } from '@ant-design/icons'
 import { useMCPServers } from '@renderer/hooks/useMCPServers'
 import { getBuiltInMcpServerDescriptionLabel, getMcpTypeLabel } from '@renderer/i18n/label'
 import { builtinMCPServers } from '@renderer/store/mcp'
-import { Button, Popover, Tag } from 'antd'
+import { Button, Popover } from 'antd'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 
 import { SettingTitle } from '..'
+
+type BadgeTone = 'default' | 'info' | 'success' | 'warning'
+
+const getBadgeToneStyles = (tone: BadgeTone) => {
+  switch (tone) {
+    case 'info':
+      return css`
+        color: #93c5fd;
+        background: rgba(37, 99, 235, 0.18);
+        border-color: rgba(96, 165, 250, 0.38);
+
+        [theme-mode='light'] & {
+          color: #1d4ed8;
+          background: #eff6ff;
+          border-color: #bfdbfe;
+        }
+      `
+    case 'success':
+      return css`
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.18);
+        border-color: rgba(74, 222, 128, 0.38);
+
+        [theme-mode='light'] & {
+          color: #15803d;
+          background: #f0fdf4;
+          border-color: #86efac;
+        }
+      `
+    case 'warning':
+      return css`
+        color: #fcd34d;
+        background: rgba(245, 158, 11, 0.18);
+        border-color: rgba(251, 191, 36, 0.38);
+
+        [theme-mode='light'] & {
+          color: #b45309;
+          background: #fffbeb;
+          border-color: #fcd34d;
+        }
+      `
+    default:
+      return css`
+        color: var(--color-text-2);
+        background: var(--color-background-mute);
+        border-color: var(--color-border);
+      `
+  }
+}
 
 const BuiltinMCPServerList: FC = () => {
   const { t } = useTranslation()
@@ -57,17 +106,13 @@ const BuiltinMCPServerList: FC = () => {
                 <ServerDescription>{getBuiltInMcpServerDescriptionLabel(server.name)}</ServerDescription>
               </Popover>
               <ServerFooter>
-                <Tag color="processing" style={{ borderRadius: 20, margin: 0, fontWeight: 500 }}>
-                  {getMcpTypeLabel(server.type ?? 'stdio')}
-                </Tag>
+                <ServerTag $tone="info">{getMcpTypeLabel(server.type ?? 'stdio')}</ServerTag>
                 {server?.shouldConfig && (
                   <a
                     href="https://the-boss.know-me.tools/docs/advanced-basic/mcp/buildin"
                     target="_blank"
                     rel="noopener noreferrer">
-                    <Tag color="warning" style={{ borderRadius: 20, margin: 0, fontWeight: 500 }}>
-                      {t('settings.mcp.requiresConfig')}
-                    </Tag>
+                    <ServerTag $tone="warning">{t('settings.mcp.requiresConfig')}</ServerTag>
                   </a>
                 )}
               </ServerFooter>
@@ -179,6 +224,22 @@ const ServerFooter = styled.div`
   gap: 4px;
   justify-content: flex-start;
   margin-top: 10px;
+`
+
+const ServerTag = styled.span<{ $tone: BadgeTone }>`
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 20px;
+  margin: 0;
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+  ${({ $tone }) => getBadgeToneStyles($tone)}
 `
 
 export default BuiltinMCPServerList
