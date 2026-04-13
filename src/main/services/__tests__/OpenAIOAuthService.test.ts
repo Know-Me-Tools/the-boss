@@ -352,4 +352,97 @@ describe('OpenAIOAuthService', () => {
     )
     expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:11555/v1')
   })
+
+  it('surfaces stderr and exit diagnostics when the proxy exits before becoming healthy', async () => {
+    vi.useFakeTimers()
+
+    const childProcess = createMockChildProcess()
+    mockSpawn.mockReturnValue(childProcess)
+    mockState.authFileExists = true
+    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
+
+    const { openAIOAuthService } = await import('../OpenAIOAuthService')
+
+    const startPromise = openAIOAuthService.startProxy()
+    await vi.waitFor(() => {
+      expect(mockSpawn).toHaveBeenCalledTimes(1)
+    })
+    childProcess.emitStderr('upstream fetch failed')
+    childProcess.emitProcessEvent('exit', 1, null)
+    await vi.advanceTimersByTimeAsync(750)
+    const result = await startPromise
+
+    expect(result.success).toBe(false)
+    if (result.success) {
+      throw new Error('Expected startProxy to fail with diagnostics')
+    }
+    expect(result.message).toContain('Proxy exited before becoming healthy')
+    expect(result.diagnostics?.details).toContain('stderr:')
+    expect(result.diagnostics?.details).toContain('upstream fetch failed')
+    expect(result.diagnostics?.details).toContain('Exit code: 1')
+
+    const status = await openAIOAuthService.getStatus()
+    expect(status.diagnostics?.summary).toContain('Proxy exited before becoming healthy')
+  })
+
+  it('retains health timeout diagnostics after a failed startup', async () => {
+    vi.useFakeTimers()
+
+    const childProcess = createMockChildProcess()
+    mockSpawn.mockReturnValue(childProcess)
+    mockState.authFileExists = true
+    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
+
+    const { openAIOAuthService } = await import('../OpenAIOAuthService')
+
+    const startPromise = openAIOAuthService.startProxy()
+    await vi.advanceTimersByTimeAsync(30_000)
+    const result = await startPromise
+
+    expect(result.success).toBe(false)
+    if (result.success) {
+      throw new Error('Expected startProxy to fail after health timeout')
+    }
+    expect(result.message).toContain('Proxy failed health check on http://127.0.0.1:10531/v1/models')
+    expect(result.diagnostics?.source).toBe('health')
+
+    const status = await openAIOAuthService.getStatus()
+    expect(status.diagnostics?.summary).toContain('Proxy failed health check on http://127.0.0.1:10531/v1/models')
+  })
+
+  it('clears stale startup diagnostics after a later successful start', async () => {
+    vi.useFakeTimers()
+
+    mockState.authFileExists = false
+    const { openAIOAuthService } = await import('../OpenAIOAuthService')
+
+    const firstResult = await openAIOAuthService.startProxy()
+    expect(firstResult.success).toBe(false)
+
+    const childProcess = createMockChildProcess()
+    mockSpawn.mockReturnValue(childProcess)
+    mockState.authFileExists = true
+    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
+    mockState.fetchResponses = [
+      null,
+      {
+        ok: true,
+        json: async () => ({ data: [{ id: 'gpt-5.4' }] })
+      },
+      {
+        ok: true,
+        json: async () => ({ data: [{ id: 'gpt-5.4' }] })
+      }
+    ]
+
+    const startPromise = openAIOAuthService.startProxy()
+    await vi.advanceTimersByTimeAsync(750)
+    const secondResult = await startPromise
+
+    expect(secondResult).toEqual({ success: true })
+
+    const status = await openAIOAuthService.getStatus()
+    expect(status.runState).toBe('running')
+    expect(status.diagnostics).toBeUndefined()
+  })
 })

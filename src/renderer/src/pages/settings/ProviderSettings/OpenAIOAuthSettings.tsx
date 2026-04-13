@@ -1,5 +1,5 @@
 import { loggerService } from '@logger'
-import type { OpenAIOAuthStatus } from '@shared/config/types'
+import type { OpenAIOAuthDiagnostics, OpenAIOAuthOperationResult, OpenAIOAuthStatus } from '@shared/config/types'
 import { Alert, Button, InputNumber, Space, Tag } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -28,10 +28,17 @@ const OpenAIOAuthSettings = () => {
   const [status, setStatus] = useState<OpenAIOAuthStatus | null>(null)
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [proxyPort, setProxyPort] = useState<number>(DEFAULT_OPENAI_OAUTH_PORT)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [actionDiagnostics, setActionDiagnostics] = useState<OpenAIOAuthDiagnostics | null>(null)
 
   const refreshStatus = useCallback(async () => {
     try {
-      setStatus(await window.api.openai_oauth.getStatus())
+      const nextStatus = await window.api.openai_oauth.getStatus()
+      setStatus(nextStatus)
+
+      if (nextStatus.diagnostics) {
+        setActionDiagnostics(null)
+      }
     } catch (error) {
       logger.error('Failed to refresh OpenAI OAuth status', error as Error)
       window.toast.error(t('settings.provider.openai.oauth.status_load_failed'))
@@ -55,14 +62,22 @@ const OpenAIOAuthSettings = () => {
     void loadPort()
   }, [loadPort, refreshStatus])
 
+  const diagnostics = status?.diagnostics ?? actionDiagnostics
+
+  useEffect(() => {
+    setShowDiagnostics(false)
+  }, [diagnostics?.updatedAt])
+
   const runAction = useCallback(
-    async (actionName: string, action: () => Promise<{ success: boolean; message?: string }>) => {
+    async (actionName: string, action: () => Promise<OpenAIOAuthOperationResult>) => {
       try {
         setLoadingAction(actionName)
         const result = await action()
         if (!result.success) {
-          window.toast.error(result.message || t('settings.provider.openai.oauth.action_failed'))
+          setActionDiagnostics(result.diagnostics ?? null)
+          window.toast.error(result.diagnostics?.summary || result.message || t('settings.provider.openai.oauth.action_failed'))
         } else {
+          setActionDiagnostics(null)
           window.toast.success(t('settings.provider.openai.oauth.action_success'))
         }
       } catch (error) {
@@ -158,7 +173,38 @@ const OpenAIOAuthSettings = () => {
               <StatusText>{modelsSummary}</StatusText>
             </StatusRow>
           )}
-          {status.message && (
+          {diagnostics && (
+            <Alert
+              type="error"
+              showIcon
+              message={t('settings.provider.openai.oauth.startup_failed')}
+              description={
+                <DiagnosticsContent>
+                  <DiagnosticsSummary>{diagnostics.summary}</DiagnosticsSummary>
+                  {diagnostics.details && (
+                    <>
+                      <DetailsToggle
+                        type="link"
+                        onClick={() => setShowDiagnostics((value) => !value)}
+                        style={{ paddingInline: 0 }}>
+                        {showDiagnostics
+                          ? t('settings.provider.openai.oauth.hide_details')
+                          : t('settings.provider.openai.oauth.show_details')}
+                      </DetailsToggle>
+                      {showDiagnostics && (
+                        <>
+                          <DiagnosticsLabel>{t('settings.provider.openai.oauth.details')}</DiagnosticsLabel>
+                          <DiagnosticsCode>{diagnostics.details}</DiagnosticsCode>
+                        </>
+                      )}
+                    </>
+                  )}
+                </DiagnosticsContent>
+              }
+              style={{ marginTop: 10 }}
+            />
+          )}
+          {status.message && !diagnostics && (
             <Alert
               type={status.credentialStatus.state === 'invalid' || status.healthState === 'unhealthy' ? 'error' : 'info'}
               showIcon
@@ -169,8 +215,26 @@ const OpenAIOAuthSettings = () => {
         </>
       )}
       <Space style={{ marginTop: 12, flexWrap: 'wrap' }}>
-        <Button onClick={() => void refreshStatus()} loading={loadingAction === 'refresh'}>
+        <Button
+          onClick={() => {
+            setActionDiagnostics(null)
+            void refreshStatus()
+          }}
+          loading={loadingAction === 'refresh'}>
           {t('settings.provider.openai.oauth.refresh')}
+        </Button>
+        <Button
+          onClick={() =>
+            void runAction('check', async () => {
+              const health = await window.api.openai_oauth.checkHealth()
+              return {
+                success: health.status === 'healthy',
+                message: health.message ?? t('settings.provider.openai.oauth.action_failed')
+              }
+            })
+          }
+          loading={loadingAction === 'check'}>
+          {t('settings.provider.openai.oauth.check', 'Check sidecar')}
         </Button>
         <Button
           onClick={() => void runAction('install', () => window.api.openai_oauth.install())}
@@ -227,6 +291,39 @@ const PortControls = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+`
+
+const DiagnosticsContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`
+
+const DiagnosticsSummary = styled.div`
+  color: var(--color-text);
+  word-break: break-word;
+`
+
+const DiagnosticsLabel = styled.div`
+  color: var(--color-text-2);
+  font-size: 12px;
+`
+
+const DiagnosticsCode = styled.pre`
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-background-soft, rgba(127, 127, 127, 0.12));
+  color: var(--color-text);
+  font-family: var(--font-family-code, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+`
+
+const DetailsToggle = styled(Button)`
+  width: fit-content;
 `
 
 export default OpenAIOAuthSettings

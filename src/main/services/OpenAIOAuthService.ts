@@ -9,11 +9,12 @@ import { loggerService } from '@logger'
 import { isWin } from '@main/constant'
 import type {
   OpenAIOAuthCredentialStatus,
+  OpenAIOAuthDiagnostics,
   OpenAIOAuthHealthInfo,
   OpenAIOAuthInstallInfo,
+  OpenAIOAuthOperationResult,
   OpenAIOAuthRunState,
-  OpenAIOAuthStatus,
-  OperationResult
+  OpenAIOAuthStatus
 } from '@shared/config/types'
 
 import { toAsarUnpackedPath } from '../utils'
@@ -27,6 +28,8 @@ const DEFAULT_PORT = 10531
 const START_TIMEOUT_MS = 30000
 const STOP_TIMEOUT_MS = 5000
 const HEALTH_TIMEOUT_MS = 3000
+const DIAGNOSTIC_OUTPUT_LIMIT = 4000
+const DIAGNOSTIC_LINE_LIMIT = 8
 const TOKEN_KEYS = new Set(['access_token', 'accessToken', 'refresh_token', 'refreshToken', 'id_token', 'idToken'])
 const KEYCHAIN_HINTS = ['keychain', 'keytar', 'credential_store', 'credentialStore', 'secret_service']
 
@@ -44,6 +47,7 @@ class OpenAIOAuthService {
   private proxyProcess: ChildProcessByStdio<null, Readable, Readable> | null = null
   private runState: OpenAIOAuthRunState = 'stopped'
   private activePort: number | null = null
+  private lastStartupDiagnostics: OpenAIOAuthDiagnostics | null = null
 
   public async checkInstalled(): Promise<OpenAIOAuthInstallInfo> {
     const resolution = this.resolvePackage()
@@ -53,40 +57,37 @@ class OpenAIOAuthService {
     }
   }
 
-  public async install(): Promise<OperationResult> {
+  public async install(): Promise<OpenAIOAuthOperationResult> {
     const installInfo = await this.checkInstalled()
     if (installInfo.installed) {
       return { success: true }
     }
 
-    return {
-      success: false,
-      message:
-        'The bundled openai-oauth sidecar is unavailable. Reinstall the app or run `pnpm install` in development.'
-    }
+    return this.createFailureResult(
+      'spawn',
+      'The bundled openai-oauth sidecar is unavailable. Reinstall the app or run `pnpm install` in development.'
+    )
   }
 
-  public async startProxy(): Promise<OperationResult> {
+  public async startProxy(): Promise<OpenAIOAuthOperationResult> {
     const configuredPort = this.getConfiguredPort()
     const installInfo = await this.checkInstalled()
     if (!installInfo.installed) {
       this.runState = 'error'
-      return {
-        success: false,
-        message:
-          'The bundled openai-oauth sidecar is unavailable. Reinstall the app or run `pnpm install` in development.'
-      }
+      return this.createFailureResult(
+        'spawn',
+        'The bundled openai-oauth sidecar is unavailable. Reinstall the app or run `pnpm install` in development.'
+      )
     }
 
     const credentialStatus = await this.getCredentialStatus()
     if (credentialStatus.state !== 'valid') {
       this.runState = 'error'
-      return {
-        success: false,
-        message:
-          credentialStatus.message ??
+      return this.createFailureResult(
+        'credentials',
+        credentialStatus.message ??
           'Codex OAuth credentials are unavailable. Run `codex login` and make sure it writes to ~/.codex/auth.json or $CODEX_HOME/auth.json.'
-      }
+      )
     }
 
     if (this.proxyProcess && this.activePort && this.activePort !== configuredPort) {
@@ -97,6 +98,7 @@ class OpenAIOAuthService {
     if (currentHealth.status === 'healthy') {
       this.activePort = configuredPort
       this.runState = 'running'
+      this.clearStartupDiagnostics()
       return { success: true }
     }
 
@@ -107,20 +109,16 @@ class OpenAIOAuthService {
     const resolution = this.resolvePackage()
     if (!resolution) {
       this.runState = 'error'
-      return {
-        success: false,
-        message: 'Unable to resolve the bundled openai-oauth CLI entrypoint.'
-      }
+      return this.createFailureResult('spawn', 'Unable to resolve the bundled openai-oauth CLI entrypoint.')
     }
 
     const authFilePath = credentialStatus.authFilePath
     if (!authFilePath) {
       this.runState = 'error'
-      return {
-        success: false,
-        message: 'No file-backed Codex OAuth credentials were found.'
-      }
+      return this.createFailureResult('credentials', 'No file-backed Codex OAuth credentials were found.')
     }
+
+    this.clearStartupDiagnostics()
 
     const args = [
       resolution.cliPath,
@@ -149,6 +147,12 @@ class OpenAIOAuthService {
     this.activePort = configuredPort
 
     try {
+      let stdoutOutput = ''
+      let stderrOutput = ''
+      let earlyExitSummary = ''
+      let exitCode: number | null = null
+      let exitSignal: NodeJS.Signals | null = null
+
       const proc = spawn(process.execPath, args, {
         env,
         detached: !isWin,
@@ -161,6 +165,7 @@ class OpenAIOAuthService {
       proc.stdout.on('data', (chunk: Buffer) => {
         const message = chunk.toString().trim()
         if (message) {
+          stdoutOutput = this.appendDiagnosticOutput(stdoutOutput, message)
           logger.debug('openai-oauth stdout', { message })
         }
       })
@@ -168,11 +173,13 @@ class OpenAIOAuthService {
       proc.stderr.on('data', (chunk: Buffer) => {
         const message = chunk.toString().trim()
         if (message) {
+          stderrOutput = this.appendDiagnosticOutput(stderrOutput, message)
           logger.warn('openai-oauth stderr', { message })
         }
       })
 
       proc.on('error', (error) => {
+        earlyExitSummary = `Proxy failed to start: ${error.message}`
         logger.error('openai-oauth process error', error)
         if (this.proxyProcess === proc) {
           this.runState = 'error'
@@ -180,6 +187,9 @@ class OpenAIOAuthService {
       })
 
       proc.on('exit', (code, signal) => {
+        exitCode = code
+        exitSignal = signal
+        earlyExitSummary = this.formatEarlyExitSummary(code, signal)
         logger.info('openai-oauth process exited', { code, signal })
         if (this.proxyProcess === proc) {
           this.proxyProcess = null
@@ -190,30 +200,44 @@ class OpenAIOAuthService {
 
       proc.unref()
 
-      const health = await this.waitForHealthy(configuredPort)
+      const health = await this.waitForHealthy(configuredPort, () => earlyExitSummary)
       if (health.status === 'healthy') {
         this.runState = 'running'
+        this.clearStartupDiagnostics()
         return { success: true }
       }
 
       this.activePort = null
       this.runState = 'error'
-      return {
-        success: false,
-        message: health.message ?? 'The OpenAI OAuth proxy did not become healthy before timing out.'
-      }
+      const summary =
+        earlyExitSummary ||
+        health.message ||
+        `Proxy failed health check on ${this.getHealthUrlForPort(configuredPort)} before becoming healthy.`
+      const details = this.buildStartupFailureDetails({
+        cliPath: resolution.cliPath,
+        authFilePath,
+        healthUrl: this.getHealthUrlForPort(configuredPort),
+        healthMessage: health.message,
+        stdoutOutput,
+        stderrOutput,
+        exitCode,
+        exitSignal
+      })
+      const source = this.resolveDiagnosticsSource({ stderrOutput, stdoutOutput, exitCode, exitSignal, healthMessage: health.message })
+
+      return this.createFailureResult(source, summary, details)
     } catch (error) {
       this.activePort = null
       this.runState = 'error'
       logger.error('Failed to start openai-oauth proxy', error as Error)
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to start the OpenAI OAuth proxy.'
-      }
+      return this.createFailureResult(
+        'spawn',
+        error instanceof Error ? error.message : 'Failed to start the OpenAI OAuth proxy.'
+      )
     }
   }
 
-  public async stopProxy(): Promise<OperationResult> {
+  public async stopProxy(): Promise<OpenAIOAuthOperationResult> {
     const proc = this.proxyProcess
     if (!proc) {
       const health = await this.checkHealth()
@@ -221,10 +245,10 @@ class OpenAIOAuthService {
       this.activePort = health.status === 'healthy' ? this.getResolvedPort() : null
 
       if (health.status === 'healthy') {
-        return {
-          success: false,
-          message: 'A proxy is still running on the local port, but it is not managed by this app session.'
-        }
+        return this.createFailureResult(
+          'health',
+          'A proxy is still running on the local port, but it is not managed by this app session.'
+        )
       }
 
       return { success: true }
@@ -239,17 +263,17 @@ class OpenAIOAuthService {
       this.runState = stopped ? 'stopped' : 'error'
 
       if (!stopped) {
-        return { success: false, message: 'The OpenAI OAuth proxy did not stop cleanly.' }
+        return this.createFailureResult('health', 'The OpenAI OAuth proxy did not stop cleanly.')
       }
 
       return { success: true }
     } catch (error) {
       this.runState = 'error'
       logger.error('Failed to stop openai-oauth proxy', error as Error)
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to stop the OpenAI OAuth proxy.'
-      }
+      return this.createFailureResult(
+        'spawn',
+        error instanceof Error ? error.message : 'Failed to stop the OpenAI OAuth proxy.'
+      )
     }
   }
 
@@ -260,6 +284,7 @@ class OpenAIOAuthService {
 
     if (health.status === 'healthy') {
       this.runState = 'running'
+      this.clearStartupDiagnostics()
     } else if (!this.proxyProcess && this.runState !== 'starting') {
       this.runState = 'stopped'
     }
@@ -273,13 +298,16 @@ class OpenAIOAuthService {
       port: this.getResolvedPort(),
       baseUrl: this.getBaseUrlForPort(),
       availableModels: health.models,
-      message: credentialStatus.message ?? health.message
+      message: credentialStatus.message ?? this.lastStartupDiagnostics?.summary ?? health.message,
+      diagnostics: this.lastStartupDiagnostics ?? undefined
     }
   }
 
   public async checkHealth(port = this.getResolvedPort()): Promise<OpenAIOAuthHealthInfo> {
+    const healthUrl = this.getHealthUrlForPort(port)
+
     try {
-      const response = await fetch(`${this.getBaseUrlForPort(port)}/models`, {
+      const response = await fetch(healthUrl, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS)
       })
@@ -288,7 +316,7 @@ class OpenAIOAuthService {
         return {
           status: 'unhealthy',
           models: [],
-          message: `Health probe failed with status ${response.status}.`
+          message: `Proxy health check on ${healthUrl} returned status ${response.status}.`
         }
       }
 
@@ -299,7 +327,7 @@ class OpenAIOAuthService {
       return {
         status: 'unhealthy',
         models: [],
-        message: error instanceof Error ? error.message : 'The OpenAI OAuth proxy is not reachable.'
+        message: this.formatHealthFailureMessage(healthUrl, error)
       }
     }
   }
@@ -465,7 +493,7 @@ class OpenAIOAuthService {
       .filter((modelId) => modelId.length > 0)
   }
 
-  private async waitForHealthy(port: number): Promise<OpenAIOAuthHealthInfo> {
+  private async waitForHealthy(port: number, getEarlyExitSummary?: () => string): Promise<OpenAIOAuthHealthInfo> {
     const startedAt = Date.now()
     let lastHealth: OpenAIOAuthHealthInfo = {
       status: 'unhealthy',
@@ -474,7 +502,25 @@ class OpenAIOAuthService {
     }
 
     while (Date.now() - startedAt < START_TIMEOUT_MS) {
+      const earlyExitSummary = getEarlyExitSummary?.()
+      if (earlyExitSummary) {
+        return {
+          status: 'unhealthy',
+          models: [],
+          message: earlyExitSummary
+        }
+      }
+
       await this.sleep(750)
+      const earlyExitAfterDelay = getEarlyExitSummary?.()
+      if (earlyExitAfterDelay) {
+        return {
+          status: 'unhealthy',
+          models: [],
+          message: earlyExitAfterDelay
+        }
+      }
+
       lastHealth = await this.checkHealth(port)
       if (lastHealth.status === 'healthy') {
         return lastHealth
@@ -524,6 +570,149 @@ class OpenAIOAuthService {
 
   private getBaseUrlForPort(port = this.getResolvedPort()): string {
     return `http://${this.host}:${port}/v1`
+  }
+
+  private getHealthUrlForPort(port = this.getResolvedPort()): string {
+    return `${this.getBaseUrlForPort(port)}/models`
+  }
+
+  private clearStartupDiagnostics(): void {
+    this.lastStartupDiagnostics = null
+  }
+
+  private createFailureResult(
+    source: OpenAIOAuthDiagnostics['source'],
+    summary: string,
+    details?: string
+  ): OpenAIOAuthOperationResult {
+    const diagnostics = this.createDiagnostics(source, summary, details)
+    this.lastStartupDiagnostics = diagnostics
+    return {
+      success: false,
+      message: summary,
+      diagnostics
+    }
+  }
+
+  private createDiagnostics(
+    source: OpenAIOAuthDiagnostics['source'],
+    summary: string,
+    details?: string
+  ): OpenAIOAuthDiagnostics {
+    return {
+      source,
+      summary,
+      details: details || undefined,
+      updatedAt: new Date().toISOString()
+    }
+  }
+
+  private appendDiagnosticOutput(existing: string, chunk: string): string {
+    const next = existing ? `${existing}\n${chunk}` : chunk
+    return next.length > DIAGNOSTIC_OUTPUT_LIMIT ? next.slice(next.length - DIAGNOSTIC_OUTPUT_LIMIT) : next
+  }
+
+  private limitDiagnosticOutput(text: string): string | undefined {
+    const trimmed = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (trimmed.length === 0) {
+      return undefined
+    }
+
+    return trimmed.slice(-DIAGNOSTIC_LINE_LIMIT).join('\n')
+  }
+
+  private formatHealthFailureMessage(healthUrl: string, error: unknown): string {
+    if (error instanceof Error) {
+      const message = error.message.trim()
+      if (message.toLowerCase() === 'fetch failed') {
+        return `Proxy failed health check on ${healthUrl}. The local sidecar is not reachable yet.`
+      }
+
+      return `Proxy failed health check on ${healthUrl}: ${message}`
+    }
+
+    return `Proxy failed health check on ${healthUrl}. The local sidecar is not reachable yet.`
+  }
+
+  private formatEarlyExitSummary(code: number | null, signal: NodeJS.Signals | null): string {
+    if (signal) {
+      return `Proxy exited before becoming healthy (signal ${signal}).`
+    }
+
+    if (typeof code === 'number') {
+      return `Proxy exited before becoming healthy (code ${code}).`
+    }
+
+    return 'Proxy exited before becoming healthy.'
+  }
+
+  private buildStartupFailureDetails({
+    cliPath,
+    authFilePath,
+    healthUrl,
+    healthMessage,
+    stdoutOutput,
+    stderrOutput,
+    exitCode,
+    exitSignal
+  }: {
+    cliPath: string
+    authFilePath: string
+    healthUrl: string
+    healthMessage?: string
+    stdoutOutput: string
+    stderrOutput: string
+    exitCode: number | null
+    exitSignal: NodeJS.Signals | null
+  }): string | undefined {
+    const parts = [
+      `Health endpoint: ${healthUrl}`,
+      `CLI: ${cliPath}`,
+      `Auth file: ${authFilePath}`,
+      healthMessage ? `Health: ${healthMessage}` : '',
+      typeof exitCode === 'number' ? `Exit code: ${exitCode}` : '',
+      exitSignal ? `Exit signal: ${exitSignal}` : '',
+      stderrOutput ? `stderr:\n${this.limitDiagnosticOutput(stderrOutput)}` : '',
+      stdoutOutput ? `stdout:\n${this.limitDiagnosticOutput(stdoutOutput)}` : ''
+    ].filter(Boolean)
+
+    return parts.length > 0 ? parts.join('\n\n') : undefined
+  }
+
+  private resolveDiagnosticsSource({
+    stderrOutput,
+    stdoutOutput,
+    exitCode,
+    exitSignal,
+    healthMessage
+  }: {
+    stderrOutput: string
+    stdoutOutput: string
+    exitCode: number | null
+    exitSignal: NodeJS.Signals | null
+    healthMessage?: string
+  }): OpenAIOAuthDiagnostics['source'] {
+    if (stderrOutput) {
+      return 'stderr'
+    }
+
+    if (typeof exitCode === 'number' || exitSignal) {
+      return 'exit'
+    }
+
+    if (stdoutOutput) {
+      return 'stdout'
+    }
+
+    if (healthMessage) {
+      return 'health'
+    }
+
+    return 'spawn'
   }
 }
 

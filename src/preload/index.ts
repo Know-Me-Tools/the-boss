@@ -25,6 +25,7 @@ import type {
   ManagedDependencyName,
   OpenAIOAuthHealthInfo,
   OpenAIOAuthInstallInfo,
+  OpenAIOAuthOperationResult,
   OpenAIOAuthStatus,
   OperationResult,
   WebviewKeyEvent
@@ -35,6 +36,7 @@ import { IpcChannel } from '@shared/IpcChannel'
 import type {
   ImportGraphQLServiceRequest,
   ImportOpenAPIServiceRequest,
+  ImportSupabaseServiceRequest,
   InvokeServiceResponse,
   ServiceConnectionTestResult,
   ServiceDefinition,
@@ -425,6 +427,8 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Services_ImportOpenAPI, request),
     importGraphQL: (request: ImportGraphQLServiceRequest): Promise<ServiceDefinition> =>
       ipcRenderer.invoke(IpcChannel.Services_ImportGraphQL, request),
+    importSupabase: (request: ImportSupabaseServiceRequest): Promise<ServiceDefinition> =>
+      ipcRenderer.invoke(IpcChannel.Services_ImportSupabase, request),
     updateMetadata: (id: string, patch: UpdateServiceMetadataRequest['patch']): Promise<ServiceDefinition> =>
       ipcRenderer.invoke(IpcChannel.Services_UpdateMetadata, { id, patch }),
     delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Services_Delete, id),
@@ -793,9 +797,9 @@ const api = {
   },
   openai_oauth: {
     checkInstalled: (): Promise<OpenAIOAuthInstallInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckInstalled),
-    install: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_Install),
-    startProxy: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StartProxy),
-    stopProxy: (): Promise<OperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StopProxy),
+    install: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_Install),
+    startProxy: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StartProxy),
+    stopProxy: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StopProxy),
     getStatus: (): Promise<OpenAIOAuthStatus> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetStatus),
     checkHealth: (): Promise<OpenAIOAuthHealthInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckHealth),
     getBaseUrl: (): Promise<string> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetBaseUrl),
