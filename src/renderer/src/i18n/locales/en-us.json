@@ -1603,6 +1603,7 @@
     "current": "Current",
     "cut": "Cut",
     "default": "Default",
+    "defaultValue": "Default",
     "delete": "Delete",
     "delete_confirm": "Are you sure you want to delete?",
     "delete_failed": "Failed to delete",
@@ -2410,6 +2411,17 @@
       "code_style": "Code style",
       "compact": {
         "title": "Conversation Compacted"
+      },
+      "contextManagement": {
+        "agent": "Agent",
+        "assistant": "Assistant",
+        "messageCounts": "Messages",
+        "summaryPreview": "Summary Preview",
+        "title": "Context Management",
+        "tokensAfter": "Tokens after",
+        "tokensBefore": "Tokens before",
+        "tokensSaved": "Tokens saved",
+        "trigger": "Trigger"
       },
       "delete": {
         "content": "Are you sure you want to delete this message?",
@@ -5611,8 +5623,11 @@
           "install_status": "Sidecar",
           "local_endpoint": "Local endpoint",
           "oauth": "ChatGPT OAuth",
+          "port": "Local port",
+          "port_saved": "OpenAI OAuth proxy port saved",
           "proxy_status": "Proxy",
           "refresh": "Refresh",
+          "save_port": "Save port",
           "start": "Start proxy",
           "state": {
             "error": "Error",
@@ -5623,8 +5638,8 @@
             "running": "Running",
             "starting": "Starting",
             "stopped": "Stopped",
-            "unsupported": "Unsupported",
             "unhealthy": "Unhealthy",
+            "unsupported": "Unsupported",
             "valid": "Valid"
           },
           "status_load_failed": "Failed to load OpenAI OAuth status",

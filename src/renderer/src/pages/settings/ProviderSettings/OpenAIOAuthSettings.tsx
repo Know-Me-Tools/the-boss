@@ -1,11 +1,13 @@
 import { loggerService } from '@logger'
 import type { OpenAIOAuthStatus } from '@shared/config/types'
-import { Alert, Button, Space, Tag } from 'antd'
+import { Alert, Button, InputNumber, Space, Tag } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 const logger = loggerService.withContext('OpenAIOAuthSettings')
+const OPENAI_OAUTH_PORT_KEY = 'openAIOAuthPort'
+const DEFAULT_OPENAI_OAUTH_PORT = 10531
 
 const statusColorMap = {
   valid: 'green',
@@ -25,6 +27,7 @@ const OpenAIOAuthSettings = () => {
   const { t } = useTranslation()
   const [status, setStatus] = useState<OpenAIOAuthStatus | null>(null)
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
+  const [proxyPort, setProxyPort] = useState<number>(DEFAULT_OPENAI_OAUTH_PORT)
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -35,9 +38,22 @@ const OpenAIOAuthSettings = () => {
     }
   }, [t])
 
+  const loadPort = useCallback(async () => {
+    try {
+      const savedPort = await window.api.config.get(OPENAI_OAUTH_PORT_KEY)
+      const resolvedPort =
+        Number.isInteger(savedPort) && savedPort > 0 && savedPort <= 65535 ? savedPort : DEFAULT_OPENAI_OAUTH_PORT
+      setProxyPort(resolvedPort)
+    } catch (error) {
+      logger.error('Failed to load OpenAI OAuth proxy port', error as Error)
+      setProxyPort(DEFAULT_OPENAI_OAUTH_PORT)
+    }
+  }, [])
+
   useEffect(() => {
     void refreshStatus()
-  }, [refreshStatus])
+    void loadPort()
+  }, [loadPort, refreshStatus])
 
   const runAction = useCallback(
     async (actionName: string, action: () => Promise<{ success: boolean; message?: string }>) => {
@@ -59,6 +75,17 @@ const OpenAIOAuthSettings = () => {
     },
     [refreshStatus, t]
   )
+
+  const savePort = useCallback(async () => {
+    try {
+      await window.api.config.set(OPENAI_OAUTH_PORT_KEY, proxyPort)
+      window.toast.success(t('settings.provider.openai.oauth.port_saved'))
+      await refreshStatus()
+    } catch (error) {
+      logger.error('Failed to save OpenAI OAuth proxy port', error as Error)
+      window.toast.error(t('settings.provider.openai.oauth.action_failed'))
+    }
+  }, [proxyPort, refreshStatus, t])
 
   const modelsSummary =
     status?.availableModels.length && status.availableModels.length > 0 ? status.availableModels.join(', ') : null
@@ -106,6 +133,18 @@ const OpenAIOAuthSettings = () => {
           <StatusRow>
             <StatusLabel>{t('settings.provider.openai.oauth.local_endpoint')}</StatusLabel>
             <Code>{status.baseUrl}</Code>
+          </StatusRow>
+          <StatusRow>
+            <StatusLabel>{t('settings.provider.openai.oauth.port')}</StatusLabel>
+            <PortControls>
+              <InputNumber
+                min={1}
+                max={65535}
+                value={proxyPort}
+                onChange={(value) => setProxyPort(typeof value === 'number' ? value : DEFAULT_OPENAI_OAUTH_PORT)}
+              />
+              <Button onClick={() => void savePort()}>{t('settings.provider.openai.oauth.save_port')}</Button>
+            </PortControls>
           </StatusRow>
           {status.credentialStatus.authFilePath && (
             <StatusRow>
@@ -182,6 +221,12 @@ const StatusText = styled.span`
 const Code = styled.code`
   color: var(--color-text);
   word-break: break-all;
+`
+
+const PortControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `
 
 export default OpenAIOAuthSettings

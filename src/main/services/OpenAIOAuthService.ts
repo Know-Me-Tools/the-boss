@@ -17,13 +17,13 @@ import type {
 } from '@shared/config/types'
 
 import { toAsarUnpackedPath } from '../utils'
+import { ConfigKeys, configManager } from './ConfigManager'
 
 const require = createRequire(import.meta.url)
 const logger = loggerService.withContext('OpenAIOAuthService')
 
 const DEFAULT_HOST = '127.0.0.1'
 const DEFAULT_PORT = 10531
-const DEFAULT_BASE_URL = `http://${DEFAULT_HOST}:${DEFAULT_PORT}/v1`
 const START_TIMEOUT_MS = 30000
 const STOP_TIMEOUT_MS = 5000
 const HEALTH_TIMEOUT_MS = 3000
@@ -41,10 +41,9 @@ type PackageResolution = {
 
 class OpenAIOAuthService {
   private readonly host = DEFAULT_HOST
-  private readonly port = DEFAULT_PORT
-  private readonly baseUrl = DEFAULT_BASE_URL
   private proxyProcess: ChildProcessByStdio<null, Readable, Readable> | null = null
   private runState: OpenAIOAuthRunState = 'stopped'
+  private activePort: number | null = null
 
   public async checkInstalled(): Promise<OpenAIOAuthInstallInfo> {
     const resolution = this.resolvePackage()
@@ -68,6 +67,7 @@ class OpenAIOAuthService {
   }
 
   public async startProxy(): Promise<OperationResult> {
+    const configuredPort = this.getConfiguredPort()
     const installInfo = await this.checkInstalled()
     if (!installInfo.installed) {
       this.runState = 'error'
@@ -89,8 +89,13 @@ class OpenAIOAuthService {
       }
     }
 
-    const currentHealth = await this.checkHealth()
+    if (this.proxyProcess && this.activePort && this.activePort !== configuredPort) {
+      await this.stopProxy()
+    }
+
+    const currentHealth = await this.checkHealth(configuredPort)
     if (currentHealth.status === 'healthy') {
+      this.activePort = configuredPort
       this.runState = 'running'
       return { success: true }
     }
@@ -122,7 +127,7 @@ class OpenAIOAuthService {
       '--host',
       this.host,
       '--port',
-      String(this.port),
+      String(configuredPort),
       '--oauth-file',
       authFilePath
     ]
@@ -136,11 +141,12 @@ class OpenAIOAuthService {
     logger.info('Starting openai-oauth proxy', {
       cliPath: resolution.cliPath,
       host: this.host,
-      port: this.port,
+      port: configuredPort,
       authFilePath
     })
 
     this.runState = 'starting'
+    this.activePort = configuredPort
 
     try {
       const proc = spawn(process.execPath, args, {
@@ -177,24 +183,27 @@ class OpenAIOAuthService {
         logger.info('openai-oauth process exited', { code, signal })
         if (this.proxyProcess === proc) {
           this.proxyProcess = null
+          this.activePort = null
           this.runState = code === 0 ? 'stopped' : 'error'
         }
       })
 
       proc.unref()
 
-      const health = await this.waitForHealthy()
+      const health = await this.waitForHealthy(configuredPort)
       if (health.status === 'healthy') {
         this.runState = 'running'
         return { success: true }
       }
 
+      this.activePort = null
       this.runState = 'error'
       return {
         success: false,
         message: health.message ?? 'The OpenAI OAuth proxy did not become healthy before timing out.'
       }
     } catch (error) {
+      this.activePort = null
       this.runState = 'error'
       logger.error('Failed to start openai-oauth proxy', error as Error)
       return {
@@ -209,6 +218,7 @@ class OpenAIOAuthService {
     if (!proc) {
       const health = await this.checkHealth()
       this.runState = health.status === 'healthy' ? 'running' : 'stopped'
+      this.activePort = health.status === 'healthy' ? this.getResolvedPort() : null
 
       if (health.status === 'healthy') {
         return {
@@ -221,6 +231,7 @@ class OpenAIOAuthService {
     }
 
     this.proxyProcess = null
+    this.activePort = null
 
     try {
       this.killProcess(proc)
@@ -259,16 +270,16 @@ class OpenAIOAuthService {
       healthState: health.status,
       credentialStatus,
       host: this.host,
-      port: this.port,
-      baseUrl: this.baseUrl,
+      port: this.getResolvedPort(),
+      baseUrl: this.getBaseUrlForPort(),
       availableModels: health.models,
       message: credentialStatus.message ?? health.message
     }
   }
 
-  public async checkHealth(): Promise<OpenAIOAuthHealthInfo> {
+  public async checkHealth(port = this.getResolvedPort()): Promise<OpenAIOAuthHealthInfo> {
     try {
-      const response = await fetch(`${this.baseUrl}/models`, {
+      const response = await fetch(`${this.getBaseUrlForPort(port)}/models`, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS)
       })
@@ -294,7 +305,7 @@ class OpenAIOAuthService {
   }
 
   public async getBaseUrl(): Promise<string> {
-    return this.baseUrl
+    return this.getBaseUrlForPort()
   }
 
   public async getModels(): Promise<string[]> {
@@ -348,7 +359,12 @@ class OpenAIOAuthService {
 
   private resolvePackage(): PackageResolution | null {
     try {
-      const manifestPath = require.resolve('openai-oauth/package.json')
+      const resolvedEntryPath = require.resolve('openai-oauth')
+      const manifestPath = this.findPackageManifestPath(path.dirname(resolvedEntryPath))
+      if (!manifestPath) {
+        return null
+      }
+
       const packageJson = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as {
         bin?: string | Record<string, string>
       }
@@ -370,6 +386,24 @@ class OpenAIOAuthService {
         message: error instanceof Error ? error.message : String(error)
       })
       return null
+    }
+  }
+
+  private findPackageManifestPath(startDir: string): string | null {
+    let currentDir = startDir
+
+    while (true) {
+      const manifestPath = path.join(currentDir, 'package.json')
+      if (fs.existsSync(manifestPath)) {
+        return manifestPath
+      }
+
+      const parentDir = path.dirname(currentDir)
+      if (parentDir === currentDir) {
+        return null
+      }
+
+      currentDir = parentDir
     }
   }
 
@@ -431,7 +465,7 @@ class OpenAIOAuthService {
       .filter((modelId) => modelId.length > 0)
   }
 
-  private async waitForHealthy(): Promise<OpenAIOAuthHealthInfo> {
+  private async waitForHealthy(port: number): Promise<OpenAIOAuthHealthInfo> {
     const startedAt = Date.now()
     let lastHealth: OpenAIOAuthHealthInfo = {
       status: 'unhealthy',
@@ -441,7 +475,7 @@ class OpenAIOAuthService {
 
     while (Date.now() - startedAt < START_TIMEOUT_MS) {
       await this.sleep(750)
-      lastHealth = await this.checkHealth()
+      lastHealth = await this.checkHealth(port)
       if (lastHealth.status === 'healthy') {
         return lastHealth
       }
@@ -477,6 +511,19 @@ class OpenAIOAuthService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private getConfiguredPort(): number {
+    const configuredPort = configManager.get<number>(ConfigKeys.OpenAIOAuthPort, DEFAULT_PORT)
+    return Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535 ? configuredPort : DEFAULT_PORT
+  }
+
+  private getResolvedPort(): number {
+    return this.activePort ?? this.getConfiguredPort()
+  }
+
+  private getBaseUrlForPort(port = this.getResolvedPort()): string {
+    return `http://${this.host}:${port}/v1`
   }
 }
 

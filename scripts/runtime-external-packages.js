@@ -3,6 +3,7 @@ const PACKAGE_NAME_PATTERN = /^(?:@[\w.-]+\/)?[\w.-]+$/
 const runtimeExternalPackages = Object.freeze([
   '@anthropic-ai/claude-agent-sdk',
   '@libsql/client',
+  '@napi-rs/canvas',
   '@napi-rs/system-ocr',
   'esbuild',
   'font-list',

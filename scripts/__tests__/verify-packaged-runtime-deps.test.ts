@@ -147,4 +147,24 @@ describe('verify-packaged-runtime-deps', () => {
       }
     ])
   })
+
+  it('detects aliased createRequire.resolve startup package references', () => {
+    const tempDir = createTempDir()
+    const entryFile = path.join(tempDir, 'out/main/index.js')
+
+    writePackage(tempDir, 'openai-oauth')
+    fs.mkdirSync(path.dirname(entryFile), { recursive: true })
+    fs.writeFileSync(
+      entryFile,
+      "const runtimeRequire = module.createRequire(__filename)\nruntimeRequire.resolve('openai-oauth')\n"
+    )
+
+    const audit = auditStartupBundleExternalReferences({
+      declaredExternalPackages: [],
+      entryFiles: [entryFile]
+    })
+
+    expect(audit.startupRoots).toEqual(['openai-oauth'])
+    expect(audit.undeclaredPackageNames).toEqual(['openai-oauth'])
+  })
 })
