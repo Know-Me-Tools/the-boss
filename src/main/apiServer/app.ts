@@ -61,7 +61,13 @@ app.use((_req, res, next) => {
 app.use(
   cors({
     origin: '*',
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      // Internal OAuth proxy secret headers sent from the Electron renderer
+      'x-cherry-openai-oauth-secret',
+      'x-cherry-anthropic-oauth-secret'
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
   })
 )
