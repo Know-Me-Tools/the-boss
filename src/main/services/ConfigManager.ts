@@ -48,6 +48,7 @@ export enum ConfigKeys {
   UseSystemTitleBar = 'useSystemTitleBar',
   Proxy = 'proxy',
   OpenAIOAuthPort = 'openAIOAuthPort',
+  ClaudeOAuthProxyPort = 'claudeOAuthProxyPort',
   EnableDeveloperMode = 'enableDeveloperMode',
   ClientId = 'clientId',
   GitBashPath = 'gitBashPath',

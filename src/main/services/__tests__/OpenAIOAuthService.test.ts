@@ -1,73 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockState = vi.hoisted(() => ({
-  sidecarManifestExists: true,
-  sidecarCliExists: true,
   authFileExists: false,
   authFileContent: '{}',
-  oauthPort: 10531,
-  fetchResponse: null as null | { ok: boolean; status?: number; json: () => Promise<unknown> },
-  fetchResponses: [] as Array<null | { ok: boolean; status?: number; json: () => Promise<unknown> }>
+  serverRunning: false,
+  apiServerConfig: {
+    host: '127.0.0.1',
+    port: 23333,
+    enabled: false,
+    apiKey: 'public-api-key'
+  },
+  fetchResponse: null as null | { ok: boolean; status?: number; json: () => Promise<unknown> }
 }))
 
+const mockCreateOpenAIOAuthFetchHandler = vi.fn()
 const mockReadAuthFile = vi.fn()
-const mockSpawn = vi.fn()
-const mockExecFileSync = vi.fn()
-
-function createMockChildProcess() {
-  const stdoutHandlers = new Map<string, Array<(chunk: Buffer) => void>>()
-  const stderrHandlers = new Map<string, Array<(chunk: Buffer) => void>>()
-  const processHandlers = new Map<string, Array<(...args: any[]) => void>>()
-
-  const stdout = {
-    on: vi.fn((event: string, handler: (chunk: Buffer) => void) => {
-      const handlers = stdoutHandlers.get(event) ?? []
-      handlers.push(handler)
-      stdoutHandlers.set(event, handlers)
-      return stdout
-    })
-  }
-
-  const stderr = {
-    on: vi.fn((event: string, handler: (chunk: Buffer) => void) => {
-      const handlers = stderrHandlers.get(event) ?? []
-      handlers.push(handler)
-      stderrHandlers.set(event, handlers)
-      return stderr
-    })
-  }
-
-  const childProcess = {
-    pid: 4242,
-    killed: false,
-    stdout,
-    stderr,
-    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
-      const handlers = processHandlers.get(event) ?? []
-      handlers.push(handler)
-      processHandlers.set(event, handlers)
-      return childProcess
-    }),
-    unref: vi.fn(),
-    emitStdout: (message: string) => {
-      for (const handler of stdoutHandlers.get('data') ?? []) {
-        handler(Buffer.from(message))
-      }
-    },
-    emitStderr: (message: string) => {
-      for (const handler of stderrHandlers.get('data') ?? []) {
-        handler(Buffer.from(message))
-      }
-    },
-    emitProcessEvent: (event: string, ...args: any[]) => {
-      for (const handler of processHandlers.get(event) ?? []) {
-        handler(...args)
-      }
-    }
-  }
-
-  return childProcess
-}
+const mockApiServerStart = vi.fn(async () => {
+  mockState.serverRunning = true
+})
 
 vi.mock('@logger', () => ({
   loggerService: {
@@ -80,58 +30,33 @@ vi.mock('@logger', () => ({
   }
 }))
 
-vi.mock('node:child_process', () => ({
-  spawn: (...args: any[]) => mockSpawn(...args),
-  execFileSync: (...args: any[]) => mockExecFileSync(...args)
+vi.mock('openai-oauth', () => ({
+  createOpenAIOAuthFetchHandler: (...args: unknown[]) => mockCreateOpenAIOAuthFetchHandler(...args)
 }))
 
-vi.mock('@main/constant', () => ({
-  isWin: false
-}))
-
-vi.mock('../ConfigManager', () => ({
-  ConfigKeys: {
-    OpenAIOAuthPort: 'openAIOAuthPort'
-  },
-  configManager: {
-    get: vi.fn((key: string, defaultValue?: unknown) => {
-      if (key === 'openAIOAuthPort') {
-        return mockState.oauthPort
-      }
-      return defaultValue
-    })
+vi.mock('../ApiServerService', () => ({
+  apiServerService: {
+    isRunning: () => mockState.serverRunning,
+    start: mockApiServerStart
   }
 }))
 
-vi.mock('../utils', () => ({
-  toAsarUnpackedPath: (filePath: string) => filePath
-}))
-
-vi.mock('node:module', () => ({
-  createRequire: () => ({
-    resolve: (specifier: string) => {
-      if (specifier === 'openai-oauth') {
-        return '/mock/node_modules/openai-oauth/dist/index.js'
-      }
-      throw new Error(`Unexpected specifier: ${specifier}`)
-    }
-  })
+vi.mock('../../apiServer/config', () => ({
+  config: {
+    get: async () => mockState.apiServerConfig
+  }
 }))
 
 vi.mock('node:fs', () => ({
   default: {
     existsSync: (filePath: string) => {
-      if (filePath === '/mock/node_modules/openai-oauth/package.json') return mockState.sidecarManifestExists
-      if (filePath === '/mock/node_modules/openai-oauth/dist/cli.js') return mockState.sidecarCliExists
-      if (filePath === '/mock/codex/auth.json') return mockState.authFileExists
-      if (filePath.endsWith('/.codex/auth.json')) return false
-      return false
-    },
-    readFileSync: (filePath: string) => {
-      if (filePath === '/mock/node_modules/openai-oauth/package.json') {
-        return JSON.stringify({ bin: { 'openai-oauth': 'dist/cli.js' } })
+      if (filePath === '/mock/codex/auth.json') {
+        return mockState.authFileExists
       }
-      throw new Error(`Unexpected readFileSync: ${filePath}`)
+      if (filePath.endsWith('/.codex/auth.json')) {
+        return false
+      }
+      return false
     },
     promises: {
       readFile: mockReadAuthFile
@@ -149,30 +74,33 @@ describe('OpenAIOAuthService', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.clearAllMocks()
-    mockState.sidecarManifestExists = true
-    mockState.sidecarCliExists = true
     mockState.authFileExists = false
     mockState.authFileContent = '{}'
-    mockState.oauthPort = 10531
+    mockState.serverRunning = false
+    mockState.apiServerConfig = {
+      host: '127.0.0.1',
+      port: 23333,
+      enabled: false,
+      apiKey: 'public-api-key'
+    }
     mockState.fetchResponse = null
-    mockState.fetchResponses = []
     mockReadAuthFile.mockImplementation(async () => mockState.authFileContent)
-    mockSpawn.mockReset()
-    mockExecFileSync.mockReset()
+    mockCreateOpenAIOAuthFetchHandler.mockReturnValue(async (request: Request) =>
+      new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
     vi.stubEnv('CODEX_HOME', '/mock/codex')
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => {
-        const nextResponse =
-          mockState.fetchResponses.length > 0 ? mockState.fetchResponses.shift() ?? null : mockState.fetchResponse
-
-        if (!nextResponse) {
+        if (!mockState.fetchResponse) {
           throw new Error('connect ECONNREFUSED')
         }
-        return nextResponse
+        return mockState.fetchResponse
       })
     )
-    vi.useRealTimers()
   })
 
   it('reports missing file-backed Codex credentials', async () => {
@@ -198,8 +126,9 @@ describe('OpenAIOAuthService', () => {
     expect(status.credentialStatus.authFilePath).toBe('/mock/codex/auth.json')
   })
 
-  it('parses healthy proxy model responses', async () => {
+  it('parses healthy internal endpoint model responses', async () => {
     mockState.authFileExists = true
+    mockState.serverRunning = true
     mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
     mockState.fetchResponse = {
       ok: true,
@@ -217,96 +146,7 @@ describe('OpenAIOAuthService', () => {
     expect(status.credentialStatus.state).toBe('valid')
   })
 
-  it('fails to start when the bundled sidecar is unavailable', async () => {
-    mockState.sidecarManifestExists = false
-    mockState.sidecarCliExists = false
-
-    const { openAIOAuthService } = await import('../OpenAIOAuthService')
-
-    const result = await openAIOAuthService.startProxy()
-
-    expect(result.success).toBe(false)
-    if (result.success) {
-      throw new Error('Expected startProxy to fail when the bundled sidecar is unavailable')
-    }
-    expect(result.message).toContain('bundled openai-oauth sidecar is unavailable')
-  })
-
-  it('fails to start when Codex OAuth credentials are missing', async () => {
-    const { openAIOAuthService } = await import('../OpenAIOAuthService')
-
-    const result = await openAIOAuthService.startProxy()
-
-    expect(result.success).toBe(false)
-    if (result.success) {
-      throw new Error('Expected startProxy to fail when credentials are missing')
-    }
-    expect(result.message).toContain('No file-backed Codex OAuth cache was found')
-  })
-
-  it('starts the OpenAI OAuth proxy and becomes healthy', async () => {
-    vi.useFakeTimers()
-
-    const childProcess = createMockChildProcess()
-    mockSpawn.mockReturnValue(childProcess)
-    mockState.authFileExists = true
-    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
-    mockState.fetchResponses = [
-      null,
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }, { id: 'gpt-5.3-codex' }] })
-      },
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }, { id: 'gpt-5.3-codex' }] })
-      },
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }, { id: 'gpt-5.3-codex' }] })
-      }
-    ]
-
-    const { openAIOAuthService } = await import('../OpenAIOAuthService')
-
-    const startPromise = openAIOAuthService.startProxy()
-    await vi.advanceTimersByTimeAsync(750)
-    const result = await startPromise
-
-    expect(result).toEqual({ success: true })
-    expect(mockSpawn).toHaveBeenCalledTimes(1)
-    expect(mockSpawn).toHaveBeenCalledWith(
-      process.execPath,
-      [
-        '/mock/node_modules/openai-oauth/dist/cli.js',
-        '--host',
-        '127.0.0.1',
-        '--port',
-        '10531',
-        '--oauth-file',
-        '/mock/codex/auth.json'
-      ],
-      expect.objectContaining({
-        detached: true,
-        windowsHide: true,
-        env: expect.objectContaining({
-          CODEX_HOME: '/mock/codex',
-          ELECTRON_RUN_AS_NODE: '1'
-        }),
-        stdio: ['ignore', 'pipe', 'pipe']
-      })
-    )
-    expect(childProcess.unref).toHaveBeenCalled()
-    expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:10531/v1')
-    expect(await openAIOAuthService.getModels()).toEqual(['gpt-5.4', 'gpt-5.3-codex'])
-
-    const status = await openAIOAuthService.getStatus()
-    expect(status.runState).toBe('running')
-    expect(status.healthState).toBe('healthy')
-    expect(status.availableModels).toEqual(['gpt-5.4', 'gpt-5.3-codex'])
-  })
-
-  it('does not spawn a new process when the proxy is already healthy', async () => {
+  it('starts the API server and activates the internal endpoint', async () => {
     mockState.authFileExists = true
     mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
     mockState.fetchResponse = {
@@ -319,130 +159,40 @@ describe('OpenAIOAuthService', () => {
     const result = await openAIOAuthService.startProxy()
 
     expect(result).toEqual({ success: true })
-    expect(mockSpawn).not.toHaveBeenCalled()
+    expect(mockApiServerStart).toHaveBeenCalledTimes(1)
+    expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:23333/_internal/openai-oauth/v1')
+    expect(await openAIOAuthService.getModels()).toEqual(['gpt-5.4'])
   })
 
-  it('uses the configured sidecar port for startup and base URL reporting', async () => {
-    vi.useFakeTimers()
-
-    const childProcess = createMockChildProcess()
-    mockSpawn.mockReturnValue(childProcess)
-    mockState.oauthPort = 11555
+  it('returns an internal header and normalizes wildcard API server hosts to loopback', async () => {
     mockState.authFileExists = true
-    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
-    mockState.fetchResponses = [
-      null,
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }] })
-      }
-    ]
+    mockState.apiServerConfig.host = '0.0.0.0'
 
     const { openAIOAuthService } = await import('../OpenAIOAuthService')
 
-    const startPromise = openAIOAuthService.startProxy()
-    await vi.advanceTimersByTimeAsync(750)
-    const result = await startPromise
+    expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:23333/_internal/openai-oauth/v1')
+    expect(await openAIOAuthService.getRequestHeaders()).toHaveProperty('x-cherry-openai-oauth-secret')
+  })
 
-    expect(result).toEqual({ success: true })
-    expect(mockSpawn).toHaveBeenCalledWith(
-      process.execPath,
-      expect.arrayContaining(['--port', '11555']),
-      expect.any(Object)
+  it('forwards internal requests through the in-process openai-oauth handler', async () => {
+    mockState.authFileExists = true
+    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
+    const internalHandler = vi.fn(async (request: Request) =>
+      new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
     )
-    expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:11555/v1')
-  })
-
-  it('surfaces stderr and exit diagnostics when the proxy exits before becoming healthy', async () => {
-    vi.useFakeTimers()
-
-    const childProcess = createMockChildProcess()
-    mockSpawn.mockReturnValue(childProcess)
-    mockState.authFileExists = true
-    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
+    mockCreateOpenAIOAuthFetchHandler.mockReturnValue(internalHandler)
 
     const { openAIOAuthService } = await import('../OpenAIOAuthService')
 
-    const startPromise = openAIOAuthService.startProxy()
-    await vi.waitFor(() => {
-      expect(mockSpawn).toHaveBeenCalledTimes(1)
-    })
-    childProcess.emitStderr('upstream fetch failed')
-    childProcess.emitProcessEvent('exit', 1, null)
-    await vi.advanceTimersByTimeAsync(750)
-    const result = await startPromise
+    const response = await openAIOAuthService.handleInternalRequest(new Request('http://internal/v1/models'))
 
-    expect(result.success).toBe(false)
-    if (result.success) {
-      throw new Error('Expected startProxy to fail with diagnostics')
-    }
-    expect(result.message).toContain('Proxy exited before becoming healthy')
-    expect(result.diagnostics?.details).toContain('stderr:')
-    expect(result.diagnostics?.details).toContain('upstream fetch failed')
-    expect(result.diagnostics?.details).toContain('Exit code: 1')
-
-    const status = await openAIOAuthService.getStatus()
-    expect(status.diagnostics?.summary).toContain('Proxy exited before becoming healthy')
-  })
-
-  it('retains health timeout diagnostics after a failed startup', async () => {
-    vi.useFakeTimers()
-
-    const childProcess = createMockChildProcess()
-    mockSpawn.mockReturnValue(childProcess)
-    mockState.authFileExists = true
-    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
-
-    const { openAIOAuthService } = await import('../OpenAIOAuthService')
-
-    const startPromise = openAIOAuthService.startProxy()
-    await vi.advanceTimersByTimeAsync(30_000)
-    const result = await startPromise
-
-    expect(result.success).toBe(false)
-    if (result.success) {
-      throw new Error('Expected startProxy to fail after health timeout')
-    }
-    expect(result.message).toContain('Proxy failed health check on http://127.0.0.1:10531/v1/models')
-    expect(result.diagnostics?.source).toBe('health')
-
-    const status = await openAIOAuthService.getStatus()
-    expect(status.diagnostics?.summary).toContain('Proxy failed health check on http://127.0.0.1:10531/v1/models')
-  })
-
-  it('clears stale startup diagnostics after a later successful start', async () => {
-    vi.useFakeTimers()
-
-    mockState.authFileExists = false
-    const { openAIOAuthService } = await import('../OpenAIOAuthService')
-
-    const firstResult = await openAIOAuthService.startProxy()
-    expect(firstResult.success).toBe(false)
-
-    const childProcess = createMockChildProcess()
-    mockSpawn.mockReturnValue(childProcess)
-    mockState.authFileExists = true
-    mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
-    mockState.fetchResponses = [
-      null,
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }] })
-      },
-      {
-        ok: true,
-        json: async () => ({ data: [{ id: 'gpt-5.4' }] })
-      }
-    ]
-
-    const startPromise = openAIOAuthService.startProxy()
-    await vi.advanceTimersByTimeAsync(750)
-    const secondResult = await startPromise
-
-    expect(secondResult).toEqual({ success: true })
-
-    const status = await openAIOAuthService.getStatus()
-    expect(status.runState).toBe('running')
-    expect(status.diagnostics).toBeUndefined()
+    expect(mockCreateOpenAIOAuthFetchHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ authFilePath: '/mock/codex/auth.json' })
+    )
+    expect(internalHandler).toHaveBeenCalledTimes(1)
+    await expect(response.json()).resolves.toEqual({ ok: true, path: '/v1/models' })
   })
 })

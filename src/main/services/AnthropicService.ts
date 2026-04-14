@@ -3,6 +3,7 @@
  * This code is adapted from https://github.com/ThinkInAIXYZ/deepchat
  * Original file: src/main/presenter/anthropicOAuth.ts
  */
+import os from 'node:os'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
@@ -17,12 +18,26 @@ const logger = loggerService.withContext('AnthropicOAuth')
 // Constants
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
 const CREDS_PATH = path.join(getConfigDir(), 'oauth', 'anthropic.json')
+// Claude Code stores its OAuth credentials here
+const CLAUDE_CODE_CREDS_PATH = path.join(os.homedir(), '.claude', 'credentials.json')
 
 // Types
 interface Credentials {
   access_token: string
   refresh_token: string
+  /** Unix ms timestamp. 0 means no expiry (e.g. Claude Code sets expiresAt: null). */
   expires_at: number
+}
+
+interface ClaudeCodeOAuthPayload {
+  accessToken: string
+  refreshToken: string
+  expiresAt: number | null
+  scopes?: string[]
+}
+
+interface ClaudeCodeCredentialsFile {
+  oauth?: ClaudeCodeOAuthPayload
 }
 
 interface PKCEPair {
@@ -59,16 +74,14 @@ class AnthropicService extends Error {
 
   // 3. Exchange authorization code for tokens
   private async exchangeCodeForTokens(code: string, verifier: string): Promise<Credentials> {
-    // Handle both legacy format (code#state) and new format (pure code)
+    // Strip any trailing state fragment (legacy format: code#state)
     const authCode = code.includes('#') ? code.split('#')[0] : code
-    const state = code.includes('#') ? code.split('#')[1] : verifier
 
     const response = await net.fetch('https://console.anthropic.com/v1/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: authCode,
-        state: state,
         grant_type: 'authorization_code',
         client_id: CLIENT_ID,
         redirect_uri: 'https://console.anthropic.com/oauth/code/callback',
@@ -77,7 +90,14 @@ class AnthropicService extends Error {
     })
 
     if (!response.ok) {
-      throw new Error(`Token exchange failed: ${response.statusText}`)
+      // HTTP/2 responses carry no statusText — read the body for the real error detail
+      let detail = response.statusText
+      try {
+        detail = await response.text()
+      } catch {
+        // ignore body-read errors; fall back to statusText
+      }
+      throw new Error(`Token exchange failed (${response.status}): ${detail}`)
     }
 
     const data = await response.json()
@@ -102,7 +122,13 @@ class AnthropicService extends Error {
     })
 
     if (!response.ok) {
-      throw new Error(`Token refresh failed: ${response.statusText}`)
+      let detail = response.statusText
+      try {
+        detail = await response.text()
+      } catch {
+        // ignore
+      }
+      throw new Error(`Token refresh failed (${response.status}): ${detail}`)
     }
 
     const data = await response.json()
@@ -121,7 +147,7 @@ class AnthropicService extends Error {
     await promises.chmod(CREDS_PATH, 0o600) // Read/write for owner only
   }
 
-  // 6. Load credentials
+  // 6. Load credentials (Cherry Studio's own saved creds)
   private async loadCredentials(): Promise<Credentials | null> {
     try {
       const data = await promises.readFile(CREDS_PATH, 'utf-8')
@@ -131,18 +157,62 @@ class AnthropicService extends Error {
     }
   }
 
-  // 7. Get valid access token (refresh if needed)
+  // 6a. Load credentials from Claude Code's credentials file (~/.claude/credentials.json)
+  private async loadClaudeCodeCredentials(): Promise<Credentials | null> {
+    try {
+      const data = await promises.readFile(CLAUDE_CODE_CREDS_PATH, 'utf-8')
+      const raw: ClaudeCodeCredentialsFile = JSON.parse(data)
+      const oauth = raw.oauth
+      if (!oauth?.accessToken || !oauth?.refreshToken) return null
+      return {
+        access_token: oauth.accessToken,
+        refresh_token: oauth.refreshToken,
+        // null expiresAt means no expiry — represent as 0 (handled below in getValidAccessToken)
+        expires_at: oauth.expiresAt ?? 0
+      }
+    } catch {
+      return null
+    }
+  }
+
+  // 6b. Import Claude Code credentials into Cherry Studio's credential store
+  public async importClaudeCodeCredentials(): Promise<boolean> {
+    const creds = await this.loadClaudeCodeCredentials()
+    if (!creds) {
+      logger.warn('No Claude Code credentials found at ' + CLAUDE_CODE_CREDS_PATH)
+      return false
+    }
+    await this.saveCredentials(creds)
+    logger.info('Imported Claude Code credentials successfully')
+    return true
+  }
+
+  // 7. Get valid access token — priority order:
+  //    1. CLAUDE_CODE_OAUTH_TOKEN env var (set by Claude Code CLI)
+  //    2. Cherry Studio's own saved creds
+  //    3. Claude Code's ~/.claude/credentials.json
   public async getValidAccessToken(): Promise<string | null> {
-    const creds = await this.loadCredentials()
+    // 1. Environment variable — always treated as valid (no expiry check)
+    const envToken = process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()
+    if (envToken) {
+      logger.debug('Using CLAUDE_CODE_OAUTH_TOKEN from environment')
+      return envToken
+    }
+
+    // 2 & 3. File-based credentials
+    let creds = await this.loadCredentials()
+    if (!creds) {
+      creds = await this.loadClaudeCodeCredentials()
+    }
     if (!creds) return null
 
-    // If token is still valid, return it
-    if (creds.expires_at > Date.now() + 60000) {
-      // 1 minute buffer
+    // expires_at === 0 means no expiry (Claude Code sets expiresAt: null)
+    const isValid = creds.expires_at === 0 || creds.expires_at > Date.now() + 60_000
+    if (isValid) {
       return creds.access_token
     }
 
-    // Otherwise, refresh it
+    // Token is expired — try to refresh
     try {
       const newCreds = await this.refreshAccessToken(creds.refresh_token)
       await this.saveCredentials(newCreds)
@@ -216,10 +286,13 @@ class AnthropicService extends Error {
     }
   }
 
-  // 12. Check if credentials exist
+  // 12. Check if credentials exist (env var, own store, or Claude Code fallback)
   public async hasCredentials(): Promise<boolean> {
+    if (process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()) return true
     const creds = await this.loadCredentials()
-    return creds !== null
+    if (creds) return true
+    const claudeCreds = await this.loadClaudeCodeCredentials()
+    return claudeCreds !== null
   }
 }
 

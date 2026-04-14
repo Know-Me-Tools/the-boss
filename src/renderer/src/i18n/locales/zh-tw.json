@@ -3423,6 +3423,7 @@
     "aionly": "唯一 AI (AiOnly)",
     "alayanew": "Alaya NeW",
     "anthropic": "Anthropic",
+    "anthropic-max": "Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "百川",
@@ -5411,6 +5412,11 @@
         "oauth_disabled_warning": "Anthropic 已暫時中止透過 OAuth 使用 Claude。此驗證方式目前無法使用。請暫時使用 API 金鑰。",
         "start_auth": "開始授權",
         "submit_code": "完成登入"
+      },
+      "anthropic_max": {
+        "auth_token_label": "授權權杖",
+        "auth_token_tip": "系統會優先使用已儲存的 Anthropic OAuth 憑證；若沒有可用憑證，才會退回使用此處輸入的手動授權權杖。",
+        "oauth_priority": "Anthropic Max 會先使用 Anthropic OAuth 憑證，再使用手動授權權杖。"
       },
       "anthropic_api_host": "Anthropic API 主機位址",
       "anthropic_api_host_preview": "Anthropic 預覽：{{url}}",

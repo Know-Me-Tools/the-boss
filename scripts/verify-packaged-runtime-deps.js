@@ -327,10 +327,18 @@ const resolvePackageInfo = (packageName, basedir) => {
 
 const resolvePackageRoot = (packageName, basedir) => resolvePackageInfo(packageName, basedir).packageRoot
 
-const getManifestDependencyNames = (manifest) => [
-  ...Object.keys(manifest.dependencies || {}),
-  ...Object.keys(manifest.optionalDependencies || {})
-]
+const getManifestDependencyNames = (manifest) => {
+  const peerDependencyMeta = manifest.peerDependenciesMeta || {}
+  const requiredPeerDependencies = Object.entries(manifest.peerDependencies || {})
+    .filter(([packageName]) => !peerDependencyMeta[packageName]?.optional)
+    .map(([packageName]) => packageName)
+
+  return [
+    ...Object.keys(manifest.dependencies || {}),
+    ...Object.keys(manifest.optionalDependencies || {}),
+    ...requiredPeerDependencies
+  ]
+}
 
 const collectPackageDependencyClosure = (packageNames, basedir = projectRoot) => {
   const queue = [...new Set(packageNames)].map((packageName) => ({ basedir, packageName }))
@@ -617,8 +625,20 @@ const collectPackagedPackageLocations = (appOutDir) => {
   }
 }
 
-const computeFallbackPackageNames = ({ expectedPackages, primaryPackagedPackageNames }) =>
-  new Set([...expectedPackages].filter((packageName) => !primaryPackagedPackageNames.has(packageName)))
+const computeFallbackPackageNames = ({
+  expectedPackages,
+  externalExpectedPackages = new Set(),
+  primaryPackagedPackageNames
+}) =>
+  new Set([
+    ...externalExpectedPackages,
+    ...[...expectedPackages].filter((packageName) => !primaryPackagedPackageNames.has(packageName))
+  ])
+
+const shouldCopyFallbackRuntimePath = (sourcePath) => {
+  const normalizedPath = sourcePath.split(path.sep).join('/')
+  return !normalizedPath.includes('/node_modules/.bin')
+}
 
 const formatDependencyChain = (packageName, parents) => {
   const chain = [packageName]
@@ -638,12 +658,12 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
     audit.declaredExternalPackages.includes(packageName)
   )
   const dedicatedRuntimeRoots = getArtifactRuntimeRootPackageNames()
-  const closure = mergeDependencyClosures([
-    collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot),
-    collectPackageDependencyClosure(dedicatedRuntimeRoots, projectRoot)
-  ])
+  const externalRuntimeClosure = collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot)
+  const dedicatedRuntimeClosure = collectPackageDependencyClosure(dedicatedRuntimeRoots, projectRoot)
+  const closure = mergeDependencyClosures([externalRuntimeClosure, dedicatedRuntimeClosure])
   const packageLocations = collectPackagedPackageLocations(appOutDir)
   const fallbackRequiredPackages = computeFallbackPackageNames({
+    externalExpectedPackages: externalRuntimeClosure.packageNames,
     expectedPackages: closure.packageNames,
     primaryPackagedPackageNames: packageLocations.primaryPackagedPackageNames
   })
@@ -694,7 +714,10 @@ const copyMissingStartupRuntimeDependencies = (appOutDir) => {
     const destinationDir = path.join(fallbackNodeModulesDir, missingPackage.name)
     fs.mkdirSync(path.dirname(destinationDir), { recursive: true })
     fs.rmSync(destinationDir, { force: true, recursive: true })
-    fs.cpSync(missingPackage.sourceDir, destinationDir, { recursive: true })
+    fs.cpSync(missingPackage.sourceDir, destinationDir, {
+      filter: shouldCopyFallbackRuntimePath,
+      recursive: true
+    })
     copiedPackages.push(missingPackage.name)
   }
 
@@ -770,5 +793,6 @@ module.exports = {
   collectPackageDependencyClosure,
   computeFallbackPackageNames,
   copyMissingStartupRuntimeDependencies,
+  shouldCopyFallbackRuntimePath,
   verifyPackagedRuntimeDependencies
 }

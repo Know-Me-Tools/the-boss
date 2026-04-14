@@ -59,7 +59,11 @@ export const ToolSchema = z.object({
   name: z.string(),
   type: z.enum(['builtin', 'mcp', 'service', 'custom']),
   description: z.string().optional(),
-  requirePermissions: z.boolean().optional()
+  requirePermissions: z.boolean().optional(),
+  serviceId: z.string().optional(),
+  serviceName: z.string().optional(),
+  serviceKind: z.string().optional(),
+  projectionKind: z.string().optional()
 })
 
 export type Tool = z.infer<typeof ToolSchema>

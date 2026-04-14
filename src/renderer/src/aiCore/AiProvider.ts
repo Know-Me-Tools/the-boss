@@ -118,7 +118,7 @@ export default class AiProvider {
 
     // 注意：模型对象将由 createExecutor 内部处理，不再需要预先创建
 
-    if (this.actualProvider.id === 'anthropic' && this.actualProvider.authType === 'oauth') {
+    if (this.actualProvider.type === 'anthropic' && this.actualProvider.authType === 'oauth') {
       // 类型守卫：确保 system 是 string、Array 或 undefined
       const system = params.system
       let systemParam: string | Array<any> | undefined

@@ -389,6 +389,17 @@ export const SYSTEM_PROVIDERS_CONFIG: Record<SystemProviderId, SystemProvider> =
     isSystem: true,
     enabled: false
   },
+  'anthropic-max': {
+    id: 'anthropic-max',
+    name: 'Anthropic Max',
+    type: 'anthropic',
+    apiKey: '',
+    apiHost: 'https://api.anthropic.com',
+    models: SYSTEM_MODELS.anthropic.map((model) => ({ ...model, provider: 'anthropic-max' })),
+    authType: 'oauth',
+    isSystem: true,
+    enabled: false
+  },
   openai: {
     id: 'openai',
     name: 'OpenAI',
@@ -763,6 +774,7 @@ export const PROVIDER_LOGO_MAP: AtLeast<SystemProviderId, string> = {
   modelscope: ModelScopeProviderLogo,
   xirang: XirangProviderLogo,
   anthropic: AnthropicProviderLogo,
+  'anthropic-max': AnthropicProviderLogo,
   aihubmix: AiHubMixProviderLogo,
   burncloud: BurnCloudProviderLogo,
   gemini: GoogleProviderLogo,
@@ -1209,6 +1221,17 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
     }
   },
   anthropic: {
+    api: {
+      url: 'https://api.anthropic.com'
+    },
+    websites: {
+      official: 'https://anthropic.com/',
+      apiKey: 'https://console.anthropic.com/settings/keys',
+      docs: 'https://docs.anthropic.com/en/docs',
+      models: 'https://docs.anthropic.com/en/docs/about-claude/models'
+    }
+  },
+  'anthropic-max': {
     api: {
       url: 'https://api.anthropic.com'
     },

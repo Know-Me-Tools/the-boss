@@ -3423,6 +3423,7 @@
     "aionly": "AiOnly",
     "alayanew": "Alaya NeW",
     "anthropic": "Anthropic",
+    "anthropic-max": "Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "Baichuan",
@@ -5410,7 +5411,16 @@
         "oauth": "Web OAuth",
         "oauth_disabled_warning": "Anthropic has temporarily suspended the use of Claude via OAuth. This authentication method is currently unavailable. Please use an API key for now.",
         "start_auth": "Start authorization",
-        "submit_code": "Complete login"
+        "submit_code": "Complete login",
+        "import_claude_credentials": "Use Claude Code Credentials",
+        "import_success": "Claude Code credentials imported successfully",
+        "import_failed": "No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
+        "claude_code_active": "Claude Code credentials are active (env var or ~/.claude/credentials.json)"
+      },
+      "anthropic_max": {
+        "auth_token_label": "Auth token",
+        "auth_token_tip": "Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.",
+        "oauth_priority": "Anthropic OAuth credentials take priority over the manual auth token for Anthropic Max."
       },
       "anthropic_api_host": "Anthropic API Host",
       "anthropic_api_host_preview": "Anthropic preview: {{url}}",

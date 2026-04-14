@@ -88,7 +88,7 @@ const persistedReducer = persistReducer(
   {
     key: 'the-boss',
     storage,
-    version: 206,
+    version: 207,
     blacklist: ['runtime', 'messages', 'messageBlocks', 'tabs', 'toolPermissions'],
     migrate
   },

@@ -31,6 +31,13 @@ vi.mock('@shared/utils', () => ({
 
 const { listModels } = await import('../listModels')
 
+const REAL_ANTHROPIC = {
+  data: [
+    { id: 'claude-sonnet-4-5', display_name: 'Claude Sonnet 4.5' },
+    { id: 'claude-opus-4-1', display_name: 'Claude Opus 4.1' }
+  ]
+}
+
 // === Real API response fixtures (captured 2026-03-19) ===
 
 // From https://openrouter.ai/api/v1/models (public, no auth)
@@ -280,23 +287,80 @@ describe('listModels', () => {
         keyv: { get: vi.fn(), set: vi.fn() },
         api: {
           openai_oauth: {
-            startProxy: vi.fn().mockResolvedValue({ success: true }),
-            getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:10531/v1')
+            getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:23333/_internal/openai-oauth/v1'),
+            getRequestHeaders: vi.fn().mockResolvedValue({ 'x-cherry-openai-oauth-secret': 'internal-secret' })
           }
         }
       })
 
       const models = await listModels(makeProvider({ id: 'openai', authType: 'oauth', apiKey: '' }))
 
-      expect(window.api.openai_oauth.startProxy).toHaveBeenCalledTimes(1)
       expect(window.api.openai_oauth.getBaseUrl).toHaveBeenCalledTimes(1)
+      expect(window.api.openai_oauth.getRequestHeaders).toHaveBeenCalledTimes(1)
       expect(mockGetFromApi).toHaveBeenCalledWith(
         expect.objectContaining({
-          url: 'http://127.0.0.1:10531/v1/models',
-          headers: { 'X-App': 'TheBoss' }
+          url: 'http://127.0.0.1:23333/_internal/openai-oauth/v1/models',
+          headers: { 'X-App': 'TheBoss', 'x-cherry-openai-oauth-secret': 'internal-secret' }
         })
       )
       expect(models.map((model) => model.id)).toEqual(['deepseek-chat', 'deepseek-reasoner'])
+    })
+  })
+
+  describe('Anthropic Max', () => {
+    it('lists models with the resolved auth token and maps them to anthropic-max', async () => {
+      mockGetFromApi.mockResolvedValue({ value: REAL_ANTHROPIC })
+      vi.stubGlobal('window', {
+        ...globalThis.window,
+        keyv: { get: vi.fn(), set: vi.fn() },
+        api: {
+          anthropic_oauth: {
+            getAccessToken: vi.fn().mockResolvedValue('oauth-token')
+          }
+        }
+      })
+
+      const models = await listModels(makeProvider({ id: 'anthropic-max', type: 'anthropic', authType: 'oauth' }))
+
+      expect(window.api.anthropic_oauth.getAccessToken).toHaveBeenCalledTimes(1)
+      expect(mockGetFromApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://api.example.com/v1/models',
+          headers: expect.objectContaining({
+            'X-App': 'TheBoss',
+            Authorization: 'Bearer oauth-token',
+            'anthropic-version': '2023-06-01'
+          })
+        })
+      )
+      expect(models.map((model) => model.provider)).toEqual(['anthropic-max', 'anthropic-max'])
+      expect(models.map((model) => model.id)).toEqual(['claude-sonnet-4-5', 'claude-opus-4-1'])
+    })
+
+    it('falls back to the manual auth token when OAuth is unavailable', async () => {
+      mockGetFromApi.mockResolvedValue({ value: REAL_ANTHROPIC })
+      vi.stubGlobal('window', {
+        ...globalThis.window,
+        keyv: { get: vi.fn(), set: vi.fn() },
+        api: {
+          anthropic_oauth: {
+            getAccessToken: vi.fn().mockResolvedValue(null)
+          }
+        }
+      })
+
+      const models = await listModels(
+        makeProvider({ id: 'anthropic-max', type: 'anthropic', authType: 'oauth', apiKey: 'manual-token' })
+      )
+
+      expect(models).toHaveLength(2)
+      expect(mockGetFromApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer manual-token'
+          })
+        })
+      )
     })
   })
 

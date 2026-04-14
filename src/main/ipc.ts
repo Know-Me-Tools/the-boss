@@ -39,6 +39,8 @@ import type { ProxyConfig } from 'electron'
 import { BrowserWindow, dialog, ipcMain, session, shell, systemPreferences, webContents } from 'electron'
 import fontList from 'font-list'
 
+import { config as apiServerConfig } from './apiServer'
+import { getAnthropicInternalHeaders } from './apiServer/middleware/anthropicOAuthInternalAuth'
 import { agentMessageRepository } from './services/agents/database'
 import { skillService } from './services/agents/skills/SkillService'
 import { analyticsService } from './services/AnalyticsService'
@@ -48,6 +50,7 @@ import AppUpdater from './services/AppUpdater'
 import { artifactService } from './services/ArtifactService'
 import BackupManager from './services/BackupManager'
 import CherryINOAuthService from './services/CherryINOAuthService'
+import { claudeOAuthProxyService } from './services/ClaudeOAuthProxyService'
 import { codeToolsService } from './services/CodeToolsService'
 import { ConfigKeys, configManager } from './services/ConfigManager'
 import CopilotService from './services/CopilotService'
@@ -335,6 +338,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   )
   ipcMain.handle(IpcChannel.Services_ImportGraphQL, (_, request) =>
     serviceRegistryService.importGraphQLService(request)
+  )
+  ipcMain.handle(IpcChannel.Services_ImportSupabase, (_, request) =>
+    serviceRegistryService.importSupabaseService(request)
   )
   ipcMain.handle(IpcChannel.Services_UpdateMetadata, (_, request) =>
     serviceRegistryService.updateServiceMetadata(request)
@@ -1030,16 +1036,30 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Anthropic_GetAccessToken, () => anthropicService.getValidAccessToken())
   ipcMain.handle(IpcChannel.Anthropic_HasCredentials, () => anthropicService.hasCredentials())
   ipcMain.handle(IpcChannel.Anthropic_ClearCredentials, () => anthropicService.clearCredentials())
+  ipcMain.handle(IpcChannel.Anthropic_ImportClaudeCredentials, () =>
+    anthropicService.importClaudeCodeCredentials()
+  )
 
-  // OpenAI OAuth
-  ipcMain.handle(IpcChannel.OpenAIOAuth_CheckInstalled, () => openAIOAuthService.checkInstalled())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_Install, () => openAIOAuthService.install())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_StartProxy, () => openAIOAuthService.startProxy())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_StopProxy, () => openAIOAuthService.stopProxy())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_GetStatus, () => openAIOAuthService.getStatus())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_CheckHealth, () => openAIOAuthService.checkHealth())
+  // Claude OAuth Proxy (via existing API server at /_internal/anthropic-oauth)
+  ipcMain.handle(IpcChannel.AnthropicProxy_Start, async () => {
+    try {
+      await apiServerService.start()
+      return { success: true }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to start API server' }
+    }
+  })
+  ipcMain.handle(IpcChannel.AnthropicProxy_Stop, () => ({ success: true }))
+  ipcMain.handle(IpcChannel.AnthropicProxy_GetBaseUrl, async () => {
+    const { host, port } = await apiServerConfig.get()
+    return `http://${host}:${port}/_internal/anthropic-oauth`
+  })
+  ipcMain.handle(IpcChannel.AnthropicProxy_GetStatus, () => claudeOAuthProxyService.getStatus())
+  ipcMain.handle(IpcChannel.AnthropicProxy_GetRequestHeaders, () => getAnthropicInternalHeaders())
+
+  // OpenAI OAuth (internal proxy only — no sidecar)
   ipcMain.handle(IpcChannel.OpenAIOAuth_GetBaseUrl, () => openAIOAuthService.getBaseUrl())
-  ipcMain.handle(IpcChannel.OpenAIOAuth_GetModels, () => openAIOAuthService.getModels())
+  ipcMain.handle(IpcChannel.OpenAIOAuth_GetRequestHeaders, () => openAIOAuthService.getRequestHeaders())
 
   // ExternalApps
   ipcMain.handle(IpcChannel.ExternalApps_DetectInstalled, () => externalAppsService.detectInstalledApps())

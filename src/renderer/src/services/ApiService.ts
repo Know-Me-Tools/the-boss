@@ -3,6 +3,7 @@
  */
 import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
+import { listModels } from '@renderer/aiCore/services/listModels'
 import type { AiSdkMiddlewareConfig } from '@renderer/aiCore/types/middlewareConfig'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
 import { isDedicatedImageGenerationModel, isEmbeddingModel, isFunctionCallingModel } from '@renderer/config/models'
@@ -103,10 +104,15 @@ export async function fetchAllActiveServerTools(): Promise<MCPTool[]> {
   }
 }
 
-async function fetchServiceTools(): Promise<MCPTool[]> {
+async function fetchServiceTools(selectedToolIds?: string[]): Promise<MCPTool[]> {
   try {
     const projectedTools = await window.api.services.listProjectedTools()
-    return projectedTools.map((tool) => ({
+    const filteredTools =
+      selectedToolIds === undefined
+        ? projectedTools
+        : projectedTools.filter((tool) => selectedToolIds.includes(tool.id))
+
+    return filteredTools.map((tool) => ({
       id: tool.id,
       serverId: `service:${tool.serviceId}`,
       serverName: `Service · ${tool.serviceName}`,
@@ -145,7 +151,7 @@ export async function fetchMcpTools(assistant: Assistant) {
       logger.error('Error fetching MCP tools:', toolError as Error)
     }
   }
-  return [...mcpTools, ...(await fetchServiceTools())]
+  return [...mcpTools, ...(await fetchServiceTools(assistant.serviceToolIds))]
 }
 
 /**
@@ -242,6 +248,8 @@ export async function fetchChatCompletion({
     modelName: assistant.model?.name
   })
 
+  const effectiveAllowedTools = allowedTools ?? assistant.serviceToolIds
+
   // Get base provider and apply API key rotation
   // NOTE: Shallow copy is intentional. Provider objects are not mutated by downstream code.
   // Nested properties (if any) are never modified after creation.
@@ -277,7 +285,7 @@ export async function fetchChatCompletion({
     webSearchPluginConfig
   } = await buildStreamTextParams(messages, assistant, provider, {
     mcpTools: mcpTools,
-    allowedTools,
+    allowedTools: effectiveAllowedTools,
     webSearchProviderId: assistant.webSearchProviderId,
     requestOptions
   })
@@ -721,6 +729,9 @@ export async function fetchGenerate({
 export function hasApiKey(provider: Provider) {
   if (!provider) return false
   if (provider.id === 'cherryai') return true
+  if (provider.id === 'anthropic-max') {
+    return !isEmpty(provider.apiKey) || provider.authType === 'oauth'
+  }
   if (
     (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) ||
     NOT_SUPPORT_API_KEY_PROVIDER_TYPES.includes(provider.type)
@@ -778,7 +789,12 @@ function getRotatedApiKey(provider: Provider): string {
   return nextKey
 }
 
-export async function fetchModels(provider: Provider): Promise<Model[]> {
+export async function fetchModels(
+  provider: Provider,
+  options?: {
+    throwOnError?: boolean
+  }
+): Promise<Model[]> {
   // Apply API key rotation
   // NOTE: Shallow copy is intentional. Provider objects are not mutated by downstream code.
   // Nested properties (if any) are never modified after creation.
@@ -787,22 +803,42 @@ export async function fetchModels(provider: Provider): Promise<Model[]> {
     apiKey: getRotatedApiKey(provider)
   }
 
-  const AI = new AiProvider(providerWithRotatedKey)
-
   try {
-    return await AI.models()
+    const models = await listModels(providerWithRotatedKey, undefined, { throwOnError: options?.throwOnError })
+    if (options?.throwOnError && models.length === 0) {
+      if (provider.id === 'openai' && provider.authType === 'oauth') {
+        throw new Error('No models were returned by the internal OpenAI OAuth endpoint.')
+      }
+
+      if (provider.id === 'anthropic-max') {
+        throw new Error('No models were returned by Anthropic Max.')
+      }
+
+      if (provider.id === 'vertexai' || provider.isVertex) {
+        throw new Error('Vertex returned no models. Check project, location, endpoint, and credentials.')
+      }
+
+      throw new Error(`No models were returned by ${provider.name}.`)
+    }
+
+    return models
   } catch (error) {
     logger.error('Failed to fetch models from provider', {
       providerId: provider.id,
       providerName: provider.name,
       error: error as Error
     })
+    if (options?.throwOnError) {
+      throw error
+    }
     return []
   }
 }
 
 export function checkApiProvider(provider: Provider): void {
+  const usesAnthropicMaxOAuth = provider.id === 'anthropic-max' && provider.authType === 'oauth'
   const isExcludedProvider =
+    usesAnthropicMaxOAuth ||
     (isSystemProvider(provider) && NOT_SUPPORT_API_KEY_PROVIDERS.includes(provider.id)) ||
     NOT_SUPPORT_API_KEY_PROVIDER_TYPES.includes(provider.type)
 

@@ -94,7 +94,15 @@ const createWindowKeyv = () => {
 interface WindowMockApi {
   copilot?: { getToken: ReturnType<typeof vi.fn> }
   anthropic_oauth?: { getAccessToken: ReturnType<typeof vi.fn> }
-  openai_oauth?: { startProxy: ReturnType<typeof vi.fn>; getBaseUrl: ReturnType<typeof vi.fn> }
+  anthropic_proxy?: {
+    start: ReturnType<typeof vi.fn>
+    getBaseUrl: ReturnType<typeof vi.fn>
+    getRequestHeaders: ReturnType<typeof vi.fn>
+  }
+  openai_oauth?: {
+    getBaseUrl: ReturnType<typeof vi.fn>
+    getRequestHeaders: ReturnType<typeof vi.fn>
+  }
   cherryai?: { generateSignature: ReturnType<typeof vi.fn> }
 }
 
@@ -114,11 +122,16 @@ const setupWindowMock = (options?: {
     api.anthropic_oauth = {
       getAccessToken: vi.fn().mockResolvedValue('mock-oauth-token')
     }
+    api.anthropic_proxy = {
+      start: vi.fn().mockResolvedValue({ success: true }),
+      getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:23333/_internal/anthropic-oauth'),
+      getRequestHeaders: vi.fn().mockResolvedValue({ 'x-cherry-anthropic-oauth-secret': 'internal-secret' })
+    }
   }
   if (options?.withOpenAIOAuth) {
     api.openai_oauth = {
-      startProxy: vi.fn().mockResolvedValue({ success: true }),
-      getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:10531/v1')
+      getBaseUrl: vi.fn().mockResolvedValue('http://127.0.0.1:23333/_internal/openai-oauth/v1'),
+      getRequestHeaders: vi.fn().mockResolvedValue({ 'x-cherry-openai-oauth-secret': 'internal-secret' })
     }
   }
   if (options?.withCherryAI) {
@@ -637,7 +650,7 @@ describe('providerToAiSdkConfig', () => {
   })
 
   describe('Anthropic OAuth builder', () => {
-    it('uses OAuth token with bearer auth', async () => {
+    it('routes requests through the API server internal proxy', async () => {
       const provider = makeProvider({
         id: 'anthropic',
         type: 'anthropic',
@@ -653,9 +666,31 @@ describe('providerToAiSdkConfig', () => {
         apiKey: string
         headers: Record<string, string>
       }
-      expect(settings.baseURL).toBe('https://api.anthropic.com/v1')
-      expect(settings.headers.Authorization).toBe('Bearer mock-oauth-token')
+      expect(settings.baseURL).toBe('http://127.0.0.1:23333/_internal/anthropic-oauth')
+      expect(settings.headers['x-cherry-anthropic-oauth-secret']).toBe('internal-secret')
+      expect(settings.headers.Authorization).toBeUndefined()
       expect(settings.apiKey).toBe('')
+    })
+
+    it('throws when OAuth credentials are unavailable', async () => {
+      setupWindowMock()
+      Object.assign(window.api, {
+        anthropic_oauth: {
+          getAccessToken: vi.fn().mockResolvedValue(null)
+        }
+      })
+
+      const provider = makeProvider({
+        id: 'anthropic-max',
+        type: 'anthropic',
+        apiHost: 'https://api.anthropic.com/v1',
+        authType: 'oauth',
+        apiKey: 'manual-token'
+      })
+
+      await expect(
+        providerToAiSdkConfig(provider, makeModel('claude-sonnet-4-5', 'anthropic-max'))
+      ).rejects.toThrow('Anthropic OAuth credentials are not configured.')
     })
   })
 
@@ -672,11 +707,16 @@ describe('providerToAiSdkConfig', () => {
 
       expect(config.providerId).toBe('openai-compatible')
       const settings = config.providerSettings as OpenAICompatibleProviderSettings
-      expect(settings.baseURL).toBe('http://127.0.0.1:10531/v1')
+      expect(settings.baseURL).toBe('http://127.0.0.1:23333/_internal/openai-oauth/v1')
       expect(settings.apiKey).toBe('oauth')
       expect(settings.name).toBe('openai')
-      expect(window.api.openai_oauth.startProxy).toHaveBeenCalledTimes(1)
+      expect(settings.headers).toMatchObject({
+        'HTTP-Referer': 'https://the-boss.know-me.tools',
+        'X-Title': 'The Boss',
+        'x-cherry-openai-oauth-secret': 'internal-secret'
+      })
       expect(window.api.openai_oauth.getBaseUrl).toHaveBeenCalledTimes(1)
+      expect(window.api.openai_oauth.getRequestHeaders).toHaveBeenCalledTimes(1)
     })
   })
 

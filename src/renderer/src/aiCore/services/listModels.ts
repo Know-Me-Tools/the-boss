@@ -19,6 +19,7 @@ import * as z from 'zod'
 
 import {
   AIHubMixModelsResponseSchema,
+  AnthropicModelsResponseSchema,
   GeminiModelsResponseSchema,
   GitHubModelsResponseSchema,
   NewApiModelsResponseSchema,
@@ -109,9 +110,33 @@ function defaultHeaders(provider: Provider): Record<string, string> {
   }
 }
 
-function openAIOAuthHeaders(provider: Provider): Record<string, string> {
+async function openAIOAuthHeaders(provider: Provider): Promise<Record<string, string>> {
+  const internalHeaders = await window.api.openai_oauth.getRequestHeaders()
   return {
     ...defaultAppHeaders(),
+    ...internalHeaders,
+    ...provider.extra_headers
+  }
+}
+
+async function getAnthropicMaxToken(provider: Provider): Promise<string> {
+  const oauthToken = await window.api.anthropic_oauth.getAccessToken()
+  const authToken = oauthToken || provider.apiKey?.trim()
+
+  if (!authToken) {
+    throw new Error('Anthropic Max requires either an Anthropic OAuth login or a manual auth token.')
+  }
+
+  return authToken
+}
+
+async function anthropicMaxHeaders(provider: Provider): Promise<Record<string, string>> {
+  const authToken = await getAnthropicMaxToken(provider)
+
+  return {
+    ...defaultAppHeaders(),
+    'anthropic-version': '2023-06-01',
+    Authorization: `Bearer ${authToken}`,
     ...provider.extra_headers
   }
 }
@@ -346,20 +371,34 @@ const aiHubMixFetcher: ModelFetcher = {
 const openAIOAuthFetcher: ModelFetcher = {
   match: (p) => p.id === 'openai' && p.authType === 'oauth',
   fetch: async (provider, signal) => {
-    const startResult = await window.api.openai_oauth.startProxy()
-    if (!startResult.success) {
-      throw new Error(startResult.message)
-    }
-
     const baseUrl = await window.api.openai_oauth.getBaseUrl()
     const response = await getFromApi({
       url: `${baseUrl}/models`,
-      headers: openAIOAuthHeaders(provider),
+      headers: await openAIOAuthHeaders(provider),
       responseSchema: OpenAIModelsResponseSchema,
       abortSignal: signal
     })
 
     return dedup(response.data, (m) => m.id).map((m) => toModel(m.id, provider, { owned_by: m.owned_by }))
+  }
+}
+
+const anthropicMaxFetcher: ModelFetcher = {
+  match: (p) => p.id === SystemProviderIds['anthropic-max'],
+  fetch: async (provider, signal) => {
+    const baseUrl = formatApiHost(provider.apiHost, true)
+    const response = await getFromApi({
+      url: `${baseUrl}/models`,
+      headers: await anthropicMaxHeaders(provider),
+      responseSchema: AnthropicModelsResponseSchema,
+      abortSignal: signal
+    })
+
+    return dedup(response.data, (m) => m.id).map((m) =>
+      toModel(m.id, provider, {
+        name: m.display_name || m.id
+      })
+    )
   }
 }
 
@@ -391,6 +430,7 @@ const fetchers: ModelFetcher[] = [
   openRouterFetcher,
   ppioFetcher,
   openAIOAuthFetcher,
+  anthropicMaxFetcher,
   openAICompatibleFetcher // always-match fallback, must be last
 ]
 
@@ -404,7 +444,13 @@ function isUnsupported(provider: Provider): boolean {
 
 // === Public API ===
 
-export async function listModels(provider: Provider, abortSignal?: AbortSignal): Promise<Model[]> {
+export async function listModels(
+  provider: Provider,
+  abortSignal?: AbortSignal,
+  options?: {
+    throwOnError?: boolean
+  }
+): Promise<Model[]> {
   try {
     if (isUnsupported(provider)) {
       logger.warn('Provider does not support model listing via listModels', { providerId: provider.id })
@@ -415,6 +461,9 @@ export async function listModels(provider: Provider, abortSignal?: AbortSignal):
     return await fetcher.fetch(provider, abortSignal)
   } catch (error) {
     logger.error('Error listing models:', error as Error, { providerId: provider.id })
+    if (options?.throwOnError) {
+      throw error
+    }
     return []
   }
 }

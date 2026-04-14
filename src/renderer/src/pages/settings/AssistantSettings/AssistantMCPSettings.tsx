@@ -3,7 +3,10 @@ import { Box } from '@renderer/components/Layout'
 import { useMCPServers } from '@renderer/hooks/useMCPServers'
 import type { Assistant, AssistantSettings, McpMode } from '@renderer/types'
 import { getEffectiveMcpMode } from '@renderer/types'
-import { Empty, Radio, Switch, Tooltip } from 'antd'
+import type { ServiceToolSummary } from '@shared/services'
+import { Empty, Radio, Switch, Tag, Tooltip } from 'antd'
+import { uniq } from 'lodash'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -27,8 +30,38 @@ interface Props {
 const AssistantMCPSettings: React.FC<Props> = ({ assistant, updateAssistant }) => {
   const { t } = useTranslation()
   const { mcpServers: allMcpServers } = useMCPServers()
+  const [serviceTools, setServiceTools] = useState<ServiceToolSummary[]>([])
 
   const currentMode = getEffectiveMcpMode(assistant)
+  const selectedServiceToolIds = assistant.serviceToolIds ?? []
+
+  useEffect(() => {
+    let cancelled = false
+
+    void window.api.services
+      .listProjectedTools()
+      .then((tools) => {
+        if (!cancelled) {
+          setServiceTools(tools)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServiceTools([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const groupedServiceTools = useMemo(() => {
+    return serviceTools.reduce<Record<string, ServiceToolSummary[]>>((groups, tool) => {
+      groups[tool.serviceName] = [...(groups[tool.serviceName] ?? []), tool]
+      return groups
+    }, {})
+  }, [serviceTools])
 
   const handleModeChange = (mode: McpMode) => {
     updateAssistant({ ...assistant, mcpMode: mode })
@@ -50,6 +83,14 @@ const AssistantMCPSettings: React.FC<Props> = ({ assistant, updateAssistant }) =
     } else {
       onUpdate([...currentServerIds, serverId])
     }
+  }
+
+  const handleServiceToolToggle = (toolId: string) => {
+    const nextIds = selectedServiceToolIds.includes(toolId)
+      ? selectedServiceToolIds.filter((id) => id !== toolId)
+      : uniq([...selectedServiceToolIds, toolId])
+
+    updateAssistant({ ...assistant, serviceToolIds: nextIds })
   }
 
   const enabledCount = assistant.mcpServers?.length || 0
@@ -135,6 +176,55 @@ const AssistantMCPSettings: React.FC<Props> = ({ assistant, updateAssistant }) =
           )}
         </>
       )}
+
+      <SectionDivider />
+
+      <HeaderContainer>
+        <Box style={{ fontWeight: 'bold', fontSize: '14px' }}>
+          {t('assistants.settings.mcp.serviceToolsTitle', 'Service Tools')}
+          <Tooltip
+            title={t(
+              'assistants.settings.mcp.serviceToolsDescription',
+              'Explicitly allow projected shared-service tools for this assistant.'
+            )}>
+            <InfoIcon />
+          </Tooltip>
+        </Box>
+      </HeaderContainer>
+
+      {serviceTools.length === 0 ? (
+        <EmptyContainer>
+          <Empty
+            description={t('assistants.settings.mcp.noServiceTools', 'No shared service tools available')}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        </EmptyContainer>
+      ) : (
+        <ServiceToolList>
+          {Object.entries(groupedServiceTools).map(([serviceName, tools]) => (
+            <ServiceToolGroup key={serviceName}>
+              <ServiceToolGroupTitle>{serviceName}</ServiceToolGroupTitle>
+              {tools.map((tool) => {
+                const isEnabled = selectedServiceToolIds.includes(tool.id)
+
+                return (
+                  <ServerItem key={tool.id} isEnabled={isEnabled}>
+                    <ServerInfo>
+                      <ServerName>{tool.name}</ServerName>
+                      {tool.description ? <ServerDescription>{tool.description}</ServerDescription> : null}
+                      <ServiceToolMeta>
+                        <Tag color="processing">{tool.serviceKind}</Tag>
+                        <Tag>{tool.projectionKind}</Tag>
+                      </ServiceToolMeta>
+                    </ServerInfo>
+                    <Switch checked={isEnabled} onChange={() => handleServiceToolToggle(tool.id)} size="small" />
+                  </ServerItem>
+                )
+              })}
+            </ServiceToolGroup>
+          ))}
+        </ServiceToolList>
+      )}
     </Container>
   )
 }
@@ -212,10 +302,14 @@ const EnabledCount = styled.span`
 
 const EmptyContainer = styled.div`
   display: flex;
-  flex: 1;
   justify-content: center;
   align-items: center;
   padding: 40px 0;
+`
+
+const SectionDivider = styled.div`
+  margin: 16px 0;
+  border-top: 1px solid var(--color-border);
 `
 
 const ServerList = styled.div`
@@ -223,6 +317,25 @@ const ServerList = styled.div`
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
+`
+
+const ServiceToolList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`
+
+const ServiceToolGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`
+
+const ServiceToolGroupTitle = styled.div`
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-3);
 `
 
 const ServerItem = styled.div<{ isEnabled: boolean }>`
@@ -253,6 +366,12 @@ const ServerDescription = styled.div`
   font-size: 0.85rem;
   color: var(--color-text-2);
   margin-bottom: 3px;
+`
+
+const ServiceToolMeta = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 `
 
 const ServerUrl = styled.div`

@@ -2,10 +2,12 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { MessageCreateParams } from '@anthropic-ai/sdk/resources'
 import type { MessageStreamEvent } from '@anthropic-ai/sdk/resources/messages'
 import { loggerService } from '@logger'
-import anthropicService from '@main/services/AnthropicService'
+import { resolveAnthropicAuthToken, usesAnthropicAuthToken } from '@main/services/AnthropicAuthResolver'
 import { buildClaudeCodeSystemMessage, getSdkClient } from '@shared/anthropic'
 import type { Provider } from '@types'
 import type { Response } from 'express'
+
+import { createCompatMessage, streamCompatMessage } from './messages.compat'
 
 const logger = loggerService.withContext('MessagesService')
 const EXCLUDED_FORWARD_HEADERS: ReadonlySet<string> = new Set([
@@ -44,11 +46,6 @@ export interface ProcessMessageOptions {
   request: MessageCreateParams
   extraHeaders?: Record<string, string | string[]>
   modelId?: string
-}
-
-export interface ProcessMessageResult {
-  client: Anthropic
-  anthropicRequest: MessageCreateParams
 }
 
 export class MessagesService {
@@ -99,9 +96,9 @@ export class MessagesService {
 
   async getClient(provider: Provider, extraHeaders?: Record<string, string | string[]>): Promise<Anthropic> {
     // Create Anthropic client for the provider
-    if (provider.authType === 'oauth') {
-      const oauthToken = await anthropicService.getValidAccessToken()
-      return getSdkClient(provider, oauthToken, extraHeaders)
+    const authToken = await resolveAnthropicAuthToken(provider)
+    if (authToken) {
+      return getSdkClient(provider, authToken, extraHeaders)
     }
     return getSdkClient(provider, null, extraHeaders)
   }
@@ -137,11 +134,29 @@ export class MessagesService {
     }
 
     // Add Claude Code system message for OAuth providers
-    if (provider.type === 'anthropic' && provider.authType === 'oauth') {
+    if (usesAnthropicAuthToken(provider)) {
       anthropicRequest.system = buildClaudeCodeSystemMessage(request.system)
     }
 
     return anthropicRequest
+  }
+
+  private resolveProviderFamily(provider: Provider): 'anthropic' | 'openai' | 'vertex' {
+    if (provider.type === 'vertexai') {
+      return 'vertex'
+    }
+
+    if (provider.type === 'openai' || provider.type === 'openai-response') {
+      return 'openai'
+    }
+
+    if (provider.type === 'anthropic' || provider.type === 'azure-openai' || !!provider.anthropicApiHost?.trim()) {
+      return 'anthropic'
+    }
+
+    throw new Error(
+      `Provider '${provider.id}' with type '${provider.type}' is not supported by the local Claude compatibility proxy.`
+    )
   }
 
   async handleStreaming(
@@ -290,8 +305,13 @@ export class MessagesService {
     }
   }
 
-  async processMessage(options: ProcessMessageOptions): Promise<ProcessMessageResult> {
+  async createMessage(options: ProcessMessageOptions) {
     const { provider, request, extraHeaders, modelId } = options
+    const providerFamily = this.resolveProviderFamily(provider)
+
+    if (providerFamily !== 'anthropic') {
+      return createCompatMessage(provider, request, modelId)
+    }
 
     const client = await this.getClient(provider, extraHeaders)
     const anthropicRequest = this.createAnthropicRequest(request, provider, modelId)
@@ -310,11 +330,52 @@ export class MessagesService {
       toolCount: Array.isArray(request.tools) ? request.tools.length : 0
     })
 
-    // Return client and request for route layer to handle streaming/non-streaming
-    return {
-      client,
-      anthropicRequest
+    return client.messages.create(anthropicRequest)
+  }
+
+  async streamMessage(options: ProcessMessageOptions, response: Response): Promise<void> {
+    const { provider, request, extraHeaders, modelId } = options
+    const providerFamily = this.resolveProviderFamily(provider)
+
+    if (providerFamily !== 'anthropic') {
+      response.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+      response.setHeader('Cache-Control', 'no-cache, no-transform')
+      response.setHeader('Connection', 'keep-alive')
+      response.setHeader('X-Accel-Buffering', 'no')
+      response.flushHeaders()
+
+      const flushableResponse = response as Response & { flush?: () => void }
+      const writeSse = (eventType: string | undefined, payload: unknown) => {
+        if (response.writableEnded || response.destroyed) {
+          return
+        }
+
+        if (eventType) {
+          response.write(`event: ${eventType}\n`)
+        }
+
+        const data = typeof payload === 'string' ? payload : JSON.stringify(payload)
+        response.write(`data: ${data}\n\n`)
+
+        if (typeof flushableResponse.flush === 'function') {
+          flushableResponse.flush()
+        }
+      }
+
+      try {
+        await streamCompatMessage(provider, request, modelId, writeSse)
+        writeSse(undefined, '[DONE]')
+      } finally {
+        if (!response.writableEnded) {
+          response.end()
+        }
+      }
+      return
     }
+
+    const client = await this.getClient(provider, extraHeaders)
+    const anthropicRequest = this.createAnthropicRequest(request, provider, modelId)
+    await this.handleStreaming(client, anthropicRequest, { response }, provider)
   }
 }
 

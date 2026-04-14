@@ -266,7 +266,8 @@ const ReactArtifactsCard: FC<Props> = ({
             themeId: overrides.themeId ?? settings.defaultThemeId,
             accessPolicy: {
               internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
-              serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+              serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds,
+              serviceToolIds: overrides.serviceToolIds ?? settings.accessPolicy.serviceToolIds
             },
             origin
           }

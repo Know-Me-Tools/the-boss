@@ -87,6 +87,7 @@ export enum IpcChannel {
   Services_Get = 'services:get',
   Services_ImportOpenAPI = 'services:import-openapi',
   Services_ImportGraphQL = 'services:import-graphql',
+  Services_ImportSupabase = 'services:import-supabase',
   Services_UpdateMetadata = 'services:update-metadata',
   Services_Delete = 'services:delete',
   Services_ListProjectedTools = 'services:list-projected-tools',
@@ -413,16 +414,17 @@ export enum IpcChannel {
   Anthropic_GetAccessToken = 'anthropic:get-access-token',
   Anthropic_HasCredentials = 'anthropic:has-credentials',
   Anthropic_ClearCredentials = 'anthropic:clear-credentials',
+  Anthropic_ImportClaudeCredentials = 'anthropic:import-claude-credentials',
+  // Claude OAuth Proxy (local reverse-proxy using the OAuth Bearer token)
+  AnthropicProxy_Start = 'anthropic-proxy:start',
+  AnthropicProxy_Stop = 'anthropic-proxy:stop',
+  AnthropicProxy_GetBaseUrl = 'anthropic-proxy:get-base-url',
+  AnthropicProxy_GetStatus = 'anthropic-proxy:get-status',
+  AnthropicProxy_GetRequestHeaders = 'anthropic-proxy:get-request-headers',
 
-  // OpenAI OAuth
-  OpenAIOAuth_CheckInstalled = 'openai-oauth:check-installed',
-  OpenAIOAuth_Install = 'openai-oauth:install',
-  OpenAIOAuth_StartProxy = 'openai-oauth:start-proxy',
-  OpenAIOAuth_StopProxy = 'openai-oauth:stop-proxy',
-  OpenAIOAuth_GetStatus = 'openai-oauth:get-status',
-  OpenAIOAuth_CheckHealth = 'openai-oauth:check-health',
+  // OpenAI OAuth (internal proxy only — no sidecar)
   OpenAIOAuth_GetBaseUrl = 'openai-oauth:get-base-url',
-  OpenAIOAuth_GetModels = 'openai-oauth:get-models',
+  OpenAIOAuth_GetRequestHeaders = 'openai-oauth:get-request-headers',
 
   // ExternalApps
   ExternalApps_DetectInstalled = 'external-apps:detect-installed',

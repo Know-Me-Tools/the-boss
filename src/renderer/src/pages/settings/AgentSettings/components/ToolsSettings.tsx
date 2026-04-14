@@ -102,6 +102,26 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
     })
   }, [availableTools, searchTerm, isSoulEnabled])
 
+  const groupedTools = useMemo(() => {
+    const otherTools: typeof filteredTools = []
+    const serviceGroups = new Map<string, typeof filteredTools>()
+
+    for (const tool of filteredTools) {
+      if (tool.type === 'service' && tool.serviceName) {
+        const group = serviceGroups.get(tool.serviceName) ?? []
+        group.push(tool)
+        serviceGroups.set(tool.serviceName, group)
+      } else {
+        otherTools.push(tool)
+      }
+    }
+
+    return {
+      otherTools,
+      serviceGroups: Array.from(serviceGroups.entries())
+    }
+  }, [filteredTools])
+
   const handleToggleTool = useCallback(
     async (toolId: string, isApproved: boolean) => {
       if (!agentBase || isUpdatingTools) {
@@ -145,6 +165,84 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
     [agentBase, isUpdatingMcp, selectedMcpIds, update]
   )
 
+  const renderToolCard = useCallback(
+    (tool: (typeof filteredTools)[number], options?: { serviceSection?: boolean }) => {
+      const isAuto = autoToolIds.includes(tool.id)
+      const isApproved = approvedToolIds.includes(tool.id)
+      const toolDescription = tool.type === 'builtin' ? getBuiltinToolDescription(tool.id) : tool.description
+
+      return (
+        <Card
+          key={tool.id}
+          className="border border-default-200"
+          title={
+            <div className="flex items-start justify-between gap-3 py-2">
+              <div className="flex min-w-0 flex-col gap-1">
+                <span className="truncate font-medium text-sm">{tool.name}</span>
+                {toolDescription ? (
+                  <span className="line-clamp-2 whitespace-normal text-foreground-500 text-xs">
+                    {toolDescription}
+                  </span>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  {options?.serviceSection ? (
+                    <>
+                      <Tag color="processing">
+                        {tool.serviceKind ? `${tool.serviceKind} service` : 'Service'}
+                      </Tag>
+                      {tool.projectionKind ? <Tag color="default">{tool.projectionKind}</Tag> : null}
+                    </>
+                  ) : tool.type === 'mcp' ? (
+                    <Tag color="default">{t('agent.settings.tooling.preapproved.mcpBadge', 'MCP tool')}</Tag>
+                  ) : null}
+                  {isAuto ? (
+                    <Tag color="success">{t('agent.settings.tooling.preapproved.autoBadge', 'Added by mode')}</Tag>
+                  ) : null}
+                  {tool.requirePermissions ? (
+                    <Tag color="warning">
+                      {t('agent.settings.tooling.preapproved.requiresApproval', 'Requires approval when disabled')}
+                    </Tag>
+                  ) : null}
+                </div>
+              </div>
+              <Tooltip
+                title={
+                  isAuto
+                    ? t('agent.settings.tooling.preapproved.autoDisabledTooltip', {
+                        mode: selectedModeCard ? t(selectedModeCard.titleKey, selectedModeCard.titleFallback) : selectedMode
+                      })
+                    : undefined
+                }
+                open={isAuto ? undefined : false}>
+                <Switch
+                  aria-label={t('agent.settings.tooling.preapproved.toggle', {
+                    defaultValue: `Toggle ${tool.name}`,
+                    name: tool.name
+                  })}
+                  checked={isApproved}
+                  disabled={isAuto || isUpdatingTools}
+                  size="small"
+                  onChange={(checked) => handleToggleTool(tool.id, checked)}
+                />
+              </Tooltip>
+            </div>
+          }
+          styles={cardStyles}
+        />
+      )
+    },
+    [
+      autoToolIds,
+      approvedToolIds,
+      getBuiltinToolDescription,
+      handleToggleTool,
+      isUpdatingTools,
+      selectedMode,
+      selectedModeCard,
+      t
+    ]
+  )
+
   if (!agentBase) {
     return null
   }
@@ -169,71 +267,17 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
               {t('agent.settings.tooling.preapproved.empty', 'No tools match your filters.')}
             </div>
           ) : (
-            filteredTools.map((tool) => {
-              const isAuto = autoToolIds.includes(tool.id)
-              const isApproved = approvedToolIds.includes(tool.id)
-              const toolDescription = tool.type === 'builtin' ? getBuiltinToolDescription(tool.id) : tool.description
-              return (
-                <Card
-                  key={tool.id}
-                  className="border border-default-200"
-                  title={
-                    <div className="flex items-start justify-between gap-3 py-2">
-                      <div className="flex min-w-0 flex-col gap-1">
-                        <span className="truncate font-medium text-sm">{tool.name}</span>
-                        {toolDescription ? (
-                          <span className="line-clamp-2 whitespace-normal text-foreground-500 text-xs">
-                            {toolDescription}
-                          </span>
-                        ) : null}
-                        <div className="flex flex-wrap items-center gap-2">
-                          {isAuto ? (
-                            <Tag color="success">
-                              {t('agent.settings.tooling.preapproved.autoBadge', 'Added by mode')}
-                            </Tag>
-                          ) : null}
-                          {tool.type === 'mcp' ? (
-                            <Tag color="default">{t('agent.settings.tooling.preapproved.mcpBadge', 'MCP tool')}</Tag>
-                          ) : null}
-                          {tool.type === 'service' ? <Tag color="processing">Service</Tag> : null}
-                          {tool.requirePermissions ? (
-                            <Tag color="warning">
-                              {t(
-                                'agent.settings.tooling.preapproved.requiresApproval',
-                                'Requires approval when disabled'
-                              )}
-                            </Tag>
-                          ) : null}
-                        </div>
-                      </div>
-                      <Tooltip
-                        title={
-                          isAuto
-                            ? t('agent.settings.tooling.preapproved.autoDisabledTooltip', {
-                                mode: selectedModeCard
-                                  ? t(selectedModeCard.titleKey, selectedModeCard.titleFallback)
-                                  : selectedMode
-                              })
-                            : undefined
-                        }
-                        open={isAuto ? undefined : false}>
-                        <Switch
-                          aria-label={t('agent.settings.tooling.preapproved.toggle', {
-                            defaultValue: `Toggle ${tool.name}`,
-                            name: tool.name
-                          })}
-                          checked={isApproved}
-                          disabled={isAuto || isUpdatingTools}
-                          size="small"
-                          onChange={(checked) => handleToggleTool(tool.id, checked)}
-                        />
-                      </Tooltip>
-                    </div>
-                  }
-                  styles={cardStyles}
-                />
-              )
-            })
+            <>
+              {groupedTools.otherTools.map((tool) => renderToolCard(tool))}
+              {groupedTools.serviceGroups.map(([serviceName, tools]) => (
+                <div key={serviceName} className="flex flex-col gap-2">
+                  <div className="px-1 pt-2 text-foreground-500 text-xs uppercase tracking-[0.18em]">
+                    {serviceName}
+                  </div>
+                  {tools.map((tool) => renderToolCard(tool, { serviceSection: true }))}
+                </div>
+              ))}
+            </>
           )}
         </div>
       </SettingsItem>

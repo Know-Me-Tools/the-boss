@@ -61,19 +61,25 @@ async function handleMessageProcessing({
     }
 
     const extraHeaders = messagesService.prepareHeaders(req.headers)
-    const { client, anthropicRequest } = await messagesService.processMessage({
+    if (request.stream) {
+      await messagesService.streamMessage(
+        {
+          provider,
+          request,
+          extraHeaders,
+          modelId
+        },
+        res
+      )
+      return
+    }
+
+    const response = await messagesService.createMessage({
       provider,
       request,
       extraHeaders,
       modelId
     })
-
-    if (request.stream) {
-      await messagesService.handleStreaming(client, anthropicRequest, { response: res }, provider)
-      return
-    }
-
-    const response = await client.messages.create(anthropicRequest)
     res.json(response)
   } catch (error: any) {
     logger.error('Message processing error', { error })

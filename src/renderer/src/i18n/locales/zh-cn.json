@@ -3423,6 +3423,7 @@
     "aionly": "唯一AI (AiOnly)",
     "alayanew": "Alaya NeW",
     "anthropic": "Anthropic",
+    "anthropic-max": "Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "百川",
@@ -5411,6 +5412,11 @@
         "oauth_disabled_warning": "Anthropic 目前已暂停通过 OAuth 使用 Claude，此认证方式暂时不可用，请先使用 API 密钥。",
         "start_auth": "开始授权",
         "submit_code": "完成登录"
+      },
+      "anthropic_max": {
+        "auth_token_label": "授权令牌",
+        "auth_token_tip": "系统会优先使用已保存的 Anthropic OAuth 凭据；如果没有可用凭据，则回退到此处填写的手动授权令牌。",
+        "oauth_priority": "Anthropic Max 会优先使用 Anthropic OAuth 凭据，其次才是手动授权令牌。"
       },
       "anthropic_api_host": "Anthropic API 地址",
       "anthropic_api_host_preview": "Anthropic 预览：{{url}}",

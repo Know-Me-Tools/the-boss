@@ -7,6 +7,7 @@ import type {
   HtmlArtifactRuntimeProfile,
   ReactArtifactRuntimeProfile
 } from '@shared/artifacts'
+import type { ServiceToolSummary } from '@shared/services'
 import { Button, Select, Space, Switch, Table, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { ExternalLink } from 'lucide-react'
@@ -39,6 +40,8 @@ const ArtifactSettings = () => {
   const [runtimeProfiles, setRuntimeProfiles] = useState<RuntimeProfilesPayload>({ html: [], react: [] })
   const [themes, setThemes] = useState<ArtifactThemePreset[]>([])
   const [registry, setRegistry] = useState<ArtifactPackageRegistryEntry[]>([])
+  const [serviceTools, setServiceTools] = useState<ServiceToolSummary[]>([])
+  const [serviceToolsLoading, setServiceToolsLoading] = useState(true)
 
   useEffect(() => {
     void Promise.all([
@@ -51,6 +54,34 @@ const ArtifactSettings = () => {
       setRegistry(packageRegistry)
     })
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void window.api.services
+      .listProjectedTools()
+      .then((tools) => {
+        if (!cancelled) {
+          setServiceTools(tools)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setServiceToolsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const groupedServiceTools = useMemo(() => {
+    return serviceTools.reduce<Record<string, ServiceToolSummary[]>>((groups, tool) => {
+      groups[tool.serviceName] = [...(groups[tool.serviceName] ?? []), tool]
+      return groups
+    }, {})
+  }, [serviceTools])
 
   const packageColumns = useMemo<ColumnsType<ArtifactPackageRegistryEntry>>(
     () => [
@@ -204,7 +235,7 @@ const ArtifactSettings = () => {
 
       <SettingGroup theme={theme}>
         <SettingTitle>
-          <span>Shared Services</span>
+          <span>Shared Service Access</span>
           <Link to="/settings/services">
             <Button icon={<ExternalLink size={14} />} size="small" type="primary">
               Open Services
@@ -212,10 +243,11 @@ const ArtifactSettings = () => {
           </Link>
         </SettingTitle>
         <SettingDescription>
-          Artifacts no longer own service profiles. Pick the shared services this runtime may invoke by default, then
-          manage imports, auth, headers, and projected tools from the top-level Services registry.
+          Artifacts can still allow full service access for legacy operation calls and subscriptions, but projected
+          service tools are the preferred default for scoped runtime access.
         </SettingDescription>
         <SettingDivider />
+        <SectionHeading>Legacy Service Access</SectionHeading>
         {servicesLoading ? (
           <SettingDescription>Loading shared services...</SettingDescription>
         ) : services.length === 0 ? (
@@ -257,6 +289,56 @@ const ArtifactSettings = () => {
             )
           })
         )}
+        <SettingDivider />
+        <SectionHeading>Projected Service Tools</SectionHeading>
+        <SettingDescription>
+          Allow the specific shared tools that HTML and React artifacts may call through `artifactServices.invokeTool(...)`.
+        </SettingDescription>
+        {serviceToolsLoading ? (
+          <SettingDescription>Loading shared service tools...</SettingDescription>
+        ) : serviceTools.length === 0 ? (
+          <SettingDescription>No projected shared service tools are available yet.</SettingDescription>
+        ) : (
+          Object.entries(groupedServiceTools).map(([serviceName, tools]) => (
+            <ServiceToolGroup key={serviceName}>
+              <ServiceToolGroupTitle>{serviceName}</ServiceToolGroupTitle>
+              {tools.map((tool) => {
+                const isEnabled = settings.accessPolicy.serviceToolIds.includes(tool.id)
+
+                return (
+                  <ServiceRow key={tool.id}>
+                    <div>
+                      <ServiceTitle>{tool.name}</ServiceTitle>
+                      <ServiceMeta>
+                        <Tag color="processing">{tool.serviceKind}</Tag>
+                        <Tag>{tool.projectionKind}</Tag>
+                        {tool.description ? <span>{tool.description}</span> : null}
+                      </ServiceMeta>
+                    </div>
+                    <Space>
+                      <Switch
+                        checked={isEnabled}
+                        checkedChildren="Allowed"
+                        unCheckedChildren="Blocked"
+                        onChange={(checked) =>
+                          void updateSettings((prev) => ({
+                            ...prev,
+                            accessPolicy: {
+                              ...prev.accessPolicy,
+                              serviceToolIds: checked
+                                ? Array.from(new Set([...prev.accessPolicy.serviceToolIds, tool.id]))
+                                : prev.accessPolicy.serviceToolIds.filter((id) => id !== tool.id)
+                            }
+                          }))
+                        }
+                      />
+                    </Space>
+                  </ServiceRow>
+                )
+              })}
+            </ServiceToolGroup>
+          ))
+        )}
       </SettingGroup>
 
       <SettingGroup theme={theme}>
@@ -290,6 +372,13 @@ const TextArea = styled.textarea`
   font: inherit;
 `
 
+const SectionHeading = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  margin-bottom: 12px;
+`
+
 const ServiceRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -312,6 +401,20 @@ const ServiceMeta = styled.div`
   font-size: 12px;
   margin-top: 6px;
   flex-wrap: wrap;
+`
+
+const ServiceToolGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+`
+
+const ServiceToolGroupTitle = styled.div`
+  margin: 16px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-text-3);
 `
 
 export default ArtifactSettings

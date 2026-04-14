@@ -4,8 +4,10 @@ import express from 'express'
 import { v4 as uuidv4 } from 'uuid'
 
 import { LONG_POLL_TIMEOUT_MS } from './config/timeouts'
+import { anthropicOAuthInternalAuthMiddleware } from './middleware/anthropicOAuthInternalAuth'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error'
+import { openAIOAuthInternalAuthMiddleware } from './middleware/openaiOAuthInternalAuth'
 import { setupOpenAPIDocumentation } from './middleware/openapi'
 import { buildTheBossAgentCard, getRequestBaseUrl } from './routes/a2a/agentCard'
 import { handleA2AJsonRpc } from './routes/a2a/jsonRpc'
@@ -13,6 +15,8 @@ import { agentsRoutes } from './routes/agents'
 import { channelsRouter } from './routes/channels'
 import { chatRoutes } from './routes/chat'
 import { clawMcpRoutes } from './routes/claw-mcp'
+import { anthropicOAuthInternalRoutes } from './routes/internal/anthropicOAuth'
+import { openAIOAuthInternalRoutes } from './routes/internal/openaiOAuth'
 import { knowledgeRoutes } from './routes/knowledge'
 import { mcpRoutes } from './routes/mcp'
 import { messagesProviderRoutes, messagesRoutes } from './routes/messages'
@@ -170,6 +174,9 @@ app.get('/', (_req, res) => {
 
 // Setup OpenAPI documentation before protected routes so docs remain public
 setupOpenAPIDocumentation(app)
+
+app.use('/_internal/openai-oauth', openAIOAuthInternalAuthMiddleware, extendMessagesTimeout, openAIOAuthInternalRoutes)
+app.use('/_internal/anthropic-oauth', anthropicOAuthInternalAuthMiddleware, extendMessagesTimeout, anthropicOAuthInternalRoutes)
 
 // Provider-specific messages route requires authentication
 app.use('/:provider/v1/messages', authMiddleware, extendMessagesTimeout, messagesProviderRoutes)

@@ -23,10 +23,6 @@ import type {
   LocalTransferConnectPayload,
   LocalTransferState,
   ManagedDependencyName,
-  OpenAIOAuthHealthInfo,
-  OpenAIOAuthInstallInfo,
-  OpenAIOAuthOperationResult,
-  OpenAIOAuthStatus,
   OperationResult,
   WebviewKeyEvent
 } from '@shared/config/types'
@@ -793,17 +789,22 @@ const api = {
     cancelOAuthFlow: () => ipcRenderer.invoke(IpcChannel.Anthropic_CancelOAuthFlow),
     getAccessToken: () => ipcRenderer.invoke(IpcChannel.Anthropic_GetAccessToken),
     hasCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_HasCredentials),
-    clearCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_ClearCredentials)
+    clearCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_ClearCredentials),
+    importClaudeCredentials: (): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannel.Anthropic_ImportClaudeCredentials)
+  },
+  anthropic_proxy: {
+    start: (): Promise<{ success: boolean; message?: string }> => ipcRenderer.invoke(IpcChannel.AnthropicProxy_Start),
+    stop: (): Promise<{ success: boolean }> => ipcRenderer.invoke(IpcChannel.AnthropicProxy_Stop),
+    getBaseUrl: (): Promise<string> => ipcRenderer.invoke(IpcChannel.AnthropicProxy_GetBaseUrl),
+    getStatus: () => ipcRenderer.invoke(IpcChannel.AnthropicProxy_GetStatus),
+    getRequestHeaders: (): Promise<Record<string, string>> =>
+      ipcRenderer.invoke(IpcChannel.AnthropicProxy_GetRequestHeaders)
   },
   openai_oauth: {
-    checkInstalled: (): Promise<OpenAIOAuthInstallInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckInstalled),
-    install: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_Install),
-    startProxy: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StartProxy),
-    stopProxy: (): Promise<OpenAIOAuthOperationResult> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_StopProxy),
-    getStatus: (): Promise<OpenAIOAuthStatus> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetStatus),
-    checkHealth: (): Promise<OpenAIOAuthHealthInfo> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_CheckHealth),
     getBaseUrl: (): Promise<string> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetBaseUrl),
-    getModels: (): Promise<string[]> => ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetModels)
+    getRequestHeaders: (): Promise<Record<string, string>> =>
+      ipcRenderer.invoke(IpcChannel.OpenAIOAuth_GetRequestHeaders)
   },
   codeTools: {
     run: (

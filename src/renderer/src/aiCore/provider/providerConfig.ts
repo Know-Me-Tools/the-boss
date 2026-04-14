@@ -124,7 +124,10 @@ export function providerToAiSdkConfig(
     { match: (p) => p.id === SystemProviderIds.copilot, build: buildCopilotConfig },
     { match: (p) => p.id === 'cherryai', build: buildCherryAIConfig },
     { match: (p) => p.id === 'openai' && p.authType === 'oauth', build: buildOpenAIOAuthConfig },
-    { match: (p) => p.id === 'anthropic' && p.authType === 'oauth', build: buildAnthropicConfig },
+    {
+      match: (p) => (p.id === 'anthropic' || p.id === 'anthropic-max') && p.authType === 'oauth',
+      build: buildAnthropicConfig
+    },
     { match: (p) => isOllamaProvider(p), build: buildOllamaConfig },
     { match: (p) => isAzureOpenAIProvider(p), build: buildAzureConfig },
     { match: (_, id) => id === 'bedrock', build: buildBedrockConfig },
@@ -332,32 +335,39 @@ function buildAzureConfig(
 }
 
 async function buildAnthropicConfig(ctx: BuilderContext): Promise<ProviderConfig<'anthropic'>> {
-  const oauthToken: string = await window.api.anthropic_oauth.getAccessToken()
+  const oauthToken: string | null = await window.api.anthropic_oauth.getAccessToken()
+  if (!oauthToken) {
+    throw new Error('Anthropic OAuth credentials are not configured.')
+  }
+
+  const startResult = await window.api.anthropic_proxy.start()
+  if (!startResult.success) {
+    throw new Error(startResult.message ?? 'Failed to start Anthropic OAuth proxy')
+  }
+
+  const baseURL = await window.api.anthropic_proxy.getBaseUrl()
+  const internalHeaders = await window.api.anthropic_proxy.getRequestHeaders()
 
   return {
     providerId: 'anthropic',
     endpoint: ctx.endpoint,
     providerSettings: {
-      baseURL: 'https://api.anthropic.com/v1',
+      baseURL,
       apiKey: '',
       headers: {
         'Content-Type': 'application/json',
         'anthropic-version': '2023-06-01',
-        Authorization: `Bearer ${oauthToken}`
+        ...internalHeaders
       }
     }
   }
 }
 
 async function buildOpenAIOAuthConfig(ctx: BuilderContext): Promise<ProviderConfig<'openai-compatible'>> {
-  const startResult = await window.api.openai_oauth.startProxy()
-  if (!startResult.success) {
-    throw new Error(startResult.message)
-  }
-
   const includeUsage = isSupportStreamOptionsProvider(ctx.actualProvider)
     ? store.getState().settings.openAI?.streamOptions?.includeUsage
     : undefined
+  const internalHeaders = await window.api.openai_oauth.getRequestHeaders()
 
   return {
     providerId: 'openai-compatible',
@@ -365,7 +375,11 @@ async function buildOpenAIOAuthConfig(ctx: BuilderContext): Promise<ProviderConf
     providerSettings: {
       baseURL: await window.api.openai_oauth.getBaseUrl(),
       apiKey: 'oauth',
-      headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
+      headers: {
+        ...defaultAppHeaders(),
+        ...internalHeaders,
+        ...ctx.actualProvider.extra_headers
+      },
       name: ctx.actualProvider.id,
       includeUsage
     }

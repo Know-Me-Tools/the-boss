@@ -6,13 +6,16 @@ import type {
   HeaderTemplateInput,
   ImportGraphQLServiceRequest,
   ImportOpenAPIServiceRequest,
+  ImportSupabaseServiceRequest,
   ServiceAuthInput,
   ServiceDefinition,
+  ServiceKind,
   ServiceToolProjection
 } from '@shared/services'
-import { Button, Card, Checkbox, Input, Modal, Select, Space, Tabs, Tag } from 'antd'
+import { Button, Card, Checkbox, Input, Modal, Select, Space, Tag } from 'antd'
 import { Plus, RefreshCw, TestTube2, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import { SettingContainer, SettingDescription, SettingDivider, SettingGroup, SettingTitle } from '..'
@@ -49,23 +52,16 @@ type GraphQLOperationDraft = {
   projectionName: string
 }
 
-const createEmptyOpenApiImport = (): {
+type OpenApiImportDraft = {
   name: string
   sourceType: 'url' | 'file' | 'text'
   source: string
   endpoint: string
   auth: AuthDraft
   headers: HeaderDraft[]
-} => ({
-  name: '',
-  sourceType: 'url',
-  source: '',
-  endpoint: '',
-  auth: { type: 'none' },
-  headers: []
-})
+}
 
-const createEmptyGraphqlImport = (): {
+type GraphqlImportDraft = {
   name: string
   endpoint: string
   subscriptionEndpoint: string
@@ -74,7 +70,33 @@ const createEmptyGraphqlImport = (): {
   auth: AuthDraft
   headers: HeaderDraft[]
   operations: GraphQLOperationDraft[]
-} => ({
+}
+
+type SupabaseImportDraft = {
+  name: string
+  projectUrl: string
+  databaseSchema: string
+  anonKeyLabel: string
+  anonKeyValue: string
+  serviceKeyLabel: string
+  serviceKeyValue: string
+  tables: string
+  rpcFunctions: string
+  storageBuckets: string
+  enableAuth: boolean
+  headers: HeaderDraft[]
+}
+
+const createEmptyOpenApiImport = (): OpenApiImportDraft => ({
+  name: '',
+  sourceType: 'url',
+  source: '',
+  endpoint: '',
+  auth: { type: 'none' },
+  headers: []
+})
+
+const createEmptyGraphqlImport = (): GraphqlImportDraft => ({
   name: '',
   endpoint: '',
   subscriptionEndpoint: '',
@@ -83,6 +105,21 @@ const createEmptyGraphqlImport = (): {
   auth: { type: 'none' },
   headers: [],
   operations: []
+})
+
+const createEmptySupabaseImport = (): SupabaseImportDraft => ({
+  name: '',
+  projectUrl: '',
+  databaseSchema: 'public',
+  anonKeyLabel: 'Supabase anon key',
+  anonKeyValue: '',
+  serviceKeyLabel: 'Supabase service role key',
+  serviceKeyValue: '',
+  tables: '',
+  rpcFunctions: '',
+  storageBuckets: '',
+  enableAuth: true,
+  headers: []
 })
 
 const createHeaderDraft = (): HeaderDraft => ({
@@ -103,6 +140,13 @@ const createOperationDraft = (): GraphQLOperationDraft => ({
   projected: true,
   projectionName: ''
 })
+
+function parseListInput(value: string): string[] {
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
 
 function toAuthInput(auth: AuthDraft): ServiceAuthInput {
   switch (auth.type) {
@@ -199,10 +243,14 @@ function mapProjectedTools(service: ServiceDefinition): ServiceToolProjection[] 
 }
 
 const ServicesSettings = () => {
+  const { t } = useTranslation()
   const { theme } = useTheme()
-  const { services, loading, importOpenAPI, importGraphQL, updateService, deleteService, reload } = useServices()
+  const { services, loading, importOpenAPI, importGraphQL, importSupabase, updateService, deleteService, reload } =
+    useServices()
+  const [importKind, setImportKind] = useState<ServiceKind>('openapi')
   const [openApiDraft, setOpenApiDraft] = useState(createEmptyOpenApiImport())
   const [graphqlDraft, setGraphqlDraft] = useState(createEmptyGraphqlImport())
+  const [supabaseDraft, setSupabaseDraft] = useState(createEmptySupabaseImport())
   const [editingService, setEditingService] = useState<ServiceDefinition | null>(null)
   const [editingProjectedTools, setEditingProjectedTools] = useState<ServiceToolProjection[]>([])
   const [editingGraphqlOperations, setEditingGraphqlOperations] = useState<GraphQLOperationDraft[]>([])
@@ -220,7 +268,7 @@ const ServicesSettings = () => {
         return (
           <Card
             key={service.serviceId}
-            className="border border-default-200"
+            className='border border-default-200'
             title={
               <CardHeader>
                 <div>
@@ -230,9 +278,9 @@ const ServicesSettings = () => {
                     <span>{service.endpoint}</span>
                   </CardMeta>
                 </div>
-                <Space>
+                <Space wrap>
                   <Button
-                    size="small"
+                    size='small'
                     icon={<TestTube2 size={14} />}
                     onClick={async () => {
                       const result = await window.api.services.testConnection(service.serviceId)
@@ -243,289 +291,443 @@ const ServicesSettings = () => {
                           : result.message || 'Unreachable'
                       }))
                     }}>
-                    Test
+                    {t('settings.services.test', 'Test')}
                   </Button>
                   <Button
-                    size="small"
+                    size='small'
                     onClick={() => {
                       setEditingService(service)
                       setEditingProjectedTools(mapProjectedTools(service))
                       setEditingGraphqlOperations(mapGraphqlOperations(service))
                     }}>
-                    Edit
+                    {t('common.edit', 'Edit')}
                   </Button>
                   <Button
                     danger
-                    size="small"
+                    size='small'
                     icon={<Trash2 size={14} />}
                     onClick={() => void deleteService(service.serviceId)}>
-                    Delete
+                    {t('common.delete', 'Delete')}
                   </Button>
                 </Space>
               </CardHeader>
             }>
             <CardMeta>
-              <span>{projectedCount} projected tools</span>
-              {service.kind === 'graphql' ? <span>{subscriptionCount} subscriptions</span> : null}
-              <span>{service.headerTemplates.length} header templates</span>
-              <span>Auth: {service.auth.type}</span>
-              {healthState[service.serviceId] ? <Tag color="processing">{healthState[service.serviceId]}</Tag> : null}
+              <span>
+                {t('settings.services.projectedCount', {
+                  defaultValue: '{{count}} projected tools',
+                  count: projectedCount
+                })}
+              </span>
+              {service.kind === 'graphql' ? (
+                <span>
+                  {t('settings.services.subscriptionCount', {
+                    defaultValue: '{{count}} subscriptions',
+                    count: subscriptionCount
+                  })}
+                </span>
+              ) : null}
+              {service.kind === 'supabase' ? <span>{service.databaseSchema}</span> : null}
+              <span>
+                {t('settings.services.headerCount', {
+                  defaultValue: '{{count}} header templates',
+                  count: service.headerTemplates.length
+                })}
+              </span>
+              <span>{t('settings.services.authType', { defaultValue: 'Auth: {{type}}', type: service.auth.type })}</span>
+              {healthState[service.serviceId] ? <Tag color='processing'>{healthState[service.serviceId]}</Tag> : null}
             </CardMeta>
           </Card>
         )
       }),
-    [deleteService, healthState, services]
+    [deleteService, healthState, services, t]
   )
 
   return (
     <SettingContainer theme={theme}>
       <SettingGroup theme={theme}>
-        <SettingTitle>Services</SettingTitle>
+        <SettingTitle>{t('settings.services.title', 'Services')}</SettingTitle>
         <SettingDescription>
-          Shared external interfaces for artifacts, assistants, and agents. Import OpenAPI or GraphQL services once,
-          keep secrets in the OS keychain, then curate which operations project into the shared tool surfaces.
+          {t(
+            'settings.services.description',
+            'Import and curate shared external interfaces once, then reuse their projected tools across assistants, agents, and artifacts.'
+          )}
         </SettingDescription>
       </SettingGroup>
 
       <SettingGroup theme={theme}>
-        <Tabs
-          items={[
-            {
-              key: 'registry',
-              label: 'Registry',
-              children: (
-                <>
-                  <ToolbarRow>
-                    <Button icon={<RefreshCw size={14} />} onClick={() => void reload()} loading={loading}>
-                      Refresh
-                    </Button>
-                  </ToolbarRow>
-                  <CardsColumn>
-                    {registryCards.length > 0 ? registryCards : <EmptyState>No services registered.</EmptyState>}
-                  </CardsColumn>
-                </>
-              )
-            },
-            {
-              key: 'openapi',
-              label: 'OpenAPI Import',
-              children: (
-                <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                  <Input
-                    placeholder="Display name"
-                    value={openApiDraft.name}
-                    onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <Select
-                    value={openApiDraft.sourceType}
-                    options={[
-                      { label: 'Spec URL', value: 'url' },
-                      { label: 'Local file', value: 'file' },
-                      { label: 'Pasted JSON/YAML', value: 'text' }
-                    ]}
-                    onChange={(value) => setOpenApiDraft((prev) => ({ ...prev, sourceType: value }))}
-                  />
-                  <Input.TextArea
-                    rows={6}
-                    placeholder={
-                      openApiDraft.sourceType === 'text' ? 'Paste OpenAPI 3.0 JSON/YAML' : 'Enter spec URL or file path'
-                    }
-                    value={openApiDraft.source}
-                    onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, source: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="Endpoint override (optional)"
-                    value={openApiDraft.endpoint}
-                    onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, endpoint: event.target.value }))}
-                  />
-                  <AuthEditor
-                    auth={openApiDraft.auth}
-                    onChange={(auth) => setOpenApiDraft((prev) => ({ ...prev, auth }))}
-                  />
-                  <HeaderEditor
-                    headers={openApiDraft.headers}
-                    onChange={(headers) => setOpenApiDraft((prev) => ({ ...prev, headers }))}
-                  />
-                  <Button
-                    type="primary"
-                    onClick={async () => {
-                      const request: ImportOpenAPIServiceRequest = {
-                        name: openApiDraft.name,
-                        sourceType: openApiDraft.sourceType,
-                        source: openApiDraft.source,
-                        endpoint: openApiDraft.endpoint || undefined,
-                        auth: toAuthInput(openApiDraft.auth),
-                        headerTemplates: toHeaderInputs(openApiDraft.headers)
+        <SettingTitle>{t('settings.services.registryTitle', 'Registry')}</SettingTitle>
+        <SettingDescription>
+          {t(
+            'settings.services.registryDescription',
+            'Review each shared service, test connectivity, and edit which operations project into the shared tool surface.'
+          )}
+        </SettingDescription>
+        <SettingDivider />
+        <ToolbarRow>
+          <Button icon={<RefreshCw size={14} />} onClick={() => void reload()} loading={loading}>
+            {t('common.refresh', 'Refresh')}
+          </Button>
+        </ToolbarRow>
+        <CardsColumn>
+          {registryCards.length > 0 ? (
+            registryCards
+          ) : (
+            <EmptyState>{t('settings.services.empty', 'No services registered yet.')}</EmptyState>
+          )}
+        </CardsColumn>
+      </SettingGroup>
+
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.services.addTitle', 'Add Service')}</SettingTitle>
+        <SettingDescription>
+          {t(
+            'settings.services.addDescription',
+            'Pick a service type, capture credentials once, and decide which operations should appear as reusable shared tools.'
+          )}
+        </SettingDescription>
+        <SettingDivider />
+        <SectionLabel>{t('settings.services.kindLabel', 'Service type')}</SectionLabel>
+        <Select
+          value={importKind}
+          style={{ width: 240 }}
+          options={[
+            { label: 'OpenAPI', value: 'openapi' },
+            { label: 'GraphQL', value: 'graphql' },
+            { label: 'Supabase', value: 'supabase' }
+          ]}
+          onChange={(value) => setImportKind(value)}
+        />
+        <SettingDivider />
+
+        {importKind === 'openapi' ? (
+          <FormCard>
+            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+              <Input
+                placeholder={t('settings.services.namePlaceholder', 'Display name')}
+                value={openApiDraft.name}
+                onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, name: event.target.value }))}
+              />
+              <Select
+                value={openApiDraft.sourceType}
+                options={[
+                  { label: t('settings.services.openapiSourceUrl', 'Spec URL'), value: 'url' },
+                  { label: t('settings.services.openapiSourceFile', 'Local file'), value: 'file' },
+                  { label: t('settings.services.openapiSourceText', 'Pasted JSON/YAML'), value: 'text' }
+                ]}
+                onChange={(value) => setOpenApiDraft((prev) => ({ ...prev, sourceType: value }))}
+              />
+              <Input.TextArea
+                rows={6}
+                placeholder={
+                  openApiDraft.sourceType === 'text'
+                    ? t('settings.services.openapiPaste', 'Paste OpenAPI 3.x JSON or YAML')
+                    : t('settings.services.openapiLocator', 'Enter the spec URL or local file path')
+                }
+                value={openApiDraft.source}
+                onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, source: event.target.value }))}
+              />
+              <Input
+                placeholder={t('settings.services.openapiEndpoint', 'Endpoint override (optional)')}
+                value={openApiDraft.endpoint}
+                onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, endpoint: event.target.value }))}
+              />
+              <AuthEditor auth={openApiDraft.auth} onChange={(auth) => setOpenApiDraft((prev) => ({ ...prev, auth }))} />
+              <HeaderEditor
+                headers={openApiDraft.headers}
+                onChange={(headers) => setOpenApiDraft((prev) => ({ ...prev, headers }))}
+              />
+              <Button
+                type='primary'
+                onClick={async () => {
+                  const request: ImportOpenAPIServiceRequest = {
+                    name: openApiDraft.name,
+                    sourceType: openApiDraft.sourceType,
+                    source: openApiDraft.source,
+                    endpoint: openApiDraft.endpoint || undefined,
+                    auth: toAuthInput(openApiDraft.auth),
+                    headerTemplates: toHeaderInputs(openApiDraft.headers)
+                  }
+                  await importOpenAPI(request)
+                  setOpenApiDraft(createEmptyOpenApiImport())
+                }}>
+                {t('settings.services.importOpenApi', 'Import OpenAPI Service')}
+              </Button>
+            </Space>
+          </FormCard>
+        ) : null}
+
+        {importKind === 'graphql' ? (
+          <FormCard>
+            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+              <Input
+                placeholder={t('settings.services.namePlaceholder', 'Display name')}
+                value={graphqlDraft.name}
+                onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, name: event.target.value }))}
+              />
+              <Input
+                placeholder={t('settings.services.graphqlEndpoint', 'GraphQL endpoint')}
+                value={graphqlDraft.endpoint}
+                onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, endpoint: event.target.value }))}
+              />
+              <Input
+                placeholder={t('settings.services.graphqlSubscriptionEndpoint', 'Subscription endpoint (optional)')}
+                value={graphqlDraft.subscriptionEndpoint}
+                onChange={(event) =>
+                  setGraphqlDraft((prev) => ({ ...prev, subscriptionEndpoint: event.target.value }))
+                }
+              />
+              <Select
+                value={graphqlDraft.sourceType}
+                options={[
+                  { label: t('settings.services.graphqlIntrospection', 'Schema introspection'), value: 'introspection' },
+                  { label: t('settings.services.graphqlSdl', 'Pasted SDL'), value: 'sdl' }
+                ]}
+                onChange={(value) => setGraphqlDraft((prev) => ({ ...prev, sourceType: value }))}
+              />
+              {graphqlDraft.sourceType === 'sdl' ? (
+                <Input.TextArea
+                  rows={6}
+                  placeholder={t('settings.services.graphqlPasteSdl', 'Paste GraphQL SDL')}
+                  value={graphqlDraft.source}
+                  onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, source: event.target.value }))}
+                />
+              ) : null}
+              <AuthEditor auth={graphqlDraft.auth} onChange={(auth) => setGraphqlDraft((prev) => ({ ...prev, auth }))} />
+              <HeaderEditor
+                headers={graphqlDraft.headers}
+                onChange={(headers) => setGraphqlDraft((prev) => ({ ...prev, headers }))}
+              />
+              <SectionLabel>{t('settings.services.savedOperations', 'Saved operations')}</SectionLabel>
+              {graphqlDraft.operations.map((operation, index) => (
+                <OperationCard key={operation.id}>
+                  <Space direction='vertical' style={{ width: '100%' }}>
+                    <Input
+                      placeholder={t('settings.services.operationName', 'Operation name')}
+                      value={operation.name}
+                      onChange={(event) =>
+                        setGraphqlDraft((prev) => ({
+                          ...prev,
+                          operations: prev.operations.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, name: event.target.value } : entry
+                          )
+                        }))
                       }
-                      await importOpenAPI(request)
-                      setOpenApiDraft(createEmptyOpenApiImport())
-                    }}>
-                    Import OpenAPI Service
-                  </Button>
-                </Space>
-              )
-            },
-            {
-              key: 'graphql',
-              label: 'GraphQL Setup',
-              children: (
-                <Space direction="vertical" style={{ width: '100%' }} size={12}>
-                  <Input
-                    placeholder="Display name"
-                    value={graphqlDraft.name}
-                    onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="GraphQL endpoint"
-                    value={graphqlDraft.endpoint}
-                    onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, endpoint: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="Subscription endpoint (optional)"
-                    value={graphqlDraft.subscriptionEndpoint}
-                    onChange={(event) =>
-                      setGraphqlDraft((prev) => ({ ...prev, subscriptionEndpoint: event.target.value }))
-                    }
-                  />
-                  <Select
-                    value={graphqlDraft.sourceType}
-                    options={[
-                      { label: 'Schema introspection', value: 'introspection' },
-                      { label: 'Pasted SDL', value: 'sdl' }
-                    ]}
-                    onChange={(value) => setGraphqlDraft((prev) => ({ ...prev, sourceType: value }))}
-                  />
-                  {graphqlDraft.sourceType === 'sdl' ? (
+                    />
+                    <Select
+                      value={operation.operationType}
+                      options={[
+                        { label: t('settings.services.query', 'Query'), value: 'query' },
+                        { label: t('settings.services.mutation', 'Mutation'), value: 'mutation' },
+                        { label: t('settings.services.subscription', 'Subscription'), value: 'subscription' }
+                      ]}
+                      onChange={(value) =>
+                        setGraphqlDraft((prev) => ({
+                          ...prev,
+                          operations: prev.operations.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, operationType: value } : entry
+                          )
+                        }))
+                      }
+                    />
+                    <Input
+                      placeholder={t('settings.services.projectionName', 'Projection name (optional)')}
+                      value={operation.projectionName}
+                      onChange={(event) =>
+                        setGraphqlDraft((prev) => ({
+                          ...prev,
+                          operations: prev.operations.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, projectionName: event.target.value } : entry
+                          )
+                        }))
+                      }
+                    />
                     <Input.TextArea
                       rows={6}
-                      placeholder="Paste GraphQL SDL"
-                      value={graphqlDraft.source}
-                      onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, source: event.target.value }))}
+                      placeholder={t('settings.services.operationText', 'Operation text')}
+                      value={operation.text}
+                      onChange={(event) =>
+                        setGraphqlDraft((prev) => ({
+                          ...prev,
+                          operations: prev.operations.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, text: event.target.value } : entry
+                          )
+                        }))
+                      }
                     />
-                  ) : null}
-                  <AuthEditor
-                    auth={graphqlDraft.auth}
-                    onChange={(auth) => setGraphqlDraft((prev) => ({ ...prev, auth }))}
-                  />
-                  <HeaderEditor
-                    headers={graphqlDraft.headers}
-                    onChange={(headers) => setGraphqlDraft((prev) => ({ ...prev, headers }))}
-                  />
-                  <SectionLabel>Saved Operations</SectionLabel>
-                  {graphqlDraft.operations.map((operation, index) => (
-                    <OperationCard key={operation.id}>
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        <Input
-                          placeholder="Operation name"
-                          value={operation.name}
-                          onChange={(event) =>
-                            setGraphqlDraft((prev) => ({
-                              ...prev,
-                              operations: prev.operations.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, name: event.target.value } : entry
-                              )
-                            }))
-                          }
-                        />
-                        <Select
-                          value={operation.operationType}
-                          options={[
-                            { label: 'Query', value: 'query' },
-                            { label: 'Mutation', value: 'mutation' },
-                            { label: 'Subscription', value: 'subscription' }
-                          ]}
-                          onChange={(value) =>
-                            setGraphqlDraft((prev) => ({
-                              ...prev,
-                              operations: prev.operations.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, operationType: value } : entry
-                              )
-                            }))
-                          }
-                        />
-                        <Input
-                          placeholder="Projection name (optional)"
-                          value={operation.projectionName}
-                          onChange={(event) =>
-                            setGraphqlDraft((prev) => ({
-                              ...prev,
-                              operations: prev.operations.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, projectionName: event.target.value } : entry
-                              )
-                            }))
-                          }
-                        />
-                        <Input.TextArea
-                          rows={6}
-                          placeholder="Operation text"
-                          value={operation.text}
-                          onChange={(event) =>
-                            setGraphqlDraft((prev) => ({
-                              ...prev,
-                              operations: prev.operations.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, text: event.target.value } : entry
-                              )
-                            }))
-                          }
-                        />
-                        <Checkbox
-                          checked={operation.projected}
-                          onChange={(event) =>
-                            setGraphqlDraft((prev) => ({
-                              ...prev,
-                              operations: prev.operations.map((entry, entryIndex) =>
-                                entryIndex === index ? { ...entry, projected: event.target.checked } : entry
-                              )
-                            }))
-                          }>
-                          Project as tool (queries and mutations only)
-                        </Checkbox>
-                      </Space>
-                    </OperationCard>
-                  ))}
-                  <Button
-                    icon={<Plus size={14} />}
-                    onClick={() =>
-                      setGraphqlDraft((prev) => ({
-                        ...prev,
-                        operations: [...prev.operations, createOperationDraft()]
-                      }))
-                    }>
-                    Add GraphQL Operation
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={async () => {
-                      const request: ImportGraphQLServiceRequest = {
-                        name: graphqlDraft.name,
-                        endpoint: graphqlDraft.endpoint,
-                        subscriptionEndpoint: graphqlDraft.subscriptionEndpoint || undefined,
-                        sourceType: graphqlDraft.sourceType,
-                        source: graphqlDraft.sourceType === 'sdl' ? graphqlDraft.source : undefined,
-                        auth: toAuthInput(graphqlDraft.auth),
-                        headerTemplates: toHeaderInputs(graphqlDraft.headers),
-                        subscriptionTransport: 'graphql-ws'
-                      }
-                      const service = await importGraphQL(request)
-                      const operations = toGraphqlOperations(graphqlDraft.operations)
-                      if (operations.length > 0) {
-                        await updateService(service.serviceId, { graphqlOperations: operations })
-                      }
-                      setGraphqlDraft(createEmptyGraphqlImport())
-                    }}>
-                    Save GraphQL Service
-                  </Button>
-                </Space>
-              )
-            }
-          ]}
-        />
+                    <Checkbox
+                      checked={operation.projected}
+                      onChange={(event) =>
+                        setGraphqlDraft((prev) => ({
+                          ...prev,
+                          operations: prev.operations.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, projected: event.target.checked } : entry
+                          )
+                        }))
+                      }>
+                      {t('settings.services.projectOperation', 'Project as reusable tool')}
+                    </Checkbox>
+                  </Space>
+                </OperationCard>
+              ))}
+              <Button
+                icon={<Plus size={14} />}
+                onClick={() =>
+                  setGraphqlDraft((prev) => ({
+                    ...prev,
+                    operations: [...prev.operations, createOperationDraft()]
+                  }))
+                }>
+                {t('settings.services.addOperation', 'Add GraphQL Operation')}
+              </Button>
+              <Button
+                type='primary'
+                onClick={async () => {
+                  const request: ImportGraphQLServiceRequest = {
+                    name: graphqlDraft.name,
+                    endpoint: graphqlDraft.endpoint,
+                    subscriptionEndpoint: graphqlDraft.subscriptionEndpoint || undefined,
+                    sourceType: graphqlDraft.sourceType,
+                    source: graphqlDraft.sourceType === 'sdl' ? graphqlDraft.source : undefined,
+                    auth: toAuthInput(graphqlDraft.auth),
+                    headerTemplates: toHeaderInputs(graphqlDraft.headers),
+                    subscriptionTransport: 'graphql-ws'
+                  }
+                  const service = await importGraphQL(request)
+                  const operations = toGraphqlOperations(graphqlDraft.operations)
+                  if (operations.length > 0) {
+                    await updateService(service.serviceId, { graphqlOperations: operations })
+                  }
+                  setGraphqlDraft(createEmptyGraphqlImport())
+                }}>
+                {t('settings.services.saveGraphql', 'Save GraphQL Service')}
+              </Button>
+            </Space>
+          </FormCard>
+        ) : null}
+
+        {importKind === 'supabase' ? (
+          <FormCard>
+            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+              <Input
+                placeholder={t('settings.services.namePlaceholder', 'Display name')}
+                value={supabaseDraft.name}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, name: event.target.value }))}
+              />
+              <Input
+                placeholder={t('settings.services.supabaseProjectUrl', 'Project URL')}
+                value={supabaseDraft.projectUrl}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, projectUrl: event.target.value }))}
+              />
+              <Input
+                placeholder={t('settings.services.supabaseSchema', 'Database schema')}
+                value={supabaseDraft.databaseSchema}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, databaseSchema: event.target.value }))}
+              />
+              <FieldGrid>
+                <Input
+                  placeholder={t('settings.services.secretLabel', 'Secret label')}
+                  value={supabaseDraft.anonKeyLabel}
+                  onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, anonKeyLabel: event.target.value }))}
+                />
+                <Input.Password
+                  placeholder={t('settings.services.supabaseAnonKey', 'Anon key')}
+                  value={supabaseDraft.anonKeyValue}
+                  onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, anonKeyValue: event.target.value }))}
+                />
+              </FieldGrid>
+              <FieldGrid>
+                <Input
+                  placeholder={t('settings.services.secretLabel', 'Secret label')}
+                  value={supabaseDraft.serviceKeyLabel}
+                  onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, serviceKeyLabel: event.target.value }))}
+                />
+                <Input.Password
+                  placeholder={t('settings.services.supabaseServiceKey', 'Service role key (optional)')}
+                  value={supabaseDraft.serviceKeyValue}
+                  onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, serviceKeyValue: event.target.value }))}
+                />
+              </FieldGrid>
+              <Input.TextArea
+                rows={3}
+                placeholder={t(
+                  'settings.services.supabaseTables',
+                  'Tables to scaffold as tools, comma-separated (for example: profiles, orders, invoices)'
+                )}
+                value={supabaseDraft.tables}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, tables: event.target.value }))}
+              />
+              <Input.TextArea
+                rows={3}
+                placeholder={t(
+                  'settings.services.supabaseRpc',
+                  'RPC functions to scaffold as tools, comma-separated'
+                )}
+                value={supabaseDraft.rpcFunctions}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, rpcFunctions: event.target.value }))}
+              />
+              <Input.TextArea
+                rows={3}
+                placeholder={t(
+                  'settings.services.supabaseBuckets',
+                  'Storage buckets to scaffold as tools, comma-separated'
+                )}
+                value={supabaseDraft.storageBuckets}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, storageBuckets: event.target.value }))}
+              />
+              <Checkbox
+                checked={supabaseDraft.enableAuth}
+                onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, enableAuth: event.target.checked }))}>
+                {t('settings.services.supabaseAuthToggle', 'Include Supabase Auth helper tools')}
+              </Checkbox>
+              <HeaderEditor
+                headers={supabaseDraft.headers}
+                onChange={(headers) => setSupabaseDraft((prev) => ({ ...prev, headers }))}
+              />
+              <Button
+                type='primary'
+                onClick={async () => {
+                  const request: ImportSupabaseServiceRequest = {
+                    name: supabaseDraft.name,
+                    projectUrl: supabaseDraft.projectUrl,
+                    databaseSchema: supabaseDraft.databaseSchema || 'public',
+                    anonKey: {
+                      label: supabaseDraft.anonKeyLabel || 'Supabase anon key',
+                      value: supabaseDraft.anonKeyValue
+                    },
+                    serviceKey: supabaseDraft.serviceKeyValue
+                      ? {
+                          label: supabaseDraft.serviceKeyLabel || 'Supabase service role key',
+                          value: supabaseDraft.serviceKeyValue
+                        }
+                      : undefined,
+                    tables: parseListInput(supabaseDraft.tables),
+                    rpcFunctions: parseListInput(supabaseDraft.rpcFunctions),
+                    storageBuckets: parseListInput(supabaseDraft.storageBuckets),
+                    enableAuth: supabaseDraft.enableAuth,
+                    headerTemplates: toHeaderInputs(supabaseDraft.headers)
+                  }
+                  await importSupabase(request)
+                  setSupabaseDraft(createEmptySupabaseImport())
+                }}>
+                {t('settings.services.importSupabase', 'Import Supabase Service')}
+              </Button>
+            </Space>
+          </FormCard>
+        ) : null}
       </SettingGroup>
 
       <Modal
         open={!!editingService}
-        title={editingService ? `Edit ${editingService.name}` : 'Edit service'}
-        width={880}
+        title={
+          editingService
+            ? t('settings.services.editTitle', {
+                defaultValue: 'Edit {{name}}',
+                name: editingService.name
+              })
+            : t('settings.services.editFallback', 'Edit service')
+        }
+        width={920}
         onCancel={() => {
           setEditingService(null)
           setEditingProjectedTools([])
@@ -540,7 +742,10 @@ const ServicesSettings = () => {
             name: editingService.name,
             endpoint: editingService.endpoint,
             subscriptionEndpoint: editingService.kind === 'graphql' ? editingService.subscriptionEndpoint : undefined,
-            projectedTools: editingService.kind === 'openapi' ? editingProjectedTools : undefined,
+            projectUrl: editingService.kind === 'supabase' ? editingService.projectUrl : undefined,
+            databaseSchema: editingService.kind === 'supabase' ? editingService.databaseSchema : undefined,
+            projectedTools:
+              editingService.kind === 'openapi' || editingService.kind === 'supabase' ? editingProjectedTools : undefined,
             graphqlOperations:
               editingService.kind === 'graphql' ? toGraphqlOperations(editingGraphqlOperations) : undefined
           })
@@ -548,20 +753,26 @@ const ServicesSettings = () => {
         }}
         destroyOnClose>
         {editingService ? (
-          <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          <Space direction='vertical' style={{ width: '100%' }} size={12}>
             <Input
               value={editingService.name}
               onChange={(event) => setEditingService((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
             />
             <Input
-              value={editingService.endpoint}
+              value={editingService.kind === 'supabase' ? editingService.projectUrl : editingService.endpoint}
               onChange={(event) =>
-                setEditingService((prev) => (prev ? { ...prev, endpoint: event.target.value } : prev))
+                setEditingService((prev) =>
+                  prev
+                    ? prev.kind === 'supabase'
+                      ? { ...prev, projectUrl: event.target.value, endpoint: event.target.value }
+                      : { ...prev, endpoint: event.target.value }
+                    : prev
+                )
               }
             />
             {editingService.kind === 'graphql' ? (
               <Input
-                placeholder="Subscription endpoint"
+                placeholder={t('settings.services.graphqlSubscriptionEndpoint', 'Subscription endpoint (optional)')}
                 value={editingService.subscriptionEndpoint ?? ''}
                 onChange={(event) =>
                   setEditingService((prev) =>
@@ -572,61 +783,43 @@ const ServicesSettings = () => {
                 }
               />
             ) : null}
+            {editingService.kind === 'supabase' ? (
+              <Input
+                placeholder={t('settings.services.supabaseSchema', 'Database schema')}
+                value={editingService.databaseSchema}
+                onChange={(event) =>
+                  setEditingService((prev) =>
+                    prev && prev.kind === 'supabase' ? { ...prev, databaseSchema: event.target.value } : prev
+                  )
+                }
+              />
+            ) : null}
             <SettingDivider />
-            <SectionLabel>Auth & Headers</SectionLabel>
+            <SectionLabel>{t('settings.services.authHeaders', 'Auth and headers')}</SectionLabel>
             <SettingDescription>
-              Auth preset: {editingService.auth.type}. Header templates: {editingService.headerTemplates.length}. Edit
-              auth and headers by re-importing if you need to rotate secret-backed values.
+              {t(
+                'settings.services.authHeadersHint',
+                'Secrets stay managed through import. Re-import if you need to rotate secret-backed auth or header values.'
+              )}
             </SettingDescription>
+            <CardMeta>
+              <span>
+                {t('settings.services.authType', { defaultValue: 'Auth: {{type}}', type: editingService.auth.type })}
+              </span>
+              <span>
+                {t('settings.services.headerCount', {
+                  defaultValue: '{{count}} header templates',
+                  count: editingService.headerTemplates.length
+                })}
+              </span>
+            </CardMeta>
             <SettingDivider />
-            {editingService.kind === 'openapi' ? (
+            {editingService.kind === 'graphql' ? (
               <>
-                <SectionLabel>Tool Projection</SectionLabel>
-                {editingProjectedTools.map((tool, index) => (
-                  <OperationCard key={tool.id}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <Input
-                        value={tool.name}
-                        onChange={(event) =>
-                          setEditingProjectedTools((prev) =>
-                            prev.map((entry, entryIndex) =>
-                              entryIndex === index ? { ...entry, name: event.target.value } : entry
-                            )
-                          )
-                        }
-                      />
-                      <Input.TextArea
-                        rows={2}
-                        value={tool.description}
-                        onChange={(event) =>
-                          setEditingProjectedTools((prev) =>
-                            prev.map((entry, entryIndex) =>
-                              entryIndex === index ? { ...entry, description: event.target.value } : entry
-                            )
-                          )
-                        }
-                      />
-                      <Checkbox
-                        checked={tool.enabled}
-                        onChange={(event) =>
-                          setEditingProjectedTools((prev) =>
-                            prev.map((entry, entryIndex) =>
-                              entryIndex === index ? { ...entry, enabled: event.target.checked } : entry
-                            )
-                          )
-                        }>
-                        Expose this operation as a tool
-                      </Checkbox>
-                    </Space>
-                  </OperationCard>
-                ))}
-              </>
-            ) : (
-              <>
-                <SectionLabel>Saved Operations</SectionLabel>
+                <SectionLabel>{t('settings.services.savedOperations', 'Saved operations')}</SectionLabel>
                 {editingGraphqlOperations.map((operation, index) => (
                   <OperationCard key={operation.id}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space direction='vertical' style={{ width: '100%' }}>
                       <Input
                         value={operation.name}
                         onChange={(event) =>
@@ -640,9 +833,9 @@ const ServicesSettings = () => {
                       <Select
                         value={operation.operationType}
                         options={[
-                          { label: 'Query', value: 'query' },
-                          { label: 'Mutation', value: 'mutation' },
-                          { label: 'Subscription', value: 'subscription' }
+                          { label: t('settings.services.query', 'Query'), value: 'query' },
+                          { label: t('settings.services.mutation', 'Mutation'), value: 'mutation' },
+                          { label: t('settings.services.subscription', 'Subscription'), value: 'subscription' }
                         ]}
                         onChange={(value) =>
                           setEditingGraphqlOperations((prev) =>
@@ -653,7 +846,7 @@ const ServicesSettings = () => {
                         }
                       />
                       <Input
-                        placeholder="Projection name"
+                        placeholder={t('settings.services.projectionName', 'Projection name (optional)')}
                         value={operation.projectionName}
                         onChange={(event) =>
                           setEditingGraphqlOperations((prev) =>
@@ -684,16 +877,60 @@ const ServicesSettings = () => {
                             )
                           )
                         }>
-                        Project this operation as a tool
+                        {t('settings.services.projectOperation', 'Project as reusable tool')}
                       </Checkbox>
                     </Space>
                   </OperationCard>
                 ))}
-                <Button
-                  icon={<Plus size={14} />}
-                  onClick={() => setEditingGraphqlOperations((prev) => [...prev, createOperationDraft()])}>
-                  Add Operation
+                <Button icon={<Plus size={14} />} onClick={() => setEditingGraphqlOperations((prev) => [...prev, createOperationDraft()])}>
+                  {t('settings.services.addOperation', 'Add GraphQL Operation')}
                 </Button>
+              </>
+            ) : (
+              <>
+                <SectionLabel>{t('settings.services.toolProjection', 'Tool projection')}</SectionLabel>
+                {editingProjectedTools.map((tool, index) => (
+                  <OperationCard key={tool.id}>
+                    <Space direction='vertical' style={{ width: '100%' }}>
+                      <Input
+                        value={tool.name}
+                        onChange={(event) =>
+                          setEditingProjectedTools((prev) =>
+                            prev.map((entry, entryIndex) =>
+                              entryIndex === index ? { ...entry, name: event.target.value } : entry
+                            )
+                          )
+                        }
+                      />
+                      <Input.TextArea
+                        rows={2}
+                        value={tool.description}
+                        onChange={(event) =>
+                          setEditingProjectedTools((prev) =>
+                            prev.map((entry, entryIndex) =>
+                              entryIndex === index ? { ...entry, description: event.target.value } : entry
+                            )
+                          )
+                        }
+                      />
+                      <CardMeta>
+                        <Tag>{tool.kind}</Tag>
+                        <span>{tool.sourceOperationId}</span>
+                      </CardMeta>
+                      <Checkbox
+                        checked={tool.enabled}
+                        onChange={(event) =>
+                          setEditingProjectedTools((prev) =>
+                            prev.map((entry, entryIndex) =>
+                              entryIndex === index ? { ...entry, enabled: event.target.checked } : entry
+                            )
+                          )
+                        }>
+                        {t('settings.services.exposeOperation', 'Expose this operation as a shared tool')}
+                      </Checkbox>
+                    </Space>
+                  </OperationCard>
+                ))}
               </>
             )}
           </Space>
@@ -706,7 +943,7 @@ const ServicesSettings = () => {
 const AuthEditor = ({ auth, onChange }: { auth: AuthDraft; onChange: (auth: AuthDraft) => void }) => (
   <Section>
     <SectionLabel>Auth & Headers</SectionLabel>
-    <Space direction="vertical" style={{ width: '100%' }} size={12}>
+    <Space direction='vertical' style={{ width: '100%' }} size={12}>
       <Select
         value={auth.type}
         options={[
@@ -734,78 +971,74 @@ const AuthEditor = ({ auth, onChange }: { auth: AuthDraft; onChange: (auth: Auth
         }}
       />
       {auth.type === 'bearer' ? (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction='vertical' style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder="Header name"
+            placeholder='Header name'
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
-          <Input
-            value={auth.scheme}
-            placeholder="Scheme"
-            onChange={(event) => onChange({ ...auth, scheme: event.target.value })}
-          />
+          <Input value={auth.scheme} placeholder='Scheme' onChange={(event) => onChange({ ...auth, scheme: event.target.value })} />
           <Input
             value={auth.tokenLabel}
-            placeholder="Secret label"
+            placeholder='Secret label'
             onChange={(event) => onChange({ ...auth, tokenLabel: event.target.value })}
           />
           <Input.Password
             value={auth.tokenValue}
-            placeholder="Secret value"
+            placeholder='Secret value'
             onChange={(event) => onChange({ ...auth, tokenValue: event.target.value })}
           />
         </Space>
       ) : null}
       {auth.type === 'api-key' ? (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction='vertical' style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder="Header name"
+            placeholder='Header name'
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
           <Input
             value={auth.prefix}
-            placeholder="Prefix (optional)"
+            placeholder='Prefix (optional)'
             onChange={(event) => onChange({ ...auth, prefix: event.target.value })}
           />
           <Input
             value={auth.tokenLabel}
-            placeholder="Secret label"
+            placeholder='Secret label'
             onChange={(event) => onChange({ ...auth, tokenLabel: event.target.value })}
           />
           <Input.Password
             value={auth.tokenValue}
-            placeholder="Secret value"
+            placeholder='Secret value'
             onChange={(event) => onChange({ ...auth, tokenValue: event.target.value })}
           />
         </Space>
       ) : null}
       {auth.type === 'basic' ? (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space direction='vertical' style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder="Header name"
+            placeholder='Header name'
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
           <Input
             value={auth.usernameLabel}
-            placeholder="Username label"
+            placeholder='Username label'
             onChange={(event) => onChange({ ...auth, usernameLabel: event.target.value })}
           />
           <Input
             value={auth.usernameValue}
-            placeholder="Username"
+            placeholder='Username'
             onChange={(event) => onChange({ ...auth, usernameValue: event.target.value })}
           />
           <Input
             value={auth.passwordLabel}
-            placeholder="Password label"
+            placeholder='Password label'
             onChange={(event) => onChange({ ...auth, passwordLabel: event.target.value })}
           />
           <Input.Password
             value={auth.passwordValue}
-            placeholder="Password"
+            placeholder='Password'
             onChange={(event) => onChange({ ...auth, passwordValue: event.target.value })}
           />
         </Space>
@@ -823,12 +1056,12 @@ const HeaderEditor = ({
 }) => (
   <Section>
     <SectionLabel>Custom Header Templates</SectionLabel>
-    <Space direction="vertical" style={{ width: '100%' }} size={12}>
+    <Space direction='vertical' style={{ width: '100%' }} size={12}>
       {headers.map((header, index) => (
         <OperationCard key={header.id}>
-          <Space direction="vertical" style={{ width: '100%' }}>
+          <Space direction='vertical' style={{ width: '100%' }}>
             <Input
-              placeholder="Header name"
+              placeholder='Header name'
               value={header.name}
               onChange={(event) =>
                 onChange(
@@ -865,7 +1098,7 @@ const HeaderEditor = ({
             />
             {header.mode === 'secret' ? (
               <Input.Password
-                placeholder="Secret value"
+                placeholder='Secret value'
                 value={header.value}
                 onChange={(event) =>
                   onChange(
@@ -937,6 +1170,19 @@ const CardMeta = styled.div`
   color: var(--color-text-3);
   font-size: 12px;
   margin-top: 6px;
+`
+
+const FormCard = styled.div`
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--color-background);
+`
+
+const FieldGrid = styled.div`
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 `
 
 const Section = styled.div`

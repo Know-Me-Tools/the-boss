@@ -163,8 +163,9 @@ const ArtifactPopup = ({
 
       const data = event.data as {
         source?: string
-        kind?: 'invoke-operation' | 'subscribe' | 'unsubscribe'
+        kind?: 'invoke-tool' | 'invoke-operation' | 'subscribe' | 'unsubscribe'
         requestId?: string
+        toolId?: string
         serviceId?: string
         operationId?: string
         subscriptionId?: string
@@ -177,6 +178,23 @@ const ArtifactPopup = ({
       }
 
       try {
+        if (data.kind === 'invoke-tool') {
+          if (!data.requestId || !data.toolId) {
+            throw new Error('Incomplete artifact service tool request.')
+          }
+
+          const result = await window.api.services.invokeTool(data.toolId, data.input ?? {})
+          previewFrameRef.current?.contentWindow?.postMessage(
+            {
+              source: 'artifact-service-response',
+              requestId: data.requestId,
+              result
+            },
+            '*'
+          )
+          return
+        }
+
         if (data.kind === 'invoke-operation') {
           if (!data.requestId || !data.serviceId || !data.operationId) {
             throw new Error('Incomplete artifact service operation request.')

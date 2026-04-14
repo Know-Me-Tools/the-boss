@@ -62,7 +62,8 @@ export type ArtifactPackageRegistryEntry = z.infer<typeof ArtifactPackageRegistr
 
 export const ArtifactAccessPolicySchema = z.object({
   internetEnabled: z.boolean().default(true),
-  serviceIds: z.array(z.string()).default([])
+  serviceIds: z.array(z.string()).default([]),
+  serviceToolIds: z.array(z.string()).default([])
 })
 export type ArtifactAccessPolicy = z.infer<typeof ArtifactAccessPolicySchema>
 
@@ -149,7 +150,8 @@ export const ArtifactSettingsSchema = z.object({
   defaultThemeId: ArtifactThemeIdSchema.default('boss-light'),
   accessPolicy: ArtifactAccessPolicySchema.default({
     internetEnabled: true,
-    serviceIds: []
+    serviceIds: [],
+    serviceToolIds: []
   }),
   exposePackageRegistry: z.boolean().default(true),
   baseCss: z.string().default(''),
@@ -160,7 +162,8 @@ export type ArtifactSettings = z.infer<typeof ArtifactSettingsSchema>
 export const ArtifactDirectiveOverridesSchema = z.object({
   themeId: ArtifactThemeIdSchema.optional(),
   internetEnabled: z.boolean().optional(),
-  serviceIds: z.array(z.string()).optional()
+  serviceIds: z.array(z.string()).optional(),
+  serviceToolIds: z.array(z.string()).optional()
 })
 export type ArtifactDirectiveOverrides = z.infer<typeof ArtifactDirectiveOverridesSchema>
 

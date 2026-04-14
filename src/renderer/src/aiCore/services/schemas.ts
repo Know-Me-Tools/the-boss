@@ -162,3 +162,19 @@ export const AIHubMixModelsResponseSchema = z.object({
   message: z.string().optional(),
   success: z.boolean().optional()
 })
+
+// === Anthropic ===
+
+export const AnthropicModelsResponseSchema = z.object({
+  data: z.array(
+    z.looseObject({
+      id: z.string(),
+      display_name: z.string().optional(),
+      type: z.string().optional(),
+      created_at: z.string().optional()
+    })
+  ),
+  first_id: z.string().optional(),
+  has_more: z.boolean().optional(),
+  last_id: z.string().optional()
+})

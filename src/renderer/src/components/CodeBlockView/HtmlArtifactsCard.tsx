@@ -12,7 +12,7 @@ import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/ar
 import { Button } from 'antd'
 import { Code, Copy, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
@@ -54,43 +54,44 @@ const HtmlArtifactsCard: FC<Props> = ({
   const { theme } = useTheme()
   const htmlContent = html || ''
   const hasContent = htmlContent.trim().length > 0
-  const loadingDocument = buildLoadingDocument(t('settings.artifacts.library.preview_loading'))
+  const loadingDocument = useMemo(
+    () => buildLoadingDocument(t('settings.artifacts.library.preview_loading')),
+    [t]
+  )
   const [previewDocument, setPreviewDocument] = useState(loadingDocument)
 
   useEffect(() => {
     let cancelled = false
-    setPreviewDocument(loadingDocument)
 
-    void loadArtifactSettings()
-      .then((settings) => {
-        if (cancelled) {
-          return
-        }
+    const run = async () => {
+      if (cancelled) return
+      setPreviewDocument(loadingDocument)
 
-        const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
-        setPreviewDocument(
-          buildHtmlArtifactPreviewDocument({
-            source: htmlContent,
-            title,
-            runtimeProfileId,
-            settings,
-            overrides
-          })
-        )
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return
-        }
+      const settings = await loadArtifactSettings()
+      if (cancelled) return
 
-        logger.error('Failed to build HTML artifact preview document', error as Error)
-        setPreviewDocument(loadingDocument)
-      })
+      const overrides = parseArtifactDirectiveOverrides('html', htmlContent)
+      setPreviewDocument(
+        buildHtmlArtifactPreviewDocument({
+          source: htmlContent,
+          title,
+          runtimeProfileId,
+          settings,
+          overrides
+        })
+      )
+    }
+
+    run().catch((error) => {
+      if (cancelled) return
+      logger.error('Failed to build HTML artifact preview document', error as Error)
+      setPreviewDocument(loadingDocument)
+    })
 
     return () => {
       cancelled = true
     }
-  }, [htmlContent, loadingDocument, runtimeProfileId, t, title])
+  }, [htmlContent, loadingDocument, runtimeProfileId, title])
 
   const handleOpenExternal = async () => {
     const path = await window.api.file.createTempFile('artifacts-preview.html')
@@ -202,7 +203,8 @@ const HtmlArtifactsCard: FC<Props> = ({
             themeId: overrides.themeId ?? settings.defaultThemeId,
             accessPolicy: {
               internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
-              serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+              serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds,
+              serviceToolIds: overrides.serviceToolIds ?? settings.accessPolicy.serviceToolIds
             },
             origin
           }

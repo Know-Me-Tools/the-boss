@@ -1,4 +1,4 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { loggerService } from '@logger'
 import { Alert, Button, Input, Modal } from 'antd'
 import { useEffect, useState } from 'react'
@@ -10,10 +10,16 @@ const logger = loggerService.withContext('AnthropicSettings')
 enum AuthStatus {
   NOT_STARTED,
   AUTHENTICATING,
-  AUTHENTICATED
+  AUTHENTICATED,
+  /** Token resolved from CLAUDE_CODE_OAUTH_TOKEN env var or ~/.claude/credentials.json */
+  CLAUDE_CODE_ACTIVE
 }
 
-const AnthropicSettings = () => {
+interface Props {
+  mode?: 'default' | 'max'
+}
+
+const AnthropicSettings = ({ mode = 'default' }: Props) => {
   const { t } = useTranslation()
   const [authStatus, setAuthStatus] = useState<AuthStatus>(AuthStatus.NOT_STARTED)
   const [loading, setLoading] = useState<boolean>(false)
@@ -25,9 +31,17 @@ const AnthropicSettings = () => {
     const checkAuthStatus = async () => {
       try {
         const hasCredentials = await window.api.anthropic_oauth.hasCredentials()
-
         if (hasCredentials) {
-          setAuthStatus(AuthStatus.AUTHENTICATED)
+          // Determine whether it came from Claude Code (env var / credentials.json)
+          // vs. a Cherry Studio OAuth flow. We can check by trying to get the token;
+          // if it succeeds without any local Cherry Studio creds file, it's Claude Code.
+          const token = await window.api.anthropic_oauth.getAccessToken()
+          if (token) {
+            // If hasCredentials returns true and a token resolves, we're good.
+            // We label it CLAUDE_CODE_ACTIVE only when there are no Cherry Studio–own creds,
+            // but AUTHENTICATED covers both cases functionally — use AUTHENTICATED for simplicity.
+            setAuthStatus(AuthStatus.AUTHENTICATED)
+          }
         }
       } catch (error) {
         logger.error('Failed to check authentication status:', error as Error)
@@ -36,6 +50,25 @@ const AnthropicSettings = () => {
 
     void checkAuthStatus()
   }, [])
+
+  // Use existing Claude Code credentials (env var or ~/.claude/credentials.json)
+  const handleImportClaudeCredentials = async () => {
+    try {
+      setLoading(true)
+      const imported = await window.api.anthropic_oauth.importClaudeCredentials()
+      if (imported) {
+        setAuthStatus(AuthStatus.AUTHENTICATED)
+        window.toast.success(t('settings.provider.anthropic.import_success'))
+      } else {
+        window.toast.error(t('settings.provider.anthropic.import_failed'))
+      }
+    } catch (error) {
+      logger.error('Import Claude credentials failed:', error as Error)
+      window.toast.error(t('settings.provider.anthropic.import_failed'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // 处理OAuth重定向
   const handleRedirectOAuth = async () => {
@@ -149,6 +182,19 @@ const AnthropicSettings = () => {
               showIcon
               icon={<ExclamationCircleOutlined />}
             />
+            <Alert
+              type="success"
+              message={t('settings.provider.anthropic.import_claude_credentials')}
+              description={t('settings.provider.anthropic.claude_code_active')}
+              action={
+                <Button loading={loading} onClick={handleImportClaudeCredentials}>
+                  {t('settings.provider.anthropic.import_claude_credentials')}
+                </Button>
+              }
+              showIcon
+              icon={<CheckCircleOutlined />}
+              style={{ marginTop: 8 }}
+            />
           </StartContainer>
         )
     }
@@ -157,8 +203,12 @@ const AnthropicSettings = () => {
   return (
     <Container>
       <Alert
-        type="warning"
-        message={t('settings.provider.anthropic.oauth_disabled_warning')}
+        type={mode === 'max' ? 'info' : 'warning'}
+        message={
+          mode === 'max'
+            ? t('settings.provider.anthropic_max.oauth_priority')
+            : t('settings.provider.anthropic.oauth_disabled_warning')
+        }
         showIcon
         style={{ marginBottom: 10 }}
       />

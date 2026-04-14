@@ -205,7 +205,8 @@ describe('ArtifactPopup', () => {
       themeId: 'boss-light' as const,
       accessPolicy: {
         internetEnabled: false,
-        serviceIds: []
+        serviceIds: [],
+        serviceToolIds: []
       }
     }))
 

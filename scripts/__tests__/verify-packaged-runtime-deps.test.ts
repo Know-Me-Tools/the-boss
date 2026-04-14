@@ -8,7 +8,8 @@ const { artifactRuntimeRootPackages } = require('../artifact-runtime-packages')
 const {
   auditStartupBundleExternalReferences,
   collectPackageDependencyClosure,
-  computeFallbackPackageNames
+  computeFallbackPackageNames,
+  shouldCopyFallbackRuntimePath
 } = require('../verify-packaged-runtime-deps')
 const { runtimeExternalPackages, validateRuntimeExternalPackages } = require('../runtime-external-packages')
 
@@ -20,7 +21,15 @@ const createTempDir = () => {
   return tempDir
 }
 
-const writePackage = (rootDir: string, packageName: string, dependencies: Record<string, string> = {}) => {
+const writePackage = (
+  rootDir: string,
+  packageName: string,
+  dependencies: Record<string, string> = {},
+  options: {
+    peerDependencies?: Record<string, string>
+    peerDependenciesMeta?: Record<string, { optional?: boolean }>
+  } = {}
+) => {
   const packageDir = path.join(rootDir, 'node_modules', ...packageName.split('/'))
   fs.mkdirSync(packageDir, { recursive: true })
   fs.writeFileSync(
@@ -29,6 +38,8 @@ const writePackage = (rootDir: string, packageName: string, dependencies: Record
       dependencies,
       main: 'index.js',
       name: packageName,
+      peerDependencies: options.peerDependencies,
+      peerDependenciesMeta: options.peerDependenciesMeta,
       version: '1.0.0'
     })
   )
@@ -99,13 +110,42 @@ describe('verify-packaged-runtime-deps', () => {
     expect(closure.parents.get('scheduler')).toBe('react-dom')
   })
 
+  it('collects required peer dependencies in the package closure', () => {
+    const tempDir = createTempDir()
+
+    writePackage(tempDir, 'openai-oauth', { ai: '^1.0.0' })
+    writePackage(tempDir, 'ai', {}, { peerDependencies: { zod: '^4.0.0' } })
+    writePackage(tempDir, 'zod')
+
+    const closure = collectPackageDependencyClosure(['openai-oauth'], tempDir)
+
+    expect([...closure.packageNames].sort()).toEqual(['ai', 'openai-oauth', 'zod'])
+    expect(closure.parents.get('zod')).toBe('ai')
+  })
+
   it('copies only declared external packages that are missing from the primary package', () => {
     const fallbackPackageNames = computeFallbackPackageNames({
+      externalExpectedPackages: new Set(),
       expectedPackages: new Set(['selection-hook', 'debug', 'ms']),
       primaryPackagedPackageNames: new Set(['selection-hook'])
     })
 
     expect([...fallbackPackageNames].sort()).toEqual(['debug', 'ms'])
+  })
+
+  it('requires declared external runtime dependencies in fallback node_modules even if bundled elsewhere', () => {
+    const fallbackPackageNames = computeFallbackPackageNames({
+      externalExpectedPackages: new Set(['openai-oauth', 'yargs']),
+      expectedPackages: new Set(['openai-oauth', 'yargs']),
+      primaryPackagedPackageNames: new Set(['yargs'])
+    })
+
+    expect([...fallbackPackageNames].sort()).toEqual(['openai-oauth', 'yargs'])
+  })
+
+  it('skips nested pnpm bin shims when copying fallback runtime packages', () => {
+    expect(shouldCopyFallbackRuntimePath('/tmp/pkg/node_modules/.bin/semver')).toBe(false)
+    expect(shouldCopyFallbackRuntimePath('/tmp/pkg/node_modules/semver/bin/semver.js')).toBe(true)
   })
 
   it('flags undeclared startup externals referenced by the built bundle', () => {

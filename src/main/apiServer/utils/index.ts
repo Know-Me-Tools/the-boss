@@ -29,8 +29,8 @@ export async function getAvailableProviders(): Promise<Provider[]> {
       return []
     }
 
-    // Support OpenAI-compatible and Anthropic-compatible providers for API server
-    const supportedTypes: ProviderType[] = ['openai', 'anthropic', 'ollama', 'new-api']
+    // Support agent-visible providers that the agent runtime can execute directly or via the local compatibility proxy.
+    const supportedTypes: ProviderType[] = ['openai', 'openai-response', 'anthropic', 'vertexai', 'ollama', 'new-api']
     const supportedProviders = providers.filter((p: Provider) => p.enabled && supportedTypes.includes(p.type))
 
     // Format provider apiHost according to their type
@@ -175,7 +175,7 @@ export async function validateModelId(model: string): Promise<{
         valid: false,
         error: {
           type: 'provider_not_found',
-          message: `Provider '${providerId}' not found, not enabled, or not supported. Only OpenAI providers are currently supported.`,
+          message: `Provider '${providerId}' not found, not enabled, or not supported by the agents runtime.`,
           code: 'provider_not_found'
         }
       }
@@ -277,8 +277,8 @@ export function validateProvider(provider: Provider): boolean {
       return false
     }
 
-    // Support OpenAI and Anthropic type providers
-    if (provider.type !== 'openai' && provider.type !== 'anthropic') {
+    // Support agent-runtime providers that can be executed natively or via compatibility proxy.
+    if (!['openai', 'openai-response', 'anthropic', 'vertexai'].includes(provider.type)) {
       logger.debug('Provider type not supported', {
         providerId: provider.id,
         providerType: provider.type

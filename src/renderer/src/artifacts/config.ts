@@ -405,12 +405,20 @@ export function parseArtifactDirectiveOverrides(kind: 'html' | 'react', source: 
     kind === 'html' ? parseHtmlOverride(source, 'artifact-network') : parseReactOverride(source, 'artifact-network')
   const servicesRaw =
     kind === 'html' ? parseHtmlOverride(source, 'artifact-services') : parseReactOverride(source, 'artifact-services')
+  const serviceToolsRaw =
+    kind === 'html'
+      ? parseHtmlOverride(source, 'artifact-service-tools')
+      : parseReactOverride(source, 'artifact-service-tools')
 
   return {
     themeId: themeRaw as ArtifactThemeId | undefined,
     internetEnabled:
       internetRaw === undefined ? undefined : ['on', 'true', 'enabled'].includes(internetRaw.toLowerCase()),
     serviceIds: servicesRaw
+      ?.split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+    serviceToolIds: serviceToolsRaw
       ?.split(',')
       .map((value) => value.trim())
       .filter(Boolean)
@@ -430,17 +438,21 @@ export function resolveArtifactAccessPolicy(
 ): ArtifactAccessPolicy {
   return {
     internetEnabled: overrides.internetEnabled ?? settings.accessPolicy.internetEnabled,
-    serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds
+    serviceIds: overrides.serviceIds ?? settings.accessPolicy.serviceIds,
+    serviceToolIds: overrides.serviceToolIds ?? settings.accessPolicy.serviceToolIds
   }
 }
 
 function getArtifactServiceBridgeScript(settings: ArtifactSettings, overrides: ArtifactDirectiveOverrides): string {
-  const allowedIds = resolveArtifactAccessPolicy(settings, overrides).serviceIds
+  const accessPolicy = resolveArtifactAccessPolicy(settings, overrides)
+  const allowedIds = accessPolicy.serviceIds
+  const allowedToolIds = accessPolicy.serviceToolIds
 
   return `
     <script>
       ;(() => {
         const allowedIds = new Set(${JSON.stringify(allowedIds)})
+        const allowedToolIds = new Set(${JSON.stringify(allowedToolIds)})
         const pendingRequests = new Map()
         const subscriptions = new Map()
 
@@ -561,6 +573,26 @@ function getArtifactServiceBridgeScript(settings: ArtifactSettings, overrides: A
 
         window.artifactServices = {
           serviceIds: Array.from(allowedIds),
+          serviceToolIds: Array.from(allowedToolIds),
+          invokeTool(toolId, input = {}) {
+            return new Promise((resolve, reject) => {
+              try {
+                if (!allowedToolIds.has(toolId)) {
+                  throw new Error('Artifact service tool is not allowed in this preview.')
+                }
+                const requestId = createRequestId('artifact-tool')
+                pendingRequests.set(requestId, { resolve, reject })
+                postRequest({
+                  kind: 'invoke-tool',
+                  requestId,
+                  toolId,
+                  input
+                })
+              } catch (error) {
+                reject(error)
+              }
+            })
+          },
           invokeOperation(serviceId, operationId, input = {}) {
             return new Promise((resolve, reject) => {
               try {
@@ -617,6 +649,8 @@ function getArtifactServiceBridgeScript(settings: ArtifactSettings, overrides: A
         }
 
         llmCompatibilityTarget.serviceIds = Array.from(allowedIds)
+        llmCompatibilityTarget.serviceToolIds = Array.from(allowedToolIds)
+        llmCompatibilityTarget.invokeTool = (...args) => window.artifactServices.invokeTool(...args)
         llmCompatibilityTarget.invokeOperation = (...args) => window.artifactServices.invokeOperation(...args)
         llmCompatibilityTarget.subscribe = (...args) => window.artifactServices.subscribe(...args)
         llmCompatibilityTarget.call = (...args) => llmCompatibilityTarget(...args)

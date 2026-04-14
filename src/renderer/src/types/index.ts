@@ -58,6 +58,7 @@ export type Assistant = {
   /** MCP mode: 'disabled' (no MCP), 'auto' (hub server only), 'manual' (user selects servers) */
   mcpMode?: McpMode
   mcpServers?: MCPServer[]
+  serviceToolIds?: string[]
   knowledgeRecognition?: 'off' | 'on'
   regularPhrases?: QuickPhrase[] // Added for regular phrase
   tags?: string[] // 助手标签

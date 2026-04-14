@@ -13,7 +13,6 @@ import { useAllProviders, useProvider, useProviders } from '@renderer/hooks/useP
 import { useTimer } from '@renderer/hooks/useTimer'
 import AnthropicSettings from '@renderer/pages/settings/ProviderSettings/AnthropicSettings'
 import { ModelList } from '@renderer/pages/settings/ProviderSettings/ModelList'
-import OpenAIOAuthSettings from '@renderer/pages/settings/ProviderSettings/OpenAIOAuthSettings'
 import { checkApi } from '@renderer/services/ApiService'
 import { isProviderSupportAuth } from '@renderer/services/ProviderService'
 import { useAppDispatch } from '@renderer/store'
@@ -442,8 +441,14 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       ? t('settings.provider.anthropic_api_host_tooltip')
       : t('settings.provider.api_host_tooltip')
 
-  const isAnthropicOAuth = () => provider.id === 'anthropic' && provider.authType === 'oauth'
+  const isAnthropicMax = provider.id === 'anthropic-max'
   const isOpenAIOAuth = () => provider.id === 'openai' && provider.authType === 'oauth'
+  const apiKeyLabel = isAnthropicMax
+    ? t('settings.provider.anthropic_max.auth_token_label')
+    : t('settings.provider.api_key.label')
+  const apiKeyTip = isAnthropicMax
+    ? t('settings.provider.anthropic_max.auth_token_tip')
+    : t('settings.provider.api_key.tip')
 
   return (
     <SettingContainer theme={theme} style={{ background: 'var(--color-background)' }}>
@@ -493,7 +498,6 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
               { value: 'oauth', label: t('settings.provider.openai.oauth.oauth') }
             ]}
           />
-          {provider.authType === 'oauth' && <OpenAIOAuthSettings />}
         </>
       )}
       {provider.id === 'ovms' && <OVMSSettings />}
@@ -513,7 +517,8 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
           {provider.authType === 'oauth' && <AnthropicSettings />}
         </>
       )}
-      {!hideApiInput && !isAnthropicOAuth() && !isOpenAIOAuth() && (
+      {isAnthropicMax && <AnthropicSettings mode="max" />}
+      {!hideApiInput && !(provider.id === 'anthropic' && provider.authType === 'oauth') && !isOpenAIOAuth() && (
         <>
           {!hideApiKeyInput && (
             <>
@@ -524,7 +529,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
                   alignItems: 'center',
                   justifyContent: 'space-between'
                 }}>
-                {t('settings.provider.api_key.label')}
+                {apiKeyLabel}
                 {provider.id !== 'copilot' && (
                   <Tooltip title={t('settings.provider.api.key.list.open')} mouseEnterDelay={0.5}>
                     <Button type="text" onClick={openApiKeyList} icon={<Settings2 size={16} />} />
@@ -534,7 +539,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
               <Space.Compact style={{ width: '100%', marginTop: 5 }}>
                 <Input.Password
                   value={localApiKey}
-                  placeholder={t('settings.provider.api_key.label')}
+                  placeholder={apiKeyLabel}
                   onChange={(e) => setLocalApiKey(e.target.value)}
                   spellCheck={false}
                   autoFocus={provider.enabled && provider.apiKey === '' && !isProviderSupportAuth(provider)}
@@ -559,11 +564,11 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
                 <HStack>
                   {apiKeyWebsite && !isDmxapi && (
                     <SettingHelpLink target="_blank" href={apiKeyWebsite}>
-                      {t('settings.provider.get_api_key')}
+                      {isAnthropicMax ? apiKeyLabel : t('settings.provider.get_api_key')}
                     </SettingHelpLink>
                   )}
                 </HStack>
-                <SettingHelpText>{t('settings.provider.api_key.tip')}</SettingHelpText>
+                <SettingHelpText>{apiKeyTip}</SettingHelpText>
               </SettingHelpTextRow>
             </>
           )}

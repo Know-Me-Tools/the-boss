@@ -20,7 +20,7 @@ import type { Model, Provider } from '@renderer/types'
 import { filterModelsByKeywords, getFancyProviderName } from '@renderer/utils'
 import { getDuplicateModelNames, isFreeModel } from '@renderer/utils/model'
 import { isNewApiProvider } from '@renderer/utils/provider'
-import { Button, Empty, Flex, Modal, Spin, Tabs, Tooltip } from 'antd'
+import { Alert, Button, Empty, Flex, Modal, Spin, Tabs, Tooltip } from 'antd'
 import Input from 'antd/es/input/Input'
 import { groupBy, isEmpty, uniqBy } from 'lodash'
 import { debounce } from 'lodash'
@@ -44,9 +44,10 @@ interface Props extends ShowParams {
 
 const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
   const [open, setOpen] = useState(true)
-  const { provider, models, addModel, removeModel } = useProvider(providerId)
+  const { provider, models, addModel, removeModel, updateProvider } = useProvider(providerId)
   const [listModels, setListModels] = useState<Model[]>([])
   const [loadingModels, setLoadingModels] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [searchText, setSearchText] = useState('')
   const [filterSearchText, setFilterSearchText] = useState('')
   const debouncedSetFilterText = useMemo(
@@ -178,16 +179,24 @@ const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
 
   const loadModels = useCallback(async (provider: Provider) => {
     setLoadingModels(true)
+    setLoadError(null)
     try {
-      const models = await fetchModels(provider)
+      const models = await fetchModels(provider, { throwOnError: true })
       const filteredModels = models.filter((model) => !isEmpty(model.name))
       setListModels(filteredModels)
+      if (provider.id === 'anthropic-max') {
+        updateProvider({ models: filteredModels })
+      }
     } catch (error) {
       logger.error(`Failed to load models for provider ${getFancyProviderName(provider)}`, error as Error)
+      setLoadError((error as Error)?.message || t('settings.models.manage.fetch_failed'))
+      if (provider.id !== 'anthropic-max') {
+        setListModels([])
+      }
     } finally {
       setLoadingModels(false)
     }
-  }, [])
+  }, [t, updateProvider])
 
   useEffect(() => {
     void loadModels(provider)
@@ -315,6 +324,27 @@ const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
         spinning={isLoading}
         indicator={<LoadingIcon color="var(--color-text-2)" style={{ opacity: loadingModels ? 1 : 0 }} />}>
         <ListContainer>
+          {loadError ? (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 12 }}
+              message={loadError}
+              description={
+                provider.id === 'openai' && provider.authType === 'oauth'
+                  ? t(
+                      'settings.models.manage.oauth_fetch_help',
+                      'Refresh the provider status, confirm the local sidecar is healthy, and then fetch the model list again.'
+                    )
+                  : provider.id === 'anthropic-max'
+                    ? t(
+                        'settings.provider.anthropic_max.auth_token_tip',
+                        'Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.'
+                      )
+                  : undefined
+              }
+            />
+          ) : null}
           {loadingModels || isEmpty(list) ? (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}

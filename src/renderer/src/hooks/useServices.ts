@@ -2,6 +2,7 @@ import type {
   GraphQLServiceDefinition,
   ImportGraphQLServiceRequest,
   ImportOpenAPIServiceRequest,
+  ImportSupabaseServiceRequest,
   OpenAPIServiceDefinition,
   ServiceDefinition,
   ServiceMetadataPatch
@@ -44,6 +45,15 @@ export function useServices() {
     [reload]
   )
 
+  const importSupabase = useCallback(
+    async (request: ImportSupabaseServiceRequest): Promise<ServiceDefinition> => {
+      const service = await window.api.services.importSupabase(request)
+      await reload()
+      return service
+    },
+    [reload]
+  )
+
   const updateService = useCallback(
     async (id: string, patch: ServiceMetadataPatch): Promise<ServiceDefinition> => {
       const service = await window.api.services.updateMetadata(id, patch)
@@ -70,6 +80,7 @@ export function useServices() {
     reload,
     importOpenAPI,
     importGraphQL,
+    importSupabase,
     updateService,
     deleteService
   }

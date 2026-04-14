@@ -3,6 +3,7 @@ import { formatProviderApiHost } from '@main/aiCore/provider/providerConfig'
 import { mcpApiService } from '@main/apiServer/services/mcp'
 import type { ModelValidationError } from '@main/apiServer/utils'
 import { validateModelId } from '@main/apiServer/utils'
+import { resolveAnthropicAuthToken } from '@main/services/AnthropicAuthResolver'
 import { reduxService } from '@main/services/ReduxService'
 import { getDataPath } from '@main/utils'
 import { buildFunctionCallToolName } from '@shared/mcp'
@@ -210,7 +211,11 @@ export abstract class BaseService {
           name: serviceTool.name,
           type: 'service',
           description: serviceTool.description || `Projected service tool from ${serviceTool.serviceName}`,
-          requirePermissions: true
+          requirePermissions: true,
+          serviceId: serviceTool.serviceId,
+          serviceName: serviceTool.serviceName,
+          serviceKind: serviceTool.serviceKind,
+          projectionKind: serviceTool.projectionKind
         })
       }
     } catch (error) {
@@ -452,8 +457,13 @@ export abstract class BaseService {
       }
 
       const requiresApiKey = !localProvidersWithoutApiKey.includes(validation.provider.id)
+      const anthropicAuthToken = await resolveAnthropicAuthToken(validation.provider)
 
       if (!validation.provider.apiKey) {
+        if (anthropicAuthToken) {
+          continue
+        }
+
         if (requiresApiKey) {
           throw new AgentModelValidationError(
             { agentType, field, model: modelValue },

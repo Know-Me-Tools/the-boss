@@ -25,6 +25,7 @@ import { isWin } from '@main/constant'
 import AssistantServer from '@main/mcpServers/assistant'
 import BrowserServer from '@main/mcpServers/browser/server'
 import ClawServer from '@main/mcpServers/claw'
+import { resolveClaudeCodeAnthropicCredentials } from '@main/services/AnthropicAuthResolver'
 import { configManager } from '@main/services/ConfigManager'
 import {
   getNodeProxyConfigFromEnvironment,
@@ -57,6 +58,7 @@ import { channelService } from '../ChannelService'
 import { PromptBuilder } from '../cherryclaw/prompt'
 import { sessionService } from '../SessionService'
 import { buildNamespacedToolCallId } from './claude-stream-state'
+import { resolveClaudeCodeProviderRoute } from './providerRoutes'
 import { promptForToolApproval } from './tool-permissions'
 import { ClaudeStreamState, transformSDKMessageToStreamParts } from './transform'
 
@@ -138,25 +140,19 @@ class ClaudeCodeService implements AgentServiceInterface {
       return aiStream
     }
 
-    const isAzureOpenAI = provider.type === 'azure-openai'
-    const isAnthropicType = provider.type === 'anthropic'
-    const hasAnthropicHost = provider.anthropicApiHost?.trim()
-
-    if (!isAnthropicType && !isAzureOpenAI && !hasAnthropicHost) {
-      logger.error('Anthropic provider configuration is missing', {
-        modelInfo
-      })
-
+    const providerRoute = resolveClaudeCodeProviderRoute(provider)
+    if (!providerRoute) {
+      logger.error('Provider route is unsupported for Claude Code runtime', { modelInfo })
       aiStream.emit('data', {
         type: 'error',
-        error: new Error(`Invalid provider type '${provider.type}'. Expected 'anthropic' provider type.`)
+        error: new Error(`Provider type '${provider.type}' is not supported by the Claude Code runtime.`)
       })
       return aiStream
     }
 
     // Providers like Ollama and LM Studio don't require real API keys,
-    // but the Claude Agent SDK needs a non-empty placeholder value
-    if (!provider.apiKey) {
+    // but the Claude Agent SDK needs a non-empty placeholder value.
+    if (!provider.apiKey && (provider.id === 'ollama' || provider.id === 'lmstudio')) {
       provider.apiKey = provider.id
     }
 
@@ -172,25 +168,33 @@ class ClaudeCodeService implements AgentServiceInterface {
     // by stripping any trailing API version (e.g. `/v1`).
     // For Azure OpenAI providers, the Anthropic endpoint lives under /anthropic.
     const resolveAnthropicBaseUrl = (): string => {
-      if (isAzureOpenAI) {
+      if (providerRoute === 'compat_proxy_openai' || providerRoute === 'compat_proxy_vertex') {
+        return `http://${apiConfig.host}:${apiConfig.port}/${provider.id}`
+      }
+
+      if (provider.type === 'azure-openai') {
         const host = withoutTrailingApiVersion(provider.apiHost).replace(/\/openai$/, '')
         return `${host}/anthropic`
       }
       return withoutTrailingApiVersion(provider.anthropicApiHost?.trim() || provider.apiHost)
     }
     const anthropicBaseUrl = resolveAnthropicBaseUrl()
+    const nativeAnthropicCredentials =
+      providerRoute === 'native_anthropic' ? await resolveClaudeCodeAnthropicCredentials(provider) : null
+    const anthropicApiKey =
+      providerRoute === 'native_anthropic' ? (nativeAnthropicCredentials?.apiKey ?? '') : apiConfig.apiKey
+    const anthropicAuthToken =
+      providerRoute === 'native_anthropic'
+        ? (nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? '')
+        : apiConfig.apiKey
 
     const env = {
       ...loginShellEnv,
       ...getProxyEnvironment(process.env),
       // prevent claude agent sdk using bedrock api
       CLAUDE_CODE_USE_BEDROCK: '0',
-      // TODO: fix the proxy api server
-      // ANTHROPIC_API_KEY: apiConfig.apiKey,
-      // ANTHROPIC_AUTH_TOKEN: apiConfig.apiKey,
-      // ANTHROPIC_BASE_URL: `http://${apiConfig.host}:${apiConfig.port}/${modelInfo.provider.id}`,
-      ANTHROPIC_API_KEY: provider.apiKey,
-      ANTHROPIC_AUTH_TOKEN: provider.apiKey,
+      ANTHROPIC_API_KEY: anthropicApiKey,
+      ANTHROPIC_AUTH_TOKEN: anthropicAuthToken,
       ANTHROPIC_BASE_URL: anthropicBaseUrl,
       ANTHROPIC_MODEL: modelInfo.modelId,
       ANTHROPIC_DEFAULT_OPUS_MODEL: modelInfo.modelId,
@@ -614,6 +618,7 @@ class ClaudeCodeService implements AgentServiceInterface {
       prompt,
       cwd: options.cwd,
       model: options.model,
+      providerRoute,
       permissionMode: options.permissionMode,
       maxTurns: options.maxTurns,
       allowedTools: options.allowedTools,

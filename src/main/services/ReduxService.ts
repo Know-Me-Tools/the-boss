@@ -60,16 +60,45 @@ export class ReduxService {
     return mainWindow.webContents
   }
 
-  // Select state from renderer process
+  /**
+   * Validates that a selector is a safe dotted property path and not an
+   * arbitrary JS expression.  Rejects anything containing parentheses,
+   * brackets, operators, whitespace, semicolons, or other non-path characters.
+   */
+  private static validateSelector(selector: string): string[] {
+    // Strip leading "state." prefix so both "state.llm.providers" and
+    // "llm.providers" resolve to the same path segments.
+    const normalised = selector.startsWith('state.') ? selector.slice('state.'.length) : selector
+
+    // Allow only dotted identifier paths: identifiers separated by dots.
+    // Identifiers may contain letters, digits, underscores, and dollar signs.
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)*$/.test(normalised)) {
+      throw new Error(`Invalid selector "${selector}": only dotted property paths are allowed`)
+    }
+
+    return normalised.split('.')
+  }
+
+  // Select state from renderer process using a safe dotted property path.
+  // Accepts both "state.llm.providers" and "llm.providers" forms.
   async select<T = StoreValue>(selector: string): Promise<T> {
     try {
+      const segments = ReduxService.validateSelector(selector)
       const webContents = await this.getWebContents()
-      return await webContents.executeJavaScript(`
-        (() => {
-          const state = window.store.getState();
-          return ${selector};
-        })()
-      `)
+
+      // Fetch the full state once, then resolve the path in the main process
+      // so we never evaluate interpolated JS in the renderer.
+      const state = await webContents.executeJavaScript('window.store.getState()')
+
+      let value: any = state
+      for (const segment of segments) {
+        if (value == null || typeof value !== 'object') {
+          return undefined as T
+        }
+        value = value[segment]
+      }
+
+      return value as T
     } catch (error) {
       logger.error('Failed to select store value:', error as Error)
       throw error

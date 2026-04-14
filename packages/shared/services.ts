@@ -2,7 +2,7 @@ import * as z from 'zod'
 
 export const SERVICES_REGISTRY_VERSION = 1
 
-export const ServiceKindSchema = z.enum(['openapi', 'graphql'])
+export const ServiceKindSchema = z.enum(['openapi', 'graphql', 'supabase'])
 export type ServiceKind = z.infer<typeof ServiceKindSchema>
 
 export const ServiceImportSourceTypeSchema = z.enum(['url', 'file', 'text', 'introspection', 'sdl'])
@@ -78,7 +78,15 @@ export const ServiceAuthSchemeSchema = z.discriminatedUnion('type', [
 ])
 export type ServiceAuthScheme = z.infer<typeof ServiceAuthSchemeSchema>
 
-export const ServiceToolProjectionKindSchema = z.enum(['openapi-operation', 'graphql-query', 'graphql-mutation'])
+export const ServiceToolProjectionKindSchema = z.enum([
+  'openapi-operation',
+  'graphql-query',
+  'graphql-mutation',
+  'supabase-table',
+  'supabase-rpc',
+  'supabase-auth',
+  'supabase-storage'
+])
 export type ServiceToolProjectionKind = z.infer<typeof ServiceToolProjectionKindSchema>
 
 export const GraphQLServiceOperationTypeSchema = z.enum(['query', 'mutation', 'subscription'])
@@ -86,6 +94,21 @@ export type GraphQLServiceOperationType = z.infer<typeof GraphQLServiceOperation
 
 export const GraphQLSubscriptionTransportSchema = z.enum(['graphql-ws', 'sse', 'http-multipart'])
 export type GraphQLSubscriptionTransport = z.infer<typeof GraphQLSubscriptionTransportSchema>
+
+export const SupabaseServiceOperationKindSchema = z.enum([
+  'table-select',
+  'table-insert',
+  'table-update',
+  'table-delete',
+  'rpc',
+  'auth-get-user',
+  'storage-list-buckets',
+  'storage-upload'
+])
+export type SupabaseServiceOperationKind = z.infer<typeof SupabaseServiceOperationKindSchema>
+
+export const SupabaseCredentialTypeSchema = z.enum(['anon', 'service'])
+export type SupabaseCredentialType = z.infer<typeof SupabaseCredentialTypeSchema>
 
 export const JsonSchemaLikeSchema = z.record(z.string(), z.unknown()).default({})
 export type JsonSchemaLike = z.infer<typeof JsonSchemaLikeSchema>
@@ -140,6 +163,21 @@ export const GraphQLServiceOperationSchema = z.object({
 })
 export type GraphQLServiceOperation = z.infer<typeof GraphQLServiceOperationSchema>
 
+export const SupabaseServiceOperationSchema = z.object({
+  id: z.string().min(1),
+  kind: SupabaseServiceOperationKindSchema,
+  name: z.string().min(1),
+  description: z.string().optional(),
+  method: z.enum(['GET', 'POST', 'PATCH', 'DELETE']),
+  path: z.string().min(1),
+  inputSchema: JsonSchemaLikeSchema,
+  credentialType: SupabaseCredentialTypeSchema.default('anon'),
+  table: z.string().optional(),
+  rpcName: z.string().optional(),
+  bucket: z.string().optional()
+})
+export type SupabaseServiceOperation = z.infer<typeof SupabaseServiceOperationSchema>
+
 const BaseServiceDefinitionSchema = z.object({
   serviceId: z.string().min(1),
   name: z.string().min(1),
@@ -177,9 +215,20 @@ export const GraphQLServiceDefinitionSchema = BaseServiceDefinitionSchema.extend
 })
 export type GraphQLServiceDefinition = z.infer<typeof GraphQLServiceDefinitionSchema>
 
+export const SupabaseServiceDefinitionSchema = BaseServiceDefinitionSchema.extend({
+  kind: z.literal('supabase'),
+  projectUrl: z.string().url(),
+  databaseSchema: z.string().min(1).default('public'),
+  anonKey: ServiceSecretRefSchema,
+  serviceKey: ServiceSecretRefSchema.optional(),
+  operations: z.array(SupabaseServiceOperationSchema).default([])
+})
+export type SupabaseServiceDefinition = z.infer<typeof SupabaseServiceDefinitionSchema>
+
 export const ServiceDefinitionSchema = z.discriminatedUnion('kind', [
   OpenAPIServiceDefinitionSchema,
-  GraphQLServiceDefinitionSchema
+  GraphQLServiceDefinitionSchema,
+  SupabaseServiceDefinitionSchema
 ])
 export type ServiceDefinition = z.infer<typeof ServiceDefinitionSchema>
 
@@ -260,14 +309,32 @@ export const ImportGraphQLServiceRequestSchema = z.object({
 })
 export type ImportGraphQLServiceRequest = z.infer<typeof ImportGraphQLServiceRequestSchema>
 
+export const ImportSupabaseServiceRequestSchema = z.object({
+  serviceId: z.string().optional(),
+  name: z.string().min(1),
+  projectUrl: z.string().url(),
+  databaseSchema: z.string().min(1).default('public'),
+  anonKey: SecretInputSchema,
+  serviceKey: SecretInputSchema.optional(),
+  tables: z.array(z.string().min(1)).default([]),
+  rpcFunctions: z.array(z.string().min(1)).default([]),
+  storageBuckets: z.array(z.string().min(1)).default([]),
+  enableAuth: z.boolean().default(true),
+  headerTemplates: z.array(HeaderTemplateInputSchema).default([])
+})
+export type ImportSupabaseServiceRequest = z.infer<typeof ImportSupabaseServiceRequestSchema>
+
 export const ServiceMetadataPatchSchema = z.object({
   name: z.string().min(1).optional(),
   endpoint: z.string().url().optional(),
   subscriptionEndpoint: z.string().url().optional(),
+  projectUrl: z.string().url().optional(),
+  databaseSchema: z.string().min(1).optional(),
   auth: ServiceAuthInputSchema.optional(),
   headerTemplates: z.array(HeaderTemplateInputSchema).optional(),
   projectedTools: z.array(ServiceToolProjectionSchema).optional(),
-  graphqlOperations: z.array(GraphQLServiceOperationSchema).optional()
+  graphqlOperations: z.array(GraphQLServiceOperationSchema).optional(),
+  supabaseOperations: z.array(SupabaseServiceOperationSchema).optional()
 })
 export type ServiceMetadataPatch = z.infer<typeof ServiceMetadataPatchSchema>
 
@@ -283,6 +350,8 @@ export const ServiceToolSummarySchema = z.object({
   description: z.string().default(''),
   serviceId: z.string().min(1),
   serviceName: z.string().min(1),
+  serviceKind: ServiceKindSchema,
+  sourceOperationId: z.string().min(1),
   inputSchema: JsonSchemaLikeSchema,
   projectionKind: ServiceToolProjectionKindSchema
 })

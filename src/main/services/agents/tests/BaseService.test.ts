@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import type { AgentType, Tool } from '@types'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AgentModelField } from '../errors'
 
@@ -31,7 +31,16 @@ vi.mock('@main/services/ReduxService', () => ({
   }
 }))
 
-const mockValidateModelId = vi.fn()
+const { mockResolveAnthropicAuthToken } = vi.hoisted(() => ({
+  mockResolveAnthropicAuthToken: vi.fn()
+}))
+vi.mock('@main/services/AnthropicAuthResolver', () => ({
+  resolveAnthropicAuthToken: (...args: unknown[]) => mockResolveAnthropicAuthToken(...args)
+}))
+
+const { mockValidateModelId } = vi.hoisted(() => ({
+  mockValidateModelId: vi.fn()
+}))
 vi.mock('@main/apiServer/utils', () => ({
   validateModelId: (...args: unknown[]) => mockValidateModelId(...args)
 }))
@@ -130,6 +139,11 @@ describe('BaseService.normalizeAllowedTools', () => {
 describe('BaseService.validateAgentModels', () => {
   const service = new TestBaseService()
 
+  beforeEach(() => {
+    mockResolveAnthropicAuthToken.mockReset()
+    mockResolveAnthropicAuthToken.mockResolvedValue(null)
+  })
+
   it('throws error when regular provider is missing API key', async () => {
     mockValidateModelId.mockResolvedValue({
       valid: true,
@@ -172,6 +186,18 @@ describe('BaseService.validateAgentModels', () => {
 
     await expect(service.validateModels('claude-code', { model: 'openai:gpt-4' })).resolves.not.toThrow()
     expect(provider.apiKey).toBe('sk-existing-key')
+  })
+
+  it('accepts anthropic-max when OAuth credentials can be resolved without a manual API key', async () => {
+    const provider = { id: 'anthropic-max', type: 'anthropic', apiKey: '', authType: 'oauth' }
+    mockResolveAnthropicAuthToken.mockResolvedValue('oauth-token')
+    mockValidateModelId.mockResolvedValue({
+      valid: true,
+      provider
+    })
+
+    await expect(service.validateModels('claude-code', { model: 'anthropic-max:claude-sonnet-4-5' })).resolves.not.toThrow()
+    expect(provider.apiKey).toBe('')
   })
 })
 
