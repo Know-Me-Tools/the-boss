@@ -286,7 +286,35 @@ class AnthropicService extends Error {
     }
   }
 
-  // 12. Check if credentials exist (env var, own store, or Claude Code fallback)
+  // 12. Get raw credentials (access_token + refresh_token + expires_at) after refreshing if needed.
+  // Used by callers that need the full credential object rather than just the access token.
+  public async getRawCredentials(): Promise<Credentials | null> {
+    const envToken = process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()
+    if (envToken) {
+      // env token has no refresh info — treat as non-expiring
+      return { access_token: envToken, refresh_token: '', expires_at: 0 }
+    }
+
+    let creds = await this.loadCredentials()
+    if (!creds) {
+      creds = await this.loadClaudeCodeCredentials()
+    }
+    if (!creds) return null
+
+    const isValid = creds.expires_at === 0 || creds.expires_at > Date.now() + 60_000
+    if (isValid) return creds
+
+    // Token expired — refresh and persist
+    try {
+      const newCreds = await this.refreshAccessToken(creds.refresh_token)
+      await this.saveCredentials(newCreds)
+      return newCreds
+    } catch {
+      return null
+    }
+  }
+
+  // 13. Check if credentials exist (env var, own store, or Claude Code fallback)
   public async hasCredentials(): Promise<boolean> {
     if (process.env.CLAUDE_CODE_OAUTH_TOKEN?.trim()) return true
     const creds = await this.loadCredentials()

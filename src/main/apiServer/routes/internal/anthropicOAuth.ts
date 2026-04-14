@@ -1,3 +1,4 @@
+import { promises as fs } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 
@@ -46,8 +47,8 @@ function writeSseEvent(res: ExpressResponse, event: Record<string, unknown>) {
 
 async function handleMessagesRequest(req: ExpressRequest, res: ExpressResponse) {
   try {
-    const oauthToken = await anthropicService.getValidAccessToken()
-    if (!oauthToken) {
+    const creds = await anthropicService.getRawCredentials()
+    if (!creds) {
       res.status(401).json({
         error: {
           message: 'Anthropic OAuth credentials are not configured.',
@@ -77,6 +78,29 @@ async function handleMessagesRequest(req: ExpressRequest, res: ExpressResponse) 
       return
     }
 
+    // Write credentials to Claude Code's native format so the subprocess can
+    // authenticate without us injecting ANTHROPIC_AUTH_TOKEN (which would cause
+    // the subprocess to hit api.anthropic.com/v1/messages with a Bearer token —
+    // rejected with "OAuth authentication is currently not supported").
+    const claudeConfigDir = path.join(app.getPath('userData'), '.claude')
+    const claudeCredsPath = path.join(claudeConfigDir, 'credentials.json')
+    await fs.mkdir(claudeConfigDir, { recursive: true })
+    await fs.writeFile(
+      claudeCredsPath,
+      JSON.stringify(
+        {
+          oauth: {
+            accessToken: creds.access_token,
+            refreshToken: creds.refresh_token,
+            // expires_at === 0 means no expiry in Cherry Studio's format; Claude Code uses null
+            expiresAt: creds.expires_at === 0 ? null : creds.expires_at
+          }
+        },
+        null,
+        2
+      )
+    )
+
     const sdkQuery = query({
       prompt,
       options: {
@@ -94,12 +118,13 @@ async function handleMessagesRequest(req: ExpressRequest, res: ExpressResponse) 
         pathToClaudeCodeExecutable: getClaudeExecutablePath(),
         env: {
           ...process.env,
-          // Empty API key forces Claude Code SDK to use Bearer auth via ANTHROPIC_AUTH_TOKEN
+          // Clear any API key so Claude Code uses OAuth from credentials.json
           ANTHROPIC_API_KEY: '',
-          ANTHROPIC_AUTH_TOKEN: oauthToken,
-          ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
+          // Do NOT set ANTHROPIC_AUTH_TOKEN — that causes the subprocess to send
+          // Authorization: Bearer to api.anthropic.com which rejects Claude Max OAuth tokens.
+          // Do NOT set ANTHROPIC_BASE_URL — let Claude Code use its own routing.
           CLAUDE_CODE_USE_BEDROCK: '0',
-          CLAUDE_CONFIG_DIR: path.join(app.getPath('userData'), '.claude')
+          CLAUDE_CONFIG_DIR: claudeConfigDir
         }
       }
     })
