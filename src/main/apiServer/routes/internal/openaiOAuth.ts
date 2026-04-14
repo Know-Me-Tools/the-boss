@@ -5,6 +5,7 @@ import { loggerService } from '@main/services/LoggerService'
 import { openAIOAuthService } from '@main/services/OpenAIOAuthService'
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express'
 import express from 'express'
+import { defaultOpenAIOAuthModels } from 'openai-oauth'
 
 const logger = loggerService.withContext('ApiServerInternalOpenAIOAuthRoutes')
 
@@ -87,8 +88,15 @@ async function writeFetchResponse(res: ExpressResponse, response: Response) {
   })
 }
 
-router.get('/v1/models', async (req, res) => {
-  await forwardInternalRequest(req, res)
+router.get('/v1/models', (_req, res) => {
+  const now = Math.floor(Date.now() / 1000)
+  const models = (defaultOpenAIOAuthModels).map((id) => ({
+    id,
+    object: 'model',
+    created: now,
+    owned_by: 'openai'
+  }))
+  res.json({ object: 'list', data: models })
 })
 
 router.post('/v1/chat/completions', async (req, res) => {

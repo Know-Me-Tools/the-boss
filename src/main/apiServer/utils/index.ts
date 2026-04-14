@@ -4,6 +4,7 @@ import { loggerService } from '@main/services/LoggerService'
 import { reduxService } from '@main/services/ReduxService'
 import { isSiliconAnthropicCompatibleModel } from '@shared/config/providers'
 import type { ApiModel, Model, Provider, ProviderType } from '@types'
+import { defaultOpenAIOAuthModels } from 'openai-oauth'
 
 const logger = loggerService.withContext('ApiServerUtils')
 
@@ -48,15 +49,39 @@ export async function getAvailableProviders(): Promise<Provider[]> {
       }
     }
 
+    // For OpenAI OAuth providers, ensure Codex models are present in the model list.
+    // validateModelId and buildExecution both check provider.models — if the user hasn't
+    // fetched models since enabling OAuth, the list won't contain Codex models.
+    const finalProviders = formattedProviders.map((p: Provider) => {
+      if (p.type === 'openai' && p.authType === 'oauth') {
+        const existingIds = new Set(p.models?.map((m) => m.id) ?? [])
+        const missing = (defaultOpenAIOAuthModels)
+          .filter((id) => !existingIds.has(id))
+          .map(
+            (id) =>
+              ({
+                id,
+                name: id,
+                provider: p.id,
+                group: 'Codex'
+              }) as Model
+          )
+        if (missing.length > 0) {
+          return { ...p, models: [...(p.models ?? []), ...missing] }
+        }
+      }
+      return p
+    })
+
     // Cache the formatted results
-    CacheService.set(PROVIDERS_CACHE_KEY, formattedProviders, PROVIDERS_CACHE_TTL)
+    CacheService.set(PROVIDERS_CACHE_KEY, finalProviders, PROVIDERS_CACHE_TTL)
 
     logger.info('Providers filtered and formatted', {
-      supported: formattedProviders.length,
+      supported: finalProviders.length,
       total: providers.length
     })
 
-    return formattedProviders
+    return finalProviders
   } catch (error: any) {
     logger.error('Failed to get providers from Redux store', { error })
     return []
