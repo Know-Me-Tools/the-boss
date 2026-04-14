@@ -4,6 +4,7 @@ const Module = require('module')
 const acorn = require('acorn')
 const asar = require('@electron/asar')
 
+const { getArtifactRuntimeRootPackageNames } = require('./artifact-runtime-packages')
 const { getRuntimeExternalPackageNames, validateRuntimeExternalPackages } = require('./runtime-external-packages')
 
 const projectRoot = path.resolve(__dirname, '..')
@@ -113,6 +114,11 @@ const isCreateRequireCall = (node) => {
     return false
   }
 
+  if (node.type === 'SequenceExpression') {
+    const lastExpression = node.expressions?.[node.expressions.length - 1]
+    return isCreateRequireCall(lastExpression)
+  }
+
   if (node.type === 'Identifier' && node.name === 'createRequire') {
     return true
   }
@@ -139,6 +145,17 @@ const extractCreateRequireSpecifiers = (source) => {
       sourceType: 'script'
     })
 
+    const createRequireAliases = new Set()
+
+    const isAliasedCreateRequire = (node) =>
+      node?.type === 'Identifier' && createRequireAliases.has(node.name)
+
+    const addSpecifierFromArgument = (node) => {
+      if (node?.arguments?.[0]?.type === 'Literal' && typeof node.arguments[0].value === 'string') {
+        specifiers.add(node.arguments[0].value)
+      }
+    }
+
     const visitNode = (node) => {
       if (!node || typeof node !== 'object') {
         return
@@ -152,6 +169,25 @@ const extractCreateRequireSpecifiers = (source) => {
       }
 
       if (
+        node.type === 'VariableDeclarator' &&
+        node.id?.type === 'Identifier' &&
+        node.init?.type === 'CallExpression' &&
+        isCreateRequireCall(node.init.callee)
+      ) {
+        createRequireAliases.add(node.id.name)
+      }
+
+      if (
+        node.type === 'AssignmentExpression' &&
+        node.operator === '=' &&
+        node.left?.type === 'Identifier' &&
+        node.right?.type === 'CallExpression' &&
+        isCreateRequireCall(node.right.callee)
+      ) {
+        createRequireAliases.add(node.left.name)
+      }
+
+      if (
         node.type === 'CallExpression' &&
         node.callee?.type === 'CallExpression' &&
         isCreateRequireCall(node.callee.callee) &&
@@ -159,6 +195,22 @@ const extractCreateRequireSpecifiers = (source) => {
         typeof node.arguments[0].value === 'string'
       ) {
         specifiers.add(node.arguments[0].value)
+      }
+
+      if (node.type === 'CallExpression' && isAliasedCreateRequire(node.callee)) {
+        addSpecifierFromArgument(node)
+      }
+
+      if (
+        node.type === 'CallExpression' &&
+        node.callee?.type === 'MemberExpression' &&
+        !node.callee.computed &&
+        node.callee.property?.type === 'Identifier' &&
+        node.callee.property.name === 'resolve' &&
+        (isAliasedCreateRequire(node.callee.object) ||
+          (node.callee.object?.type === 'CallExpression' && isCreateRequireCall(node.callee.object.callee)))
+      ) {
+        addSpecifierFromArgument(node)
       }
 
       for (const value of Object.values(node)) {
@@ -172,11 +224,17 @@ const extractCreateRequireSpecifiers = (source) => {
 
     return [...specifiers]
   } catch (_error) {
-    const pattern = /createRequire\([^)]*\)\((['"`])([^'"`]+)\1\)/g
+    const patterns = [
+      /createRequire\([^)]*\)\((['"`])([^'"`]+)\1\)/g,
+      /createRequire\([^)]*\)\.resolve\((['"`])([^'"`]+)\1\)/g,
+      /\brequire[A-Za-z0-9_$]*\.resolve\((['"`])([^'"`]+)\1\)/g
+    ]
 
-    for (const match of source.matchAll(pattern)) {
-      if (match[2]) {
-        specifiers.add(match[2])
+    for (const pattern of patterns) {
+      for (const match of source.matchAll(pattern)) {
+        if (match[2]) {
+          specifiers.add(match[2])
+        }
       }
     }
 
@@ -187,7 +245,7 @@ const extractCreateRequireSpecifiers = (source) => {
 const extractBarePackageSpecifiers = (source) => {
   const packageNames = new Set()
 
-  for (const specifier of extractSpecifiers(source)) {
+  for (const specifier of [...extractSpecifiers(source), ...extractCreateRequireSpecifiers(source)]) {
     const packageName = normalizePackageName(specifier)
     if (packageName && !builtinModules.has(packageName)) {
       packageNames.add(packageName)
@@ -221,8 +279,38 @@ const getStartupEntryFiles = () =>
     fs.existsSync(file)
   )
 
+const findPackageManifestPath = (startDir) => {
+  let currentDir = startDir
+
+  while (true) {
+    const manifestPath = path.join(currentDir, 'package.json')
+    if (fs.existsSync(manifestPath)) {
+      return manifestPath
+    }
+
+    const parentDir = path.dirname(currentDir)
+    if (parentDir === currentDir) {
+      return null
+    }
+
+    currentDir = parentDir
+  }
+}
+
 const resolvePackageInfo = (packageName, basedir) => {
-  const manifestPath = require.resolve(`${packageName}/package.json`, { paths: [basedir] })
+  let manifestPath
+
+  try {
+    manifestPath = require.resolve(`${packageName}/package.json`, { paths: [basedir] })
+  } catch (error) {
+    const resolvedEntryPath = require.resolve(packageName, { paths: [basedir] })
+    manifestPath = findPackageManifestPath(path.dirname(resolvedEntryPath))
+
+    if (!manifestPath) {
+      throw error
+    }
+  }
+
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
 
   if (!manifest.name) {
@@ -292,6 +380,34 @@ const collectPackageDependencyClosure = (packageNames, basedir = projectRoot) =>
 
   return {
     packageNames: packageNamesInClosure,
+    parents,
+    skippedPackages
+  }
+}
+
+const mergeDependencyClosures = (closures) => {
+  const packageNames = new Set()
+  const parents = new Map()
+  const skippedPackages = new Set()
+
+  for (const closure of closures) {
+    for (const packageName of closure.packageNames) {
+      packageNames.add(packageName)
+    }
+
+    for (const [packageName, parentName] of closure.parents.entries()) {
+      if (!parents.has(packageName)) {
+        parents.set(packageName, parentName)
+      }
+    }
+
+    for (const packageName of closure.skippedPackages) {
+      skippedPackages.add(packageName)
+    }
+  }
+
+  return {
+    packageNames,
     parents,
     skippedPackages
   }
@@ -521,7 +637,11 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
   const referencedDeclaredExternalPackages = audit.startupRoots.filter((packageName) =>
     audit.declaredExternalPackages.includes(packageName)
   )
-  const closure = collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot)
+  const dedicatedRuntimeRoots = getArtifactRuntimeRootPackageNames()
+  const closure = mergeDependencyClosures([
+    collectPackageDependencyClosure(referencedDeclaredExternalPackages, projectRoot),
+    collectPackageDependencyClosure(dedicatedRuntimeRoots, projectRoot)
+  ])
   const packageLocations = collectPackagedPackageLocations(appOutDir)
   const fallbackRequiredPackages = computeFallbackPackageNames({
     expectedPackages: closure.packageNames,
@@ -550,6 +670,7 @@ const analyzePackagedRuntimeDependencies = (appOutDir) => {
 
   return {
     audit,
+    dedicatedRuntimeRoots,
     expectedPackages: closure.packageNames,
     fallbackRequiredPackages,
     missingPackages,

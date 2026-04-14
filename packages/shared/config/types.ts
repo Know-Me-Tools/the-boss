@@ -38,6 +38,8 @@ export type OpenAIOAuthHealthState = 'healthy' | 'unhealthy'
 
 export type OpenAIOAuthCredentialState = 'valid' | 'missing' | 'invalid' | 'unsupported'
 
+export type OpenAIOAuthDiagnosticsSource = 'spawn' | 'stderr' | 'stdout' | 'exit' | 'health' | 'credentials'
+
 export interface OpenAIOAuthCredentialStatus {
   state: OpenAIOAuthCredentialState
   authFilePath: string | null
@@ -55,6 +57,17 @@ export interface OpenAIOAuthHealthInfo {
   message?: string
 }
 
+export interface OpenAIOAuthDiagnostics {
+  summary: string
+  details?: string
+  source: OpenAIOAuthDiagnosticsSource
+  updatedAt: string
+}
+
+export type OpenAIOAuthOperationResult =
+  | { success: true }
+  | { success: false; message: string; diagnostics?: OpenAIOAuthDiagnostics }
+
 export interface OpenAIOAuthStatus {
   installState: OpenAIOAuthInstallState
   runState: OpenAIOAuthRunState
@@ -65,6 +78,7 @@ export interface OpenAIOAuthStatus {
   baseUrl: string
   availableModels: string[]
   message?: string
+  diagnostics?: OpenAIOAuthDiagnostics
 }
 
 export type LoaderReturn = {

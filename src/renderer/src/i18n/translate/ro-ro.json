@@ -1603,6 +1603,7 @@
     "current": "Curent",
     "cut": "Decupează",
     "default": "Implicit",
+    "defaultValue": "[to be translated]:Default",
     "delete": "Șterge",
     "delete_confirm": "Ești sigur că vrei să ștergi?",
     "delete_failed": "Nu s-a putut șterge",
@@ -2410,6 +2411,17 @@
       "code_style": "Stil cod",
       "compact": {
         "title": "Conversație compactată"
+      },
+      "contextManagement": {
+        "agent": "[to be translated]:Agent",
+        "assistant": "[to be translated]:Assistant",
+        "messageCounts": "[to be translated]:Messages",
+        "summaryPreview": "[to be translated]:Summary Preview",
+        "title": "[to be translated]:Context Management",
+        "tokensAfter": "[to be translated]:Tokens after",
+        "tokensBefore": "[to be translated]:Tokens before",
+        "tokensSaved": "[to be translated]:Tokens saved",
+        "trigger": "[to be translated]:Trigger"
       },
       "delete": {
         "content": "Ești sigur că vrei să ștergi acest mesaj?",
@@ -5597,7 +5609,44 @@
         "usage_title": "Utilizare"
       },
       "openai": {
-        "alert": "Furnizorul OpenAI nu mai acceptă metodele vechi de apelare. Dacă folosești un API terț, te rugăm să creezi un furnizor de servicii nou."
+        "alert": "Furnizorul OpenAI nu mai acceptă metodele vechi de apelare. Dacă folosești un API terț, te rugăm să creezi un furnizor de servicii nou.",
+        "oauth": {
+          "action_failed": "[to be translated]:OpenAI OAuth action failed",
+          "action_success": "[to be translated]:OpenAI OAuth status updated",
+          "api_key": "[to be translated]:API key",
+          "auth_file": "[to be translated]:Auth file",
+          "auth_method": "[to be translated]:Authentication method",
+          "available_models": "[to be translated]:Available models",
+          "credential_status": "[to be translated]:Credential status",
+          "health_status": "[to be translated]:Health",
+          "install": "[to be translated]:Check sidecar",
+          "install_status": "[to be translated]:Sidecar",
+          "local_endpoint": "[to be translated]:Local endpoint",
+          "oauth": "[to be translated]:ChatGPT OAuth",
+          "port": "[to be translated]:Local port",
+          "port_saved": "[to be translated]:OpenAI OAuth proxy port saved",
+          "proxy_status": "[to be translated]:Proxy",
+          "refresh": "[to be translated]:Refresh",
+          "save_port": "[to be translated]:Save port",
+          "start": "[to be translated]:Start proxy",
+          "state": {
+            "error": "[to be translated]:Error",
+            "healthy": "[to be translated]:Healthy",
+            "installed": "[to be translated]:Installed",
+            "invalid": "[to be translated]:Invalid",
+            "missing": "[to be translated]:Missing",
+            "running": "[to be translated]:Running",
+            "starting": "[to be translated]:Starting",
+            "stopped": "[to be translated]:Stopped",
+            "unhealthy": "[to be translated]:Unhealthy",
+            "unsupported": "[to be translated]:Unsupported",
+            "valid": "[to be translated]:Valid"
+          },
+          "status_load_failed": "[to be translated]:Failed to load OpenAI OAuth status",
+          "stop": "[to be translated]:Stop proxy",
+          "warning_description": "[to be translated]:This uses a local, unofficial community proxy that reuses your file-backed Codex auth cache. It should be used only on a trusted machine and never shared.",
+          "warning_title": "[to be translated]:Local sidecar only"
+        }
       },
       "remove_duplicate_keys": "Elimină cheile duplicate",
       "remove_invalid_keys": "Elimină cheile invalide",

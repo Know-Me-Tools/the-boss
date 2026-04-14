@@ -47,6 +47,7 @@ export enum ConfigKeys {
   DisableHardwareAcceleration = 'disableHardwareAcceleration',
   UseSystemTitleBar = 'useSystemTitleBar',
   Proxy = 'proxy',
+  OpenAIOAuthPort = 'openAIOAuthPort',
   EnableDeveloperMode = 'enableDeveloperMode',
   ClientId = 'clientId',
   GitBashPath = 'gitBashPath',
@@ -258,6 +259,14 @@ export class ConfigManager {
 
   setUseSystemTitleBar(value: boolean) {
     this.set(ConfigKeys.UseSystemTitleBar, value)
+  }
+
+  getOpenAIOAuthPort(): number {
+    return this.get<number>(ConfigKeys.OpenAIOAuthPort, 10531)
+  }
+
+  setOpenAIOAuthPort(value: number) {
+    this.set(ConfigKeys.OpenAIOAuthPort, value)
   }
 
   setAndNotify(key: string, value: unknown) {

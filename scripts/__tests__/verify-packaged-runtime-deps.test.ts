@@ -4,6 +4,7 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
+const { artifactRuntimeRootPackages } = require('../artifact-runtime-packages')
 const {
   auditStartupBundleExternalReferences,
   collectPackageDependencyClosure,
@@ -50,6 +51,17 @@ describe('verify-packaged-runtime-deps', () => {
     expect(runtimeExternalPackages).toContain('esbuild')
   })
 
+  it('defines the dedicated React artifact runtime roots', () => {
+    expect(artifactRuntimeRootPackages).toEqual([
+      'clsx',
+      'lucide-react',
+      'react',
+      'react-dom',
+      'scheduler',
+      'tailwind-merge'
+    ])
+  })
+
   it('collects the full dependency closure for declared runtime externals', () => {
     const tempDir = createTempDir()
 
@@ -62,6 +74,29 @@ describe('verify-packaged-runtime-deps', () => {
     expect([...closure.packageNames].sort()).toEqual(['debug', 'ms', 'selection-hook'])
     expect(closure.parents.get('debug')).toBe('selection-hook')
     expect(closure.parents.get('ms')).toBe('debug')
+  })
+
+  it('collects the dependency closure for dedicated artifact runtime packages', () => {
+    const tempDir = createTempDir()
+
+    writePackage(tempDir, 'react', {})
+    writePackage(tempDir, 'react-dom', { react: '^19.0.0', scheduler: '^1.0.0' })
+    writePackage(tempDir, 'scheduler')
+    writePackage(tempDir, 'clsx')
+    writePackage(tempDir, 'lucide-react', { react: '^19.0.0' })
+    writePackage(tempDir, 'tailwind-merge')
+
+    const closure = collectPackageDependencyClosure(artifactRuntimeRootPackages, tempDir)
+
+    expect([...closure.packageNames].sort()).toEqual([
+      'clsx',
+      'lucide-react',
+      'react',
+      'react-dom',
+      'scheduler',
+      'tailwind-merge'
+    ])
+    expect(closure.parents.get('scheduler')).toBe('react-dom')
   })
 
   it('copies only declared external packages that are missing from the primary package', () => {
@@ -111,5 +146,25 @@ describe('verify-packaged-runtime-deps', () => {
         specifier: './libs/core'
       }
     ])
+  })
+
+  it('detects aliased createRequire.resolve startup package references', () => {
+    const tempDir = createTempDir()
+    const entryFile = path.join(tempDir, 'out/main/index.js')
+
+    writePackage(tempDir, 'openai-oauth')
+    fs.mkdirSync(path.dirname(entryFile), { recursive: true })
+    fs.writeFileSync(
+      entryFile,
+      "const runtimeRequire = module.createRequire(__filename)\nruntimeRequire.resolve('openai-oauth')\n"
+    )
+
+    const audit = auditStartupBundleExternalReferences({
+      declaredExternalPackages: [],
+      entryFiles: [entryFile]
+    })
+
+    expect(audit.startupRoots).toEqual(['openai-oauth'])
+    expect(audit.undeclaredPackageNames).toEqual(['openai-oauth'])
   })
 })
