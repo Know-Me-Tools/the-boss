@@ -72,6 +72,7 @@ export interface SkillGlobalConfig {
   selectionMethod: SkillSelectionMethod
   contextManagementMethod: ContextManagementMethod
   maxSkillTokens: number
+  selectedSkillIds?: string[]
   methods: SkillMethodConfigMap
 }
 
@@ -85,6 +86,7 @@ export interface SkillConfigOverride {
   selectionMethod?: SkillSelectionMethod
   contextManagementMethod?: ContextManagementMethod
   maxSkillTokens?: number
+  selectedSkillIds?: string[]
   methods?: SkillMethodOverrideMap
 
   // Legacy flat fields
@@ -188,6 +190,7 @@ export const SkillConfigOverrideSchema = z
     selectionMethod: z.nativeEnum(SkillSelectionMethod).optional(),
     contextManagementMethod: z.nativeEnum(ContextManagementMethod).optional(),
     maxSkillTokens: z.number().optional(),
+    selectedSkillIds: z.array(z.string()).optional(),
     methods: SkillMethodOverrideMapSchema.optional(),
     llmModelId: z.string().optional(),
     embeddingModelId: z.string().optional(),
@@ -200,6 +203,7 @@ export const SkillGlobalConfigSchema = z.object({
   selectionMethod: z.nativeEnum(SkillSelectionMethod),
   contextManagementMethod: z.nativeEnum(ContextManagementMethod),
   maxSkillTokens: z.number(),
+  selectedSkillIds: z.array(z.string()).optional(),
   methods: z.object({
     [SkillSelectionMethod.EMBEDDING]: EmbeddingSkillMethodConfigSchema,
     [SkillSelectionMethod.HYBRID]: HybridSkillMethodConfigSchema,
@@ -293,6 +297,8 @@ export function applySkillConfigOverride(
     selectionMethod: override.selectionMethod ?? base.selectionMethod,
     contextManagementMethod: override.contextManagementMethod ?? base.contextManagementMethod,
     maxSkillTokens: override.maxSkillTokens ?? base.maxSkillTokens,
+    selectedSkillIds:
+      override.selectedSkillIds !== undefined ? normalizeSelectedSkillIds(override.selectedSkillIds) : base.selectedSkillIds,
     methods: cloneSkillMethodConfigs(base.methods)
   }
 
@@ -321,10 +327,19 @@ export function resolveSkillConfig(
     return normalizedGlobal
   }
 
-  return overrides.reduce<SkillGlobalConfig>(
-    (resolved, override) => applySkillConfigOverride(resolved, override),
-    normalizedGlobal
-  )
+  let selectedSkillIds = normalizedGlobal.selectedSkillIds
+  const resolved = overrides.reduce<SkillGlobalConfig>((resolved, override) => {
+    if (override?.selectedSkillIds !== undefined) {
+      selectedSkillIds = intersectSelectedSkillIds(selectedSkillIds, override.selectedSkillIds)
+    }
+
+    return applySkillConfigOverride(resolved, override)
+  }, normalizedGlobal)
+
+  return {
+    ...resolved,
+    selectedSkillIds
+  }
 }
 
 export function deriveSkillConfigOverride(
@@ -343,6 +358,9 @@ export function deriveSkillConfigOverride(
   }
   if (normalizedNext.maxSkillTokens !== normalizedBase.maxSkillTokens) {
     override.maxSkillTokens = normalizedNext.maxSkillTokens
+  }
+  if (!selectedSkillIdsEqual(normalizedNext.selectedSkillIds, normalizedBase.selectedSkillIds)) {
+    override.selectedSkillIds = normalizedNext.selectedSkillIds
   }
 
   for (const method of skillMethodEntries) {
@@ -370,6 +388,7 @@ export function hasSkillConfigOverride(override?: SkillConfigOverride | null): b
     override.selectionMethod !== undefined ||
     override.contextManagementMethod !== undefined ||
     override.maxSkillTokens !== undefined ||
+    override.selectedSkillIds !== undefined ||
     override.llmModelId !== undefined ||
     override.embeddingModelId !== undefined ||
     override.similarityThreshold !== undefined ||
@@ -382,6 +401,44 @@ export function hasSkillConfigOverride(override?: SkillConfigOverride | null): b
     const methodOverride = override.methods?.[method]
     return !!methodOverride && Object.values(methodOverride).some((value) => value !== undefined)
   })
+}
+
+function normalizeSelectedSkillIds(selectedSkillIds: string[]): string[] {
+  return Array.from(new Set(selectedSkillIds))
+}
+
+function intersectSelectedSkillIds(
+  current: string[] | undefined,
+  next: string[]
+): string[] {
+  const normalizedNext = normalizeSelectedSkillIds(next)
+
+  if (current === undefined) {
+    return normalizedNext
+  }
+
+  if (current.length === 0 || normalizedNext.length === 0) {
+    return []
+  }
+
+  const nextSet = new Set(normalizedNext)
+  return current.filter((skillId) => nextSet.has(skillId))
+}
+
+function selectedSkillIdsEqual(left?: string[], right?: string[]): boolean {
+  if (left === right) {
+    return true
+  }
+
+  if (left === undefined || right === undefined) {
+    return left === right
+  }
+
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((skillId, index) => skillId === right[index])
 }
 
 function applyLegacyFields(methods: SkillMethodConfigMap, override: SkillConfigOverride | SkillGlobalConfig) {

@@ -145,4 +145,40 @@ describe('selectors', () => {
     expect(getSkillMethodConfig(resolved, SkillSelectionMethod.EMBEDDING).topK).toBe(9)
     expect(getSkillMethodConfig(resolved, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.5)
   })
+
+  it('selectResolvedSkillConfigFromOverrides intersects selected skill ids across scopes', () => {
+    const state = makeState({
+      global: {
+        ...DEFAULT_SKILL_CONFIG,
+        selectedSkillIds: ['skill-a', 'skill-b', 'skill-c']
+      }
+    })
+
+    const resolved = selectResolvedSkillConfigFromOverrides(
+      state as RootState,
+      {
+        selectedSkillIds: ['skill-b', 'skill-c']
+      },
+      {
+        selectedSkillIds: ['skill-c', 'skill-d']
+      }
+    )
+
+    expect(resolved.selectedSkillIds).toEqual(['skill-c'])
+  })
+
+  it('selectResolvedSkillConfigFromOverrides preserves explicit disable-all overrides', () => {
+    const state = makeState({
+      global: {
+        ...DEFAULT_SKILL_CONFIG,
+        selectedSkillIds: ['skill-a', 'skill-b']
+      }
+    })
+
+    const resolved = selectResolvedSkillConfigFromOverrides(state as RootState, {
+      selectedSkillIds: []
+    })
+
+    expect(resolved.selectedSkillIds).toEqual([])
+  })
 })

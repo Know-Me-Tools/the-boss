@@ -57,20 +57,22 @@ const AssistantContextSettings: FC<Props> = ({ assistant, updateAssistantSetting
   }
 
   return (
-    <ChatContextPanel
-      theme={theme}
-      strategy={effectiveStrategy}
-      onStrategyChange={handleStrategyChange}
-      showInheritOption
-      useInherited={useInherited}
-      onInheritedChange={handleInheritedChange}
-      inheritedStrategyType={globalContextStrategy.type}
-      inheritLabel={t('settings.contextStrategy.useGlobalDefault', { defaultValue: 'Use Global Default' })}
-      title={t('settings.contextStrategy.title', { defaultValue: 'Chat Context Management' })}
-      description={t('settings.contextStrategy.assistantDescription', {
-        defaultValue: 'Use the global chat context strategy by default, or override it for this assistant.'
-      })}
-    />
+    <div className="flex flex-col gap-4">
+      <ChatContextPanel
+        theme={theme}
+        strategy={effectiveStrategy}
+        onStrategyChange={handleStrategyChange}
+        showInheritOption
+        useInherited={useInherited}
+        onInheritedChange={handleInheritedChange}
+        inheritedStrategyType={globalContextStrategy.type}
+        inheritLabel={t('settings.contextStrategy.useGlobalDefault', { defaultValue: 'Use Global Default' })}
+        title={t('settings.contextStrategy.title', { defaultValue: 'Chat Context Management' })}
+        description={t('settings.contextStrategy.assistantDescription', {
+          defaultValue: 'Use the global chat context strategy by default, or override it for this assistant.'
+        })}
+      />
+    </div>
   )
 }
 

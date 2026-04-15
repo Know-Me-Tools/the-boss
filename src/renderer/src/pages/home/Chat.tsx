@@ -17,10 +17,9 @@ import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import type { Assistant, Model, Topic } from '@renderer/types'
 import { classNames } from '@renderer/utils'
 import { Flex } from 'antd'
-import { debounce } from 'lodash'
 import { AnimatePresence, motion } from 'motion/react'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -45,14 +44,19 @@ const Chat: FC<Props> = (props) => {
   const { t } = useTranslation()
   const { topicPosition, messageStyle, messageNavigation } = useSettings()
   const { showTopics } = useShowTopics()
-  const { isMultiSelectMode } = useChatContext(props.activeTopic)
   const { isTopNavbar } = useNavbarPosition()
 
   const mainRef = React.useRef<HTMLDivElement>(null)
   const contentSearchRef = React.useRef<ContentSearchRef>(null)
+  const firstUpdateCompletedRef = React.useRef(false)
   const [filterIncludeUser, setFilterIncludeUser] = useState(false)
 
   const { setTimeoutTimer } = useTimer()
+  const activeTopic = useMemo(
+    () => assistant?.topics.find((topic) => topic.id === props.activeTopic.id) ?? props.activeTopic,
+    [assistant?.topics, props.activeTopic]
+  )
+  const { isMultiSelectMode } = useChatContext(activeTopic)
 
   useHotkeys('esc', () => {
     contentSearchRef.current?.disable()
@@ -68,7 +72,7 @@ const Chat: FC<Props> = (props) => {
   })
 
   useShortcut('rename_topic', async () => {
-    const topic = props.activeTopic
+    const topic = activeTopic
     if (!topic) return
 
     void EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR)
@@ -134,19 +138,22 @@ const Chat: FC<Props> = (props) => {
     })
   }
 
-  let firstUpdateCompleted = false
-  const firstUpdateOrNoFirstUpdateHandler = debounce(() => {
-    contentSearchRef.current?.silentSearch()
-  }, 10)
+  const firstUpdateOrNoFirstUpdateHandler = () => {
+    setTimeoutTimer('firstUpdateOrNoFirstUpdateHandler', () => {
+      contentSearchRef.current?.silentSearch()
+    }, 10)
+  }
 
   const messagesComponentUpdateHandler = () => {
-    if (firstUpdateCompleted) {
+    if (firstUpdateCompletedRef.current) {
       firstUpdateOrNoFirstUpdateHandler()
     }
   }
 
   const messagesComponentFirstUpdateHandler = () => {
-    setTimeoutTimer('messagesComponentFirstUpdateHandler', () => (firstUpdateCompleted = true), 300)
+    setTimeoutTimer('messagesComponentFirstUpdateHandler', () => {
+      firstUpdateCompletedRef.current = true
+    }, 300)
     firstUpdateOrNoFirstUpdateHandler()
   }
 
@@ -168,8 +175,8 @@ const Chat: FC<Props> = (props) => {
             style={{ height: mainHeight, width: '100%' }}>
             <QuickPanelProvider>
               <ChatNavbar
-                activeAssistant={props.assistant}
-                activeTopic={props.activeTopic}
+                activeAssistant={assistant}
+                activeTopic={activeTopic}
                 setActiveTopic={props.setActiveTopic}
                 setActiveAssistant={props.setActiveAssistant}
                 position="left"
@@ -178,9 +185,9 @@ const Chat: FC<Props> = (props) => {
                 className="flex flex-1 flex-col justify-between"
                 style={{ height: `calc(${mainHeight} - var(--navbar-height))` }}>
                 <Messages
-                  key={props.activeTopic.id}
+                  key={activeTopic.id}
                   assistant={assistant}
-                  topic={props.activeTopic}
+                  topic={activeTopic}
                   setActiveTopic={props.setActiveTopic}
                   onComponentUpdate={messagesComponentUpdateHandler}
                   onFirstUpdate={messagesComponentFirstUpdateHandler}
@@ -193,8 +200,8 @@ const Chat: FC<Props> = (props) => {
                   onIncludeUserChange={userOutlinedItemClickHandler}
                 />
                 {messageNavigation === 'buttons' && <ChatNavigation containerId="messages" />}
-                <Inputbar assistant={assistant} setActiveTopic={props.setActiveTopic} topic={props.activeTopic} />
-                {isMultiSelectMode && <MultiSelectActionPopup topic={props.activeTopic} />}
+                <Inputbar assistant={assistant} setActiveTopic={props.setActiveTopic} topic={activeTopic} />
+                {isMultiSelectMode && <MultiSelectActionPopup topic={activeTopic} />}
               </div>
             </QuickPanelProvider>
           </Main>
@@ -210,12 +217,12 @@ const Chat: FC<Props> = (props) => {
               style={{
                 overflow: 'hidden'
               }}>
-              <Tabs
-                activeAssistant={assistant}
-                activeTopic={props.activeTopic}
-                setActiveAssistant={props.setActiveAssistant}
-                setActiveTopic={props.setActiveTopic}
-                position="right"
+                <Tabs
+                  activeAssistant={assistant}
+                  activeTopic={activeTopic}
+                  setActiveAssistant={props.setActiveAssistant}
+                  setActiveTopic={props.setActiveTopic}
+                  position="right"
               />
             </motion.div>
           )}

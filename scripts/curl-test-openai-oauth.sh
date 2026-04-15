@@ -207,6 +207,68 @@ CMD
 fi
 
 echo ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TEST C: Direct internal OpenAI OAuth proxy route
+#         URL: http://127.0.0.1:PORT/_internal/openai-oauth/v1/chat/completions
+#         Auth: same LOCAL_API_KEY — no separate internal secret required
+# ─────────────────────────────────────────────────────────────────────────────
+echo "══════════════════════════════════════════════════════════════"
+echo "TEST C — Internal OpenAI OAuth proxy: POST /_internal/openai-oauth/v1/chat/completions"
+echo "          Auth: API key only (no internal secret needed)"
+echo "══════════════════════════════════════════════════════════════"
+echo ""
+
+if [[ -z "$LOCAL_API_KEY" ]]; then
+  echo "  ⚠  Skipping — set LOCAL_API_KEY env var to your API server key"
+  echo "     (find it in app Settings → API Server → API Key)"
+  echo ""
+  echo "  Example:"
+  echo "    LOCAL_API_KEY=your-key ./scripts/curl-test-openai-oauth.sh"
+else
+  INTERNAL_BODY=$(jq -n \
+    --arg model "$MODEL" \
+    --arg prompt "$PROMPT" \
+    '{
+      model:    $model,
+      stream:   true,
+      messages: [{ role: "user", content: $prompt }]
+    }')
+
+  echo "curl command:"
+  cat <<CMD
+curl -N -X POST "http://127.0.0.1:$PORT/_internal/openai-oauth/v1/chat/completions" \\
+  -H "Authorization: Bearer ${LOCAL_API_KEY:0:8}…" \\
+  -H "Content-Type: application/json" \\
+  -d '$INTERNAL_BODY'
+CMD
+  echo ""
+  echo "Running…"
+  echo "──────────────────────────────────────────────────────────────"
+
+  HTTP_STATUS=$(curl -s -o /tmp/openai-oauth-test-internal.txt -w "%{http_code}" \
+    -N -X POST "http://127.0.0.1:$PORT/_internal/openai-oauth/v1/chat/completions" \
+    -H "Authorization: Bearer $LOCAL_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d "$INTERNAL_BODY") || true
+
+  echo "HTTP status: $HTTP_STATUS"
+  if [[ "$HTTP_STATUS" == "200" ]]; then
+    grep '^data:' /tmp/openai-oauth-test-internal.txt | \
+      grep -v '\[DONE\]' | \
+      jq -r '.choices[0].delta.content // empty' 2>/dev/null \
+      | tr -d '\n' || cat /tmp/openai-oauth-test-internal.txt
+    echo ""
+    echo ""
+    echo "✓ TEST C PASSED"
+  else
+    cat /tmp/openai-oauth-test-internal.txt
+    echo ""
+    echo "✗ TEST C FAILED (HTTP $HTTP_STATUS)"
+  fi
+fi
+
+echo ""
 echo "══════════════════════════════════════════════════════════════"
 echo "Extracted header values for manual curl:"
 echo ""

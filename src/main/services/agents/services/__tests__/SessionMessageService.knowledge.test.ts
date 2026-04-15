@@ -2,10 +2,22 @@ import { EventEmitter } from 'node:events'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { buildSkillStreamPartsMock, invokeMock, persistExchangeMock, reduxSelectMock, searchMock, rerankMock } =
+const {
+  buildSkillStreamPartsMock,
+  invokeMock,
+  loadInstalledSkillSelectionResourcesMock,
+  persistExchangeMock,
+  reduxSelectMock,
+  searchMock,
+  rerankMock
+} =
   vi.hoisted(() => ({
     buildSkillStreamPartsMock: vi.fn().mockResolvedValue([]),
     invokeMock: vi.fn(),
+    loadInstalledSkillSelectionResourcesMock: vi.fn().mockResolvedValue({
+      skills: [],
+      registry: { getAll: () => [] }
+    }),
     persistExchangeMock: vi.fn().mockResolvedValue({}),
     reduxSelectMock: vi.fn(),
     searchMock: vi.fn(),
@@ -28,8 +40,20 @@ vi.mock('@main/services/WindowService', () => ({
   }
 }))
 
+vi.mock('@main/services/ConfigManager', () => ({
+  ConfigKeys: {},
+  configManager: {
+    get: vi.fn(),
+    set: vi.fn()
+  }
+}))
+
 vi.mock('@main/services/skills/buildSkillStreamParts', () => ({
   buildSkillStreamParts: buildSkillStreamPartsMock
+}))
+
+vi.mock('@main/services/skills/installedSkillDescriptors', () => ({
+  loadInstalledSkillSelectionResources: loadInstalledSkillSelectionResourcesMock
 }))
 
 vi.mock('../../database/sessionMessageRepository', () => ({

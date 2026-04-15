@@ -27,7 +27,7 @@ import { classNames } from '@renderer/utils'
 import { Divider, Dropdown } from 'antd'
 import type { ItemType } from 'antd/es/menu/interface'
 import { Check, CircleChevronRight } from 'lucide-react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -36,6 +36,7 @@ export interface InputbarToolsNewProps {
   scope: InputbarScope
   assistant: Assistant
   model: Model
+  conversation?: ToolContext['conversation']
   session?: ToolContext['session']
 }
 
@@ -50,30 +51,11 @@ const DraggablePortal = ({ children, isDragging }: { children: React.ReactNode; 
   return isDragging ? createPortal(children, document.body) : children
 }
 
-const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewProps) => {
+const InputbarTools = ({ scope, assistant, model, conversation, session }: InputbarToolsNewProps) => {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const toolsContext = useInputbarTools()
   const quickPanelContext = useQuickPanel()
-  const quickPanelApiCacheRef = useRef(new Map<string, ToolQuickPanelApi>())
-
-  const getQuickPanelApiForTool = useCallback(
-    (toolKey: string): ToolQuickPanelApi => {
-      const cache = quickPanelApiCacheRef.current
-
-      if (!cache.has(toolKey)) {
-        cache.set(toolKey, {
-          registerRootMenu: (entries: QuickPanelListItem[]) =>
-            toolsContext.toolsRegistry.registerRootMenu(toolKey, entries),
-          registerTrigger: (symbol: QuickPanelReservedSymbol, handler: (payload?: unknown) => void) =>
-            toolsContext.toolsRegistry.registerTrigger(toolKey, symbol, handler)
-        })
-      }
-
-      return cache.get(toolKey)!
-    },
-    [toolsContext.toolsRegistry]
-  )
 
   const reduxToolOrder = useAppSelector((state) => selectToolOrderForScope(state, scope))
   const isCollapse = useAppSelector((state) => state.inputTools.isCollapsed)
@@ -81,8 +63,8 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
 
   // Get tools for current scope
   const availableTools = useMemo(() => {
-    return getToolsForScope(scope, { assistant, model, session })
-  }, [scope, assistant, model, session])
+    return getToolsForScope(scope, { assistant, model, conversation, session })
+  }, [scope, assistant, model, conversation, session])
 
   // Get tool order for current scope
   const toolOrder = useMemo(() => {
@@ -95,8 +77,11 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
       tool: ToolDefinition<S, A>
     ): ToolRenderContext<S, A> => {
       const deps = tool.dependencies
-      // 为工具提供完整的 QuickPanel API（注册 + 控制面板）
-      const quickPanel = getQuickPanelApiForTool(tool.key)
+      const quickPanel: ToolQuickPanelApi = {
+        registerRootMenu: (entries: QuickPanelListItem[]) => toolsContext.toolsRegistry.registerRootMenu(tool.key, entries),
+        registerTrigger: (symbol: QuickPanelReservedSymbol, handler: (payload?: unknown) => void) =>
+          toolsContext.toolsRegistry.registerTrigger(tool.key, symbol, handler)
+      }
 
       const state = (deps?.state || ([] as unknown as S)).reduce(
         (acc, key) => {
@@ -121,6 +106,7 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
         scope,
         assistant,
         model,
+        conversation,
         session,
         state,
         actions,
@@ -129,7 +115,7 @@ const InputbarTools = ({ scope, assistant, model, session }: InputbarToolsNewPro
         t
       } as ToolRenderContext<S, A>
     },
-    [assistant, model, quickPanelContext, scope, session, t, toolsContext, getQuickPanelApiForTool]
+    [assistant, model, conversation, quickPanelContext, scope, session, t, toolsContext]
   )
 
   // Build tool metadata (without rendering)

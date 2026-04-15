@@ -158,7 +158,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
     minHeight: 30
   })
 
-  const { assistant, addTopic, model, setModel, updateAssistant } = useAssistant(initialAssistant.id)
+  const { assistant, addTopic, model, setModel, updateAssistant, updateTopic } = useAssistant(initialAssistant.id)
   const { sendMessageShortcut, showInputEstimatedTokens, enableQuickPanelTriggers } = useSettings()
   const [estimateTokenCount, setEstimateTokenCount] = useState(0)
   const [contextCount, setContextCount] = useState({ current: 0, max: 0 })
@@ -477,7 +477,14 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
   )
 
   // leftToolbar: 左侧工具栏
-  const leftToolbar = config.showTools ? <InputbarTools scope={scope} assistant={assistant} model={model} /> : null
+  const leftToolbar = config.showTools ? (
+    <InputbarTools
+      scope={scope}
+      assistant={assistant}
+      model={model}
+      conversation={{ topic, updateTopic }}
+    />
+  ) : null
 
   // rightToolbar: 右侧工具栏
   const rightToolbar = (

@@ -1,4 +1,3 @@
-import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -21,7 +20,6 @@ const HEALTH_TIMEOUT_MS = 3000
 const TOKEN_KEYS = new Set(['access_token', 'accessToken', 'refresh_token', 'refreshToken', 'id_token', 'idToken'])
 const KEYCHAIN_HINTS = ['keychain', 'keytar', 'credential_store', 'credentialStore', 'secret_service']
 const INTERNAL_ROUTE_PREFIX = '/_internal/openai-oauth/v1'
-const INTERNAL_SECRET_HEADER = 'x-cherry-openai-oauth-secret'
 
 type OpenAIModelsResponse = {
   data?: Array<{ id?: string | null }>
@@ -36,7 +34,6 @@ type ApiServerNetworkConfig = {
 
 class OpenAIOAuthService {
   private readonly host = DEFAULT_HOST
-  private readonly internalSecret = crypto.randomUUID()
   private runState: OpenAIOAuthRunState = 'stopped'
   private lastStartupDiagnostics: OpenAIOAuthDiagnostics | null = null
   private internalFetchHandler: OpenAIOAuthFetchHandler | null = null
@@ -160,7 +157,7 @@ class OpenAIOAuthService {
       const response = await fetch(healthUrl, {
         headers: {
           Accept: 'application/json',
-          ...this.getRequestHeadersSync()
+          ...(await this.getRequestHeaders())
         },
         signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS)
       })
@@ -193,20 +190,9 @@ class OpenAIOAuthService {
   }
 
   public async getRequestHeaders(): Promise<Record<string, string>> {
-    return this.getRequestHeadersSync()
-  }
-
-  public getInternalHeaderName(): string {
-    return INTERNAL_SECRET_HEADER
-  }
-
-  public matchesInternalSecret(token: string): boolean {
-    const trimmedToken = token.trim()
-    if (!trimmedToken || trimmedToken.length !== this.internalSecret.length) {
-      return false
-    }
-
-    return crypto.timingSafeEqual(Buffer.from(trimmedToken), Buffer.from(this.internalSecret))
+    const { config } = await import('../apiServer/config')
+    const { apiKey } = await config.get()
+    return apiKey ? { Authorization: `Bearer ${apiKey}` } : {}
   }
 
   public async getModels(): Promise<string[]> {
@@ -279,12 +265,6 @@ class OpenAIOAuthService {
     }
 
     return host
-  }
-
-  private getRequestHeadersSync(): Record<string, string> {
-    return {
-      [INTERNAL_SECRET_HEADER]: this.internalSecret
-    }
   }
 
   private async getCredentialStatus(): Promise<OpenAIOAuthCredentialStatus> {

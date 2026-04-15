@@ -1091,6 +1091,15 @@
       "context_count": {
         "tip": "Context / Max Context"
       },
+      "conversation_skills": {
+        "all_enabled": "All enabled skills are eligible in this conversation",
+        "custom_selected": "{{count}} conversation-selected skills are eligible",
+        "description": "Select which installed skills are eligible for this conversation",
+        "inherited": "Using assistant defaults for this conversation",
+        "locked_by_assistant": "Excluded by assistant defaults",
+        "none_selected": "This conversation currently disables all skills",
+        "title": "Conversation Skills"
+      },
       "estimated_tokens": {
         "tip": "Estimated tokens"
       },
@@ -1112,18 +1121,16 @@
       "placeholder_without_triggers": "Type your message here, press {{key}} to send",
       "resource_panel": {
         "categories": {
-          "agents": "Agents",
-          "files": "Files",
-          "skills": "Skills"
+          "files": "Files"
         },
-        "description": "Select from files, agents, or skills",
+        "description": "Select a file from accessible paths",
         "loading": "Loading...",
         "no_file_found": {
           "description": "No files available in accessible directories",
           "label": "No File Found"
         },
         "no_items_found": {
-          "description": "No files, agents, or skills available",
+          "description": "No files available in accessible directories",
           "label": "No Items Found"
         },
         "title": "Resources"
@@ -5400,32 +5407,32 @@
         "authenticated": "Verified",
         "authenticating": "Authenticating",
         "cancel": "Cancel",
+        "claude_code_active": "Claude Code credentials are active (env var or ~/.claude/credentials.json)",
         "code_error": "Invalid authorization code, please try again",
         "code_placeholder": "Please enter the authorization code displayed in your browser",
         "code_required": "Authorization code cannot be empty",
         "description": "OAuth authentication",
         "description_detail": "You need to subscribe to Claude Pro or a higher version to use this authentication method",
         "enter_auth_code": "Authorization code",
+        "import_claude_credentials": "Use Claude Code Credentials",
+        "import_failed": "No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
+        "import_success": "Claude Code credentials imported successfully",
         "logout": "Log out",
         "logout_failed": "Logout failed, please try again",
         "logout_success": "Successfully logged out of Anthropic",
         "oauth": "Web OAuth",
         "oauth_disabled_warning": "Anthropic has temporarily suspended the use of Claude via OAuth. This authentication method is currently unavailable. Please use an API key for now.",
         "start_auth": "Start authorization",
-        "submit_code": "Complete login",
-        "import_claude_credentials": "Use Claude Code Credentials",
-        "import_success": "Claude Code credentials imported successfully",
-        "import_failed": "No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
-        "claude_code_active": "Claude Code credentials are active (env var or ~/.claude/credentials.json)"
+        "submit_code": "Complete login"
       },
+      "anthropic_api_host": "Anthropic API Host",
+      "anthropic_api_host_preview": "Anthropic preview: {{url}}",
+      "anthropic_api_host_tooltip": "Use only when the provider offers a Claude-compatible base URL.",
       "anthropic_max": {
         "auth_token_label": "Auth token",
         "auth_token_tip": "Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.",
         "oauth_priority": "Anthropic OAuth credentials take priority over the manual auth token for Anthropic Max."
       },
-      "anthropic_api_host": "Anthropic API Host",
-      "anthropic_api_host_preview": "Anthropic preview: {{url}}",
-      "anthropic_api_host_tooltip": "Use only when the provider offers a Claude-compatible base URL.",
       "api": {
         "key": {
           "check": {
@@ -5849,6 +5856,13 @@
       "searchRegistryTitle": "Search skill registries online",
       "searchTitle": "Search Skills",
       "selectFile": "Select a file to view",
+      "summary": {
+        "all": "All enabled skills · {{count}} available",
+        "contextMethod": "Context: {{strategy}}",
+        "custom": "Selected skills only · {{count}} selected",
+        "none": "Disable all skills",
+        "selectionMethod": "Selection: {{method}}"
+      },
       "title": "Skills",
       "uninstall": "Uninstall",
       "uninstallSuccess": "Skill uninstalled: {{name}}",

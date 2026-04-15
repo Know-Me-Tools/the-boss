@@ -2,11 +2,9 @@ import { Icon } from '@iconify/react'
 import { loggerService } from '@logger'
 import type { QuickPanelListItem } from '@renderer/components/QuickPanel'
 import { QuickPanelReservedSymbol } from '@renderer/components/QuickPanel'
-import { useInstalledSkills } from '@renderer/hooks/useSkills'
 import type { ToolQuickPanelApi, ToolQuickPanelController } from '@renderer/pages/home/Inputbar/types'
 import { getFileIconName } from '@renderer/utils/fileIconName'
-import type { InstalledSkill } from '@types'
-import { Folder, Zap } from 'lucide-react'
+import { Folder } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,9 +41,6 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
   const { registerTrigger, registerRootMenu } = quickPanel
   const { open, close, updateList, isVisible, symbol } = quickPanelController
   const { t } = useTranslation()
-
-  const { skills, loading: skillsLoading } = useInstalledSkills()
-  const enabledSkills = useMemo(() => skills.filter((s) => s.isEnabled), [skills])
 
   const [fileList, setFileList] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -247,45 +242,6 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
   )
 
   /**
-   * Insert text at @ position (for skills)
-   */
-  const insertText = useCallback(
-    (text: string, triggerInfo?: ResourcePanelTriggerInfo) => {
-      setText((currentText) => {
-        const symbolChar = triggerInfo?.symbol ?? QuickPanelReservedSymbol.MentionModels
-        const triggerIndex =
-          triggerInfo?.position !== undefined
-            ? triggerInfo.position
-            : symbolChar === QuickPanelReservedSymbol.Root
-              ? currentText.lastIndexOf('/')
-              : currentText.lastIndexOf('@')
-
-        if (triggerIndex !== -1) {
-          let endPos = triggerIndex + 1
-          while (endPos < currentText.length && !/\s/.test(currentText[endPos])) {
-            endPos++
-          }
-          return currentText.slice(0, triggerIndex) + text + ' ' + currentText.slice(endPos)
-        }
-        return currentText + ' ' + text + ' '
-      })
-    },
-    [setText]
-  )
-
-  /**
-   * Handle skill selection
-   */
-  const onSelectSkill = useCallback(
-    (skill: InstalledSkill) => {
-      const trigger = triggerInfoRef.current
-      insertText(skill.name, trigger)
-      close()
-    },
-    [close, insertText]
-  )
-
-  /**
    * Create file list items for QuickPanel
    */
   const createFileItems = useCallback(
@@ -310,41 +266,11 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
   )
 
   /**
-   * Create skill list items for QuickPanel
-   */
-  const createSkillItems = useCallback(
-    (skillList: InstalledSkill[]): QuickPanelListItem[] => {
-      return skillList.map((skill) => ({
-        label: skill.name,
-        description: skill.description || '',
-        icon: <Zap size={16} />,
-        filterText: `${skill.name} ${skill.description || ''} ${skill.folderName}`,
-        action: () => onSelectSkill(skill),
-        isSelected: false
-      }))
-    },
-    [onSelectSkill]
-  )
-
-  /**
-   * Filter skills by search text
-   */
-  const filterSkills = useCallback((skillList: InstalledSkill[], searchText: string): InstalledSkill[] => {
-    if (!searchText.trim()) return skillList
-    const lowerSearch = searchText.toLowerCase()
-    return skillList.filter((skill) => {
-      const name = skill.name.toLowerCase()
-      const desc = (skill.description || '').toLowerCase()
-      return name.includes(lowerSearch) || desc.includes(lowerSearch)
-    })
-  }, [])
-
-  /**
-   * Build categorized list with files and skills
+   * Build file-only list for QuickPanel
    */
   const buildCategorizedList = useCallback(
-    (files: string[], skillList: InstalledSkill[], loading: boolean): QuickPanelListItem[] => {
-      if (loading && files.length === 0 && skillList.length === 0) {
+    (files: string[], loading: boolean): QuickPanelListItem[] => {
+      if (loading && files.length === 0) {
         return [
           {
             label: t('common.loading'),
@@ -359,7 +285,6 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
 
       const items: QuickPanelListItem[] = []
 
-      // Add Files
       if (files.length > 0) {
         items.push({
           label: t('chat.input.resource_panel.categories.files'),
@@ -371,23 +296,11 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
         items.push(...createFileItems(files))
       }
 
-      // Add Skills
-      if (skillList.length > 0) {
-        items.push({
-          label: t('chat.input.resource_panel.categories.skills'),
-          description: `(${skillList.length})`,
-          icon: <Zap size={16} />,
-          disabled: true,
-          action: () => {}
-        })
-        items.push(...createSkillItems(skillList))
-      }
-
       if (items.length === 0) {
         return [
           {
             label: t('chat.input.resource_panel.no_items_found.label'),
-            description: t('chat.input.resource_panel.no_items_found.description'),
+            description: t('chat.input.resource_panel.no_file_found.description'),
             icon: <Folder size={16} />,
             action: () => {},
             isSelected: false,
@@ -398,15 +311,15 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
 
       return items
     },
-    [createFileItems, createSkillItems, t]
+    [createFileItems, t]
   )
 
   /**
    * Current list items for QuickPanel
    */
   const categorizedItems = useMemo<QuickPanelListItem[]>(
-    () => buildCategorizedList(fileList, enabledSkills, isLoading || skillsLoading),
-    [buildCategorizedList, fileList, enabledSkills, isLoading, skillsLoading]
+    () => buildCategorizedList(fileList, isLoading),
+    [buildCategorizedList, fileList, isLoading]
   )
 
   /**
@@ -421,11 +334,10 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
 
       updateFileListState(newFiles)
 
-      const filteredSkills = filterSkills(enabledSkills, searchText)
-      const newItems = buildCategorizedList(newFiles, filteredSkills, false)
+      const newItems = buildCategorizedList(newFiles, false)
       updateList(newItems)
     },
-    [loadFiles, enabledSkills, filterSkills, buildCategorizedList, updateList, updateFileListState]
+    [loadFiles, buildCategorizedList, updateList, updateFileListState]
   )
 
   /**
@@ -446,7 +358,7 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
       const files = await loadFiles()
       updateFileListState(files)
 
-      const items = buildCategorizedList(files, enabledSkills, skillsLoading)
+      const items = buildCategorizedList(files, isLoading)
 
       open({
         title: t('chat.input.resource_panel.description'),
@@ -494,8 +406,7 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
       t,
       handleSearchChange,
       buildCategorizedList,
-      enabledSkills,
-      skillsLoading,
+      isLoading,
       updateFileListState
     ]
   )
@@ -526,7 +437,7 @@ export const useResourcePanel = (params: Params, role: 'button' | 'manager' = 'b
     if (isVisible && symbol === QuickPanelReservedSymbol.MentionModels) {
       updateList(categorizedItems)
     }
-  }, [categorizedItems, fileList.length, enabledSkills.length, isLoading, isVisible, role, symbol, updateList])
+  }, [categorizedItems, fileList.length, isLoading, isVisible, role, symbol, updateList])
 
   /**
    * Register trigger and root menu (manager only)

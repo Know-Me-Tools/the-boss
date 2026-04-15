@@ -184,6 +184,7 @@ export type AssistantSettings = {
   enableTopP?: boolean
   contextCount: number
   contextStrategy?: Partial<ContextStrategyConfig>
+  skillConfig?: SkillConfigOverride
   streamOutput: boolean
   defaultModel?: Model
   customParameters?: AssistantSettingCustomParameters[]

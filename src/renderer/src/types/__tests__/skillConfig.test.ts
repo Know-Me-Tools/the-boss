@@ -35,6 +35,7 @@ describe('DEFAULT_SKILL_CONFIG', () => {
     expect(DEFAULT_SKILL_CONFIG.selectionMethod).toBe(SkillSelectionMethod.EMBEDDING)
     expect(DEFAULT_SKILL_CONFIG.contextManagementMethod).toBe(ContextManagementMethod.PREFIX_CACHE_AWARE)
     expect(DEFAULT_SKILL_CONFIG.maxSkillTokens).toBe(4096)
+    expect(DEFAULT_SKILL_CONFIG.selectedSkillIds).toBeUndefined()
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.35)
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).topK).toBe(3)
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.HYBRID).topK).toBe(3)
@@ -111,12 +112,59 @@ describe('resolveSkillConfig', () => {
     expect(getSkillMethodConfig(result, SkillSelectionMethod.EMBEDDING).topK).toBe(9)
     expect(getSkillMethodConfig(result, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.5)
   })
+
+  it('intersects selected skill ids across configured scopes', () => {
+    const result = resolveSkillConfig(
+      {
+        ...DEFAULT_SKILL_CONFIG,
+        selectedSkillIds: ['skill-a', 'skill-b', 'skill-c']
+      },
+      {
+        selectedSkillIds: ['skill-b', 'skill-c', 'skill-d']
+      },
+      {
+        selectedSkillIds: ['skill-c', 'skill-e']
+      }
+    )
+
+    expect(result.selectedSkillIds).toEqual(['skill-c'])
+  })
+
+  it('treats undefined selected skill ids as inherit with no additional restriction', () => {
+    const result = resolveSkillConfig(
+      {
+        ...DEFAULT_SKILL_CONFIG,
+        selectedSkillIds: ['skill-a', 'skill-b']
+      },
+      undefined,
+      {
+        selectedSkillIds: ['skill-b', 'skill-c']
+      }
+    )
+
+    expect(result.selectedSkillIds).toEqual(['skill-b'])
+  })
+
+  it('treats an explicit empty selected skill list as disable-all for that scope', () => {
+    const result = resolveSkillConfig(
+      {
+        ...DEFAULT_SKILL_CONFIG,
+        selectedSkillIds: ['skill-a', 'skill-b']
+      },
+      {
+        selectedSkillIds: []
+      }
+    )
+
+    expect(result.selectedSkillIds).toEqual([])
+  })
 })
 
 describe('deriveSkillConfigOverride', () => {
   it('returns only the fields that differ from the base config', () => {
     const next = resolveSkillConfig(DEFAULT_SKILL_CONFIG, {
       selectionMethod: SkillSelectionMethod.LLM_DELEGATED,
+      selectedSkillIds: ['skill-a'],
       methods: {
         [SkillSelectionMethod.LLM_DELEGATED]: {
           llmModelId: 'delegate-model',
@@ -127,6 +175,7 @@ describe('deriveSkillConfigOverride', () => {
 
     expect(deriveSkillConfigOverride(DEFAULT_SKILL_CONFIG, next)).toEqual({
       selectionMethod: SkillSelectionMethod.LLM_DELEGATED,
+      selectedSkillIds: ['skill-a'],
       methods: {
         [SkillSelectionMethod.LLM_DELEGATED]: {
           llmModelId: 'delegate-model',
@@ -138,5 +187,16 @@ describe('deriveSkillConfigOverride', () => {
 
   it('returns undefined when nothing differs from the base config', () => {
     expect(deriveSkillConfigOverride(DEFAULT_SKILL_CONFIG, DEFAULT_SKILL_CONFIG)).toBeUndefined()
+  })
+
+  it('preserves explicit empty selected skill ids when they differ from base', () => {
+    const next = {
+      ...DEFAULT_SKILL_CONFIG,
+      selectedSkillIds: []
+    }
+
+    expect(deriveSkillConfigOverride(DEFAULT_SKILL_CONFIG, next)).toEqual({
+      selectedSkillIds: []
+    })
   })
 })

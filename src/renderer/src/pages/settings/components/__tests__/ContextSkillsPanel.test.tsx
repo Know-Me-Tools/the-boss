@@ -22,6 +22,29 @@ vi.mock('@renderer/hooks/useProvider', () => ({
   })
 }))
 
+vi.mock('@renderer/hooks/useSkills', () => ({
+  useInstalledSkills: () => ({
+    skills: [
+      {
+        id: 'skill-a',
+        name: 'Skill A',
+        description: 'Alpha skill',
+        folderName: 'skill-a',
+        source: 'local',
+        sourceUrl: null,
+        namespace: null,
+        author: null,
+        tags: [],
+        contentHash: 'hash-a',
+        isEnabled: true,
+        createdAt: 1,
+        updatedAt: 1
+      }
+    ],
+    loading: false
+  })
+}))
+
 vi.mock('@renderer/components/ModelSelector', () => ({
   default: ({ placeholder }: { placeholder?: string }) => (
     <div data-testid="model-selector">{placeholder ?? 'model-selector'}</div>

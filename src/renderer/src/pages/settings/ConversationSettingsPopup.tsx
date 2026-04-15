@@ -5,7 +5,12 @@ import ContextSkillsPanel from '@renderer/pages/settings/components/ContextSkill
 import { useAppSelector } from '@renderer/store'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
 import { DEFAULT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
-import { DEFAULT_SKILL_CONFIG, deriveSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
+import {
+  DEFAULT_SKILL_CONFIG,
+  deriveSkillConfigOverride,
+  hasSkillConfigOverride,
+  resolveSkillConfig
+} from '@renderer/types/skillConfig'
 import type { FC } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,17 +45,24 @@ export const ConversationSettingsPopupContainer: FC<ConversationSettingsPopupPar
   )
 
   const topic = useMemo(() => assistant?.topics.find((item) => item.id === topicId), [assistant?.topics, topicId])
-  const skillConfig = resolveSkillConfig(globalSkillConfig, topic?.skillConfig)
+  const assistantSkillConfig = resolveSkillConfig(globalSkillConfig, assistant?.settings?.skillConfig)
+  const skillConfig = resolveSkillConfig(assistantSkillConfig, topic?.skillConfig)
   const assistantContextStrategy = resolveEffectiveChatContextStrategy({
     globalStrategy: globalContextStrategy,
     assistant: assistant?.settings?.contextStrategy
   })
   const persistedInherited = !hasContextStrategyOverride(topic?.contextStrategy)
   const [useInheritedContext, setUseInheritedContext] = useState(persistedInherited)
+  const persistedInheritedSkillConfig = !hasSkillConfigOverride(topic?.skillConfig)
+  const [useInheritedSkillConfig, setUseInheritedSkillConfig] = useState(persistedInheritedSkillConfig)
 
   useEffect(() => {
     setUseInheritedContext(persistedInherited)
   }, [persistedInherited])
+
+  useEffect(() => {
+    setUseInheritedSkillConfig(persistedInheritedSkillConfig)
+  }, [persistedInheritedSkillConfig])
 
   const effectiveTopicContextStrategy = useMemo(
     () =>
@@ -109,19 +121,35 @@ export const ConversationSettingsPopupContainer: FC<ConversationSettingsPopupPar
         <ContextSkillsPanel
           theme={theme}
           skillConfig={skillConfig}
+          showInheritOption
+          useInherited={useInheritedSkillConfig}
+          onInheritedChange={(nextUseInherited) => {
+            setUseInheritedSkillConfig(nextUseInherited)
+
+            if (nextUseInherited) {
+              updateTopic({
+                ...topic,
+                skillConfig: undefined
+              })
+            }
+          }}
+          inheritLabel={t('settings.skill.useAssistantDefault', {
+            defaultValue: 'Use Assistant Default'
+          })}
           onSkillConfigChange={(patch) => {
             const nextSkillConfig = resolveSkillConfig(skillConfig, patch)
-            const nextOverride = deriveSkillConfigOverride(globalSkillConfig, nextSkillConfig)
+            const nextOverride = deriveSkillConfigOverride(assistantSkillConfig, nextSkillConfig)
 
             updateTopic({
               ...topic,
               skillConfig: nextOverride
             })
+            setUseInheritedSkillConfig(!nextOverride)
           }}
           title={t('agent.settings.contextSkills.skillsTitle', { defaultValue: 'Skill Context & Selection' })}
-          description={t('settings.contextStrategy.globalDescription', {
+          description={t('settings.skill.topicDescription', {
             defaultValue:
-              'Override the global skill-selection and prompt-side context defaults for this conversation only.'
+              'Override the assistant skill-selection defaults for this conversation only.'
           })}
         />
       </div>

@@ -6,8 +6,9 @@ import { selectGlobalSkillConfig } from '@renderer/store/skillConfig'
 import { type AgentConfiguration, AgentConfigurationSchema } from '@renderer/types'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
 import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
-import { deriveSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
+import { deriveSkillConfigOverride, hasSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
 import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { AgentOrSessionSettingsProps } from '../shared'
@@ -18,6 +19,24 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
   const globalSkillConfig = useAppSelector(selectGlobalSkillConfig)
   const parentAgentId = agentBase && 'agent_id' in agentBase ? agentBase.agent_id : null
   const { agent: parentAgent, isLoading: isParentAgentLoading } = useAgent(parentAgentId)
+  const configuration = AgentConfigurationSchema.parse(agentBase?.configuration ?? {})
+  const parentAgentConfiguration =
+    parentAgent && agentBase && 'agent_id' in agentBase ? AgentConfigurationSchema.parse(parentAgent.configuration ?? {}) : undefined
+  const baseSkillConfig =
+    parentAgentConfiguration && agentBase && 'agent_id' in agentBase
+      ? resolveSkillConfig(globalSkillConfig, parentAgentConfiguration.skill_config)
+      : globalSkillConfig
+  const skillConfig = resolveSkillConfig(baseSkillConfig, configuration.skill_config)
+  const agentContextStrategy = {
+    ...DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG,
+    ...configuration.context_strategy
+  } as ContextStrategyConfig
+  const persistedInheritedSkillConfig = !hasSkillConfigOverride(configuration.skill_config)
+  const [useInheritedSkillConfig, setUseInheritedSkillConfig] = useState(persistedInheritedSkillConfig)
+
+  useEffect(() => {
+    setUseInheritedSkillConfig(persistedInheritedSkillConfig)
+  }, [persistedInheritedSkillConfig])
 
   if (!agentBase) {
     return null
@@ -26,19 +45,6 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
   if (parentAgentId && isParentAgentLoading) {
     return null
   }
-
-  const configuration = AgentConfigurationSchema.parse(agentBase.configuration ?? {})
-  const parentAgentConfiguration =
-    parentAgent && 'agent_id' in agentBase ? AgentConfigurationSchema.parse(parentAgent.configuration ?? {}) : undefined
-  const baseSkillConfig =
-    parentAgentConfiguration && 'agent_id' in agentBase
-      ? resolveSkillConfig(globalSkillConfig, parentAgentConfiguration.skill_config)
-      : globalSkillConfig
-  const skillConfig = resolveSkillConfig(baseSkillConfig, configuration.skill_config)
-  const agentContextStrategy = {
-    ...DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG,
-    ...configuration.context_strategy
-  } as ContextStrategyConfig
 
   const updateConfiguration = (nextConfiguration: AgentConfiguration) => {
     void update(
@@ -54,6 +60,24 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
     <ContextSkillsPanel
       theme={theme}
       skillConfig={skillConfig}
+      showInheritOption
+      useInherited={useInheritedSkillConfig}
+      onInheritedChange={(nextUseInherited) => {
+        setUseInheritedSkillConfig(nextUseInherited)
+
+        if (nextUseInherited) {
+          updateConfiguration({
+            ...configuration,
+            skill_config: undefined
+          })
+        }
+      }}
+      inheritLabel={t(
+        parentAgentId ? 'settings.skill.useAgentDefault' : 'settings.skill.useGlobalDefault',
+        {
+          defaultValue: parentAgentId ? 'Use Agent Default' : 'Use Global Default'
+        }
+      )}
       onSkillConfigChange={(patch) => {
         const nextSkillConfig = resolveSkillConfig(skillConfig, patch)
         const nextOverride = deriveSkillConfigOverride(baseSkillConfig, nextSkillConfig)
@@ -62,6 +86,7 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
           ...configuration,
           skill_config: nextOverride
         })
+        setUseInheritedSkillConfig(!nextOverride)
       }}
       agentContextStrategy={agentContextStrategy}
       onAgentContextStrategyChange={(config) =>

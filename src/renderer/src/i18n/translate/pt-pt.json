@@ -1091,6 +1091,15 @@
       "context_count": {
         "tip": "Número de contexto / Número máximo de contexto"
       },
+      "conversation_skills": {
+        "all_enabled": "[to be translated]:All enabled skills are eligible in this conversation",
+        "custom_selected": "[to be translated]:{{count}} conversation-selected skills are eligible",
+        "description": "[to be translated]:Select which installed skills are eligible for this conversation",
+        "inherited": "[to be translated]:Using assistant defaults for this conversation",
+        "locked_by_assistant": "[to be translated]:Excluded by assistant defaults",
+        "none_selected": "[to be translated]:This conversation currently disables all skills",
+        "title": "[to be translated]:Conversation Skills"
+      },
       "estimated_tokens": {
         "tip": "Número estimado de tokens"
       },
@@ -1112,9 +1121,7 @@
       "placeholder_without_triggers": "Escreve a tua mensagem aqui, pressiona {{key}} para enviar",
       "resource_panel": {
         "categories": {
-          "agents": "Agentes",
-          "files": "Arquivos",
-          "skills": "Habilidades"
+          "files": "Arquivos"
         },
         "description": "Selecione entre arquivos, agentes ou habilidades",
         "loading": "Carregando...",
@@ -3424,6 +3431,7 @@
     "aionly": "AiOnly",
     "alayanew": "Alaya NeW",
     "anthropic": "Antropológico",
+    "anthropic-max": "[to be translated]:Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "BaiChuan",
@@ -5399,12 +5407,16 @@
         "authenticated": "[retranslating]: Verificado",
         "authenticating": "A autenticar",
         "cancel": "Cancelar",
+        "claude_code_active": "[to be translated]:Claude Code credentials are active (env var or ~/.claude/credentials.json)",
         "code_error": "Código de autorização inválido, tente novamente",
         "code_placeholder": "Introduza o código de autorização exibido no browser",
         "code_required": "O código de autorização não pode estar vazio",
         "description": "Autenticação OAuth",
         "description_detail": "Precisa de uma subscrição Claude Pro ou superior para utilizar este método de autenticação",
         "enter_auth_code": "Código de autorização",
+        "import_claude_credentials": "[to be translated]:Use Claude Code Credentials",
+        "import_failed": "[to be translated]:No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
+        "import_success": "[to be translated]:Claude Code credentials imported successfully",
         "logout": "Sair da sessão",
         "logout_failed": "Falha ao sair da conta, tente novamente",
         "logout_success": "Logout bem-sucedido do login Anthropic",
@@ -5416,6 +5428,11 @@
       "anthropic_api_host": "Endereço da API Anthropic",
       "anthropic_api_host_preview": "Pré-visualização Anthropic: {{url}}",
       "anthropic_api_host_tooltip": "Preencher apenas quando o fornecedor fornece um endereço base compatível com Claude.",
+      "anthropic_max": {
+        "auth_token_label": "[to be translated]:Auth token",
+        "auth_token_tip": "[to be translated]:Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.",
+        "oauth_priority": "[to be translated]:Anthropic OAuth credentials take priority over the manual auth token for Anthropic Max."
+      },
       "api": {
         "key": {
           "check": {
@@ -5618,8 +5635,11 @@
           "auth_file": "[to be translated]:Auth file",
           "auth_method": "[to be translated]:Authentication method",
           "available_models": "[to be translated]:Available models",
+          "check": "[to be translated]:Check sidecar",
           "credential_status": "[to be translated]:Credential status",
+          "details": "[to be translated]:Details",
           "health_status": "[to be translated]:Health",
+          "hide_details": "[to be translated]:Hide details",
           "install": "[to be translated]:Check sidecar",
           "install_status": "[to be translated]:Sidecar",
           "local_endpoint": "[to be translated]:Local endpoint",
@@ -5629,7 +5649,9 @@
           "proxy_status": "[to be translated]:Proxy",
           "refresh": "[to be translated]:Refresh",
           "save_port": "[to be translated]:Save port",
+          "show_details": "[to be translated]:Show details",
           "start": "[to be translated]:Start proxy",
+          "startup_failed": "[to be translated]:Proxy startup failed",
           "state": {
             "error": "[to be translated]:Error",
             "healthy": "[to be translated]:Healthy",
@@ -5834,6 +5856,13 @@
       "searchRegistryTitle": "Procure registros de habilidades online",
       "searchTitle": "Habilidades de Pesquisa",
       "selectFile": "Selecione um arquivo para visualizar",
+      "summary": {
+        "all": "[to be translated]:All enabled skills · {{count}} available",
+        "contextMethod": "[to be translated]:Context: {{strategy}}",
+        "custom": "[to be translated]:Selected skills only · {{count}} selected",
+        "none": "[to be translated]:Disable all skills",
+        "selectionMethod": "[to be translated]:Selection: {{method}}"
+      },
       "title": "Habilidades",
       "uninstall": "Desinstalar",
       "uninstallSuccess": "Habilidade desinstalada: {{name}}",

@@ -2,6 +2,7 @@ import ContextStrategySelector from '@renderer/components/ContextStrategySelecto
 import ModelSelector from '@renderer/components/ModelSelector'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { useProviders } from '@renderer/hooks/useProvider'
+import { useInstalledSkills } from '@renderer/hooks/useSkills'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import type { ThemeMode } from '@renderer/types'
 import type { Model } from '@renderer/types'
@@ -16,7 +17,7 @@ import {
   SkillSelectionMethod,
   usesSimilarityThreshold
 } from '@renderer/types/skillConfig'
-import { Col, InputNumber, Row, Select, Slider } from 'antd'
+import { Col, InputNumber, Row, Select, Slider, Switch } from 'antd'
 import type { FC } from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +32,10 @@ interface ContextSkillsPanelProps {
   onAgentContextStrategyChange?: (config: ContextStrategyConfig) => void
   title?: string
   description?: string
+  showInheritOption?: boolean
+  useInherited?: boolean
+  onInheritedChange?: (useInherited: boolean) => void
+  inheritLabel?: string
 }
 
 const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
@@ -40,10 +45,16 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   agentContextStrategy,
   onAgentContextStrategyChange,
   title,
-  description
+  description,
+  showInheritOption = false,
+  useInherited = false,
+  onInheritedChange,
+  inheritLabel
 }) => {
   const { t } = useTranslation()
   const { providers } = useProviders()
+  const { skills } = useInstalledSkills()
+  const enabledSkills = useMemo(() => skills.filter((skill) => skill.isEnabled), [skills])
 
   const selectionMethodOptions = [
     { value: SkillSelectionMethod.EMBEDDING, label: t('settings.skill.method.embedding.label') },
@@ -93,22 +104,111 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   })
 
   const selectionMethodDescription = getSelectionMethodDescription(t, selectedMethod)
+  const selectedSkillMode =
+    skillConfig.selectedSkillIds === undefined ? 'all' : skillConfig.selectedSkillIds.length === 0 ? 'none' : 'custom'
+  const selectedSkillOptions = enabledSkills.map((skill) => ({
+    value: skill.id,
+    label: skill.name
+  }))
+  const controlsDisabled = showInheritOption && useInherited
 
   return (
     <SettingContainer theme={theme}>
       <SettingTitle>{title || t('settings.skill.title')}</SettingTitle>
       {description && <SettingDescription>{description}</SettingDescription>}
       <SettingGroup theme={theme}>
+        {showInheritOption && onInheritedChange && (
+          <SettingRow>
+            <SettingRowTitle>
+              {inheritLabel ||
+                t('settings.skill.useInherited', {
+                  defaultValue: 'Use inherited default'
+                })}
+            </SettingRowTitle>
+            <Switch checked={useInherited} onChange={onInheritedChange} />
+          </SettingRow>
+        )}
         <SettingRow>
           <SettingRowTitle>{t('settings.skill.selection_method')}</SettingRowTitle>
           <Select
             value={selectedMethod}
             options={selectionMethodOptions}
             style={{ width: 220 }}
+            disabled={controlsDisabled}
             onChange={(value) => onSkillConfigChange({ selectionMethod: value })}
           />
         </SettingRow>
         <SettingDescription>{selectionMethodDescription}</SettingDescription>
+
+        <SettingRow>
+          <SettingRowTitle>
+            {t('settings.skill.selectedSkills.scopeLabel', {
+              defaultValue: 'Eligible Skills'
+            })}
+          </SettingRowTitle>
+          <Select
+            value={selectedSkillMode}
+            style={{ width: 240 }}
+            disabled={controlsDisabled}
+            options={[
+              {
+                value: 'all',
+                label: t('settings.skill.selectedSkills.all', {
+                  defaultValue: 'All enabled skills'
+                })
+              },
+              {
+                value: 'custom',
+                label: t('settings.skill.selectedSkills.custom', {
+                  defaultValue: 'Selected skills only'
+                })
+              },
+              {
+                value: 'none',
+                label: t('settings.skill.selectedSkills.none', {
+                  defaultValue: 'Disable all skills'
+                })
+              }
+            ]}
+            onChange={(value: 'all' | 'custom' | 'none') => {
+              if (value === 'all') {
+                onSkillConfigChange({ selectedSkillIds: undefined })
+                return
+              }
+
+              if (value === 'none') {
+                onSkillConfigChange({ selectedSkillIds: [] })
+                return
+              }
+
+              onSkillConfigChange({
+                selectedSkillIds: skillConfig.selectedSkillIds ?? []
+              })
+            }}
+          />
+        </SettingRow>
+
+        {selectedSkillMode === 'custom' && (
+          <SettingRow>
+            <SettingRowTitle>
+              {t('settings.skill.selectedSkills.label', {
+                defaultValue: 'Selected skills'
+              })}
+            </SettingRowTitle>
+            <Select
+              mode="multiple"
+              allowClear
+              style={{ width: 320 }}
+              disabled={controlsDisabled}
+              placeholder={t('settings.skill.selectedSkills.placeholder', {
+                defaultValue: 'Choose which installed skills are eligible'
+              })}
+              value={skillConfig.selectedSkillIds ?? []}
+              options={selectedSkillOptions}
+              onChange={(value) => onSkillConfigChange({ selectedSkillIds: value })}
+            />
+          </SettingRow>
+        )}
 
         <SettingRow>
           <SettingRowTitle>
@@ -122,6 +222,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
             value={embeddingModelSelectorValue}
             style={{ width: 280 }}
             allowClear
+            disabled={controlsDisabled}
             placeholder={t('settings.skill.embedding_model.placeholder', {
               defaultValue: 'Use fastembed default'
             })}
@@ -142,6 +243,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
               value={llmModelSelectorValue}
               style={{ width: 280 }}
               allowClear
+              disabled={controlsDisabled}
               placeholder={t('settings.skill.routing_model.placeholder', {
                 defaultValue: 'Use current chat or agent model'
               })}
@@ -160,6 +262,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
                   max={1}
                   step={0.05}
                   value={similarityThreshold}
+                  disabled={controlsDisabled}
                   marks={{ 0: '0', 0.35: '0.35', 1: '1' }}
                   onChange={(value) => onSkillConfigChange(methodPatch({ similarityThreshold: value }))}
                 />
@@ -171,6 +274,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
                   step={0.05}
                   precision={2}
                   value={similarityThreshold}
+                  disabled={controlsDisabled}
                   style={{ width: '100%' }}
                   onChange={(value) => {
                     if (value !== null) {
@@ -190,6 +294,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
             max={20}
             step={1}
             value={selectedMethodConfig.topK}
+            disabled={controlsDisabled}
             style={{ width: 100 }}
             onChange={(value) => {
               if (value !== null) {
@@ -205,6 +310,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
             value={skillConfig.contextManagementMethod}
             options={contextMethodOptions}
             style={{ width: 220 }}
+            disabled={controlsDisabled}
             onChange={(value) => onSkillConfigChange({ contextManagementMethod: value })}
           />
         </SettingRow>
@@ -216,6 +322,7 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
             max={16384}
             step={256}
             value={skillConfig.maxSkillTokens}
+            disabled={controlsDisabled}
             style={{ width: 120 }}
             onChange={(value) => {
               if (value !== null) {

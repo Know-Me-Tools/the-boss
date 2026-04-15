@@ -21,6 +21,10 @@ vi.mock('@renderer/components/ContextStrategySelector', () => ({
   default: () => <div data-testid="context-strategy-selector" />
 }))
 
+vi.mock('@renderer/pages/settings/components/ContextSkillsPanel', () => ({
+  default: () => <div data-testid="context-skills-panel" />
+}))
+
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof ReactI18Next
   return {
@@ -62,5 +66,6 @@ describe('AssistantContextSettings', () => {
       screen.getByText('Use the global chat context strategy by default, or override it for this assistant.')
     ).toBeInTheDocument()
     expect(screen.getByTestId('context-strategy-selector')).toBeInTheDocument()
+    expect(screen.queryByTestId('context-skills-panel')).not.toBeInTheDocument()
   })
 })

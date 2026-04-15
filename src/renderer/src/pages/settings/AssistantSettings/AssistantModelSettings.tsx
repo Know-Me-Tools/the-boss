@@ -30,18 +30,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import AssistantSkillSettingsSummary from './AssistantSkillSettingsSummary'
+
 interface Props {
   assistant: Assistant
   updateAssistant: (assistant: Assistant) => void
   updateAssistantSettings: (settings: Partial<AssistantSettings>) => void
   onOpenContextSettings?: () => void
+  onOpenSkillsSettings?: () => void
 }
 
 const AssistantModelSettings: FC<Props> = ({
   assistant,
   updateAssistant,
   updateAssistantSettings,
-  onOpenContextSettings
+  onOpenContextSettings,
+  onOpenSkillsSettings
 }) => {
   const [temperature, setTemperature] = useState(assistant?.settings?.temperature ?? DEFAULT_TEMPERATURE)
   const [contextCount, setContextCount] = useState(assistant?.settings?.contextCount ?? DEFAULT_CONTEXTCOUNT)
@@ -455,6 +459,8 @@ const AssistantModelSettings: FC<Props> = ({
           </Button>
         </HStack>
       </SettingRow>
+      <Divider style={{ margin: '10px 0' }} />
+      <AssistantSkillSettingsSummary assistant={assistant} onConfigure={onOpenSkillsSettings} />
       <Divider style={{ margin: '10px 0' }} />
       <SettingRow style={{ minHeight: 30 }}>
         <HStack alignItems="center">

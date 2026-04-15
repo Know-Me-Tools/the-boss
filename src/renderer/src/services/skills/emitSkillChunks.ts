@@ -6,13 +6,29 @@ import { ChunkType } from '@renderer/types/chunk'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 
 import { ContextManager } from './contextManager'
-import { skillRegistry } from './skillRegistry'
+import type { SkillDescriptor, SkillRegistry } from './skillRegistry'
+import { SkillRegistry as SkillRegistryClass,skillRegistry as defaultRegistry } from './skillRegistry'
 import { SkillSelector } from './skillSelector'
 
 const logger = loggerService.withContext('emitSkillChunks')
 
 function estimateRawTokenCount(text: string): number {
   return Math.ceil(text.length / 4)
+}
+
+export interface PreparedSkillContext {
+  skillId: string
+  skillName: string
+  content: string
+  activationMethod: string
+  selectionReason: string
+  similarityScore: number
+  matchedKeywords: string[]
+  contextManagementMethod: string
+  originalTokenCount: number
+  managedTokenCount: number
+  tokensSaved: number
+  truncated: boolean
 }
 
 /**
@@ -27,24 +43,28 @@ export async function emitSkillChunks(params: {
   config: SkillGlobalConfig
   processChunk: (chunk: Chunk) => void
   activeModel?: Model | string
-}): Promise<void> {
+  skills?: SkillDescriptor[]
+  registry?: SkillRegistry
+}): Promise<PreparedSkillContext[]> {
   const { prompt, config, processChunk, activeModel } = params
 
-  const allSkills = skillRegistry.getAll()
+  const registry = params.registry ?? buildRegistry(params.skills)
+  const allSkills = params.skills ?? registry.getAll()
   if (allSkills.length === 0) {
     logger.info('No skills registered, skipping skill selection')
-    return
+    return []
   }
 
-  const selector = new SkillSelector(config, undefined, undefined, undefined, activeModel)
+  const selector = new SkillSelector(config, undefined, registry, undefined, activeModel)
   const results = await selector.select(prompt, allSkills)
 
   if (results.length === 0) {
     logger.info('No skills matched for prompt, skipping skill injection')
-    return
+    return []
   }
 
   const contextManager = new ContextManager()
+  const preparedSkills: PreparedSkillContext[] = []
 
   for (const result of results) {
     try {
@@ -91,6 +111,21 @@ export async function emitSkillChunks(params: {
         finalTokenCount: managed.tokenCount
       })
 
+      preparedSkills.push({
+        skillId: result.skill.id,
+        skillName: result.skill.name,
+        content: managed.content,
+        activationMethod: result.activationMethod,
+        selectionReason: result.selectionReason,
+        similarityScore: result.score,
+        matchedKeywords: result.matchedKeywords,
+        contextManagementMethod: config.contextManagementMethod,
+        originalTokenCount: estimateRawTokenCount(rawContent),
+        managedTokenCount: managed.tokenCount,
+        tokensSaved: Math.max(0, estimateRawTokenCount(rawContent) - managed.tokenCount),
+        truncated: managed.truncated
+      })
+
       logger.info('Emitted skill chunks', {
         skillId: result.skill.id,
         skillName: result.skill.name,
@@ -102,4 +137,18 @@ export async function emitSkillChunks(params: {
       // Continue with next skill, don't abort
     }
   }
+
+  return preparedSkills
+}
+
+function buildRegistry(skills: SkillDescriptor[] | undefined): SkillRegistry {
+  if (!skills) {
+    return defaultRegistry
+  }
+
+  const registry = new SkillRegistryClass()
+  for (const skill of skills) {
+    registry.register(skill)
+  }
+  return registry
 }

@@ -1091,6 +1091,15 @@
       "context_count": {
         "tip": "コンテキスト数 / 最大コンテキスト数"
       },
+      "conversation_skills": {
+        "all_enabled": "[to be translated]:All enabled skills are eligible in this conversation",
+        "custom_selected": "[to be translated]:{{count}} conversation-selected skills are eligible",
+        "description": "[to be translated]:Select which installed skills are eligible for this conversation",
+        "inherited": "[to be translated]:Using assistant defaults for this conversation",
+        "locked_by_assistant": "[to be translated]:Excluded by assistant defaults",
+        "none_selected": "[to be translated]:This conversation currently disables all skills",
+        "title": "[to be translated]:Conversation Skills"
+      },
       "estimated_tokens": {
         "tip": "推定トークン数"
       },
@@ -1112,9 +1121,7 @@
       "placeholder_without_triggers": "ここにメッセージを入力し、{{key}} を押して送信...",
       "resource_panel": {
         "categories": {
-          "agents": "エージェント",
-          "files": "ファイル",
-          "skills": "スキル"
+          "files": "ファイル"
         },
         "description": "ファイル、エージェント、またはスキルから選択",
         "loading": "読み込み中...",
@@ -3424,6 +3431,7 @@
     "aionly": "AiOnly",
     "alayanew": "Alaya NeW",
     "anthropic": "Anthropic",
+    "anthropic-max": "[to be translated]:Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "百川",
@@ -5399,12 +5407,16 @@
         "authenticated": "認証済み",
         "authenticating": "認証中です",
         "cancel": "取消",
+        "claude_code_active": "[to be translated]:Claude Code credentials are active (env var or ~/.claude/credentials.json)",
         "code_error": "無効な認証コードです。もう一度お試しください",
         "code_placeholder": "ブラウザに表示されている認証コードを入力してください",
         "code_required": "認証コードは空にできません",
         "description": "OAuth 認証",
         "description_detail": "Claude Pro 以上にサブスクライブする必要があります。この認証方法を使用するには。",
         "enter_auth_code": "認証コード",
+        "import_claude_credentials": "[to be translated]:Use Claude Code Credentials",
+        "import_failed": "[to be translated]:No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
+        "import_success": "[to be translated]:Claude Code credentials imported successfully",
         "logout": "ログアウト",
         "logout_failed": "ログアウトに失敗しました。もう一度お試しください",
         "logout_success": "Anthropic からログアウトしました",
@@ -5416,6 +5428,11 @@
       "anthropic_api_host": "Anthropic APIアドレス",
       "anthropic_api_host_preview": "Anthropic プレビュー：{{url}}",
       "anthropic_api_host_tooltip": "サービスプロバイダーがClaude互換のベースアドレスを提供する場合のみ入力してください。",
+      "anthropic_max": {
+        "auth_token_label": "[to be translated]:Auth token",
+        "auth_token_tip": "[to be translated]:Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.",
+        "oauth_priority": "[to be translated]:Anthropic OAuth credentials take priority over the manual auth token for Anthropic Max."
+      },
       "api": {
         "key": {
           "check": {
@@ -5618,8 +5635,11 @@
           "auth_file": "[to be translated]:Auth file",
           "auth_method": "[to be translated]:Authentication method",
           "available_models": "[to be translated]:Available models",
+          "check": "[to be translated]:Check sidecar",
           "credential_status": "[to be translated]:Credential status",
+          "details": "[to be translated]:Details",
           "health_status": "[to be translated]:Health",
+          "hide_details": "[to be translated]:Hide details",
           "install": "[to be translated]:Check sidecar",
           "install_status": "[to be translated]:Sidecar",
           "local_endpoint": "[to be translated]:Local endpoint",
@@ -5629,7 +5649,9 @@
           "proxy_status": "[to be translated]:Proxy",
           "refresh": "[to be translated]:Refresh",
           "save_port": "[to be translated]:Save port",
+          "show_details": "[to be translated]:Show details",
           "start": "[to be translated]:Start proxy",
+          "startup_failed": "[to be translated]:Proxy startup failed",
           "state": {
             "error": "[to be translated]:Error",
             "healthy": "[to be translated]:Healthy",
@@ -5834,6 +5856,13 @@
       "searchRegistryTitle": "オンラインでスキルレジストリを検索してください",
       "searchTitle": "検索スキル",
       "selectFile": "ファイルを選択して表示",
+      "summary": {
+        "all": "[to be translated]:All enabled skills · {{count}} available",
+        "contextMethod": "[to be translated]:Context: {{strategy}}",
+        "custom": "[to be translated]:Selected skills only · {{count}} selected",
+        "none": "[to be translated]:Disable all skills",
+        "selectionMethod": "[to be translated]:Selection: {{method}}"
+      },
       "title": "スキル",
       "uninstall": "アンインストール",
       "uninstallSuccess": "スキルがアンインストールされました: {{name}}",

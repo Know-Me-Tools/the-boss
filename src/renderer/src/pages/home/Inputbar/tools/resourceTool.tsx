@@ -7,9 +7,8 @@ import ResourceQuickPanelManager from './components/ResourceQuickPanelManager'
 /**
  * Resource Tool
  *
- * Allows users to search and select files from accessible paths.
+ * Allows users to search files from accessible paths.
  * Uses @ trigger (same symbol as MentionModels, but different scope).
- * Only visible in Agent Session (TopicType.Session).
  */
 const resourceTool = defineTool({
   key: 'resource_panel',
@@ -28,7 +27,6 @@ const resourceTool = defineTool({
     // Get accessible paths from session data
     const accessiblePaths = session?.accessiblePaths ?? []
 
-    // Only render if we have accessible paths
     if (accessiblePaths.length === 0) {
       return null
     }

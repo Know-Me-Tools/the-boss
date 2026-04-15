@@ -16,6 +16,7 @@ import AssistantMemorySettings from './AssistantMemorySettings'
 import AssistantModelSettings from './AssistantModelSettings'
 import AssistantPromptSettings from './AssistantPromptSettings'
 import AssistantRegularPromptsSettings from './AssistantRegularPromptsSettings'
+import AssistantSkillsSettings from './AssistantSkillsSettings'
 
 interface AssistantSettingPopupShowParams {
   assistant: Assistant
@@ -26,6 +27,7 @@ type AssistantSettingPopupTab =
   | 'context'
   | 'prompt'
   | 'model'
+  | 'skills'
   | 'messages'
   | 'knowledge_base'
   | 'mcp'
@@ -36,7 +38,7 @@ interface Props extends AssistantSettingPopupShowParams {
   resolve: (assistant: Assistant) => void
 }
 
-const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...props }) => {
+export const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...props }) => {
   const [open, setOpen] = useState(true)
   const { t } = useTranslation()
   const [menu, setMenu] = useState<AssistantSettingPopupTab>(tab || 'model')
@@ -73,6 +75,10 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
     {
       key: 'context',
       label: t('settings.contextStrategy.title', { defaultValue: 'Context Management' })
+    },
+    {
+      key: 'skills',
+      label: t('agent.settings.skills.tab', { defaultValue: 'Skills' })
     },
     {
       key: 'prompt',
@@ -135,10 +141,14 @@ const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, ...prop
               updateAssistant={updateAssistant}
               updateAssistantSettings={updateAssistantSettings}
               onOpenContextSettings={() => setMenu('context')}
+              onOpenSkillsSettings={() => setMenu('skills')}
             />
           )}
           {menu === 'context' && (
             <AssistantContextSettings assistant={assistant} updateAssistantSettings={updateAssistantSettings} />
+          )}
+          {menu === 'skills' && (
+            <AssistantSkillsSettings assistant={assistant} updateAssistantSettings={updateAssistantSettings} />
           )}
           {menu === 'prompt' && (
             <AssistantPromptSettings

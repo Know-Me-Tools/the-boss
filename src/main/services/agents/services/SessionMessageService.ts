@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto'
 
 import { loggerService } from '@logger'
 import knowledgeService from '@main/services/KnowledgeService'
-import { buildSkillStreamParts } from '@main/services/skills/buildSkillStreamParts'
+import { buildSkillStreamParts, type PreparedSkillContext } from '@main/services/skills/buildSkillStreamParts'
+import { loadInstalledSkillSelectionResources } from '@main/services/skills/installedSkillDescriptors'
+import { appendSkillContextToPrompt } from '@main/services/skills/skillPromptAugmentation'
 import type { ContextManagementStreamPayload } from '@shared/contextManagementStream'
 import type {
   AgentEntity,
@@ -468,6 +470,7 @@ export class SessionMessageService extends BaseService {
     let agentContextNotice: ContextManagementStreamPayload | undefined
     let skillStreamParts: Array<TextStreamPart<Record<string, any>>> = []
     const knowledgeAugmentation = await this.prepareKnowledgeAugmentation(req.content, persistedSession, persistedAgent)
+    let promptWithSkillContext = knowledgeAugmentation.prompt
 
     if (
       shouldRunSdkCompactBeforeTurn({
@@ -522,11 +525,22 @@ export class SessionMessageService extends BaseService {
       )
 
       if (knowledgeAugmentation.prompt.trim()) {
+        const { skills, registry } = await loadInstalledSkillSelectionResources(effectiveSkillConfig)
+        let preparedSkills: PreparedSkillContext[] = []
         skillStreamParts = await buildSkillStreamParts({
           prompt: knowledgeAugmentation.prompt,
           config: effectiveSkillConfig,
-          activeModel: persistedSession.model || persistedAgent?.model
+          activeModel: persistedSession.model || persistedAgent?.model,
+          skills,
+          registry,
+          onPreparedSkills: (value) => {
+            preparedSkills = value
+          }
         })
+
+        if (preparedSkills.length > 0) {
+          promptWithSkillContext = appendSkillContextToPrompt(knowledgeAugmentation.prompt, preparedSkills)
+        }
       }
     } catch (error) {
       logger.warn('Failed to prepare backend skill stream parts; continuing without skill metadata', {
@@ -536,7 +550,7 @@ export class SessionMessageService extends BaseService {
     }
 
     const claudeStream = await claudeCodeService.invoke(
-      knowledgeAugmentation.prompt,
+      promptWithSkillContext,
       persistedSession,
       abortController,
       agentSessionId,

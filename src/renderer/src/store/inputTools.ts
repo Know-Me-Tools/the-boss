@@ -33,6 +33,7 @@ export const DEFAULT_TOOL_ORDER: ToolOrder = {
     'web_search',
     'url_context',
     'knowledge_base',
+    'conversation_skills',
     'mcp_tools',
     'generate_image',
     'mention_models'

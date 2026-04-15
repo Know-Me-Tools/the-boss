@@ -27,6 +27,8 @@ import FileManager from '@renderer/services/FileManager'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { emitSkillChunks } from '@renderer/services/skills/emitSkillChunks'
+import { loadInstalledSkillSelectionResources } from '@renderer/services/skills/installedSkillDescriptors'
+import { appendSkillContextToSystemPrompt } from '@renderer/services/skills/skillPromptAugmentation'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
@@ -922,20 +924,36 @@ const fetchAndProcessAssistantResponseImpl = async (
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
     // Get skill config from Redux state
-    const skillConfig = selectResolvedSkillConfigFromOverrides(getState(), topic?.skillConfig)
+    const skillConfig = selectResolvedSkillConfigFromOverrides(
+      getState(),
+      assistant.settings?.skillConfig,
+      topic?.skillConfig
+    )
 
     // Extract the last user message as the prompt
     const lastUserMsg = messagesForContext.filter((m) => m.role === 'user').at(-1)
     const userPrompt = lastUserMsg ? getMainTextContent(lastUserMsg) : ''
 
     // Emit skill chunks before the LLM request
+    let assistantForRequest = assistant
+
     if (userPrompt) {
-      await emitSkillChunks({
+      const { skills, registry } = await loadInstalledSkillSelectionResources(skillConfig)
+      const preparedSkills = await emitSkillChunks({
         prompt: userPrompt,
         config: skillConfig,
         processChunk: streamProcessorCallbacks,
-        activeModel: assistant.model || assistant.defaultModel
+        activeModel: assistant.model || assistant.defaultModel,
+        skills,
+        registry
       })
+
+      if (preparedSkills.length > 0) {
+        assistantForRequest = {
+          ...assistant,
+          prompt: appendSkillContextToSystemPrompt(assistant.prompt, preparedSkills)
+        }
+      }
     }
 
     const assistantContextTelemetry = filterConversationMessagesForContext(
@@ -979,7 +997,7 @@ const fetchAndProcessAssistantResponseImpl = async (
     await transformMessagesAndFetch(
       {
         messages: messagesForContext,
-        assistant,
+        assistant: assistantForRequest,
         topicId,
         allowedTools,
         blockManager,

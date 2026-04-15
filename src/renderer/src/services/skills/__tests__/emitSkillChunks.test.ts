@@ -37,19 +37,25 @@ vi.mock('@logger', () => ({
 vi.mock('../skillRegistry', () => ({
   skillRegistry: {
     getAll: mockGetAll
+  },
+  SkillRegistry: class MockSkillRegistry {
+    register = vi.fn()
+    getAll = mockGetAll
+    matchesTriggers = vi.fn(() => false)
+    getMatchedTokens = vi.fn(() => [])
   }
 }))
 
 vi.mock('../skillSelector', () => ({
-  SkillSelector: vi.fn().mockImplementation(() => ({
-    select: mockSelect
-  }))
+  SkillSelector: class MockSkillSelector {
+    select = mockSelect
+  }
 }))
 
 vi.mock('../contextManager', () => ({
-  ContextManager: vi.fn().mockImplementation(() => ({
-    prepare: mockPrepare
-  }))
+  ContextManager: class MockContextManager {
+    prepare = mockPrepare
+  }
 }))
 
 // Import AFTER mocks are registered
@@ -247,9 +253,9 @@ describe('emitSkillChunks', () => {
 
     const chunks: Chunk[] = []
     // Should not throw
-    await expect(
-      emitSkillChunks({ prompt: 'test', config: makeConfig(), processChunk: (c) => chunks.push(c) })
-    ).resolves.toBeUndefined()
+    await expect(emitSkillChunks({ prompt: 'test', config: makeConfig(), processChunk: (c) => chunks.push(c) })).resolves.toEqual(
+      expect.any(Array)
+    )
 
     // No chunks for the failed skill
     const activatedChunks = chunks.filter((c) => c.type === ChunkType.SKILL_ACTIVATED) as any[]

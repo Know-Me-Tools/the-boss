@@ -7,7 +7,6 @@ import { LONG_POLL_TIMEOUT_MS } from './config/timeouts'
 import { anthropicOAuthInternalAuthMiddleware } from './middleware/anthropicOAuthInternalAuth'
 import { authMiddleware } from './middleware/auth'
 import { errorHandler } from './middleware/error'
-import { openAIOAuthInternalAuthMiddleware } from './middleware/openaiOAuthInternalAuth'
 import { setupOpenAPIDocumentation } from './middleware/openapi'
 import { buildTheBossAgentCard, getRequestBaseUrl } from './routes/a2a/agentCard'
 import { handleA2AJsonRpc } from './routes/a2a/jsonRpc'
@@ -64,8 +63,7 @@ app.use(
     allowedHeaders: [
       'Content-Type',
       'Authorization',
-      // Internal OAuth proxy secret headers sent from the Electron renderer
-      'x-cherry-openai-oauth-secret',
+      // Internal Anthropic OAuth proxy secret header sent from the Electron renderer
       'x-cherry-anthropic-oauth-secret'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
@@ -181,7 +179,7 @@ app.get('/', (_req, res) => {
 // Setup OpenAPI documentation before protected routes so docs remain public
 setupOpenAPIDocumentation(app)
 
-app.use('/_internal/openai-oauth', openAIOAuthInternalAuthMiddleware, extendMessagesTimeout, openAIOAuthInternalRoutes)
+app.use('/_internal/openai-oauth', authMiddleware, extendMessagesTimeout, openAIOAuthInternalRoutes)
 app.use('/_internal/anthropic-oauth', anthropicOAuthInternalAuthMiddleware, extendMessagesTimeout, anthropicOAuthInternalRoutes)
 
 // Provider-specific messages route requires authentication
