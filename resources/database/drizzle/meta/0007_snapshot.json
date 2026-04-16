@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d6e91459-c233-4aa1-bfa7-9b0a958afe82",
-  "prevId": "7bf3927c-ffdf-4f66-8d86-3fe7567af50e",
+  "id": "bd05ea4b-4ff1-4666-a98d-7ce82fe68548",
+  "prevId": "498cd185-e5ec-4a74-ab5b-43205e43fe10",
   "tables": {
     "agents": {
       "name": "agents",
@@ -30,6 +30,13 @@
         },
         "description": {
           "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -632,13 +639,6 @@
         "configuration": {
           "name": "configuration",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "last_total_tokens": {
-          "name": "last_total_tokens",
-          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
