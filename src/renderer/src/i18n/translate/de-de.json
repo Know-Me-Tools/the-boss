@@ -268,7 +268,7 @@
         "title": "Geplante Aufgaben"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw-Agenten laufen standardmäßig im Vollautomatikmodus. Alle Tools werden ohne Genehmigungsanfrage ausgeführt."
+        "bypassPermissions": "Boss Claw-Agenten laufen standardmäßig im Vollautomatikmodus. Alle Tools werden ohne Genehmigungsanfrage ausgeführt."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Geben Sie hier eine Nachricht ein, drücken Sie {{key}} zum Senden",
       "resource_panel": {
         "categories": {
-          "files": "Dateien"
+          "files": "Dateien",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Wählen Sie aus Dateien, Agenten oder Fähigkeiten",
         "loading": "Laden...",
@@ -2282,6 +2283,17 @@
       "success": "Backup erfolgreich"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

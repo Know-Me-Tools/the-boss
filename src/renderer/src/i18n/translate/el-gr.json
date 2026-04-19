@@ -268,7 +268,7 @@
         "title": "Προγραμματισμένες εργασίες"
       },
       "warning": {
-        "bypassPermissions": "Οι πράκτορες CherryClaw εκτελούνται σε πλήρη αυτόματη λειτουργία από προεπιλογή. Όλα τα εργαλεία εκτελούνται χωρίς να ζητούν έγκριση."
+        "bypassPermissions": "Οι πράκτορες Boss Claw εκτελούνται σε πλήρη αυτόματη λειτουργία από προεπιλογή. Όλα τα εργαλεία εκτελούνται χωρίς να ζητούν έγκριση."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Γράψτε το μήνυμά σας εδώ, πατήστε {{key}} για αποστολή",
       "resource_panel": {
         "categories": {
-          "files": "Αρχεία"
+          "files": "Αρχεία",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Επιλέξτε από αρχεία, πράκτορες ή δεξιότητες",
         "loading": "Φόρτωση...",
@@ -2282,6 +2283,17 @@
       "success": "Η αντιγραφή ασφαλείας ήταν επιτυχής"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

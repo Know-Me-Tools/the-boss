@@ -1,6 +1,6 @@
 # Claw MCP 服务器
 
-Claw MCP 服务器是一个内置的 MCP（Model Context Protocol）服务器，自动注入到每个 CherryClaw 会话中。它为代理提供了四个自主管理工具：`cron`（任务调度）、`notify`（通知）、`skills`（技能管理）和 `memory`（记忆管理）。
+Claw MCP 服务器是一个内置的 MCP（Model Context Protocol）服务器，自动注入到每个 Boss Claw 会话中。它为代理提供了四个自主管理工具：`cron`（任务调度）、`notify`（通知）、`skills`（技能管理）和 `memory`（记忆管理）。
 
 ## 架构
 
@@ -13,7 +13,7 @@ CherryClawService.invoke()
   → SDK 自动发现工具: mcp__claw__cron, mcp__claw__notify, mcp__claw__skills, mcp__claw__memory
 ```
 
-ClawServer 使用 `@modelcontextprotocol/sdk` 的 `McpServer` 类，以内存模式运行（无需 HTTP 传输）。每个 CherryClaw 会话调用时创建新实例，绑定到当前 agent 的 ID。
+ClawServer 使用 `@modelcontextprotocol/sdk` 的 `McpServer` 类，以内存模式运行（无需 HTTP 传输）。每个 Boss Claw 会话调用时创建新实例，绑定到当前 agent 的 ID。
 
 ## 工具白名单
 
@@ -121,7 +121,7 @@ ClawServer 使用 `@modelcontextprotocol/sdk` 的 `McpServer` 类，以内存模
 
 ## memory 工具
 
-管理跨会话的持久化记忆。这是 CherryClaw 记忆系统的写入接口（读取通过系统提示词中的内联内容实现）。
+管理跨会话的持久化记忆。这是 Boss Claw 记忆系统的写入接口（读取通过系统提示词中的内联内容实现）。
 
 ### 设计原则
 

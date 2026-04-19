@@ -1,10 +1,10 @@
-# CherryClaw 整体设计
+# Boss Claw 整体设计
 
 <p align="center">
-  <img src="./cherryclaw.png" width="200" alt="CherryClaw" />
+  <img src="./cherryclaw.png" width="200" alt="Boss Claw" />
 </p>
 
-CherryClaw 是 The Boss 中的自主代理（autonomous agent）类型，基于 Claude Agent SDK 构建。与标准的 claude-code 代理不同，CherryClaw 拥有独立的人格系统、基于任务的调度器、IM 频道集成，以及一组通过内部 MCP 服务器提供的自主管理工具。
+Boss Claw 是 The Boss 中的自主代理（autonomous agent）类型，基于 Claude Agent SDK 构建。与标准的 claude-code 代理不同，Boss Claw 拥有独立的人格系统、基于任务的调度器、IM 频道集成，以及一组通过内部 MCP 服务器提供的自主管理工具。
 
 ## 架构概览
 
@@ -22,7 +22,7 @@ CherryClawService
 
 ### AgentServiceRegistry 模式
 
-`SessionMessageService` 不再硬编码 `ClaudeCodeService`，而是通过 `AgentServiceRegistry` 根据 `AgentType` 查找对应的服务实现。CherryClaw 在运行时通过注册表委托给 claude-code 执行。
+`SessionMessageService` 不再硬编码 `ClaudeCodeService`，而是通过 `AgentServiceRegistry` 根据 `AgentType` 查找对应的服务实现。Boss Claw 在运行时通过注册表委托给 claude-code 执行。
 
 ```typescript
 // src/main/services/agents/services/AgentServiceRegistry.ts
@@ -32,11 +32,11 @@ agentServiceRegistry.register('cherry-claw', new CherryClawService())
 
 ### 自定义系统提示词（替换 Claude Code 预设）
 
-CherryClaw 不使用 Claude Code 的预设系统提示词。`PromptBuilder` 从工作区文件组装完整的自定义提示词，通过 `_systemPrompt` 字段传递给 `ClaudeCodeService`。当该字段存在时，它作为完整的系统提示词使用，而非预设 + 追加模式。
+Boss Claw 不使用 Claude Code 的预设系统提示词。`PromptBuilder` 从工作区文件组装完整的自定义提示词，通过 `_systemPrompt` 字段传递给 `ClaudeCodeService`。当该字段存在时，它作为完整的系统提示词使用，而非预设 + 追加模式。
 
 ### 禁用不适用的内置工具
 
-CherryClaw 通过 `_disallowedTools` 禁用了一组不适合自主运行的 SDK 内置工具：
+Boss Claw 通过 `_disallowedTools` 禁用了一组不适合自主运行的 SDK 内置工具：
 
 | 被禁用的工具 | 原因 |
 |---|---|
@@ -65,11 +65,11 @@ CherryClawService.invoke()
 
 ## 记忆系统
 
-CherryClaw 采用受 Anna 启发的三文件记忆模型，每个文件有独立的职责范围：
+Boss Claw 采用受 Anna 启发的三文件记忆模型，每个文件有独立的职责范围：
 
 ```
 {workspace}/
-  system.md              — 可选的系统提示词覆盖（替换默认 CherryClaw 身份）
+  system.md              — 可选的系统提示词覆盖（替换默认 Boss Claw 身份）
   soul.md                — 你是谁：人格、语气、沟通风格
   user.md                — 用户是谁：名字、偏好、个人上下文
   memory/
@@ -90,7 +90,7 @@ CherryClaw 采用受 Anna 启发的三文件记忆模型，每个文件有独立
 
 ## 数据库
 
-CherryClaw 使用 Drizzle ORM + LibSQL（SQLite）存储任务数据：
+Boss Claw 使用 Drizzle ORM + LibSQL（SQLite）存储任务数据：
 
 | 表名 | 用途 |
 |---|---|

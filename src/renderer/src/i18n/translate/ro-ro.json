@@ -268,7 +268,7 @@
         "title": "Sarcini programate"
       },
       "warning": {
-        "bypassPermissions": "Agenții CherryClaw rulează în mod automat complet în mod implicit. Toate instrumentele se execută fără a solicita aprobare."
+        "bypassPermissions": "Agenții Boss Claw rulează în mod automat complet în mod implicit. Toate instrumentele se execută fără a solicita aprobare."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Scrie mesajul tău aici, apasă {{key}} pentru a trimite",
       "resource_panel": {
         "categories": {
-          "files": "Fișiere"
+          "files": "Fișiere",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Selectați din fișiere, agenți sau competențe",
         "loading": "Se încarcă...",
@@ -2282,6 +2283,17 @@
       "success": "Backup reușit"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

@@ -2,7 +2,7 @@
  * BuiltinAgentBootstrap
  *
  * Encapsulates all startup initialization logic for built-in skills and agents
- * (CherryClaw, Cherry Assistant, etc.). Keeps business details out of
+ * (Boss Claw, Boss Assistant, etc.). Keeps business details out of
  * the main entry point (`src/main/index.ts`).
  */
 import { loggerService } from '@logger'
@@ -103,20 +103,20 @@ async function handleInitResult(
   scheduleRetry(agentId, label, initFn)
 }
 
-// ── CherryClaw ──────────────────────────────────────────────────────
+// ── Boss Claw ───────────────────────────────────────────────────────
 
 async function initCherryClaw(): Promise<void> {
   try {
     const result = await agentService.initDefaultCherryClawAgent()
-    await handleInitResult(CHERRY_CLAW_AGENT_ID, 'CherryClaw', result, initCherryClaw, async (agentId) => {
+    await handleInitResult(CHERRY_CLAW_AGENT_ID, 'Boss Claw', result, initCherryClaw, async (agentId) => {
       await schedulerService.ensureHeartbeatTask(agentId, 30)
     })
   } catch (error) {
-    logger.warn('Failed to init CherryClaw agent:', error as Error)
+    logger.warn('Failed to init Boss Claw agent:', error as Error)
   }
 }
 
-// ── Cherry Assistant ────────────────────────────────────────────────
+// ── Boss Assistant ──────────────────────────────────────────────────
 
 export { CHERRY_ASSISTANT_AGENT_ID }
 
@@ -127,8 +127,8 @@ async function initCherryAssistant(): Promise<void> {
       builtinRole: 'assistant',
       provisionWorkspace: provisionBuiltinAgent
     })
-    await handleInitResult(CHERRY_ASSISTANT_AGENT_ID, 'Cherry Assistant', result, initCherryAssistant)
+    await handleInitResult(CHERRY_ASSISTANT_AGENT_ID, 'Boss Assistant', result, initCherryAssistant)
   } catch (error) {
-    logger.warn('Failed to init Cherry Assistant agent:', error as Error)
+    logger.warn('Failed to init Boss Assistant agent:', error as Error)
   }
 }

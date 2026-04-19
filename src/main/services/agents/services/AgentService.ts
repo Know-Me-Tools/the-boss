@@ -28,6 +28,11 @@ import { CHERRY_CLAW_AGENT_ID, isBuiltinAgentId } from './builtin/BuiltinAgentId
 import { seedWorkspaceTemplates } from './cherryclaw/seedWorkspace'
 
 const logger = loggerService.withContext('AgentService')
+const BOSS_CLAW_AGENT_NAME = 'Boss Claw'
+const BOSS_CLAW_AGENT_DESCRIPTION = 'Default autonomous Boss Claw agent'
+const LEGACY_BOSS_CLAW_AGENT_NAMES = ['Cherry Claw', 'CherryClaw']
+const LEGACY_BOSS_CLAW_AGENT_DESCRIPTION = 'Default autonomous CherryClaw agent'
+const LEGACY_BOSS_ASSISTANT_AGENT_NAMES = ['Cherry Assistant']
 
 export type BuiltinAgentInitResult =
   | { agentId: string; skippedReason?: undefined }
@@ -221,6 +226,10 @@ export class AgentService extends BaseService {
         const resolvedPaths = this.resolveAccessiblePaths([], id)
         const workspace = resolvedPaths[0]
         const agentConfig = workspace ? await provisionWorkspace(workspace, builtinRole) : undefined
+        await this.updateBuiltinDisplayDefaults(database, existing, {
+          oldNames: builtinRole === 'assistant' ? LEGACY_BOSS_ASSISTANT_AGENT_NAMES : undefined,
+          newName: builtinRole === 'assistant' ? agentConfig?.name : undefined
+        })
         if (agentConfig && (agentConfig.description || agentConfig.instructions)) {
           const updateData: UpdateAgentRequest = {}
           if (agentConfig.description) updateData.description = agentConfig.description
@@ -306,7 +315,7 @@ export class AgentService extends BaseService {
   }
 
   /**
-   * Initialize the built-in CherryClaw agent with a fixed ID.
+   * Initialize the built-in Boss Claw agent with a fixed ID.
    * Called once at app startup. Safe to call multiple times — skips if the agent already exists.
    * Returns the agent ID if created or already present, or null if no compatible model is available yet.
    */
@@ -317,18 +326,24 @@ export class AgentService extends BaseService {
       const existing = await this.findAgentRow(id, { includeDeleted: true })
 
       if (existing?.deleted_at) {
-        logger.info('Default CherryClaw agent was deleted by user — skipping recreation', { id })
+        logger.info('Default Boss Claw agent was deleted by user — skipping recreation', { id })
         return { agentId: null, skippedReason: 'deleted' }
       }
 
       if (existing) {
+        await this.updateBuiltinDisplayDefaults(database, existing, {
+          oldNames: LEGACY_BOSS_CLAW_AGENT_NAMES,
+          newName: BOSS_CLAW_AGENT_NAME,
+          oldDescriptions: [LEGACY_BOSS_CLAW_AGENT_DESCRIPTION],
+          newDescription: BOSS_CLAW_AGENT_DESCRIPTION
+        })
         return { agentId: id }
       }
 
       const modelsRes = await modelsService.getModels({ providerType: 'anthropic', limit: 1 })
       const firstModel = modelsRes.data?.[0]
       if (!firstModel) {
-        logger.info('No Anthropic-compatible models available yet — skipping default CherryClaw creation')
+        logger.info('No Anthropic-compatible models available yet — skipping default Boss Claw creation')
         return { agentId: null, skippedReason: 'no_model' }
       }
 
@@ -347,8 +362,8 @@ export class AgentService extends BaseService {
 
       const req: CreateAgentRequest = {
         type: 'claude-code',
-        name: 'Cherry Claw',
-        description: 'Default autonomous CherryClaw agent',
+        name: BOSS_CLAW_AGENT_NAME,
+        description: BOSS_CLAW_AGENT_DESCRIPTION,
         model: firstModel.id,
         accessible_paths: [],
         configuration
@@ -363,7 +378,7 @@ export class AgentService extends BaseService {
       const insertData: InsertAgentRow = {
         id,
         type: req.type,
-        name: req.name || 'CherryClaw',
+        name: req.name || BOSS_CLAW_AGENT_NAME,
         description: req.description,
         instructions: 'You are a helpful assistant.',
         model: req.model,
@@ -391,18 +406,46 @@ export class AgentService extends BaseService {
       try {
         await skillService.initSkillsForAgent(id, workspace)
       } catch (error) {
-        logger.warn('Failed to seed builtin skills for CherryClaw agent', {
+        logger.warn('Failed to seed builtin skills for Boss Claw agent', {
           agentId: id,
           error: error instanceof Error ? error.message : String(error)
         })
       }
 
-      logger.info('Created default CherryClaw agent', { id })
+      logger.info('Created default Boss Claw agent', { id })
       return { agentId: id }
     } catch (error) {
-      logger.error('Failed to init default CherryClaw agent', error as Error)
+      logger.error('Failed to init default Boss Claw agent', error as Error)
       return { agentId: null, skippedReason: 'no_model' }
     }
+  }
+
+  private async updateBuiltinDisplayDefaults(
+    database: Awaited<ReturnType<typeof this.getDatabase>>,
+    existing: AgentRow,
+    defaults: {
+      oldNames?: string[]
+      newName?: string
+      oldDescriptions?: string[]
+      newDescription?: string
+    }
+  ): Promise<void> {
+    const updateData: Partial<AgentRow> = {}
+
+    if (defaults.newName && defaults.oldNames?.includes(existing.name)) {
+      updateData.name = defaults.newName
+    }
+
+    if (defaults.newDescription && existing.description && defaults.oldDescriptions?.includes(existing.description)) {
+      updateData.description = defaults.newDescription
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return
+    }
+
+    updateData.updated_at = new Date().toISOString()
+    await database.update(agentsTable).set(updateData).where(eq(agentsTable.id, existing.id))
   }
 
   async updateAgent(

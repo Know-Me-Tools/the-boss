@@ -268,7 +268,7 @@
         "title": "Các Tác Vụ Đã Lên Lịch"
       },
       "warning": {
-        "bypassPermissions": "Các tác nhân CherryClaw hoạt động ở chế độ Tự động hoàn toàn theo mặc định. Mọi công cụ đều thực thi mà không yêu cầu phê duyệt."
+        "bypassPermissions": "Các tác nhân Boss Claw hoạt động ở chế độ Tự động hoàn toàn theo mặc định. Mọi công cụ đều thực thi mà không yêu cầu phê duyệt."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Nhập tin nhắn của bạn ở đây, nhấn {{key}} để gửi",
       "resource_panel": {
         "categories": {
-          "files": "Tệp tin"
+          "files": "Tệp tin",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Chọn từ tệp, tác nhân hoặc kỹ năng",
         "loading": "Đang tải...",
@@ -2282,6 +2283,17 @@
       "success": "Sao lưu thành công"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

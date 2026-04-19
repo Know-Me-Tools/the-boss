@@ -1,5 +1,5 @@
 import { loggerService } from '@logger'
-import type { SkillGlobalConfig } from '@types'
+import { getSkillMethodEmbeddingModelId, type SkillGlobalConfig } from '@types'
 import type { TextStreamPart } from 'ai'
 
 import { ContextManager } from './contextManager'
@@ -51,8 +51,34 @@ export async function buildSkillStreamParts(params: {
     return []
   }
 
-  const selector = new MainSkillSelector(config, registry, activeModel)
+  const startedAt = Date.now()
+  const embeddingModelId = getSkillMethodEmbeddingModelId(config)
+  const fallbackReason = 'semantic_selection_disabled_startup_path'
+  logger.info('Skill selection started', {
+    selectionMethod: config.selectionMethod,
+    skillCount: allSkills.length,
+    activeModel,
+    semanticSelectionEnabled: false,
+    embeddingModelId,
+    embeddingColdStartStatus: 'skipped'
+  })
+
+  const selector = new MainSkillSelector(config, registry, activeModel, {
+    semanticSelectionEnabled: false
+  })
   const selectedSkills = await selector.select(prompt, allSkills)
+
+  logger.info('Skill selection completed', {
+    selectionMethod: config.selectionMethod,
+    skillCount: allSkills.length,
+    selectedCount: selectedSkills.length,
+    durationMs: Date.now() - startedAt,
+    semanticSelectionEnabled: false,
+    embeddingModelId,
+    embeddingColdStartStatus: 'skipped',
+    fallbackReason
+  })
+
   if (selectedSkills.length === 0) {
     return []
   }

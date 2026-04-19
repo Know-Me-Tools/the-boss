@@ -29,6 +29,65 @@ describe('stripLocalCommandTags', () => {
 })
 
 describe('Claude → AiSDK transform', () => {
+  it('does not forward full raw SDK messages in provider metadata or raw frames', () => {
+    const state = new ClaudeStreamState({ agentSessionId: baseStreamMetadata.session_id })
+    const secretRawPayload = {
+      content: 'large raw payload that must not be sent to the renderer'
+    }
+
+    const initMessage = {
+      ...baseStreamMetadata,
+      type: 'system',
+      subtype: 'init',
+      uuid: uuid(100),
+      slash_commands: ['clear'],
+      tools: ['Read'],
+      session_id: 'sdk-session-raw-test',
+      secretRawPayload
+    } as unknown as SDKMessage
+
+    const assistantMessage = {
+      ...baseStreamMetadata,
+      type: 'assistant',
+      uuid: uuid(101),
+      secretRawPayload,
+      message: {
+        id: 'msg-raw-test',
+        type: 'message',
+        role: 'assistant',
+        model: 'claude-test',
+        content: 'hello',
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: {
+          input_tokens: 1,
+          output_tokens: 1
+        }
+      }
+    } as unknown as SDKMessage
+
+    const parts = [
+      ...transformSDKMessageToStreamParts(initMessage, state),
+      ...transformSDKMessageToStreamParts(assistantMessage, state)
+    ]
+
+    const rawPart = parts.find((part) => part.type === 'raw')
+    expect(rawPart?.rawValue).toMatchObject({
+      type: 'init',
+      session_id: 'sdk-session-raw-test',
+      slash_commands: ['clear'],
+      tools: ['Read']
+    })
+    expect(JSON.stringify(rawPart)).not.toContain('secretRawPayload')
+
+    for (const part of parts) {
+      if ('providerMetadata' in part && part.providerMetadata) {
+        expect(part.providerMetadata).not.toHaveProperty('raw')
+        expect(JSON.stringify(part.providerMetadata)).not.toContain('secretRawPayload')
+      }
+    }
+  })
+
   it('handles tool call streaming lifecycle', () => {
     const state = new ClaudeStreamState({ agentSessionId: baseStreamMetadata.session_id })
     const parts: ReturnType<typeof transformSDKMessageToStreamParts>[number][] = []

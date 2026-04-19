@@ -60,7 +60,7 @@ import {
   UserMessageStatus
 } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
-import { addAbortController } from '@renderer/utils/abortController'
+import { addAbortController, removeAbortController } from '@renderer/utils/abortController'
 import {
   buildAgentSessionTopicId,
   extractAgentSessionIdFromTopicId,
@@ -659,6 +659,7 @@ const fetchAndProcessAgentResponseImpl = async (
   { topicId, assistant, assistantMessage, agentSession, userMessageId }: AgentStreamParams
 ) => {
   let callbacks: StreamProcessorCallbacks = {}
+  let abortCleanup: (() => void) | undefined
   try {
     dispatch(newMessagesActions.setTopicLoading({ topicId, loading: true }))
 
@@ -694,7 +695,9 @@ const fetchAndProcessAgentResponseImpl = async (
     const apiServer = state.settings.apiServer
 
     const abortController = new AbortController()
-    addAbortController(userMessageId, () => abortController.abort())
+    const abortAgentStream = () => abortController.abort()
+    abortCleanup = () => removeAbortController(userMessageId, abortAgentStream)
+    addAbortController(userMessageId, abortAgentStream)
 
     const stream = await createAgentMessageStream(apiServer, agentSession, userContent, abortController.signal)
 
@@ -804,6 +807,7 @@ const fetchAndProcessAgentResponseImpl = async (
       logger.error('Error in agent onError callback:', callbackError as Error)
     }
   } finally {
+    abortCleanup?.()
     dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
   }
 }

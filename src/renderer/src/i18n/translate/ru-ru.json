@@ -268,7 +268,7 @@
         "title": "Запланированные задачи"
       },
       "warning": {
-        "bypassPermissions": "Агенты CherryClaw по умолчанию работают в полностью автоматическом режиме. Все инструменты выполняются без запроса одобрения."
+        "bypassPermissions": "Агенты Boss Claw по умолчанию работают в полностью автоматическом режиме. Все инструменты выполняются без запроса одобрения."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Напишите сообщение здесь, нажмите {{key}} для отправки",
       "resource_panel": {
         "categories": {
-          "files": "Файлы"
+          "files": "Файлы",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Выберите из файлов, агентов или навыков",
         "loading": "Загрузка...",
@@ -2282,6 +2283,17 @@
       "success": "Резервная копия успешно создана"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

@@ -268,7 +268,7 @@
         "title": "定时任务"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw Agent 默认以全自动模式运行。所有工具执行时不会请求批准。"
+        "bypassPermissions": "Boss Claw Agent 默认以全自动模式运行。所有工具执行时不会请求批准。"
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "在这里输入消息，按 {{key}} 发送",
       "resource_panel": {
         "categories": {
-          "files": "文件"
+          "files": "文件",
+          "skills": "[to be translated]:Skills"
         },
         "description": "从文件、Agents 或 Skills 中选择",
         "loading": "加载中...",

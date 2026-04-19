@@ -268,7 +268,7 @@
         "title": "排程任務"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw Agent 預設以全自動模式執行。所有工具執行時不會請求批准。"
+        "bypassPermissions": "Boss Claw Agent 預設以全自動模式執行。所有工具執行時不會請求批准。"
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "在此輸入您的訊息，按 {{key}} 傳送",
       "resource_panel": {
         "categories": {
-          "files": "檔案"
+          "files": "檔案",
+          "skills": "[to be translated]:Skills"
         },
         "description": "從檔案、智能體或技能中選擇",
         "loading": "載入中...",

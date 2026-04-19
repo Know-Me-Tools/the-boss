@@ -268,7 +268,7 @@
         "title": "Scheduled Tasks"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw agents run with Full Auto Mode by default. All tools execute without asking for approval."
+        "bypassPermissions": "Boss Claw agents run with Full Auto Mode by default. All tools execute without asking for approval."
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "Type your message here, press {{key}} to send",
       "resource_panel": {
         "categories": {
-          "files": "Files"
+          "files": "Files",
+          "skills": "Skills"
         },
         "description": "Select a file from accessible paths",
         "loading": "Loading...",

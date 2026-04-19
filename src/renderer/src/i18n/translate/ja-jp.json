@@ -268,7 +268,7 @@
         "title": "スケジュールタスク"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw エージェントはデフォルトでフルオートモードで実行されます。すべてのツールは承認なしで実行されます。"
+        "bypassPermissions": "Boss Claw エージェントはデフォルトでフルオートモードで実行されます。すべてのツールは承認なしで実行されます。"
       }
     },
     "delete": {
@@ -1121,7 +1121,8 @@
       "placeholder_without_triggers": "ここにメッセージを入力し、{{key}} を押して送信...",
       "resource_panel": {
         "categories": {
-          "files": "ファイル"
+          "files": "ファイル",
+          "skills": "[to be translated]:Skills"
         },
         "description": "ファイル、エージェント、またはスキルから選択",
         "loading": "読み込み中...",
@@ -2282,6 +2283,17 @@
       "success": "バックアップに成功しました"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",

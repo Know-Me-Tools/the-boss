@@ -124,10 +124,21 @@ function createSelectQuery(rows: unknown[]) {
 
 describe('AgentService built-in agent lifecycle', () => {
   const service = AgentService.getInstance()
+  let updateSet: ReturnType<typeof vi.fn>
+  let updateWhere: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    updateWhere = vi.fn().mockResolvedValue(undefined)
+    updateSet = vi.fn(() => ({ where: updateWhere }))
   })
+
+  function createDatabaseWithExistingAgent(agent: Record<string, unknown>) {
+    return {
+      select: vi.fn(() => createSelectQuery([agent])),
+      update: vi.fn(() => ({ set: updateSet }))
+    }
+  }
 
   it('skips recreating a built-in agent that was soft-deleted by the user', async () => {
     const database = {
@@ -146,6 +157,78 @@ describe('AgentService built-in agent lifecycle', () => {
 
     expect(result).toEqual({ agentId: null, skippedReason: 'deleted' })
     expect(mockGetModels).not.toHaveBeenCalled()
+  })
+
+  it('renames an existing default CherryClaw agent that still has the old default display name', async () => {
+    const database = createDatabaseWithExistingAgent({
+      id: 'cherry-claw-default',
+      name: 'Cherry Claw',
+      description: 'Default autonomous CherryClaw agent',
+      deleted_at: null
+    })
+
+    vi.spyOn(BaseService.prototype, 'getDatabase').mockResolvedValue(database as never)
+
+    const result = await service.initDefaultCherryClawAgent()
+
+    expect(result).toEqual({ agentId: 'cherry-claw-default' })
+    expect(mockGetModels).not.toHaveBeenCalled()
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Boss Claw',
+        description: 'Default autonomous Boss Claw agent',
+        updated_at: expect.any(String)
+      })
+    )
+  })
+
+  it('preserves an existing default CherryClaw agent that has a customized display name', async () => {
+    const database = createDatabaseWithExistingAgent({
+      id: 'cherry-claw-default',
+      name: 'Operations Copilot',
+      description: 'Default autonomous CherryClaw agent',
+      deleted_at: null
+    })
+
+    vi.spyOn(BaseService.prototype, 'getDatabase').mockResolvedValue(database as never)
+
+    const result = await service.initDefaultCherryClawAgent()
+
+    expect(result).toEqual({ agentId: 'cherry-claw-default' })
+    expect(mockGetModels).not.toHaveBeenCalled()
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Default autonomous Boss Claw agent',
+        updated_at: expect.any(String)
+      })
+    )
+    expect(updateSet).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'Boss Claw' }))
+  })
+
+  it('renames an existing Cherry Assistant default agent that still has the old default display name', async () => {
+    const database = createDatabaseWithExistingAgent({
+      id: 'cherry-assistant-default',
+      name: 'Cherry Assistant',
+      description: 'Built-in The Boss advisor',
+      deleted_at: null
+    })
+
+    vi.spyOn(BaseService.prototype, 'getDatabase').mockResolvedValue(database as never)
+
+    const result = await service.initBuiltinAgent({
+      id: 'cherry-assistant-default',
+      builtinRole: 'assistant',
+      provisionWorkspace: vi.fn().mockResolvedValue({ name: 'Boss Assistant' })
+    })
+
+    expect(result).toEqual({ agentId: 'cherry-assistant-default' })
+    expect(mockGetModels).not.toHaveBeenCalled()
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Boss Assistant',
+        updated_at: expect.any(String)
+      })
+    )
   })
 
   it('soft-deletes built-in agents while preserving the row', async () => {

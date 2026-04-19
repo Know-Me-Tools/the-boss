@@ -22,7 +22,7 @@ import {
 } from '@renderer/store/thunk/messageThunk'
 import { type Topic, TopicType } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
-import { addAbortController } from '@renderer/utils/abortController'
+import { addAbortController, removeAbortController } from '@renderer/utils/abortController'
 import { buildAgentSessionTopicId } from '@renderer/utils/agentSession'
 import { Spin } from 'antd'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -70,7 +70,14 @@ const AgentSessionMessages = ({ agentId, sessionId }: Props) => {
   useEffect(() => {
     let cancelled = false
     let cleanupChunk: (() => void) | null = null
+    let abortRegistration: { id: string; fn: () => void } | null = null
     exchangeDoneRef.current = false
+
+    const clearAbortRegistration = () => {
+      if (!abortRegistration) return
+      removeAbortController(abortRegistration.id, abortRegistration.fn)
+      abortRegistration = null
+    }
 
     const getOrCreateStream = () => {
       if (exchangeDoneRef.current) return streamCtrlRef.current
@@ -104,18 +111,23 @@ const AgentSessionMessages = ({ agentId, sessionId }: Props) => {
           const ctrl = getOrCreateStream()
           if (ctrl) {
             // Register abort callback so the input bar's stop button can abort the main process stream
-            addAbortController(ctrl.assistantMessageId, () => {
+            clearAbortRegistration()
+            const abortSessionStream = () => {
               void window.api.agentSessionStream.abort(sessionId)
-            })
+            }
+            abortRegistration = { id: ctrl.assistantMessageId, fn: abortSessionStream }
+            addAbortController(ctrl.assistantMessageId, abortSessionStream)
           }
         } else if (event.type === 'chunk' && event.chunk) {
           getOrCreateStream()?.pushChunk(event.chunk)
         } else if (event.type === 'complete') {
           exchangeDoneRef.current = true
+          clearAbortRegistration()
           streamCtrlRef.current?.complete()
           streamCtrlRef.current = null
         } else if (event.type === 'error') {
           exchangeDoneRef.current = true
+          clearAbortRegistration()
           // Push the error as a data chunk so the adapter can render it via
           // onError, then close the stream normally. Using complete() instead
           // of error() preserves any previously-enqueued chunks that the
@@ -137,6 +149,7 @@ const AgentSessionMessages = ({ agentId, sessionId }: Props) => {
     return () => {
       cancelled = true
       cleanupChunk?.()
+      clearAbortRegistration()
       streamCtrlRef.current?.complete()
       streamCtrlRef.current = null
       void window.api.agentSessionStream.unsubscribe(sessionId)

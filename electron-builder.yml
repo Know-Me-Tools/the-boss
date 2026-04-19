@@ -161,14 +161,14 @@ artifactBuildCompleted: scripts/artifact-build-completed.js
 releaseInfo:
   releaseNotes: |
     <!--LANG:en-->
-    The Boss 1.9.0-rc.0 - CherryClaw Agent, Skills System & Security Hardening
+    The Boss 1.9.0-rc.0 - Boss Claw Agent, Skills System & Security Hardening
 
     ⚠️ Breaking Changes
     - [Agents] "Plugins" system renamed to "Skills". Plugin marketplace has been replaced by a unified Skills management interface
 
     ✨ New Features
-    - [Agents] Add CherryClaw autonomous agent: personality system, scheduled tasks, multi-channel integration (Telegram, Discord, Feishu, Slack, WeChat, QQ), and filesystem sandbox
-    - [Agents] Add built-in Cherry Assistant — helps diagnose issues, navigate pages, collect FAQs, and submit bug reports
+    - [Agents] Add Boss Claw autonomous agent: personality system, scheduled tasks, multi-channel integration (Telegram, Discord, Feishu, Slack, WeChat, QQ), and filesystem sandbox
+    - [Agents] Add built-in Boss Assistant — helps diagnose issues, navigate pages, collect FAQs, and submit bug reports
     - [Agents] Improved tool output display with syntax highlighting, diff viewer, line numbers, and file type icons
     - [ErrorHandling] Add AI-powered error diagnosis with instant classification and step-by-step fix suggestions
     - [MCP] Add flomo as a built-in MCP server for capturing notes and ideas
@@ -189,7 +189,7 @@ releaseInfo:
     - [Models] Fix NVIDIA provider reasoning parameters for Qwen/DeepSeek/Kimi/Zhipu models
     - [Models] Fix Xiaomi MiMo thinking/non-thinking toggle behavior
     - [Agents] Fix Claude Code child processes ignoring app proxy settings (including SOCKS proxy)
-    - [Agents] Fix Cherry Assistant ignoring user's language and always responding in English
+    - [Agents] Fix Boss Assistant ignoring user's language and always responding in English
     - [MCP] Fix Hub-mode MCP tool calls silently truncating list-style responses
     - [Knowledge] Fix epub file embedding failure
     - [Notes] Fix KaTeX formula corruption when toggling editor modes
@@ -207,14 +207,14 @@ releaseInfo:
     - [Agent] Improve session switch experience
 
     <!--LANG:zh-CN-->
-    The Boss 1.9.0-rc.0 - CherryClaw 智能体、技能系统与安全加固
+    The Boss 1.9.0-rc.0 - Boss Claw 智能体、技能系统与安全加固
 
     ⚠️ 破坏性变更
     - [智能体] "插件"系统更名为"技能（Skills）"，插件市场已替换为统一的技能管理界面
 
     ✨ 新功能
-    - [智能体] 新增 CherryClaw 自主智能体：个性系统、定时任务、多渠道集成（Telegram、Discord、飞书、Slack、微信、QQ）和文件系统沙箱
-    - [智能体] 新增内置 Cherry Assistant — 可帮助诊断问题、导航页面、收集常见问题和提交 Bug 报告
+    - [智能体] 新增 Boss Claw 自主智能体：个性系统、定时任务、多渠道集成（Telegram、Discord、飞书、Slack、微信、QQ）和文件系统沙箱
+    - [智能体] 新增内置 Boss Assistant — 可帮助诊断问题、导航页面、收集常见问题和提交 Bug 报告
     - [智能体] 改进工具输出展示：语法高亮、差异对比视图、行号和文件类型图标
     - [错误处理] 新增 AI 驱动的错误诊断，支持即时分类和分步修复建议
     - [MCP] 新增 flomo 内置 MCP 服务器，支持通过 AI 捕捉笔记和灵感
@@ -235,7 +235,7 @@ releaseInfo:
     - [模型] 修复 NVIDIA 服务商的 Qwen/DeepSeek/Kimi/Zhipu 模型推理参数
     - [模型] 修复小米 MiMo 思考模式开关行为异常
     - [智能体] 修复 Claude Code 子进程忽略应用代理设置的问题（包括 SOCKS 代理）
-    - [智能体] 修复 Cherry Assistant 忽略用户语言、始终以英语回复的问题
+    - [智能体] 修复 Boss Assistant 忽略用户语言、始终以英语回复的问题
     - [MCP] 修复 Hub 模式下 MCP 工具调用静默截断列表样式响应的问题
     - [知识库] 修复 epub 文件嵌入失败的问题
     - [笔记] 修复切换编辑器模式时 KaTeX 公式损坏的问题

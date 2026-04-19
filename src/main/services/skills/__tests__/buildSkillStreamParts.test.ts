@@ -7,10 +7,11 @@ import {
   SkillSelectionMethod
 } from '../../../../renderer/src/types/skillConfig'
 
-const { mockGetAll, mockSelect, mockPrepare } = vi.hoisted(() => ({
+const { mockGetAll, mockSelect, mockPrepare, mockSelectorConstructor } = vi.hoisted(() => ({
   mockGetAll: vi.fn(),
   mockSelect: vi.fn(),
-  mockPrepare: vi.fn()
+  mockPrepare: vi.fn(),
+  mockSelectorConstructor: vi.fn()
 }))
 
 vi.mock('@logger', () => ({
@@ -35,6 +36,10 @@ vi.mock('../skillRegistry', () => ({
 
 vi.mock('../MainSkillSelector', () => ({
   MainSkillSelector: class MockMainSkillSelector {
+    constructor(...args: unknown[]) {
+      mockSelectorConstructor(...args)
+    }
+
     select = mockSelect
   }
 }))
@@ -113,5 +118,8 @@ describe('buildSkillStreamParts', () => {
     expect(parts[0].type).toBe('data-skill-activated')
     expect(parts[1].type).toBe('data-skill-content-delta')
     expect(parts[2].type).toBe('data-skill-complete')
+    expect(mockSelectorConstructor).toHaveBeenCalledWith(expect.any(Object), expect.any(Object), undefined, {
+      semanticSelectionEnabled: false
+    })
   })
 })

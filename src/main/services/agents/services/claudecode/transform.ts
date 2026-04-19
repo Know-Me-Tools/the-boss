@@ -124,15 +124,40 @@ const filterCommandTags = (text: string): string => {
 /**
  * Extracts provider metadata from the raw Claude message so we can surface it
  * on every emitted stream part for observability and debugging purposes.
+ * Keep this intentionally compact; full raw SDK messages can contain large
+ * tool payloads and should not cross into renderer state.
  */
 const sdkMessageToProviderMetadata = (message: SDKMessage): ProviderMetadata => {
   return {
     anthropic: {
       uuid: message.uuid || generateMessageId(),
-      session_id: message.session_id
-    },
-    raw: message as Record<string, any>
+      session_id: message.session_id,
+      type: message.type,
+      subtype: 'subtype' in message ? message.subtype : undefined
+    }
   }
+}
+
+const summarizeSDKMessage = (message: SDKMessage): Record<string, unknown> => {
+  const summary: Record<string, unknown> = {
+    type: message.type,
+    uuid: message.uuid,
+    session_id: message.session_id
+  }
+
+  if ('subtype' in message) {
+    summary.subtype = message.subtype
+  }
+
+  if (message.type === 'stream_event') {
+    summary.eventType = message.event.type
+  } else if (message.type === 'assistant' || message.type === 'user') {
+    const content = message.message.content
+    summary.contentKind = Array.isArray(content) ? 'array' : typeof content
+    summary.contentBlocks = Array.isArray(content) ? content.length : undefined
+  }
+
+  return summary
 }
 
 /**
@@ -141,7 +166,7 @@ const sdkMessageToProviderMetadata = (message: SDKMessage): ProviderMetadata => 
  * blocks across calls so that incremental deltas can be correlated correctly.
  */
 export function transformSDKMessageToStreamParts(sdkMessage: SDKMessage, state: ClaudeStreamState): AgentStreamPart[] {
-  logger.silly('Transforming SDKMessage', { message: JSON.stringify(sdkMessage) })
+  logger.silly('Transforming SDKMessage', summarizeSDKMessage(sdkMessage))
   switch (sdkMessage.type) {
     case 'assistant':
       return handleAssistantMessage(sdkMessage, state)
@@ -717,8 +742,7 @@ function handleSystemMessage(message: Extract<SDKMessage, { type: 'system' }>): 
         type: 'init',
         session_id: message.session_id,
         slash_commands: message.slash_commands,
-        tools: message.tools,
-        raw: message
+        tools: message.tools
       }
     })
   } else if (message.subtype === 'compact_boundary') {
@@ -726,8 +750,7 @@ function handleSystemMessage(message: Extract<SDKMessage, { type: 'system' }>): 
       type: 'raw',
       rawValue: {
         type: 'compact',
-        session_id: message.session_id,
-        raw: message
+        session_id: message.session_id
       }
     })
   }
@@ -752,8 +775,7 @@ function handleResultMessage(message: Extract<SDKMessage, { type: 'result' }>): 
         ...sdkMessageToProviderMetadata(message),
         usage: message.usage,
         durationMs: message.duration_ms,
-        costUsd: message.total_cost_usd,
-        raw: message
+        costUsd: message.total_cost_usd
       }
     } as AgentStreamPart)
   } else {
