@@ -19,6 +19,19 @@ vi.mock('@main/utils', () => ({
   getDataPath: vi.fn(() => '/mock/data')
 }))
 
+vi.mock('electron-store', () => ({
+  default: vi.fn().mockImplementation(function MockStore() {
+    return {
+      get: vi.fn((_: string, defaultValue?: unknown) => defaultValue),
+      set: vi.fn(),
+      delete: vi.fn(),
+      clear: vi.fn(),
+      has: vi.fn(() => false),
+      store: {}
+    }
+  })
+}))
+
 vi.mock('@main/apiServer/services/models', () => ({
   modelsService: {
     getModels: mockGetModels
@@ -39,11 +52,20 @@ vi.mock('@logger', () => ({
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/tmp'),
-    getAppPath: vi.fn(() => '/app')
+    getAppPath: vi.fn(() => '/app'),
+    getLocale: vi.fn(() => 'en-US')
   },
-  BrowserWindow: vi.fn(),
+  BrowserWindow: Object.assign(vi.fn(), {
+    getAllWindows: vi.fn(() => [])
+  }),
   dialog: {},
-  ipcMain: {},
+  ipcMain: {
+    handle: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    removeHandler: vi.fn(),
+    removeAllListeners: vi.fn()
+  },
   nativeTheme: {
     on: vi.fn(),
     themeSource: 'system',
@@ -63,12 +85,31 @@ vi.mock('@electron-toolkit/utils', () => ({
   }
 }))
 
+vi.mock('@main/services/WindowService', () => ({
+  windowService: {
+    getMainWindow: vi.fn(() => null)
+  }
+}))
+
+vi.mock('electron-window-state', () => ({
+  default: vi.fn(function () {
+    return {
+      x: 0,
+      y: 0,
+      width: 1024,
+      height: 768,
+      manage: vi.fn()
+    }
+  })
+}))
+
 vi.mock('../../skills/SkillService', () => ({
   skillService: {
     initSkillsForAgent: mockInitSkillsForAgent
   }
 }))
 
+import { BaseService } from '../../BaseService'
 import { AgentService } from '../AgentService'
 
 function createSelectQuery(rows: unknown[]) {
@@ -95,7 +136,7 @@ describe('AgentService built-in agent lifecycle', () => {
       )
     }
 
-    vi.spyOn(service as never, 'getDatabase').mockResolvedValue(database as never)
+    vi.spyOn(BaseService.prototype, 'getDatabase').mockResolvedValue(database as never)
 
     const result = await service.initBuiltinAgent({
       id: 'cherry-assistant-default',
@@ -121,7 +162,7 @@ describe('AgentService built-in agent lifecycle', () => {
       delete: vi.fn(() => ({ where: deleteWhere }))
     }
 
-    vi.spyOn(service as never, 'getDatabase').mockResolvedValue(database as never)
+    vi.spyOn(BaseService.prototype, 'getDatabase').mockResolvedValue(database as never)
 
     const deleted = await service.deleteAgent('cherry-claw-default')
 

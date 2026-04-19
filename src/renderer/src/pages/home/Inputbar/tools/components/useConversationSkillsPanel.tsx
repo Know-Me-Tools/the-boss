@@ -25,7 +25,13 @@ interface Params {
   updateTopic: (topic: Topic) => void
 }
 
-export const useConversationSkillsPanel = ({ quickPanel, quickPanelController, assistant, topic, updateTopic }: Params) => {
+export const useConversationSkillsPanel = ({
+  quickPanel,
+  quickPanelController,
+  assistant,
+  topic,
+  updateTopic
+}: Params) => {
   const { registerRootMenu } = quickPanel
   const { open, updateList, isVisible, symbol } = quickPanelController
   const { t } = useTranslation()

@@ -478,12 +478,7 @@ const InputbarInner: FC<InputbarInnerProps> = ({ assistant: initialAssistant, se
 
   // leftToolbar: 左侧工具栏
   const leftToolbar = config.showTools ? (
-    <InputbarTools
-      scope={scope}
-      assistant={assistant}
-      model={model}
-      conversation={{ topic, updateTopic }}
-    />
+    <InputbarTools scope={scope} assistant={assistant} model={model} conversation={{ topic, updateTopic }} />
   ) : null
 
   // rightToolbar: 右侧工具栏

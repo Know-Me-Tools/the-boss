@@ -127,7 +127,7 @@ const CherryInExtension = ProviderExtension.create({
   variants: [
     {
       suffix: 'chat',
-      name: 'CherryIN Chat',
+      name: 'The Boss Chat',
       transform: (provider) =>
         customProvider({
           fallbackProvider: {

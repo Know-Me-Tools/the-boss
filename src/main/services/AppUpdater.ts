@@ -1,6 +1,5 @@
 import { loggerService } from '@logger'
 import { isWin } from '@main/constant'
-import { getIpCountry } from '@main/utils/ipService'
 import { generateUserAgent } from '@main/utils/systemInfo'
 import { APP_NAME, FeedUrl, UpdateConfigUrl, UpdateMirror, UpgradeChannel } from '@shared/config/constant'
 import { IpcChannel } from '@shared/IpcChannel'
@@ -246,12 +245,12 @@ export default class AppUpdater {
     const testPlan = configManager.getTestPlan()
     const requestedChannel = testPlan ? this._getTestChannel() : UpgradeChannel.LATEST
 
-    // Determine mirror based on IP country
-    const ipCountry = await getIpCountry()
-    const mirror = ipCountry.toLowerCase() === 'cn' ? UpdateMirror.GITCODE : UpdateMirror.GITHUB
+    // The Boss control plane owns artifact routing. The client no longer chooses
+    // GitHub/GitCode mirrors from IP geolocation.
+    const mirror: UpdateMirror = UpdateMirror.GITHUB
 
     logger.info(
-      `Setting feed URL for version ${currentVersion}, testPlan: ${testPlan}, requested channel: ${requestedChannel}, mirror: ${mirror} (IP country: ${ipCountry})`
+      `Setting feed URL for version ${currentVersion}, testPlan: ${testPlan}, requested channel: ${requestedChannel}, mirror: ${mirror}`
     )
 
     // Try to fetch update config from remote
@@ -274,7 +273,7 @@ export default class AppUpdater {
 
     logger.info('Failed to fetch update config, falling back to default feed URL')
     // Fallback: use default feed URL based on mirror
-    const defaultFeedUrl = mirror === UpdateMirror.GITCODE ? FeedUrl.PRODUCTION : FeedUrl.GITHUB_LATEST
+    const defaultFeedUrl = FeedUrl.GITHUB_LATEST
 
     logger.info(`Using fallback feed URL: ${defaultFeedUrl}`)
     this._setChannel(UpgradeChannel.LATEST, defaultFeedUrl)

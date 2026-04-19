@@ -20,6 +20,7 @@ This directory contains the project documentation in multiple languages.
 | Document | Description |
 |----------|-------------|
 | [Development Setup](./en/guides/development.md) | Development environment setup |
+| [Agent Runtimes](./en/guides/agent-runtimes.md) | Claude, Codex, OpenCode, and UAR runtime setup and smoke checklist |
 | [Branching Strategy](./en/guides/branching-strategy.md) | Git branching workflow |
 | [i18n Guide](./en/guides/i18n.md) | Internationalization guide |
 | [Logging Guide](./en/guides/logging.md) | How to use the logger service |

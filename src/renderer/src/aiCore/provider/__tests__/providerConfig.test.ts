@@ -69,6 +69,7 @@ import { isVertexAIConfigured } from '@renderer/hooks/useVertexAI'
 import { getProviderByModel } from '@renderer/services/AssistantService'
 import { getProviderById } from '@renderer/services/ProviderService'
 import type { AwsBedrockAuthType, Model, Provider } from '@renderer/types'
+import { THE_BOSS_OPENAI_API_URL } from '@shared/config/branding'
 
 import { COPILOT_DEFAULT_HEADERS } from '../constants'
 import type { AihubmixProviderSettings } from '../custom/aihubmix-provider'
@@ -649,6 +650,81 @@ describe('providerToAiSdkConfig', () => {
     })
   })
 
+  describe('The Boss builder', () => {
+    it('uses the control-plane OpenAI-compatible base URL', async () => {
+      const provider = makeProvider({
+        id: 'theboss',
+        type: 'openai',
+        apiHost: THE_BOSS_OPENAI_API_URL,
+        apiKey: 'theboss-token'
+      })
+
+      const config = await providerToAiSdkConfig(provider, makeModel('theboss-default', 'theboss'))
+
+      expect(config.providerId).toBe('openai-compatible')
+      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      expect(settings.baseURL).toBe(THE_BOSS_OPENAI_API_URL)
+      expect(settings.name).toBe('theboss')
+      expect(settings.headers).toMatchObject({
+        Authorization: 'Bearer theboss-token'
+      })
+    })
+
+    it('omits bearer auth when no API key is configured', async () => {
+      const provider = makeProvider({
+        id: 'theboss',
+        type: 'openai',
+        apiHost: THE_BOSS_OPENAI_API_URL,
+        apiKey: ''
+      })
+
+      const config = await providerToAiSdkConfig(provider, makeModel('theboss-default', 'theboss'))
+
+      expect(config.providerId).toBe('openai-compatible')
+      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      expect(settings.baseURL).toBe(THE_BOSS_OPENAI_API_URL)
+      expect(settings.headers?.Authorization).toBeUndefined()
+    })
+  })
+
+  describe('Moonshot builder', () => {
+    it('retries China endpoint requests against the international endpoint after authentication failure', async () => {
+      const provider = makeProvider({
+        id: 'moonshot',
+        type: 'openai',
+        apiHost: 'https://api.moonshot.cn/v1',
+        apiKey: 'sk-moonshot'
+      })
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response('', { status: 401 }))
+        .mockResolvedValueOnce(new Response('{}', { status: 200 }))
+
+      const config = (await providerToAiSdkConfig(
+        provider,
+        makeModel('kimi-k2.5', 'moonshot')
+      )) as ProviderConfig<'openai-compatible'>
+
+      expect(config.providerId).toBe('openai-compatible')
+      expect(config.providerSettings.baseURL).toBe('https://api.moonshot.cn/v1')
+      expect(typeof config.providerSettings.fetch).toBe('function')
+
+      const response = await config.providerSettings.fetch?.('https://api.moonshot.cn/v1/chat/completions', {
+        method: 'POST',
+        body: '{}'
+      })
+
+      expect(response?.status).toBe(200)
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        2,
+        'https://api.moonshot.ai/v1/chat/completions',
+        expect.objectContaining({ method: 'POST' })
+      )
+
+      fetchSpy.mockRestore()
+    })
+  })
+
   describe('Anthropic OAuth builder', () => {
     it('routes requests through the API server internal proxy', async () => {
       const provider = makeProvider({
@@ -688,9 +764,9 @@ describe('providerToAiSdkConfig', () => {
         apiKey: 'manual-token'
       })
 
-      await expect(
-        providerToAiSdkConfig(provider, makeModel('claude-sonnet-4-5', 'anthropic-max'))
-      ).rejects.toThrow('Anthropic OAuth credentials are not configured.')
+      await expect(providerToAiSdkConfig(provider, makeModel('claude-sonnet-4-5', 'anthropic-max'))).rejects.toThrow(
+        'Anthropic OAuth credentials are not configured.'
+      )
     })
   })
 

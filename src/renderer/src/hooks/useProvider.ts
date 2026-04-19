@@ -1,6 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import { CHERRYAI_PROVIDER } from '@renderer/config/providers'
+import { THEBOSS_PROVIDER } from '@renderer/config/providers'
 import { getDefaultProvider } from '@renderer/services/AssistantService'
 import { type RootState, useAppDispatch, useAppSelector } from '@renderer/store'
 import {
@@ -37,7 +37,7 @@ const selectEnabledProviders = createSelector(selectProviders, (providers) =>
   providers
     .map(normalizeProvider)
     .filter((p) => p.enabled)
-    .concat(CHERRYAI_PROVIDER)
+    .concat(THEBOSS_PROVIDER)
 )
 
 const selectSystemProviders = createSelector(selectProviders, (providers) =>
@@ -51,7 +51,7 @@ const selectUserProviders = createSelector(selectProviders, (providers) =>
 const selectAllProviders = createSelector(selectProviders, (providers) => providers.map(normalizeProvider))
 
 const selectAllProvidersWithCherryAI = createSelector(selectProviders, (providers) =>
-  [...providers, CHERRYAI_PROVIDER].map(normalizeProvider)
+  [...providers, THEBOSS_PROVIDER].map(normalizeProvider)
 )
 
 export function useProviders() {

@@ -2,10 +2,11 @@ import ContextStrategySelector from '@renderer/components/ContextStrategySelecto
 import ModelSelector from '@renderer/components/ModelSelector'
 import { isEmbeddingModel, isRerankModel, isTextToImageModel } from '@renderer/config/models'
 import { useProviders } from '@renderer/hooks/useProvider'
-import { useInstalledSkills } from '@renderer/hooks/useSkills'
+import { useScopedSkills } from '@renderer/hooks/useSkills'
 import { getModelUniqId } from '@renderer/services/ModelService'
 import type { ThemeMode } from '@renderer/types'
 import type { Model } from '@renderer/types'
+import type { SkillConfigScopeListRequest } from '@renderer/types'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
 import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import type { SkillConfigOverride, SkillGlobalConfig } from '@renderer/types/skillConfig'
@@ -36,6 +37,7 @@ interface ContextSkillsPanelProps {
   useInherited?: boolean
   onInheritedChange?: (useInherited: boolean) => void
   inheritLabel?: string
+  skillScopes?: SkillConfigScopeListRequest
 }
 
 const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
@@ -49,11 +51,12 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   showInheritOption = false,
   useInherited = false,
   onInheritedChange,
-  inheritLabel
+  inheritLabel,
+  skillScopes
 }) => {
   const { t } = useTranslation()
   const { providers } = useProviders()
-  const { skills } = useInstalledSkills()
+  const { skills } = useScopedSkills(skillScopes)
   const enabledSkills = useMemo(() => skills.filter((skill) => skill.isEnabled), [skills])
 
   const selectionMethodOptions = [

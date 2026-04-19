@@ -2282,6 +2282,17 @@
       "success": "备份成功"
     },
     "block": {
+      "runtime": {
+        "approval": "审批",
+        "debug": "运行时详情",
+        "knowledge": "知识",
+        "mode": "模式",
+        "model": "模型",
+        "provider": "服务商",
+        "sidecar": "侧车",
+        "skills": "技能",
+        "unknown_runtime": "运行时"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2960,15 @@
     },
     "skip": "跳过引导",
     "toast": {
-      "connected": "成功连接 CherryIN"
+      "connected": "成功连接 The Boss"
     },
     "welcome": {
-      "login_cherryin": "登录 CherryIN",
+      "login_cherryin": "登录 The Boss",
       "or_continue_with": "或使用其他方式",
       "other_provider": "选择其他服务商",
       "select_other_provider": "选择其他服务商",
       "setup_hint": "请您先至少配置一个服务商，以获得最佳使用体验",
-      "subtitle": "使用 CherryIN 服务商可畅享顶级 AI 服务",
+      "subtitle": "使用 The Boss 服务商可畅享顶级 AI 服务",
       "title": "欢迎使用 The Boss"
     }
   },
@@ -3439,7 +3450,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "阿里云百炼",
     "deepseek": "深度求索",
@@ -5605,7 +5616,7 @@
         "balance": "余额",
         "button": "使用 {{provider}} 账号登录",
         "cherryIn": {
-          "description": "使用 OAuth 2.0 登录 CherryIN",
+          "description": "使用 OAuth 2.0 登录 The Boss",
           "logged_in": "已通过 OAuth 登录",
           "login_button": "OAuth 登录",
           "logout_button": "退出登录",
@@ -5831,6 +5842,14 @@
       "author": "作者",
       "batchUninstallSuccess": "已卸载 {{count}} 个技能",
       "builtin": "内置",
+      "builtinPack": {
+        "lastReconciled": "上次同步",
+        "missing": "默认技能包未安装",
+        "missingRequired": "缺少必需技能：{{names}}",
+        "prometheus": "Prometheus 内置技能",
+        "status_one": "已安装 {{count}} 个默认技能",
+        "status_other": "已安装 {{count}} 个默认技能"
+      },
       "confirmBatchUninstall": "确定要卸载选中的 {{count}} 个技能吗？",
       "confirmUninstall": "确定要卸载此技能吗？",
       "directory": "文件夹",

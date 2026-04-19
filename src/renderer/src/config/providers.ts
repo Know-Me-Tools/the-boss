@@ -63,32 +63,37 @@ import ZeroOneProviderLogo from '@renderer/assets/images/providers/zero-one.png'
 import ZhipuProviderLogo from '@renderer/assets/images/providers/zhipu.png'
 import type { AtLeast, SystemProvider, SystemProviderId } from '@renderer/types'
 import { OpenAIServiceTiers } from '@renderer/types'
+import { PUBLIC_WEBSITE_URL, THE_BOSS_OPENAI_API_URL } from '@shared/config/branding'
 
 import { TOKENFLUX_HOST } from './constant'
 import { qwenModel, SYSTEM_MODELS } from './models'
 
-export const CHERRYAI_PROVIDER: SystemProvider = {
-  id: 'cherryai' as SystemProviderId,
-  name: 'CherryAI',
+export const THEBOSS_PROVIDER: SystemProvider = {
+  id: 'theboss' as SystemProviderId,
+  name: 'The Boss',
   type: 'openai',
   apiKey: '',
-  apiHost: 'https://api.cherry-ai.com',
+  apiHost: THE_BOSS_OPENAI_API_URL,
   models: [qwenModel],
   isSystem: true,
   enabled: true
 }
 
+/** @deprecated Use THEBOSS_PROVIDER. Kept as a temporary compatibility export while call sites migrate. */
+export const CHERRYAI_PROVIDER = THEBOSS_PROVIDER
+
 export const SYSTEM_PROVIDERS_CONFIG: Record<SystemProviderId, SystemProvider> = {
+  theboss: THEBOSS_PROVIDER,
   cherryin: {
     id: 'cherryin',
-    name: 'CherryIN',
+    name: 'The Boss Legacy Bridge',
     type: 'openai',
     apiKey: '',
-    apiHost: 'https://open.cherryin.net',
-    anthropicApiHost: 'https://open.cherryin.net',
+    apiHost: THE_BOSS_OPENAI_API_URL,
+    anthropicApiHost: THE_BOSS_OPENAI_API_URL,
     models: [],
     isSystem: true,
-    enabled: true
+    enabled: false
   },
   silicon: {
     id: 'silicon',
@@ -316,8 +321,8 @@ export const SYSTEM_PROVIDERS_CONFIG: Record<SystemProviderId, SystemProvider> =
     name: 'Moonshot AI',
     type: 'openai',
     apiKey: '',
-    apiHost: 'https://api.moonshot.cn',
-    anthropicApiHost: 'https://api.moonshot.cn/anthropic',
+    apiHost: 'https://api.moonshot.ai',
+    anthropicApiHost: 'https://api.moonshot.ai/anthropic',
     models: SYSTEM_MODELS.moonshot,
     isSystem: true,
     enabled: false
@@ -753,6 +758,7 @@ export const SYSTEM_PROVIDERS_CONFIG: Record<SystemProviderId, SystemProvider> =
 export const SYSTEM_PROVIDERS: SystemProvider[] = Object.values(SYSTEM_PROVIDERS_CONFIG)
 
 export const PROVIDER_LOGO_MAP: AtLeast<SystemProviderId, string> = {
+  theboss: OpenAiProviderLogo,
   cherryin: CherryInProviderLogo,
   ph8: Ph8ProviderLogo,
   '302ai': Ai302ProviderLogo,
@@ -845,13 +851,24 @@ type ProviderUrls = {
 export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   cherryin: {
     api: {
-      url: 'https://open.cherryin.net'
+      url: THE_BOSS_OPENAI_API_URL
     },
     websites: {
-      official: 'https://open.cherryin.ai',
-      apiKey: 'https://open.cherryin.ai/console/token',
-      docs: 'https://open.cherryin.ai',
-      models: 'https://open.cherryin.ai/pricing'
+      official: PUBLIC_WEBSITE_URL,
+      apiKey: 'https://auth.know-me.tools/account/tokens',
+      docs: `${PUBLIC_WEBSITE_URL}/docs`,
+      models: `${PUBLIC_WEBSITE_URL}/models`
+    }
+  },
+  theboss: {
+    api: {
+      url: THE_BOSS_OPENAI_API_URL
+    },
+    websites: {
+      official: PUBLIC_WEBSITE_URL,
+      apiKey: 'https://auth.know-me.tools/account/tokens',
+      docs: `${PUBLIC_WEBSITE_URL}/docs`,
+      models: `${PUBLIC_WEBSITE_URL}/models`
     }
   },
   ph8: {
@@ -1060,13 +1077,13 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   },
   moonshot: {
     api: {
-      url: 'https://api.moonshot.cn'
+      url: 'https://api.moonshot.ai'
     },
     websites: {
       official: 'https://www.moonshot.cn/',
-      apiKey: 'https://platform.moonshot.cn/console/api-keys',
-      docs: 'https://platform.moonshot.cn/docs/',
-      models: 'https://platform.moonshot.cn/docs/intro#%E6%A8%A1%E5%9E%8B%E5%88%97%E8%A1%A8'
+      apiKey: 'https://platform.kimi.ai/console/api-keys',
+      docs: 'https://platform.kimi.ai/docs/',
+      models: 'https://platform.kimi.ai/docs/intro#model-list'
     }
   },
   baichuan: {

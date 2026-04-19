@@ -1,4 +1,5 @@
 import { useProvider } from '@renderer/hooks/useProvider'
+import { THE_BOSS_OPENAI_API_URL } from '@shared/config/branding'
 import { Select } from 'antd'
 import type { FC } from 'react'
 import { useCallback, useMemo } from 'react'
@@ -11,19 +12,9 @@ interface CherryINSettingsProps {
 
 const API_HOST_OPTIONS = [
   {
-    value: 'https://open.cherryin.cc',
-    labelKey: '加速域名',
-    description: 'open.cherryin.cc'
-  },
-  {
-    value: 'https://open.cherryin.net',
-    labelKey: '国际域名',
-    description: 'open.cherryin.net'
-  },
-  {
-    value: 'https://open.cherryin.ai',
-    labelKey: '备用域名',
-    description: 'open.cherryin.ai'
+    value: THE_BOSS_OPENAI_API_URL,
+    labelKey: 'The Boss API',
+    description: 'api.know-me.tools'
   }
 ]
 

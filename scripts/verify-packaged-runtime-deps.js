@@ -13,6 +13,32 @@ const builtinModules = new Set(
 )
 const PACKAGE_NAME_PATTERN = /^(?:@[\w.-]+\/)?[\w.-]+$/
 const PACKAGED_RUNTIME_NODE_MODULES_DIR = 'node_modules'
+const FORBIDDEN_PACKAGED_BUILD_ARTIFACTS = Object.freeze([
+  {
+    label: 'vendored source checkout',
+    pattern: /^vendor(?:\/|$)/
+  },
+  {
+    label: 'vendored UAR Rust target output',
+    pattern: /^vendor\/universal-agent-runtime\/target(?:\/|$)/
+  },
+  {
+    label: 'top-level Rust target output',
+    pattern: /^target(?:\/|$)/
+  },
+  {
+    label: 'KBD orchestration state',
+    pattern: /^\.kbd-orchestrator(?:\/|$)/
+  },
+  {
+    label: 'artifact-refiner state',
+    pattern: /^\.refiner(?:\/|$)/
+  },
+  {
+    label: 'nested release output',
+    pattern: /^dist(?:\/|$)/
+  }
+])
 
 const normalizePackageName = (specifier) => {
   if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('file:')) {
@@ -147,8 +173,7 @@ const extractCreateRequireSpecifiers = (source) => {
 
     const createRequireAliases = new Set()
 
-    const isAliasedCreateRequire = (node) =>
-      node?.type === 'Identifier' && createRequireAliases.has(node.name)
+    const isAliasedCreateRequire = (node) => node?.type === 'Identifier' && createRequireAliases.has(node.name)
 
     const addSpecifierFromArgument = (node) => {
       if (node?.arguments?.[0]?.type === 'Literal' && typeof node.arguments[0].value === 'string') {
@@ -253,6 +278,48 @@ const extractBarePackageSpecifiers = (source) => {
   }
 
   return [...packageNames]
+}
+
+const normalizePackagedEntryPath = (entryPath) => entryPath.split(path.sep).join('/').replace(/^\/+/, '')
+
+const findForbiddenPackagedBuildArtifacts = (entries) =>
+  entries
+    .map((entryPath) => {
+      const normalizedPath = normalizePackagedEntryPath(entryPath)
+      const forbiddenArtifact = FORBIDDEN_PACKAGED_BUILD_ARTIFACTS.find(({ pattern }) => pattern.test(normalizedPath))
+      return forbiddenArtifact
+        ? {
+            label: forbiddenArtifact.label,
+            path: normalizedPath
+          }
+        : null
+    })
+    .filter(Boolean)
+
+const collectFileEntries = (rootDir) => {
+  const entries = []
+
+  if (!fs.existsSync(rootDir)) {
+    return entries
+  }
+
+  const stack = [rootDir]
+  while (stack.length > 0) {
+    const currentDir = stack.pop()
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const fullPath = path.join(currentDir, entry.name)
+      if (entry.isDirectory()) {
+        stack.push(fullPath)
+        continue
+      }
+
+      if (entry.isFile()) {
+        entries.push(path.relative(rootDir, fullPath))
+      }
+    }
+  }
+
+  return entries
 }
 
 const resolveRuntimeRelativeSpecifier = (entryFile, specifier) => {
@@ -625,6 +692,31 @@ const collectPackagedPackageLocations = (appOutDir) => {
   }
 }
 
+const auditPackagedBuildOnlyArtifacts = (appOutDir) => {
+  const resourcesDir = resolveResourcesDir(appOutDir)
+  const archivePath = path.join(resourcesDir, 'app.asar')
+  const unpackedDir = path.join(resourcesDir, 'app.asar.unpacked')
+  const findings = []
+
+  if (fs.existsSync(archivePath)) {
+    for (const finding of findForbiddenPackagedBuildArtifacts(asar.listPackage(archivePath))) {
+      findings.push({
+        ...finding,
+        location: 'app.asar'
+      })
+    }
+  }
+
+  for (const finding of findForbiddenPackagedBuildArtifacts(collectFileEntries(unpackedDir))) {
+    findings.push({
+      ...finding,
+      location: 'app.asar.unpacked'
+    })
+  }
+
+  return findings
+}
+
 const computeFallbackPackageNames = ({
   expectedPackages,
   externalExpectedPackages = new Set(),
@@ -729,8 +821,22 @@ const copyMissingStartupRuntimeDependencies = (appOutDir) => {
 
 const verifyPackagedRuntimeDependencies = (appOutDir) => {
   const analysis = analyzePackagedRuntimeDependencies(appOutDir)
+  const forbiddenBuildArtifacts = auditPackagedBuildOnlyArtifacts(appOutDir)
   const actionableMissingPackages = analysis.missingPackages.filter((pkg) => pkg.availableLocally)
   const unavailableMissingPackages = analysis.missingPackages.filter((pkg) => !pkg.availableLocally)
+
+  if (forbiddenBuildArtifacts.length > 0) {
+    const details = forbiddenBuildArtifacts
+      .slice(0, 20)
+      .map((artifact) => `- ${artifact.location}: ${artifact.path} (${artifact.label})`)
+      .join('\n')
+    const remainingCount = Math.max(0, forbiddenBuildArtifacts.length - 20)
+    throw new Error(
+      `Packaged app contains build-only source or orchestration artifacts.\n` +
+        `Remove these paths from electron-builder files filters before shipping.\n` +
+        `${details}${remainingCount > 0 ? `\n...and ${remainingCount} more` : ''}\n`
+    )
+  }
 
   if (analysis.audit.undeclaredPackageNames.length > 0) {
     throw new Error(
@@ -789,10 +895,12 @@ if (require.main === module) {
 
 module.exports = {
   analyzePackagedRuntimeDependencies,
+  auditPackagedBuildOnlyArtifacts,
   auditStartupBundleExternalReferences,
   collectPackageDependencyClosure,
   computeFallbackPackageNames,
   copyMissingStartupRuntimeDependencies,
+  findForbiddenPackagedBuildArtifacts,
   shouldCopyFallbackRuntimePath,
   verifyPackagedRuntimeDependencies
 }

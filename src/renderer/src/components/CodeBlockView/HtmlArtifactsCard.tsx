@@ -54,10 +54,7 @@ const HtmlArtifactsCard: FC<Props> = ({
   const { theme } = useTheme()
   const htmlContent = html || ''
   const hasContent = htmlContent.trim().length > 0
-  const loadingDocument = useMemo(
-    () => buildLoadingDocument(t('settings.artifacts.library.preview_loading')),
-    [t]
-  )
+  const loadingDocument = useMemo(() => buildLoadingDocument(t('settings.artifacts.library.preview_loading')), [t])
   const [previewDocument, setPreviewDocument] = useState(loadingDocument)
 
   useEffect(() => {

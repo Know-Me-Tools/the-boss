@@ -118,6 +118,15 @@ describe('Integrated Provider Registry', () => {
       expect(result).toBe('google')
     })
 
+    it('should resolve Moonshot/Kimi as OpenAI-compatible', () => {
+      const provider = createTestProvider('moonshot', 'openai')
+      provider.apiHost = 'https://api.moonshot.cn'
+
+      const result = getAiSdkProviderId(provider)
+
+      expect(result).toBe('openai-compatible')
+    })
+
     it('should fallback to provider.id for unknown providers', () => {
       const unknownProvider = createTestProvider('unknown-provider', 'unknown-type')
       const result = getAiSdkProviderId(unknownProvider)

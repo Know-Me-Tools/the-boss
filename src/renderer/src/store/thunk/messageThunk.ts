@@ -33,8 +33,16 @@ import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
 import { updateTopicUpdatedAt } from '@renderer/store/assistants'
-import { selectResolvedSkillConfigFromOverrides } from '@renderer/store/skillConfig'
-import { type ApiServerConfig, type Assistant, type FileMetadata, type Model, type Topic } from '@renderer/types'
+import { selectGlobalSkillConfig } from '@renderer/store/skillConfig'
+import {
+  type ApiServerConfig,
+  type Assistant,
+  type FileMetadata,
+  type Model,
+  resolveSkillConfig,
+  type SkillScopeRef,
+  type Topic
+} from '@renderer/types'
 import type {
   AgentEffort,
   AgentSessionEntity,
@@ -923,11 +931,22 @@ const fetchAndProcessAssistantResponseImpl = async (
     })
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
-    // Get skill config from Redux state
-    const skillConfig = selectResolvedSkillConfigFromOverrides(
-      getState(),
-      assistant.settings?.skillConfig,
-      topic?.skillConfig
+    const assistantSkillScope: SkillScopeRef = { type: 'assistant', id: assistant.id }
+    const topicSkillScope: SkillScopeRef = { type: 'topic', id: topicId }
+    const [assistantScopeResult, topicScopeResult] = await Promise.all([
+      window.api.skillScope.getConfig(assistantSkillScope),
+      window.api.skillScope.getConfig(topicSkillScope)
+    ])
+    const assistantSkillOverride =
+      assistantScopeResult.success && assistantScopeResult.data
+        ? assistantScopeResult.data.config
+        : assistant.settings?.skillConfig
+    const topicSkillOverride =
+      topicScopeResult.success && topicScopeResult.data ? topicScopeResult.data.config : topic?.skillConfig
+    const skillConfig = resolveSkillConfig(
+      selectGlobalSkillConfig(getState()),
+      assistantSkillOverride,
+      topicSkillOverride
     )
 
     // Extract the last user message as the prompt
@@ -936,16 +955,20 @@ const fetchAndProcessAssistantResponseImpl = async (
 
     // Emit skill chunks before the LLM request
     let assistantForRequest = assistant
+    const shouldSkipSkillInjection = Array.isArray(assistant.knowledge_bases) && assistant.knowledge_bases.length > 0
 
     if (userPrompt) {
-      const { skills, registry } = await loadInstalledSkillSelectionResources(skillConfig)
+      const { skills, registry } = await loadInstalledSkillSelectionResources(skillConfig, {
+        scopes: [assistantSkillScope, topicSkillScope]
+      })
       const preparedSkills = await emitSkillChunks({
         prompt: userPrompt,
         config: skillConfig,
         processChunk: streamProcessorCallbacks,
         activeModel: assistant.model || assistant.defaultModel,
         skills,
-        registry
+        registry,
+        disabled: shouldSkipSkillInjection
       })
 
       if (preparedSkills.length > 0) {

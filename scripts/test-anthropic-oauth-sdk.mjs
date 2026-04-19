@@ -71,10 +71,7 @@ const claudeCredsPayload = {
   }
 }
 
-await fs.writeFile(
-  path.join(tempConfigDir, 'credentials.json'),
-  JSON.stringify(claudeCredsPayload, null, 2)
-)
+await fs.writeFile(path.join(tempConfigDir, 'credentials.json'), JSON.stringify(claudeCredsPayload, null, 2))
 
 console.log('\nWrote credentials to temp CLAUDE_CONFIG_DIR:', tempConfigDir)
 

@@ -7,7 +7,7 @@ import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 
 import { ContextManager } from './contextManager'
 import type { SkillDescriptor, SkillRegistry } from './skillRegistry'
-import { SkillRegistry as SkillRegistryClass,skillRegistry as defaultRegistry } from './skillRegistry'
+import { SkillRegistry as SkillRegistryClass, skillRegistry as defaultRegistry } from './skillRegistry'
 import { SkillSelector } from './skillSelector'
 
 const logger = loggerService.withContext('emitSkillChunks')
@@ -45,8 +45,14 @@ export async function emitSkillChunks(params: {
   activeModel?: Model | string
   skills?: SkillDescriptor[]
   registry?: SkillRegistry
+  disabled?: boolean
 }): Promise<PreparedSkillContext[]> {
   const { prompt, config, processChunk, activeModel } = params
+
+  if (params.disabled) {
+    logger.info('Skipping skill selection for this request')
+    return []
+  }
 
   const registry = params.registry ?? buildRegistry(params.skills)
   const allSkills = params.skills ?? registry.getAll()

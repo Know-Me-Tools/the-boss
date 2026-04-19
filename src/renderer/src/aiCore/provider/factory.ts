@@ -33,6 +33,10 @@ export function getAiSdkProviderId(provider: Provider): AppProviderId {
     return appProviderIds['xai-responses']
   }
 
+  if (provider.id === SystemProviderIds.theboss) {
+    return appProviderIds['openai-compatible']
+  }
+
   if (provider.id in appProviderIds) {
     return appProviderIds[provider.id]
   }
@@ -41,7 +45,11 @@ export function getAiSdkProviderId(provider: Provider): AppProviderId {
     return appProviderIds[provider.type]
   }
 
-  if (provider.apiHost.includes('api.openai.com')) {
+  if (provider.id === SystemProviderIds.moonshot) {
+    return appProviderIds['openai-compatible']
+  }
+
+  if (provider.apiHost?.includes('api.openai.com')) {
     return appProviderIds['openai-chat']
   }
 

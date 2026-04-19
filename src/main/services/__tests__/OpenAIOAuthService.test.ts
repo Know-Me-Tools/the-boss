@@ -85,11 +85,12 @@ describe('OpenAIOAuthService', () => {
     }
     mockState.fetchResponse = null
     mockReadAuthFile.mockImplementation(async () => mockState.authFileContent)
-    mockCreateOpenAIOAuthFetchHandler.mockReturnValue(async (request: Request) =>
-      new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    mockCreateOpenAIOAuthFetchHandler.mockReturnValue(
+      async (request: Request) =>
+        new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     vi.stubEnv('CODEX_HOME', '/mock/codex')
     vi.stubGlobal(
@@ -164,24 +165,25 @@ describe('OpenAIOAuthService', () => {
     expect(await openAIOAuthService.getModels()).toEqual(['gpt-5.4'])
   })
 
-  it('returns an internal header and normalizes wildcard API server hosts to loopback', async () => {
+  it('returns API server auth headers and normalizes wildcard API server hosts to loopback', async () => {
     mockState.authFileExists = true
     mockState.apiServerConfig.host = '0.0.0.0'
 
     const { openAIOAuthService } = await import('../OpenAIOAuthService')
 
     expect(await openAIOAuthService.getBaseUrl()).toBe('http://127.0.0.1:23333/_internal/openai-oauth/v1')
-    expect(await openAIOAuthService.getRequestHeaders()).toHaveProperty('x-cherry-openai-oauth-secret')
+    expect(await openAIOAuthService.getRequestHeaders()).toEqual({ Authorization: 'Bearer public-api-key' })
   })
 
   it('forwards internal requests through the in-process openai-oauth handler', async () => {
     mockState.authFileExists = true
     mockState.authFileContent = JSON.stringify({ access_token: 'token', refresh_token: 'refresh' })
-    const internalHandler = vi.fn(async (request: Request) =>
-      new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      })
+    const internalHandler = vi.fn(
+      async (request: Request) =>
+        new Response(JSON.stringify({ ok: true, path: new URL(request.url).pathname }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
     )
     mockCreateOpenAIOAuthFetchHandler.mockReturnValue(internalHandler)
 

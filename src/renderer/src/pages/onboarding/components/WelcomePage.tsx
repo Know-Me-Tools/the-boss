@@ -5,6 +5,7 @@ import { useProvider } from '@renderer/hooks/useProvider'
 import { fetchModels } from '@renderer/services/ApiService'
 import { useAppStore } from '@renderer/store'
 import { oauthWithCherryIn } from '@renderer/utils/oauth'
+import { CONTROL_PLANE_AUTH_URL } from '@shared/config/branding'
 import { Button, Divider } from 'antd'
 import type { FC } from 'react'
 import { useCallback, useState } from 'react'
@@ -15,7 +16,7 @@ import ProviderPopup from './ProviderPopup'
 
 const logger = loggerService.withContext('WelcomePage')
 
-const CHERRYIN_OAUTH_SERVER = 'https://open.cherryin.ai'
+const CHERRYIN_OAUTH_SERVER = CONTROL_PLANE_AUTH_URL
 
 interface WelcomePageProps {
   setStep: (step: OnboardingStep) => void
@@ -25,7 +26,7 @@ interface WelcomePageProps {
 const WelcomePage: FC<WelcomePageProps> = ({ setStep, setCherryInLoggedIn }) => {
   const { t } = useTranslation()
   const { lockup } = useBrandAssets()
-  const { provider, updateProvider, addModel } = useProvider('cherryin')
+  const { provider, updateProvider, addModel } = useProvider('theboss')
   const store = useAppStore()
   const [isAddingModels, setIsAddingModels] = useState(false)
 
@@ -43,7 +44,7 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setCherryInLoggedIn }) => 
             const models = await fetchModels(updatedProvider)
             if (models.length > 0) {
               models.forEach((model) => addModel(model))
-              logger.info(`Auto-added ${models.length} models from CherryIN`)
+              logger.info(`Auto-added ${models.length} models from The Boss`)
             }
           } catch (fetchError) {
             logger.warn('Failed to auto-fetch models:', fetchError as Error)

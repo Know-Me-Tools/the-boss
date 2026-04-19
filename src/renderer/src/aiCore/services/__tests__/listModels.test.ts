@@ -29,6 +29,11 @@ vi.mock('@shared/utils', () => ({
   defaultAppHeaders: () => ({ 'X-App': 'TheBoss' })
 }))
 
+const mockGetControlPlaneCatalogModels = vi.fn()
+vi.mock('@renderer/services/ControlPlaneService', () => ({
+  getControlPlaneCatalogModels: (...args: unknown[]) => mockGetControlPlaneCatalogModels(...args)
+}))
+
 const { listModels } = await import('../listModels')
 
 const REAL_ANTHROPIC = {
@@ -242,10 +247,51 @@ function assertValidModels(models: { id: string; name: string; provider: string;
 
 beforeEach(() => {
   mockGetFromApi.mockReset()
+  mockGetControlPlaneCatalogModels.mockReset()
   vi.stubGlobal('window', { ...globalThis.window, keyv: { get: vi.fn(), set: vi.fn() } })
 })
 
 describe('listModels', () => {
+  describe('The Boss control-plane catalog', () => {
+    it('uses control-plane catalog models when available', async () => {
+      mockGetControlPlaneCatalogModels.mockResolvedValue([
+        {
+          id: 'theboss-fast',
+          name: 'The Boss Fast',
+          provider: 'theboss',
+          group: 'The Boss',
+          owned_by: 'know-me'
+        }
+      ])
+
+      const models = await listModels(makeProvider({ id: 'theboss', apiHost: 'https://api.know-me.tools/v1' }))
+
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledTimes(1)
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledWith(expect.any(AbortSignal))
+      expect(mockGetFromApi).not.toHaveBeenCalled()
+      expect(models).toEqual([
+        {
+          id: 'theboss-fast',
+          name: 'The Boss Fast',
+          provider: 'theboss',
+          group: 'The Boss',
+          owned_by: 'know-me'
+        }
+      ])
+    })
+
+    it('falls back to static The Boss models when the control-plane catalog is unavailable', async () => {
+      mockGetControlPlaneCatalogModels.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      const models = await listModels(makeProvider({ id: 'theboss', apiHost: 'https://api.know-me.tools/v1' }))
+
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledTimes(1)
+      expect(mockGetFromApi).not.toHaveBeenCalled()
+      expect(models.map((model) => model.id)).toEqual(['theboss-default'])
+      expect(models.every((model) => model.provider === 'theboss')).toBe(true)
+    })
+  })
+
   describe('OpenAI-compatible (DeepSeek)', () => {
     it('should convert real DeepSeek response', async () => {
       mockGetFromApi.mockResolvedValue({ value: REAL_DEEPSEEK })
@@ -276,6 +322,26 @@ describe('listModels', () => {
       expect(models[0].owned_by).toBe('Alibaba Cloud')
       expect(models[1].owned_by).toBe('Groq')
       expect(models).toMatchSnapshot()
+    })
+  })
+
+  describe('OpenAI-compatible (Moonshot)', () => {
+    it('retries model listing against the international endpoint after China endpoint authentication failure', async () => {
+      const authError = new Error('Invalid Authentication') as Error & { statusCode?: number }
+      authError.statusCode = 401
+      mockGetFromApi.mockRejectedValueOnce(authError).mockResolvedValueOnce({ value: REAL_DEEPSEEK })
+
+      const models = await listModels(makeProvider({ id: 'moonshot', apiHost: 'https://api.moonshot.cn/v1' }))
+
+      expect(mockGetFromApi).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ url: 'https://api.moonshot.cn/v1/models' })
+      )
+      expect(mockGetFromApi).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ url: 'https://api.moonshot.ai/v1/models' })
+      )
+      expect(models.map((model) => model.provider)).toEqual(['moonshot', 'moonshot'])
     })
   })
 

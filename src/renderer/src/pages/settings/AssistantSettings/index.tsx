@@ -27,10 +27,10 @@ type AssistantSettingPopupTab =
   | 'context'
   | 'prompt'
   | 'model'
-  | 'skills'
   | 'messages'
   | 'knowledge_base'
   | 'mcp'
+  | 'skills'
   | 'regular_phrases'
   | 'memory'
 
@@ -77,10 +77,6 @@ export const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, 
       label: t('settings.contextStrategy.title', { defaultValue: 'Context Management' })
     },
     {
-      key: 'skills',
-      label: t('agent.settings.skills.tab', { defaultValue: 'Skills' })
-    },
-    {
       key: 'prompt',
       label: t('assistants.settings.prompt')
     },
@@ -91,6 +87,10 @@ export const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, 
     {
       key: 'mcp',
       label: t('assistants.settings.mcp.label')
+    },
+    {
+      key: 'skills',
+      label: t('settings.skill.title', { defaultValue: 'Skills' })
     },
     {
       key: 'regular_phrases',
@@ -141,14 +141,10 @@ export const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, 
               updateAssistant={updateAssistant}
               updateAssistantSettings={updateAssistantSettings}
               onOpenContextSettings={() => setMenu('context')}
-              onOpenSkillsSettings={() => setMenu('skills')}
             />
           )}
           {menu === 'context' && (
             <AssistantContextSettings assistant={assistant} updateAssistantSettings={updateAssistantSettings} />
-          )}
-          {menu === 'skills' && (
-            <AssistantSkillsSettings assistant={assistant} updateAssistantSettings={updateAssistantSettings} />
           )}
           {menu === 'prompt' && (
             <AssistantPromptSettings
@@ -171,6 +167,7 @@ export const AssistantSettingPopupContainer: React.FC<Props> = ({ resolve, tab, 
               updateAssistantSettings={updateAssistantSettings}
             />
           )}
+          {menu === 'skills' && <AssistantSkillsSettings assistant={assistant} />}
           {menu === 'regular_phrases' && (
             <AssistantRegularPromptsSettings assistant={assistant} updateAssistant={updateAssistant} />
           )}

@@ -1,8 +1,8 @@
 import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
-import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
+import type { TokenUsageData } from '@shared/analytics'
 import type {
   ArtifactLibraryQuery,
   ArtifactMetadataPatch,
@@ -44,6 +44,10 @@ import type {
 import type { Notification } from '@types'
 import type {
   AddMemoryOptions,
+  AgentRuntimeConfig,
+  AgentRuntimeKind,
+  AgentRuntimeProfile,
+  AgentRuntimeSettings,
   AssistantMessage,
   FileListResponse,
   FileMetadata,
@@ -77,11 +81,15 @@ import type { ActionItem } from '../renderer/src/types/selectionTypes'
 import type {
   InstalledSkill,
   LocalSkill,
+  SkillConfigScopeListRequest,
   SkillFileNode,
   SkillInstallFromDirectoryOptions,
   SkillInstallFromZipOptions,
   SkillInstallOptions,
   SkillResult,
+  SkillScopeConfigRow,
+  SkillScopeRef,
+  SkillScopeUpdateOptions,
   SkillToggleOptions
 } from '../renderer/src/types/skill'
 
@@ -629,6 +637,40 @@ const api = {
       updatedPermissions?: PermissionUpdate[]
     }) => ipcRenderer.invoke(IpcChannel.AgentToolPermission_Response, payload)
   },
+  agentRuntime: {
+    listProfiles: (kind?: AgentRuntimeKind): Promise<AgentRuntimeProfile[]> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_ListProfiles, kind),
+    upsertProfile: (input: {
+      id: string
+      name: string
+      kind: AgentRuntimeKind
+      config: Partial<AgentRuntimeConfig>
+      isDefault?: boolean
+    }): Promise<AgentRuntimeProfile> => ipcRenderer.invoke(IpcChannel.AgentRuntime_UpsertProfile, input),
+    getSettings: (kind: AgentRuntimeKind): Promise<AgentRuntimeSettings | null> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_GetSettings, kind),
+    upsertSettings: (input: {
+      kind: AgentRuntimeKind
+      enabled?: boolean
+      config: Partial<AgentRuntimeConfig>
+    }): Promise<AgentRuntimeSettings> => ipcRenderer.invoke(IpcChannel.AgentRuntime_UpsertSettings, input),
+    testConnection: (runtimeConfig: AgentRuntimeConfig) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_TestConnection, runtimeConfig),
+    startSidecar: (runtimeConfig: AgentRuntimeConfig) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_StartSidecar, runtimeConfig),
+    stopSidecar: () => ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSidecar),
+    getStatus: (runtimeConfig: AgentRuntimeConfig) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
+    installManagedBinary: (request: { name: 'universal-agent-runtime' }) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_InstallManagedBinary, request),
+    respondToApproval: (request: {
+      runtime: AgentRuntimeKind
+      sessionId: string
+      permissionId: string
+      response: string
+    }): Promise<{ success: boolean; unsupported?: boolean; message?: string }> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_RespondToApproval, request)
+  },
   agentSessionStream: {
     subscribe: (sessionId: string) => ipcRenderer.invoke(IpcChannel.AgentSessionStream_Subscribe, { sessionId }),
     unsubscribe: (sessionId: string) => ipcRenderer.invoke(IpcChannel.AgentSessionStream_Unsubscribe, { sessionId }),
@@ -787,8 +829,7 @@ const api = {
     getAccessToken: () => ipcRenderer.invoke(IpcChannel.Anthropic_GetAccessToken),
     hasCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_HasCredentials),
     clearCredentials: () => ipcRenderer.invoke(IpcChannel.Anthropic_ClearCredentials),
-    importClaudeCredentials: (): Promise<boolean> =>
-      ipcRenderer.invoke(IpcChannel.Anthropic_ImportClaudeCredentials)
+    importClaudeCredentials: (): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Anthropic_ImportClaudeCredentials)
   },
   anthropic_proxy: {
     start: (): Promise<{ success: boolean; message?: string }> => ipcRenderer.invoke(IpcChannel.AnthropicProxy_Start),
@@ -825,10 +866,6 @@ const api = {
     ocr: (file: SupportedOcrFile, provider: OcrProvider): Promise<OcrResult> =>
       ipcRenderer.invoke(IpcChannel.OCR_ocr, file, provider),
     listProviders: (): Promise<string[]> => ipcRenderer.invoke(IpcChannel.OCR_ListProviders)
-  },
-  cherryai: {
-    generateSignature: (params: { method: string; path: string; query: string; body: Record<string, any> }) =>
-      ipcRenderer.invoke(IpcChannel.Cherryai_GetSignature, params)
   },
   windowControls: {
     minimize: (): Promise<void> => ipcRenderer.invoke(IpcChannel.Windows_Minimize),
@@ -880,6 +917,14 @@ const api = {
       ipcRenderer.invoke(IpcChannel.Skill_ListFiles, skillId),
     listLocal: (workdir: string): Promise<SkillResult<LocalSkill[]>> =>
       ipcRenderer.invoke(IpcChannel.Skill_ListLocal, workdir)
+  },
+  skillScope: {
+    getConfig: (scope: SkillScopeRef): Promise<SkillResult<SkillScopeConfigRow | null>> =>
+      ipcRenderer.invoke(IpcChannel.SkillScope_GetConfig, scope),
+    setConfig: (options: SkillScopeUpdateOptions): Promise<SkillResult<SkillScopeConfigRow>> =>
+      ipcRenderer.invoke(IpcChannel.SkillScope_SetConfig, options),
+    listSkills: (scopes: SkillConfigScopeListRequest): Promise<SkillResult<InstalledSkill[]>> =>
+      ipcRenderer.invoke(IpcChannel.SkillScope_ListSkills, scopes)
   },
   localTransfer: {
     getState: (): Promise<LocalTransferState> => ipcRenderer.invoke(IpcChannel.LocalTransfer_ListServices),

@@ -180,16 +180,12 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
               <div className="flex min-w-0 flex-col gap-1">
                 <span className="truncate font-medium text-sm">{tool.name}</span>
                 {toolDescription ? (
-                  <span className="line-clamp-2 whitespace-normal text-foreground-500 text-xs">
-                    {toolDescription}
-                  </span>
+                  <span className="line-clamp-2 whitespace-normal text-foreground-500 text-xs">{toolDescription}</span>
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                   {options?.serviceSection ? (
                     <>
-                      <Tag color="processing">
-                        {tool.serviceKind ? `${tool.serviceKind} service` : 'Service'}
-                      </Tag>
+                      <Tag color="processing">{tool.serviceKind ? `${tool.serviceKind} service` : 'Service'}</Tag>
                       {tool.projectionKind ? <Tag color="default">{tool.projectionKind}</Tag> : null}
                     </>
                   ) : tool.type === 'mcp' ? (
@@ -209,7 +205,9 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
                 title={
                   isAuto
                     ? t('agent.settings.tooling.preapproved.autoDisabledTooltip', {
-                        mode: selectedModeCard ? t(selectedModeCard.titleKey, selectedModeCard.titleFallback) : selectedMode
+                        mode: selectedModeCard
+                          ? t(selectedModeCard.titleKey, selectedModeCard.titleFallback)
+                          : selectedMode
                       })
                     : undefined
                 }
@@ -271,9 +269,7 @@ export const ToolsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upda
               {groupedTools.otherTools.map((tool) => renderToolCard(tool))}
               {groupedTools.serviceGroups.map(([serviceName, tools]) => (
                 <div key={serviceName} className="flex flex-col gap-2">
-                  <div className="px-1 pt-2 text-foreground-500 text-xs uppercase tracking-[0.18em]">
-                    {serviceName}
-                  </div>
+                  <div className="px-1 pt-2 text-foreground-500 text-xs uppercase tracking-[0.18em]">{serviceName}</div>
                   {tools.map((tool) => renderToolCard(tool, { serviceSection: true }))}
                 </div>
               ))}

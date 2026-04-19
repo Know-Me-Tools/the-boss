@@ -136,4 +136,76 @@ describe('AiSdkToChunkAdapter data-context-management', () => {
       external_tool: externalTool
     })
   })
+
+  it('emits normalized runtime chunks from backend runtime telemetry events', async () => {
+    const onChunk = vi.fn()
+    const adapter = new AiSdkToChunkAdapter(onChunk, [], false, false)
+
+    const statusPayload = {
+      runtime: 'codex',
+      phase: 'thread.started',
+      runtimeSessionId: 'thread-123',
+      config: {
+        model: 'gpt-5.4',
+        approvalPolicy: 'on-request',
+        sandboxMode: 'workspace-write'
+      }
+    }
+
+    const approvalPayload = {
+      runtime: 'opencode',
+      eventType: 'permission.updated',
+      approval: {
+        kind: 'opencode-permission',
+        permissionId: 'perm-123',
+        responses: ['allow', 'deny']
+      }
+    }
+
+    const rawRuntimePayload = {
+      runtime: 'uar',
+      event: 'models',
+      payload: {
+        data: [{ id: 'model-a' }]
+      }
+    }
+
+    await adapter.processStream({
+      fullStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'data-agent-runtime-status', data: statusPayload } as any)
+          controller.enqueue({ type: 'data-agent-runtime-permission', data: approvalPayload } as any)
+          controller.enqueue({ type: 'data-agent-runtime-event', data: rawRuntimePayload } as any)
+          controller.close()
+        }
+      }),
+      text: Promise.resolve('')
+    })
+
+    expect(onChunk).toHaveBeenNthCalledWith(1, {
+      type: 'runtime.event',
+      eventKind: 'status',
+      runtime: 'codex',
+      title: 'thread.started',
+      summary: 'thread-123',
+      data: statusPayload
+    })
+    expect(onChunk).toHaveBeenNthCalledWith(2, {
+      type: 'runtime.event',
+      eventKind: 'approval',
+      runtime: 'opencode',
+      title: 'permission.updated',
+      summary: 'perm-123',
+      approval: approvalPayload.approval,
+      data: approvalPayload
+    })
+    expect(onChunk).toHaveBeenNthCalledWith(3, {
+      type: 'runtime.event',
+      eventKind: 'event',
+      runtime: 'uar',
+      title: 'models',
+      summary: '1 model',
+      data: rawRuntimePayload
+    })
+  })
 })

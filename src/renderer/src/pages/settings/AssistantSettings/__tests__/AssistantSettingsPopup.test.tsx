@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type * as ReactI18Next from 'react-i18next'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -49,6 +49,10 @@ vi.mock('../AssistantContextSettings', () => ({
   default: () => <div>assistant context settings</div>
 }))
 
+vi.mock('../AssistantSkillsSettings', () => ({
+  default: () => <div>assistant skills settings</div>
+}))
+
 vi.mock('../AssistantPromptSettings', () => ({
   default: () => <div>assistant prompt settings</div>
 }))
@@ -69,10 +73,6 @@ vi.mock('../AssistantMemorySettings', () => ({
   default: () => <div>assistant memory settings</div>
 }))
 
-vi.mock('../AssistantSkillsSettings', () => ({
-  default: () => <div>assistant skills settings</div>
-}))
-
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = (await importOriginal()) as typeof ReactI18Next
   return {
@@ -87,8 +87,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'assistants.settings.mcp.label': 'MCP Servers',
           'assistants.settings.regular_phrases.title': 'Regular Phrase',
           'settings.contextStrategy.title': 'Context Management',
-          'memory.title': 'Memories',
-          'agent.settings.skills.tab': 'Skills'
+          'memory.title': 'Memories'
         }[key] ??
         key
     })
@@ -120,7 +119,7 @@ describe('AssistantSettingPopupContainer', () => {
     })
   })
 
-  it('shows a dedicated Skills navigation item and renders the assistant skills pane', () => {
+  it('exposes DB-backed assistant-scoped skill settings', () => {
     render(
       <AssistantSettingPopupContainer
         assistant={{
@@ -146,7 +145,6 @@ describe('AssistantSettingPopupContainer', () => {
     )
 
     expect(screen.getByText('Skills')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Skills'))
-    expect(screen.getByText('assistant skills settings')).toBeInTheDocument()
+    expect(screen.getByText('assistant model settings')).toBeInTheDocument()
   })
 })

@@ -28,11 +28,140 @@ export const SessionMessageRoleSchema = z.enum(sessionMessageRoles)
 
 export type SessionMessageType = TextStreamPart<Record<string, any>>['type']
 
-export const AgentTypeSchema = z.enum(['claude-code'])
+export const AgentTypeSchema = z.enum(['agent', 'claude-code'])
 export type AgentType = z.infer<typeof AgentTypeSchema>
 
 export const KnowledgeRecognitionSchema = z.enum(['off', 'on'])
 export type KnowledgeRecognition = z.infer<typeof KnowledgeRecognitionSchema>
+
+export const AgentRuntimeKindSchema = z.enum(['claude', 'codex', 'opencode', 'uar'])
+export type AgentRuntimeKind = z.infer<typeof AgentRuntimeKindSchema>
+
+export const AgentRuntimeModeSchema = z.enum(['managed', 'embedded', 'remote'])
+export type AgentRuntimeMode = z.infer<typeof AgentRuntimeModeSchema>
+
+const AgentRuntimeBaseConfigSchema = z
+  .object({
+    kind: AgentRuntimeKindSchema,
+    mode: AgentRuntimeModeSchema,
+    profileId: z.string().optional(),
+    providerId: z.string().optional(),
+    modelId: z.string().optional(),
+    endpoint: z.string().optional(),
+    authRef: z.string().optional(),
+    sandbox: z.record(z.string(), z.unknown()).optional(),
+    permissions: z.record(z.string(), z.unknown()).optional(),
+    mcp: z.record(z.string(), z.unknown()).optional(),
+    skills: z.record(z.string(), z.unknown()).optional(),
+    knowledge: z.record(z.string(), z.unknown()).optional(),
+    sidecar: z.record(z.string(), z.unknown()).optional()
+  })
+  .loose()
+
+export const ClaudeRuntimeConfigSchema = AgentRuntimeBaseConfigSchema.extend({
+  kind: z.literal('claude'),
+  mode: z.literal('managed').optional().default('managed')
+}).loose()
+
+export const CodexRuntimeConfigSchema = AgentRuntimeBaseConfigSchema.extend({
+  kind: z.literal('codex'),
+  mode: z.enum(['managed', 'remote']).optional().default('managed')
+}).loose()
+
+export const OpenCodeRuntimeConfigSchema = AgentRuntimeBaseConfigSchema.extend({
+  kind: z.literal('opencode'),
+  mode: z.enum(['managed', 'remote']).optional().default('managed')
+}).loose()
+
+export const UarRuntimeConfigSchema = AgentRuntimeBaseConfigSchema.extend({
+  kind: z.literal('uar'),
+  mode: z.enum(['embedded', 'remote']).optional().default('embedded')
+}).loose()
+
+export const AgentRuntimeConfigSchema = z.preprocess(
+  (value) => {
+    const raw = value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+    const parsedKind = AgentRuntimeKindSchema.safeParse(raw.kind)
+    const kind = parsedKind.success ? parsedKind.data : 'claude'
+    const mode =
+      raw.mode ??
+      (
+        {
+          claude: 'managed',
+          codex: 'managed',
+          opencode: 'managed',
+          uar: 'embedded'
+        } satisfies Record<AgentRuntimeKind, AgentRuntimeMode>
+      )[kind]
+
+    return {
+      ...raw,
+      kind,
+      mode
+    }
+  },
+  z.discriminatedUnion('kind', [
+    ClaudeRuntimeConfigSchema,
+    CodexRuntimeConfigSchema,
+    OpenCodeRuntimeConfigSchema,
+    UarRuntimeConfigSchema
+  ])
+)
+
+export type AgentRuntimeConfig = z.infer<typeof AgentRuntimeConfigSchema>
+
+export const AgentRuntimeProfileSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: AgentRuntimeKindSchema,
+  config: AgentRuntimeConfigSchema,
+  isDefault: z.boolean().optional().default(false),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime()
+})
+
+export type AgentRuntimeProfile = z.infer<typeof AgentRuntimeProfileSchema>
+
+export const AgentRuntimeSettingsSchema = z.object({
+  kind: AgentRuntimeKindSchema,
+  enabled: z.boolean().optional().default(true),
+  config: AgentRuntimeConfigSchema,
+  updated_at: z.iso.datetime().optional()
+})
+
+export type AgentRuntimeSettings = z.infer<typeof AgentRuntimeSettingsSchema>
+
+export const AgentRuntimeSessionBindingSchema = z.object({
+  session_id: z.string(),
+  agent_id: z.string().optional(),
+  runtime_kind: AgentRuntimeKindSchema,
+  runtime_session_id: z.string(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime()
+})
+
+export type AgentRuntimeSessionBinding = z.infer<typeof AgentRuntimeSessionBindingSchema>
+
+export const AgentRuntimeSkillSyncStatusSchema = z.enum(['pending', 'synced', 'error'])
+export type AgentRuntimeSkillSyncStatus = z.infer<typeof AgentRuntimeSkillSyncStatusSchema>
+
+export const AgentRuntimeSkillSyncSchema = z.object({
+  id: z.string(),
+  agent_id: z.string().optional(),
+  session_id: z.string().optional(),
+  skill_id: z.string(),
+  runtime_kind: AgentRuntimeKindSchema,
+  external_ref: z.string().optional(),
+  checksum: z.string().optional(),
+  status: AgentRuntimeSkillSyncStatusSchema,
+  last_error: z.string().optional(),
+  synced_at: z.iso.datetime().optional(),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime()
+})
+
+export type AgentRuntimeSkillSync = z.infer<typeof AgentRuntimeSkillSyncSchema>
 
 // ------------------ CherryClaw-specific types ------------------
 export const SchedulerTypeSchema = z.enum(['cron', 'interval', 'one-time'])
@@ -104,7 +233,8 @@ export const AgentConfigurationSchema = z
 
     // Skills + context
     skill_config: SkillConfigOverrideSchema.optional(),
-    context_strategy: ContextStrategyConfigSchema.partial().optional()
+    context_strategy: ContextStrategyConfigSchema.partial().optional(),
+    runtime: AgentRuntimeConfigSchema.optional()
   })
   .loose()
 

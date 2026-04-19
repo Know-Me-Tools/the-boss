@@ -9,7 +9,16 @@ import { defaultOpenAIOAuthModels } from 'openai-oauth'
 
 const logger = loggerService.withContext('ApiServerInternalOpenAIOAuthRoutes')
 
-const HOP_BY_HOP_HEADERS = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade'])
+const HOP_BY_HOP_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade'
+])
 
 const router = express.Router()
 
@@ -147,7 +156,7 @@ async function writeFetchResponse(res: ExpressResponse, response: Response) {
 
 router.get('/v1/models', (_req, res) => {
   const now = Math.floor(Date.now() / 1000)
-  const models = (defaultOpenAIOAuthModels).map((id) => ({
+  const models = defaultOpenAIOAuthModels.map((id) => ({
     id,
     object: 'model',
     created: now,

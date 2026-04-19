@@ -78,7 +78,8 @@ const InputbarTools = ({ scope, assistant, model, conversation, session }: Input
     ): ToolRenderContext<S, A> => {
       const deps = tool.dependencies
       const quickPanel: ToolQuickPanelApi = {
-        registerRootMenu: (entries: QuickPanelListItem[]) => toolsContext.toolsRegistry.registerRootMenu(tool.key, entries),
+        registerRootMenu: (entries: QuickPanelListItem[]) =>
+          toolsContext.toolsRegistry.registerRootMenu(tool.key, entries),
         registerTrigger: (symbol: QuickPanelReservedSymbol, handler: (payload?: unknown) => void) =>
           toolsContext.toolsRegistry.registerTrigger(tool.key, symbol, handler)
       }

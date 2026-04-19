@@ -2949,15 +2949,15 @@
     },
     "skip": "Pular",
     "toast": {
-      "connected": "Conectado com sucesso ao CherryIN"
+      "connected": "Conectado com sucesso ao The Boss"
     },
     "welcome": {
-      "login_cherryin": "Entrar com CherryIN",
+      "login_cherryin": "Entrar com The Boss",
       "or_continue_with": "OU CONTINUAR COM",
       "other_provider": "Escolher Outros Provedores",
       "select_other_provider": "Selecionar Outro Provedor",
       "setup_hint": "Por favor, configure pelo menos um provedor para a melhor experiência",
-      "subtitle": "Desfrute de serviços de IA de alto nível com CherryIN",
+      "subtitle": "Desfrute de serviços de IA de alto nível com The Boss",
       "title": "Bem-vindo ao The Boss"
     }
   },
@@ -3439,7 +3439,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copiloto",
     "dashscope": "Área de Atuação AliCloud",
     "deepseek": "Busca Profunda",
@@ -5831,6 +5831,14 @@
       "author": "Autor",
       "batchUninstallSuccess": "{{count}} competências desinstaladas",
       "builtin": "Integrado",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Tem certeza de que deseja desinstalar {{count}} habilidades selecionadas?",
       "confirmUninstall": "Tem a certeza de que quer desinstalar esta competência?",
       "directory": "Diretório",

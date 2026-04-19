@@ -1,0 +1,14 @@
+[submodule "resources/skills/prometheus-skill-system"]
+	path = resources/skills/prometheus-skill-system
+	url = git@github.com:Prometheus-AGS/prometheus-skill-system.git
+[submodule "vendor/universal-agent-runtime"]
+	path = vendor/universal-agent-runtime
+	url = git@github.com:Prometheus-AGS/universal-agent-runtime.git
+[submodule "vendor/opencode"]
+	path = vendor/opencode
+	url = git@github.com:GQAdonis/opencode.git
+	branch = dev
+[submodule "vendor/codex"]
+	path = vendor/codex
+	url = git@github.com:Prometheus-AGS/codex.git
+	branch = main

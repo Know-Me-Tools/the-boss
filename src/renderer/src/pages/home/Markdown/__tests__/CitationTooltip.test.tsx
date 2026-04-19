@@ -112,7 +112,7 @@ describe('CitationTooltip', () => {
       expect(tooltip).toHaveAttribute('data-color', 'var(--color-background)')
 
       const styles = JSON.parse(tooltip.getAttribute('data-styles') || '{}')
-      expect(styles.body).toEqual({
+      expect(styles.container).toEqual({
         border: '1px solid var(--color-border)',
         padding: '12px',
         borderRadius: '8px'

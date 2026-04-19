@@ -1,0 +1,757 @@
+{
+  "phase": "multi-runtime-agent-parity-assessment",
+  "objective": "Assess, plan, and execute the implementation needed to configure and run Claude, Codex, OpenCode, and Universal Agent Runtime on the current 1.9.x codebase.",
+  "status": "execution_complete",
+  "assessment_complete": true,
+  "planning_complete": true,
+  "execution_ready": true,
+  "execution_complete": true,
+  "last_updated": "2026-04-18T20:28:00Z",
+  "last_updated_by": "codex",
+  "branch_policy": {
+    "base": "current-1.9.x",
+    "current_branch": "main",
+    "do_not_use": ["v2"],
+    "notes": "Do not checkout, merge, rebase, cherry-pick, or base work on v2 for this upstream phase."
+  },
+  "artifacts": {
+    "assessment": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/assessment.md",
+    "plan": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/plan.md",
+    "execution": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/execution.md",
+    "reflection": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/reflection.md",
+    "smoke_closeout": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/smoke-closeout.md",
+    "binary_distribution_assessment": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-assessment.md",
+    "binary_distribution_plan": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-plan.md",
+    "sycophancy_assessment_review": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/sycophancy/assess-2026-04-17T20-44-46Z.json",
+    "sycophancy_plan_review": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/sycophancy/plan-2026-04-17T20-48-28Z.json"
+  },
+  "openSpecDetected": false,
+  "selected_backend": "hybrid",
+  "canonical_progress_file": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+  "next_pending_change": null,
+  "changes": [
+    {
+      "id": "change-001-runtime-agent-model",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": [],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-04-17T20:58:34Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T21:08:46Z",
+      "change_file": ".kbd-orchestrator/changes/change-001-runtime-agent-model/change.md",
+      "verification": [
+        "targeted schema/repository tests",
+        "legacy Claude row load check",
+        "compatibility resolver test"
+      ],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/runtimeModel.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeProfileRepository.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:web",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "log": ".refiner/artifacts/change-001-runtime-agent-model/refinement_log.md"
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-002-runtime-settings-ui",
+      "status": "DONE",
+      "assigned_backend": "claude-code-compatible-or-codex",
+      "depends_on": ["change-001-runtime-agent-model"],
+      "tasks_total": 9,
+      "tasks_done": 9,
+      "started_by": "codex",
+      "started_at": "2026-04-17T21:09:30Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T21:15:31Z",
+      "change_file": ".kbd-orchestrator/changes/change-002-runtime-settings-ui/change.md",
+      "verification": ["focused renderer settings tests", "i18n check for added keys"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run --project renderer src/renderer/src/pages/settings/AgentSettings/components/__tests__/RuntimeSettings.test.tsx",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:web",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm i18n:check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused renderer-only change; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-003-uar-execution-settings",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-001-runtime-agent-model"],
+      "tasks_total": 9,
+      "tasks_done": 9,
+      "started_by": "codex",
+      "started_at": "2026-04-17T21:16:54Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T21:47:31Z",
+      "change_file": ".kbd-orchestrator/changes/change-003-uar-execution-settings/change.md",
+      "verification": ["sidecar config tests", "endpoint resolution tests", "UAR packaging verification"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/UarRuntimeAdapter.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm uar:build:sidecar",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Runtime service plus packaging change was verified by focused tests, typecheck, and successful sidecar build; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-004-runtime-context-pipeline",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-001-runtime-agent-model"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-04-17T21:48:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T21:54:03Z",
+      "change_file": ".kbd-orchestrator/changes/change-004-runtime-context-pipeline/change.md",
+      "verification": [
+        "prompt bundle tests",
+        "skill plus knowledge composition tests",
+        "Claude behavior preservation check"
+      ],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts src/main/services/agents/services/runtime/__tests__/UarRuntimeAdapter.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused runtime contract change verified by targeted tests and node typecheck; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-005-runtime-skill-knowledge-bridge",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-001-runtime-agent-model", "change-004-runtime-context-pipeline"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-04-17T21:54:10Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T22:02:18Z",
+      "change_file": ".kbd-orchestrator/changes/change-005-runtime-skill-knowledge-bridge/change.md",
+      "verification": ["runtime skill sync tests", "generated file tests", "knowledge reference tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeSkillBridgeService.test.ts src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused bridge change verified by runtime file generation tests, knowledge prompt tests, and node typecheck; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-006-codex-runtime-parity",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-004-runtime-context-pipeline", "change-005-runtime-skill-knowledge-bridge"],
+      "tasks_total": 7,
+      "tasks_done": 7,
+      "started_by": "codex",
+      "started_at": "2026-04-17T22:02:18Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T22:11:02Z",
+      "change_file": ".kbd-orchestrator/changes/change-006-codex-runtime-parity/change.md",
+      "verification": ["Codex config mapping tests", "stream event normalization tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/CodexRuntimeAdapter.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/CodexRuntimeAdapter.test.ts src/main/services/agents/services/runtime/__tests__/runtimeModel.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused Codex adapter change verified by config mapping tests, event normalization tests, resume behavior tests, provider/config rejection tests, and node typecheck; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-007-opencode-runtime-parity",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-004-runtime-context-pipeline", "change-005-runtime-skill-knowledge-bridge"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-04-17T22:11:02Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T22:17:50Z",
+      "change_file": ".kbd-orchestrator/changes/change-007-opencode-runtime-parity/change.md",
+      "verification": ["OpenCode managed lifecycle tests", "OpenCode remote config tests", "event normalization tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/OpenCodeRuntimeAdapter.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/OpenCodeRuntimeAdapter.test.ts src/main/services/agents/services/runtime/__tests__/CodexRuntimeAdapter.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeSkillBridgeService.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused OpenCode adapter change verified by managed lifecycle, remote auth/config, normalized event, runtime skill bridge, Codex regression tests, and node typecheck; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-008-runtime-chat-telemetry",
+      "status": "DONE",
+      "assigned_backend": "claude-code-compatible-or-codex",
+      "depends_on": ["change-004-runtime-context-pipeline"],
+      "tasks_total": 7,
+      "tasks_done": 7,
+      "started_by": "codex",
+      "started_at": "2026-04-17T22:18:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T22:30:01Z",
+      "change_file": ".kbd-orchestrator/changes/change-008-runtime-chat-telemetry/change.md",
+      "verification": ["runtime chunk conversion tests", "message block rendering tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run --project renderer src/renderer/src/aiCore/chunk/__tests__/AiSdkToChunkAdapter.contextManagement.test.ts src/renderer/src/services/__tests__/StreamProcessingService.test.ts src/renderer/src/services/messageStreaming/callbacks/__tests__/runtimeCallbacks.test.ts src/renderer/src/pages/home/Messages/Blocks/__tests__/RuntimeBlock.test.tsx",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:web",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm i18n:check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused renderer telemetry change verified by stream conversion, stream processor, callback, block rendering tests, web typecheck, and i18n check; artifact-refiner manifest is not available in this repository."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-009-runtime-validation-hardening",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": [
+        "change-002-runtime-settings-ui",
+        "change-003-uar-execution-settings",
+        "change-006-codex-runtime-parity",
+        "change-007-opencode-runtime-parity",
+        "change-008-runtime-chat-telemetry"
+      ],
+      "tasks_total": 11,
+      "tasks_done": 11,
+      "started_by": "codex",
+      "started_at": "2026-04-17T22:30:15Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-17T22:55:09Z",
+      "change_file": ".kbd-orchestrator/changes/change-009-runtime-validation-hardening/change.md",
+      "verification": ["pnpm format", "pnpm lint", "pnpm test", "UAR sidecar packaging verification"],
+      "verification_results": [
+        {
+          "command": "pnpm format",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Passed with non-fatal oxlint/resources and react-hooks exhaustive-deps warnings."
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/runtimeModel.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeSkillBridgeService.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/renderer/src/pages/settings/AgentSettings/components/__tests__/RuntimeSettings.test.tsx src/renderer/src/aiCore/chunk/__tests__/AiSdkToChunkAdapter.contextManagement.test.ts src/renderer/src/services/__tests__/StreamProcessingService.test.ts src/renderer/src/services/messageStreaming/callbacks/__tests__/runtimeCallbacks.test.ts src/renderer/src/pages/home/Messages/Blocks/__tests__/RuntimeBlock.test.tsx",
+          "status": "passed",
+          "notes": "8 test files, 34 tests."
+        },
+        {
+          "command": "pnpm uar:build:sidecar",
+          "status": "passed",
+          "notes": "Copied resources/binaries/darwin-arm64/universal-agent-runtime and .uar-version."
+        },
+        {
+          "command": "pnpm test",
+          "status": "passed",
+          "notes": "290 test files passed; 4428 tests passed; 72 skipped."
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Rerun after test hardening passed with non-fatal warnings only."
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "reason": "Runtime path has targeted green tests, sidecar packaging, full project tests, and final lint verification."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-010-runtime-control-plane",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": [],
+      "tasks_total": 7,
+      "tasks_done": 7,
+      "started_by": "codex",
+      "started_at": "2026-04-17T23:41:44Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T00:02:37Z",
+      "change_file": ".kbd-orchestrator/changes/change-010-runtime-control-plane/change.md",
+      "verification": ["runtime control service tests", "runtime settings UI test", "UAR embedded status path"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts src/renderer/src/pages/settings/AgentSettings/components/__tests__/RuntimeSettings.test.tsx",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "reason": "Runtime control plane is covered by focused service/UI tests and final project gates."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-011-runtime-session-bindings",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-010-runtime-control-plane"],
+      "tasks_total": 5,
+      "tasks_done": 5,
+      "started_by": "codex",
+      "started_at": "2026-04-17T23:41:44Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T00:02:37Z",
+      "change_file": ".kbd-orchestrator/changes/change-011-runtime-session-bindings/change.md",
+      "verification": ["runtime session binding repository tests", "session message runtime-specific resume tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeSessionBindingRepository.test.ts",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "reason": "Runtime session bindings are covered by repository and SessionMessageService resume tests plus final project gates."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-012-runtime-approval-response-flow",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-011-runtime-session-bindings"],
+      "tasks_total": 5,
+      "tasks_done": 5,
+      "started_by": "codex",
+      "started_at": "2026-04-17T23:41:44Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T00:02:37Z",
+      "change_file": ".kbd-orchestrator/changes/change-012-runtime-approval-response-flow/change.md",
+      "verification": ["runtime approval service tests", "RuntimeBlock approval button tests"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeApprovalService.test.ts src/renderer/src/pages/home/Messages/Blocks/__tests__/RuntimeBlock.test.tsx",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "reason": "Approval responses are covered by service and UI tests plus final project gates."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-013-uar-electron-smoke",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": [
+        "change-010-runtime-control-plane",
+        "change-011-runtime-session-bindings",
+        "change-012-runtime-approval-response-flow"
+      ],
+      "tasks_total": 5,
+      "tasks_done": 5,
+      "started_by": "codex",
+      "started_at": "2026-04-17T23:41:44Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T00:02:37Z",
+      "change_file": ".kbd-orchestrator/changes/change-013-uar-electron-smoke/change.md",
+      "verification": ["UAR embedded smoke test", "UAR sidecar packaging", "final project gates"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts src/renderer/src/pages/settings/AgentSettings/components/__tests__/RuntimeSettings.test.tsx src/main/services/agents/services/runtime/__tests__/RuntimeSessionBindingRepository.test.ts src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeApprovalService.test.ts src/renderer/src/pages/home/Messages/Blocks/__tests__/RuntimeBlock.test.tsx src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts",
+          "status": "passed",
+          "notes": "7 test files, 16 tests."
+        },
+        {
+          "command": "pnpm format",
+          "status": "passed",
+          "notes": "Biome reported schema-version info only."
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Passed with non-fatal existing warnings."
+        },
+        {
+          "command": "pnpm test",
+          "status": "passed",
+          "notes": "294 test files passed; 4437 tests passed; 72 skipped."
+        },
+        {
+          "command": "pnpm uar:build:sidecar",
+          "status": "passed",
+          "notes": "Copied resources/binaries/darwin-arm64/universal-agent-runtime and wrote .uar-version."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "passed",
+        "reason": "Embedded UAR sidecar start, health, ready, chat, telemetry, and stop path are covered by smoke test; final packaging and project gates pass."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-014-package-scope-size-fix",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": [],
+      "tasks_total": 5,
+      "tasks_done": 5,
+      "started_by": "codex",
+      "started_at": "2026-04-18T17:10:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T19:47:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-014-package-scope-size-fix/change.md",
+      "verification": ["pnpm build:mac:arm64", "package audit script/test", "app.asar inspection", "git diff --check"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run scripts/__tests__/verify-packaged-runtime-deps.test.ts",
+          "status": "passed",
+          "notes": "12 tests passed, including forbidden build-only packaged path detection."
+        },
+        {
+          "command": "pnpm build:mac:arm64",
+          "status": "passed",
+          "notes": "First run reached final ZIP compression and failed with 7za null exit; manual 7za reproduction succeeded. After stale artifact cleanup, rerun passed."
+        },
+        {
+          "command": "node scripts/verify-packaged-runtime-deps.js dist/mac-arm64",
+          "status": "passed",
+          "notes": "Runtime dependency and build-only artifact audit passed."
+        },
+        {
+          "command": "app.asar forbidden path inspection",
+          "status": "passed",
+          "notes": "No top-level vendor, .kbd-orchestrator, .refiner, dist, or target entries found in app.asar."
+        },
+        {
+          "command": "UAR bundled fallback inspection",
+          "status": "passed",
+          "notes": "darwin-arm64 universal-agent-runtime and rtk remain executable under app.asar.unpacked/resources/binaries/darwin-arm64."
+        },
+        {
+          "command": "pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing non-fatal warnings in build-marketplace.js, useSkills.ts, and RuntimeSettings.tsx."
+        },
+        {
+          "command": "pnpm test",
+          "status": "passed",
+          "notes": "294 test files passed; 4438 tests passed; 72 skipped."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "package_size_results": {
+        "previous_baseline": {
+          "app": "5.0G",
+          "dmg": "1.6G",
+          "zip": "1.7G"
+        },
+        "current_build": {
+          "app": "1.4G",
+          "app_asar": "225M",
+          "app_asar_unpacked": "522M",
+          "dmg": "474M",
+          "zip": "465M",
+          "zip_blockmap": "463K"
+        }
+      },
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable for this native packaging change because no artifact_manifest.json or constraints.json exists for change-014; validation was covered by package audit, build, lint, test, and diff checks."
+      },
+      "blockers": []
+    },
+    {
+      "id": "change-015-managed-binary-core",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-014-package-scope-size-fix"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-04-18T19:48:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-015-managed-binary-core/change.md",
+      "verification": ["managed binary service tests", "pnpm run typecheck:node", "git diff --check"],
+      "blockers": [],
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T19:59:00Z",
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts",
+          "status": "passed",
+          "notes": "4 tests passed for file transport install, hash/size mismatch rejection, unsupported platform, and update-available status."
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts",
+          "status": "passed",
+          "notes": "4 runtime test files passed; 13 tests passed."
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "Focused service/test change; artifact-refiner manifest and constraints are not available for this native KBD change. Covered by targeted service tests and node typecheck."
+      }
+    },
+    {
+      "id": "change-016-uar-managed-binary-resolution",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-015-managed-binary-core"],
+      "tasks_total": 5,
+      "tasks_done": 5,
+      "started_by": "codex",
+      "started_at": "2026-04-18T19:52:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-016-uar-managed-binary-resolution/change.md",
+      "verification": [
+        "UAR runtime service tests",
+        "UAR embedded smoke test",
+        "pnpm run typecheck:node",
+        "git diff --check"
+      ],
+      "blockers": [],
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T19:59:00Z",
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts",
+          "status": "passed",
+          "notes": "UAR managed resolution, bundled fallback, verification-failure refusal, embedded smoke, and runtime control status coverage passed as part of the 4-file runtime suite."
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts",
+          "status": "passed",
+          "notes": "4 runtime test files passed; 13 tests passed."
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing non-fatal warnings in build-marketplace.js, useSkills.ts, and RuntimeSettings.tsx."
+        },
+        {
+          "command": "pnpm test",
+          "status": "passed",
+          "notes": "295 test files passed; 4445 tests passed; 72 skipped."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json or constraints.json exists for change-016; validation was covered by UAR focused tests, embedded smoke coverage, runtime control tests, and node typecheck."
+      }
+    },
+    {
+      "id": "change-017-managed-binary-ui-and-docs",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-016-uar-managed-binary-resolution"],
+      "tasks_total": 7,
+      "tasks_done": 7,
+      "change_file": ".kbd-orchestrator/changes/change-017-managed-binary-ui-and-docs/change.md",
+      "verification": [
+        "renderer Runtime Settings tests",
+        "managed binary IPC/preload tests",
+        "pnpm i18n:check",
+        "pnpm run typecheck:web",
+        "git diff --check"
+      ],
+      "blockers": [],
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T20:28:00Z",
+      "verification_results": [
+        {
+          "command": "pnpm vitest run --project renderer src/renderer/src/pages/settings/AgentSettings/components/__tests__/RuntimeSettings.test.tsx",
+          "status": "passed",
+          "notes": "10 tests passed for UAR managed binary status states and install/update action."
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts",
+          "status": "passed",
+          "notes": "3 files, 14 tests passed."
+        },
+        {
+          "command": "pnpm run typecheck:web",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "pnpm i18n:check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json or constraints.json exists for change-017; validation was covered by IPC/control-plane tests, renderer tests, docs update, i18n check, and typechecks."
+      }
+    },
+    {
+      "id": "change-018-ipfs-transport-release-workflow",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-017-managed-binary-ui-and-docs"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "change_file": ".kbd-orchestrator/changes/change-018-ipfs-transport-release-workflow/change.md",
+      "verification": ["managed binary transport tests", "release script tests", "docs review", "git diff --check"],
+      "blockers": [],
+      "completed_by": "codex",
+      "completed_at": "2026-04-18T20:28:00Z",
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts scripts/__tests__/build-managed-binary-manifest.test.ts",
+          "status": "passed",
+          "notes": "2 files, 8 tests passed for IPFS fallback, max-size enforcement, and manifest generation."
+        },
+        {
+          "command": "pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing non-fatal warnings in build-marketplace.js and useSkills.ts."
+        },
+        {
+          "command": "pnpm test",
+          "status": "passed",
+          "notes": "296 test files passed; 4458 tests passed; 72 skipped."
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json or constraints.json exists for change-018; validation was covered by transport tests, release manifest tests, docs review, lint, and full test suite."
+      }
+    }
+  ],
+  "approval_gates": [
+    "Do not use v2.",
+    "Do not add Redux slices or modify IndexedDB schema without explicit user approval.",
+    "Do not mark embedded UAR complete until sidecar packaging succeeds.",
+    "Do not claim lossless runtime parity where compatibility resolver reports degradation.",
+    "Do not run downloaded binaries unless manifest and hash verification pass.",
+    "Do not make IPFS the only binary transport; HTTPS fallback is mandatory.",
+    "Do not remove bundled UAR fallback until managed install/update reliability is proven by smoke tests."
+  ],
+  "recommended_next_action": "Generate kbd-reflect for the completed multi-runtime-agent-parity-assessment phase. Do not use v2."
+}

@@ -23,6 +23,9 @@ type VertexAISettings = {
   }
 }
 
+const MOONSHOT_CHINA_HOST = 'api.moonshot.cn'
+const MOONSHOT_INTERNATIONAL_ORIGIN = 'https://api.moonshot.ai'
+
 const SUPPORTED_ENDPOINT_LIST = [
   'chat/completions',
   'responses',
@@ -49,6 +52,42 @@ function routeToEndpoint(apiHost: string): { baseURL: string; endpoint: string }
   const baseSegment = host.slice(0, host.length - endpointMatch.length)
   const baseURL = withoutTrailingSlash(baseSegment).replace(/:$/, '')
   return { baseURL, endpoint: endpointMatch }
+}
+
+function isMoonshotChinaBaseUrl(baseURL: string): boolean {
+  try {
+    return new URL(baseURL).host === MOONSHOT_CHINA_HOST
+  } catch {
+    return false
+  }
+}
+
+function getMoonshotInternationalUrl(input: Parameters<typeof fetch>[0]): string | null {
+  const url = typeof input === 'string' || input instanceof URL ? new URL(input.toString()) : null
+  if (!url || url.host !== MOONSHOT_CHINA_HOST) {
+    return null
+  }
+
+  url.protocol = 'https:'
+  url.host = new URL(MOONSHOT_INTERNATIONAL_ORIGIN).host
+  return url.toString()
+}
+
+function createMoonshotEndpointFallbackFetch(): typeof fetch {
+  return async (input, init) => {
+    const response = await fetch(input, init)
+
+    if (response.status !== 401) {
+      return response
+    }
+
+    const retryUrl = getMoonshotInternationalUrl(input)
+    if (!retryUrl) {
+      return response
+    }
+
+    return fetch(retryUrl, init)
+  }
 }
 
 async function getVertexAISettings(): Promise<VertexAISettings> {
@@ -142,12 +181,17 @@ async function buildOpenAIProviderConfig(provider: Provider, model: Model): Prom
   }
 
   const { baseURL } = routeToEndpoint(provider.apiHost)
+  const moonshotFallback =
+    provider.id === 'moonshot' && isMoonshotChinaBaseUrl(baseURL)
+      ? { fetch: createMoonshotEndpointFallbackFetch() }
+      : {}
 
   return {
     providerId,
     providerSettings: {
       apiKey: provider.apiKey,
       baseURL: withoutTrailingSlash(formatApiHost(baseURL, false)),
+      ...moonshotFallback,
       headers: {
         ...defaultAppHeaders(),
         ...provider.extra_headers

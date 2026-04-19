@@ -2949,15 +2949,15 @@
     },
     "skip": "Пропустить",
     "toast": {
-      "connected": "Успешно подключено к CherryIN"
+      "connected": "Успешно подключено к The Boss"
     },
     "welcome": {
-      "login_cherryin": "Войти через CherryIN",
+      "login_cherryin": "Войти через The Boss",
       "or_continue_with": "ИЛИ ПРОДОЛЖИТЬ С",
       "other_provider": "Выбрать других поставщиков",
       "select_other_provider": "Выбрать другого поставщика",
       "setup_hint": "Пожалуйста, настройте хотя бы одного поставщика для лучшего опыта",
-      "subtitle": "Наслаждайтесь услугами ИИ высшего уровня с CherryIN",
+      "subtitle": "Наслаждайтесь услугами ИИ высшего уровня с The Boss",
       "title": "Добро пожаловать в The Boss"
     }
   },
@@ -3439,7 +3439,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -5831,6 +5831,14 @@
       "author": "Автор",
       "batchUninstallSuccess": "{{count}} навыков удалено",
       "builtin": "Встроенный",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Вы уверены, что хотите удалить выбранные навыки ({{count}})?",
       "confirmUninstall": "Вы уверены, что хотите удалить этот навык?",
       "directory": "Каталог",

@@ -1,5 +1,5 @@
 import { searchSkills } from '@renderer/services/SkillSearchService'
-import type { InstalledSkill, SkillSearchResult } from '@types'
+import type { InstalledSkill, SkillConfigScopeListRequest, SkillSearchResult } from '@types'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
@@ -73,6 +73,40 @@ export function useInstalledSkills(agentId?: string) {
   )
 
   return { skills, loading, error, refresh, toggle, uninstall }
+}
+
+/**
+ * Hook to list skills with eligibility resolved from DB-backed skill scopes.
+ */
+export function useScopedSkills(scopes?: SkillConfigScopeListRequest) {
+  const [skills, setSkills] = useState<InstalledSkill[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const scopeKey = JSON.stringify(scopes ?? { type: 'global', id: 'default' })
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const request = scopes ?? { type: 'global' as const, id: 'default' }
+      const result = await window.api.skillScope.listSkills(request)
+      if (result.success) {
+        setSkills(result.data)
+      } else {
+        setError('Failed to load scoped skills')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }, [scopeKey, scopes])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  return { skills, loading, error, refresh }
 }
 
 /**

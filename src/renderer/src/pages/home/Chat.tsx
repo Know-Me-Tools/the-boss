@@ -139,9 +139,13 @@ const Chat: FC<Props> = (props) => {
   }
 
   const firstUpdateOrNoFirstUpdateHandler = () => {
-    setTimeoutTimer('firstUpdateOrNoFirstUpdateHandler', () => {
-      contentSearchRef.current?.silentSearch()
-    }, 10)
+    setTimeoutTimer(
+      'firstUpdateOrNoFirstUpdateHandler',
+      () => {
+        contentSearchRef.current?.silentSearch()
+      },
+      10
+    )
   }
 
   const messagesComponentUpdateHandler = () => {
@@ -151,9 +155,13 @@ const Chat: FC<Props> = (props) => {
   }
 
   const messagesComponentFirstUpdateHandler = () => {
-    setTimeoutTimer('messagesComponentFirstUpdateHandler', () => {
-      firstUpdateCompletedRef.current = true
-    }, 300)
+    setTimeoutTimer(
+      'messagesComponentFirstUpdateHandler',
+      () => {
+        firstUpdateCompletedRef.current = true
+      },
+      300
+    )
     firstUpdateOrNoFirstUpdateHandler()
   }
 
@@ -217,12 +225,12 @@ const Chat: FC<Props> = (props) => {
               style={{
                 overflow: 'hidden'
               }}>
-                <Tabs
-                  activeAssistant={assistant}
-                  activeTopic={activeTopic}
-                  setActiveAssistant={props.setActiveAssistant}
-                  setActiveTopic={props.setActiveTopic}
-                  position="right"
+              <Tabs
+                activeAssistant={assistant}
+                activeTopic={activeTopic}
+                setActiveAssistant={props.setActiveAssistant}
+                setActiveTopic={props.setActiveTopic}
+                position="right"
               />
             </motion.div>
           )}

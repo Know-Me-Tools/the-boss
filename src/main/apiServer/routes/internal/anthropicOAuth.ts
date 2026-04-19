@@ -17,9 +17,7 @@ const logger = loggerService.withContext('ApiServerInternalAnthropicOAuthRoutes'
 const router = express.Router()
 
 function getClaudeExecutablePath(): string {
-  return toAsarUnpackedPath(
-    path.join(path.dirname(require_.resolve('@anthropic-ai/claude-agent-sdk')), 'cli.js')
-  )
+  return toAsarUnpackedPath(path.join(path.dirname(require_.resolve('@anthropic-ai/claude-agent-sdk')), 'cli.js'))
 }
 
 /**
@@ -59,7 +57,12 @@ async function handleMessagesRequest(req: ExpressRequest, res: ExpressResponse) 
       return
     }
 
-    const { messages = [], model, system, stream: wantsStream } = req.body as {
+    const {
+      messages = [],
+      model,
+      system,
+      stream: wantsStream
+    } = req.body as {
       messages?: any[]
       model?: string
       system?: string

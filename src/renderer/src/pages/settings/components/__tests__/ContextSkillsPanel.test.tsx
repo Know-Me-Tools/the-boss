@@ -23,7 +23,7 @@ vi.mock('@renderer/hooks/useProvider', () => ({
 }))
 
 vi.mock('@renderer/hooks/useSkills', () => ({
-  useInstalledSkills: () => ({
+  useScopedSkills: () => ({
     skills: [
       {
         id: 'skill-a',

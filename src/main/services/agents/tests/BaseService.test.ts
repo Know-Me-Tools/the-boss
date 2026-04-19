@@ -196,7 +196,9 @@ describe('BaseService.validateAgentModels', () => {
       provider
     })
 
-    await expect(service.validateModels('claude-code', { model: 'anthropic-max:claude-sonnet-4-5' })).resolves.not.toThrow()
+    await expect(
+      service.validateModels('claude-code', { model: 'anthropic-max:claude-sonnet-4-5' })
+    ).resolves.not.toThrow()
     expect(provider.apiKey).toBe('')
   })
 })

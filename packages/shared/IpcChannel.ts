@@ -133,6 +133,17 @@ export enum IpcChannel {
   AgentMessage_PersistExchange = 'agent-message:persist-exchange',
   AgentMessage_GetHistory = 'agent-message:get-history',
 
+  AgentRuntime_ListProfiles = 'agent-runtime:list-profiles',
+  AgentRuntime_UpsertProfile = 'agent-runtime:upsert-profile',
+  AgentRuntime_GetSettings = 'agent-runtime:get-settings',
+  AgentRuntime_UpsertSettings = 'agent-runtime:upsert-settings',
+  AgentRuntime_TestConnection = 'agent-runtime:test-connection',
+  AgentRuntime_StartSidecar = 'agent-runtime:start-sidecar',
+  AgentRuntime_StopSidecar = 'agent-runtime:stop-sidecar',
+  AgentRuntime_GetStatus = 'agent-runtime:get-status',
+  AgentRuntime_InstallManagedBinary = 'agent-runtime:install-managed-binary',
+  AgentRuntime_RespondToApproval = 'agent-runtime:respond-to-approval',
+
   AgentToolPermission_Request = 'agent-tool-permission:request',
   AgentToolPermission_Response = 'agent-tool-permission:response',
   AgentToolPermission_Result = 'agent-tool-permission:result',
@@ -448,9 +459,6 @@ export enum IpcChannel {
   Ovms_RunOVMS = 'ovms:run-ovms',
   Ovms_StopOVMS = 'ovms:stop-ovms',
 
-  // CherryAI
-  Cherryai_GetSignature = 'cherryai:get-signature',
-
   // Global Skills
   Skill_List = 'skill:list',
   Skill_Install = 'skill:install',
@@ -462,6 +470,9 @@ export enum IpcChannel {
   Skill_ListFiles = 'skill:list-files',
   Skill_ListLocal = 'skill:list-local',
   Skill_EmbedText = 'skill:embed-text',
+  SkillScope_GetConfig = 'skill-scope:get-config',
+  SkillScope_SetConfig = 'skill-scope:set-config',
+  SkillScope_ListSkills = 'skill-scope:list-skills',
 
   // Local Transfer
   LocalTransfer_ListServices = 'local-transfer:list',

@@ -22,11 +22,9 @@ const ConversationSkillsQuickPanelBinding = ({
   return null
 }
 
-const ConversationSkillsQuickPanelManager = ({
-  context
-}: {
-  context: ToolRenderContext<readonly [], readonly []>
-}) => {
+const ConversationSkillsQuickPanelManager = ({ context }: { context: ToolRenderContext<readonly [], readonly []> }) => {
+  const { conversation } = context
+
   if (!conversation) {
     return null
   }

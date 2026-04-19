@@ -298,7 +298,9 @@ export function applySkillConfigOverride(
     contextManagementMethod: override.contextManagementMethod ?? base.contextManagementMethod,
     maxSkillTokens: override.maxSkillTokens ?? base.maxSkillTokens,
     selectedSkillIds:
-      override.selectedSkillIds !== undefined ? normalizeSelectedSkillIds(override.selectedSkillIds) : base.selectedSkillIds,
+      override.selectedSkillIds !== undefined
+        ? normalizeSelectedSkillIds(override.selectedSkillIds)
+        : base.selectedSkillIds,
     methods: cloneSkillMethodConfigs(base.methods)
   }
 
@@ -407,10 +409,7 @@ function normalizeSelectedSkillIds(selectedSkillIds: string[]): string[] {
   return Array.from(new Set(selectedSkillIds))
 }
 
-function intersectSelectedSkillIds(
-  current: string[] | undefined,
-  next: string[]
-): string[] {
+function intersectSelectedSkillIds(current: string[] | undefined, next: string[]): string[] {
   const normalizedNext = normalizeSelectedSkillIds(next)
 
   if (current === undefined) {

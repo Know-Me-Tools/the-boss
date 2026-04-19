@@ -30,6 +30,16 @@ files:
   - "!src"
   - "!config"
   - "!patches"
+  - "!vendor"
+  - "!vendor/**"
+  - "!.kbd-orchestrator"
+  - "!.kbd-orchestrator/**"
+  - "!.refiner"
+  - "!.refiner/**"
+  - "!dist"
+  - "!dist/**"
+  - "!target"
+  - "!target/**"
   - "!app-upgrade-config.json"
   - "!**/node_modules/**/*.cpp"
   - "!**/node_modules/node-addon-api/**"
@@ -141,7 +151,7 @@ rpm:
   fpm: ["--rpm-rpmbuild-define=_build_id_links none"]
 publish:
   provider: generic
-  url: https://the-boss.know-me.tools/releases/latest/download
+  url: https://api.know-me.tools/updates/electron/latest
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
 beforePack: scripts/before-pack.js

@@ -1,0 +1,121 @@
+{
+  "phase": "agent-assistant-upstream-assessment",
+  "objective": "Add the Prometheus built-in skill system and introduce a multi-runtime agent execution layer while preserving native Claude behavior.",
+  "status": "COMPLETE_WITH_VERIFICATION_BLOCKERS",
+  "last_updated_by": "codex:kbd-execute",
+  "last_updated": "2026-04-17T14:50:15Z",
+  "execution_backend": "codex",
+  "changes": [
+    {
+      "id": "change-001-skill-system-submodule-bootstrap",
+      "status": "DONE",
+      "qa": "PASSED_TARGETED",
+      "artifacts": [
+        ".gitmodules",
+        "resources/skills/prometheus-skill-system",
+        "src/main/utils/builtinSkills.ts",
+        "src/main/__tests__/builtinSkills.test.ts"
+      ]
+    },
+    {
+      "id": "change-002-runtime-abstraction",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": [
+        "src/main/services/agents/services/runtime/AgentRuntimeRouter.ts",
+        "src/main/services/agents/services/runtime/types.ts",
+        "src/main/services/agents/services/runtime/RuntimeAgentStream.ts",
+        "src/main/services/agents/services/SessionMessageService.ts",
+        "src/renderer/src/types/agent.ts"
+      ]
+    },
+    {
+      "id": "change-003-claude-proxy-removal",
+      "status": "DONE",
+      "qa": "PASSED_TARGETED",
+      "artifacts": [
+        "src/main/services/agents/services/claudecode/providerRoutes.ts",
+        "src/main/services/agents/services/claudecode/index.ts",
+        "src/main/services/agents/services/claudecode/__tests__/providerRoutes.test.ts"
+      ]
+    },
+    {
+      "id": "change-004-codex-adapter",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "src/main/services/agents/services/runtime/CodexRuntimeAdapter.ts"
+      ]
+    },
+    {
+      "id": "change-005-opencode-adapter",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "src/main/services/agents/services/runtime/OpenCodeRuntimeAdapter.ts"
+      ]
+    },
+    {
+      "id": "change-006-uar-adapter",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": ["src/main/services/agents/services/runtime/UarRuntimeAdapter.ts"]
+    },
+    {
+      "id": "change-007-settings-schema-ux",
+      "status": "DONE",
+      "qa": "PASSED_WEB_TYPECHECK",
+      "artifacts": [
+        "src/renderer/src/types/agent.ts",
+        "src/renderer/src/pages/settings/AgentSettings/components/RuntimeSettings.tsx",
+        "src/renderer/src/pages/settings/AgentSettings/AgentSettingsPopup.tsx",
+        "src/renderer/src/pages/settings/AgentSettings/SessionSettingsPopup.tsx",
+        "src/renderer/src/pages/settings/SkillsSettings/SkillsSettings.tsx",
+        "src/renderer/src/pages/settings/AssistantSettings/index.tsx",
+        "src/renderer/src/pages/settings/AssistantSettings/AssistantModelSettings.tsx",
+        "src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSettingsPopup.test.tsx"
+      ]
+    },
+    {
+      "id": "change-008-migrations-reconciliation",
+      "status": "DONE",
+      "qa": "SKIPPED_NO_SCHEMA_MIGRATION",
+      "artifacts": ["src/renderer/src/types/agent.ts"]
+    },
+    {
+      "id": "change-009-tests-verification",
+      "status": "BLOCKED",
+      "qa": "FULL_REPO_GATES_FAILED_EXISTING_ISSUES",
+      "artifacts": [
+        ".kbd-orchestrator/phases/agent-assistant-upstream-assessment/execution.md",
+        ".kbd-orchestrator/phases/agent-assistant-upstream-assessment/progress.json"
+      ]
+    }
+  ],
+  "verification": {
+    "passed": [
+      "pnpm vitest run --project main src/main/__tests__/builtinSkills.test.ts src/main/services/agents/services/claudecode/__tests__/providerRoutes.test.ts --silent",
+      "pnpm vitest run --project main src/main/__tests__/builtinSkills.test.ts src/main/services/agents/services/claudecode/__tests__/providerRoutes.test.ts src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts --silent",
+      "pnpm vitest run --project renderer src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSettingsPopup.test.tsx --silent",
+      "pnpm run typecheck:node",
+      "pnpm run typecheck:web",
+      "pnpm format"
+    ],
+    "failed": ["pnpm lint", "pnpm test"]
+  },
+  "verification_blockers": {
+    "pnpm lint": [
+      "Repo-wide React compiler lint errors in existing renderer files, including OpenAIAlert, CodeEditor, popups, trace pages, and mini-window components.",
+      "Warnings in Prometheus submodule scripts are visible to the root lint command because resources/skills is inside the repo tree."
+    ],
+    "pnpm test": [
+      "Vitest 4 mock-constructor failures across LocalTransferService, channel adapters, ConfigManager, fetch utilities, MermaidPreview, and related suites.",
+      "Electron install validation failure in AgentService.test.",
+      "Snapshot/expectation drift in unrelated renderer tests."
+    ]
+  }
+}

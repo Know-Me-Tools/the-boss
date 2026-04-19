@@ -1,4 +1,9 @@
-import type { SkillActivatedChunk, SkillCompleteChunk, SkillContentDeltaChunk } from '@renderer/types/chunk'
+import type {
+  RuntimeEventChunk,
+  SkillActivatedChunk,
+  SkillCompleteChunk,
+  SkillContentDeltaChunk
+} from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { ContextManagementMethod, SkillSelectionMethod } from '@renderer/types/skillConfig'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -46,6 +51,19 @@ const baseSkillCompleteChunk: SkillCompleteChunk = {
   type: ChunkType.SKILL_COMPLETE,
   skillId: 'skill-001',
   finalTokenCount: 512
+}
+
+const baseRuntimeEventChunk: RuntimeEventChunk = {
+  type: ChunkType.RUNTIME_EVENT,
+  eventKind: 'status',
+  runtime: 'codex',
+  title: 'thread.started',
+  summary: 'thread-123',
+  data: {
+    runtime: 'codex',
+    phase: 'thread.started',
+    runtimeSessionId: 'thread-123'
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -158,5 +176,22 @@ describe('StreamProcessingService – SKILL_* routing', () => {
       expect(onSkillActivated).not.toHaveBeenCalled()
       expect(onSkillContentDelta).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('StreamProcessingService – RUNTIME_EVENT routing', () => {
+  it('calls onRuntimeEvent with the full runtime chunk data', () => {
+    const onRuntimeEvent = vi.fn<(data: RuntimeEventChunk) => void>()
+    const processor = createStreamProcessor({ onRuntimeEvent })
+
+    processor(baseRuntimeEventChunk)
+
+    expect(onRuntimeEvent).toHaveBeenCalledOnce()
+    expect(onRuntimeEvent).toHaveBeenCalledWith(baseRuntimeEventChunk)
+  })
+
+  it('does not throw when onRuntimeEvent is not provided', () => {
+    const processor = createStreamProcessor({})
+    expect(() => processor(baseRuntimeEventChunk)).not.toThrow()
   })
 })

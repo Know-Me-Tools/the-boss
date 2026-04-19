@@ -10,10 +10,10 @@ const MIRRORS: UpdateMirror[] = ['github', 'gitcode']
 const GITHUB_REPO = 'Know-Me-Tools/the-boss'
 const GITCODE_REPO = 'Know-Me-Tools/the-boss'
 const DEFAULT_FEED_TEMPLATES: Record<UpdateMirror, string> = {
-  github: 'https://the-boss.know-me.tools/releases/download/{{tag}}',
-  gitcode: 'https://the-boss.know-me.tools/releases/download/{{tag}}'
+  github: 'https://cdn.know-me.tools/releases/{{tag}}',
+  gitcode: 'https://cdn.know-me.tools/releases/{{tag}}'
 }
-const GITCODE_LATEST_FALLBACK = 'https://the-boss.know-me.tools/releases/latest/download'
+const GITCODE_LATEST_FALLBACK = 'https://api.know-me.tools/updates/electron/latest'
 
 interface CliOptions {
   tag?: string

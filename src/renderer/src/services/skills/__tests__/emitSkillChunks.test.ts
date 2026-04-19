@@ -115,6 +115,17 @@ describe('emitSkillChunks', () => {
     expect(mockSelect).not.toHaveBeenCalled()
   })
 
+  it('does nothing when skill selection is explicitly disabled', async () => {
+    mockGetAll.mockReturnValue([makeSkillDescriptor('skill-a')])
+    const processChunk = vi.fn()
+
+    await emitSkillChunks({ prompt: 'hello', config: makeConfig(), processChunk, disabled: true })
+
+    expect(processChunk).not.toHaveBeenCalled()
+    expect(mockSelect).not.toHaveBeenCalled()
+    expect(mockPrepare).not.toHaveBeenCalled()
+  })
+
   it('does nothing when no skills match', async () => {
     mockGetAll.mockReturnValue([makeSkillDescriptor('skill-a')])
     mockSelect.mockResolvedValue([])
@@ -253,9 +264,9 @@ describe('emitSkillChunks', () => {
 
     const chunks: Chunk[] = []
     // Should not throw
-    await expect(emitSkillChunks({ prompt: 'test', config: makeConfig(), processChunk: (c) => chunks.push(c) })).resolves.toEqual(
-      expect.any(Array)
-    )
+    await expect(
+      emitSkillChunks({ prompt: 'test', config: makeConfig(), processChunk: (c) => chunks.push(c) })
+    ).resolves.toEqual(expect.any(Array))
 
     // No chunks for the failed skill
     const activatedChunks = chunks.filter((c) => c.type === ChunkType.SKILL_ACTIVATED) as any[]

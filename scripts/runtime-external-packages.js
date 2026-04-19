@@ -1,12 +1,16 @@
 const PACKAGE_NAME_PATTERN = /^(?:@[\w.-]+\/)?[\w.-]+$/
 
 const runtimeExternalPackages = Object.freeze([
+  '@anush008/tokenizers',
   '@anthropic-ai/claude-agent-sdk',
   '@libsql/client',
+  '@mastra/fastembed',
   '@napi-rs/canvas',
   '@napi-rs/system-ocr',
   'esbuild',
+  'fastembed',
   'font-list',
+  'onnxruntime-node',
   'openai-oauth',
   'selection-hook',
   'sharp'

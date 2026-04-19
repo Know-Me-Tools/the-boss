@@ -177,26 +177,29 @@ const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
     })
   }, [list, onAddModel, provider, t])
 
-  const loadModels = useCallback(async (provider: Provider) => {
-    setLoadingModels(true)
-    setLoadError(null)
-    try {
-      const models = await fetchModels(provider, { throwOnError: true })
-      const filteredModels = models.filter((model) => !isEmpty(model.name))
-      setListModels(filteredModels)
-      if (provider.id === 'anthropic-max') {
-        updateProvider({ models: filteredModels })
+  const loadModels = useCallback(
+    async (provider: Provider) => {
+      setLoadingModels(true)
+      setLoadError(null)
+      try {
+        const models = await fetchModels(provider, { throwOnError: true })
+        const filteredModels = models.filter((model) => !isEmpty(model.name))
+        setListModels(filteredModels)
+        if (provider.id === 'anthropic-max') {
+          updateProvider({ models: filteredModels })
+        }
+      } catch (error) {
+        logger.error(`Failed to load models for provider ${getFancyProviderName(provider)}`, error as Error)
+        setLoadError((error as Error)?.message || t('settings.models.manage.fetch_failed'))
+        if (provider.id !== 'anthropic-max') {
+          setListModels([])
+        }
+      } finally {
+        setLoadingModels(false)
       }
-    } catch (error) {
-      logger.error(`Failed to load models for provider ${getFancyProviderName(provider)}`, error as Error)
-      setLoadError((error as Error)?.message || t('settings.models.manage.fetch_failed'))
-      if (provider.id !== 'anthropic-max') {
-        setListModels([])
-      }
-    } finally {
-      setLoadingModels(false)
-    }
-  }, [t, updateProvider])
+    },
+    [t, updateProvider]
+  )
 
   useEffect(() => {
     void loadModels(provider)
@@ -341,7 +344,7 @@ const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
                         'settings.provider.anthropic_max.auth_token_tip',
                         'Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.'
                       )
-                  : undefined
+                    : undefined
               }
             />
           ) : null}

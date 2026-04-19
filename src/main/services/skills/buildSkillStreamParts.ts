@@ -5,7 +5,7 @@ import type { TextStreamPart } from 'ai'
 import { ContextManager } from './contextManager'
 import { MainSkillSelector } from './MainSkillSelector'
 import type { SkillDescriptor, SkillRegistry } from './skillRegistry'
-import { SkillRegistry as SkillRegistryClass,skillRegistry as defaultRegistry } from './skillRegistry'
+import { SkillRegistry as SkillRegistryClass, skillRegistry as defaultRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('BuildSkillStreamParts')
 
@@ -35,8 +35,15 @@ export async function buildSkillStreamParts(params: {
   skills?: SkillDescriptor[]
   registry?: SkillRegistry
   onPreparedSkills?: (skills: PreparedSkillContext[]) => void
+  disabled?: boolean
 }): Promise<Array<TextStreamPart<Record<string, any>>>> {
   const { prompt, config, activeModel } = params
+
+  if (params.disabled) {
+    logger.info('Skipping backend skill selection for this request')
+    return []
+  }
+
   const registry = params.registry ?? buildRegistry(params.skills)
   const allSkills = params.skills ?? registry.getAll()
 

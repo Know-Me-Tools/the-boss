@@ -2282,6 +2282,17 @@
       "success": "Backup successful"
     },
     "block": {
+      "runtime": {
+        "approval": "Approval",
+        "debug": "Runtime details",
+        "knowledge": "Knowledge",
+        "mode": "Mode",
+        "model": "Model",
+        "provider": "Provider",
+        "sidecar": "Sidecar",
+        "skills": "Skills",
+        "unknown_runtime": "runtime"
+      },
       "skill": {
         "activation_method": "Method",
         "context_method": "Context method",
@@ -2949,15 +2960,15 @@
     },
     "skip": "Skip",
     "toast": {
-      "connected": "Successfully connected to CherryIN"
+      "connected": "Successfully connected to The Boss"
     },
     "welcome": {
-      "login_cherryin": "Login with CherryIN",
+      "login_cherryin": "Login with The Boss",
       "or_continue_with": "OR CONTINUE WITH",
       "other_provider": "Choose Other Providers",
       "select_other_provider": "Select Other Provider",
       "setup_hint": "Please configure at least one provider for the best experience",
-      "subtitle": "Enjoy top-tier AI services with CherryIN",
+      "subtitle": "Enjoy top-tier AI services with The Boss",
       "title": "Welcome to The Boss"
     }
   },
@@ -3439,7 +3450,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -5605,7 +5616,7 @@
         "balance": "Balance",
         "button": "Login with {{provider}}",
         "cherryIn": {
-          "description": "Login to CherryIN using OAuth 2.0",
+          "description": "Login to The Boss using OAuth 2.0",
           "logged_in": "Logged in via OAuth",
           "login_button": "Login with OAuth",
           "logout_button": "Logout",
@@ -5831,6 +5842,14 @@
       "author": "Author",
       "batchUninstallSuccess": "{{count}} skills uninstalled",
       "builtin": "Built-in",
+      "builtinPack": {
+        "lastReconciled": "Last reconciled",
+        "missing": "Default skill pack is not installed",
+        "missingRequired": "Missing required skills: {{names}}",
+        "prometheus": "Prometheus built-ins",
+        "status_one": "{{count}} default skill installed",
+        "status_other": "{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Are you sure you want to uninstall {{count}} selected skills?",
       "confirmUninstall": "Are you sure you want to uninstall this skill?",
       "directory": "Directory",

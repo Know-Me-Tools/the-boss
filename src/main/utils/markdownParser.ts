@@ -247,7 +247,9 @@ export async function findAllSkillDirectories(
   const skillMdPath = await findSkillMdPath(dirPath)
 
   if (skillMdPath) {
-    // Found skill markdown in this directory
+    // Found skill markdown in this directory.
+    // Keep walking subdirectories: bundled skill packs may expose a parent
+    // skill and nested child skills under the parent's own `skills/` folder.
     const skillName = path.basename(dirPath)
 
     // Deduplicate: only add if we haven't seen this skill name yet
@@ -259,10 +261,8 @@ export async function findAllSkillDirectories(
         sourcePath: relativePath
       })
     }
-    return results
   }
 
-  // Only search subdirectories if current directory doesn't have SKILL.md
   try {
     const entries = await fs.promises.readdir(dirPath, { withFileTypes: true })
 

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { installBuiltinSkills } from '../utils/builtinSkills'
+import { findAllSkillDirectories, findSkillMdPath } from '../utils/markdownParser'
 
 vi.mock('node:fs/promises', () => ({
   default: {
@@ -77,6 +78,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockRepo.getByFolderName.mockResolvedValue(null)
   mockRepo.insert.mockResolvedValue({ id: 'test-id' })
+  vi.mocked(findSkillMdPath).mockImplementation((dirPath: string) => Promise.resolve(path.join(dirPath, 'SKILL.md')))
+  vi.mocked(findAllSkillDirectories).mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -223,6 +226,71 @@ describe('installBuiltinSkills', () => {
 
     expect(fs.mkdir).not.toHaveBeenCalled()
     expect(fs.cp).not.toHaveBeenCalled()
+  })
+
+  it('should discover and install nested skills from the Prometheus built-in skill pack', async () => {
+    vi.mocked(fs.access).mockResolvedValueOnce(undefined)
+    vi.mocked(fs.readdir).mockResolvedValueOnce([{ name: 'prometheus-skill-system', isDirectory: () => true }] as any)
+    vi.mocked(findSkillMdPath).mockResolvedValueOnce(null)
+    vi.mocked(findAllSkillDirectories).mockResolvedValueOnce([
+      {
+        folderPath: path.join(resourceSkillsPath, 'prometheus-skill-system', 'skills/process/kbd-process-orchestrator'),
+        sourcePath: 'skills/process/kbd-process-orchestrator'
+      },
+      {
+        folderPath: path.join(
+          resourceSkillsPath,
+          'prometheus-skill-system',
+          'skills/process/kbd-process-orchestrator/skills/kbd-execute'
+        ),
+        sourcePath: 'skills/process/kbd-process-orchestrator/skills/kbd-execute'
+      }
+    ])
+    vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'))
+    vi.mocked(fs.mkdir).mockResolvedValue(undefined as any)
+    vi.mocked(fs.cp).mockResolvedValue(undefined)
+    vi.mocked(fs.writeFile).mockResolvedValue(undefined)
+    vi.mocked(fs.readFile).mockResolvedValue('# Nested Skill' as any)
+    mockRepo.insert.mockResolvedValue({ id: 'prometheus-skill-id' })
+
+    await installBuiltinSkills()
+
+    expect(fs.cp).toHaveBeenCalledWith(
+      path.join(resourceSkillsPath, 'prometheus-skill-system', 'skills/process/kbd-process-orchestrator'),
+      path.join(globalSkillsPath, 'prometheus-skill-system__skills__process__kbd-process-orchestrator'),
+      { recursive: true }
+    )
+    expect(fs.cp).toHaveBeenCalledWith(
+      path.join(
+        resourceSkillsPath,
+        'prometheus-skill-system',
+        'skills/process/kbd-process-orchestrator/skills/kbd-execute'
+      ),
+      path.join(
+        globalSkillsPath,
+        'prometheus-skill-system__skills__process__kbd-process-orchestrator__skills__kbd-execute'
+      ),
+      { recursive: true }
+    )
+    expect(mockRepo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder_name: 'prometheus-skill-system__skills__process__kbd-process-orchestrator',
+        source: 'builtin',
+        source_url: 'git@github.com:Prometheus-AGS/prometheus-skill-system.git#skills/process/kbd-process-orchestrator'
+      })
+    )
+    expect(mockRepo.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder_name: 'prometheus-skill-system__skills__process__kbd-process-orchestrator__skills__kbd-execute',
+        source: 'builtin',
+        source_url:
+          'git@github.com:Prometheus-AGS/prometheus-skill-system.git#skills/process/kbd-process-orchestrator/skills/kbd-execute'
+      })
+    )
+    expect(mockEnableForAllAgents).toHaveBeenCalledWith(
+      'prometheus-skill-id',
+      'prometheus-skill-system__skills__process__kbd-process-orchestrator'
+    )
   })
 
   it('should skip non-directory entries', async () => {

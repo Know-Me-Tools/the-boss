@@ -59,6 +59,7 @@ import { agentService } from '../AgentService'
 import { isProvisioned, provisionBuiltinAgent } from '../builtin/BuiltinAgentProvisioner'
 import { channelService } from '../ChannelService'
 import { PromptBuilder } from '../cherryclaw/prompt'
+import { type AgentTurnInput, getPromptText } from '../runtime/RuntimeContextBundle'
 import { sessionService } from '../SessionService'
 import { buildNamespacedToolCallId } from './claude-stream-state'
 import { resolveClaudeCodeProviderRoute } from './providerRoutes'
@@ -106,7 +107,7 @@ class ClaudeCodeService implements AgentServiceInterface {
   }
 
   async invoke(
-    prompt: string,
+    prompt: AgentTurnInput,
     session: GetAgentSessionResponse,
     abortController: AbortController,
     lastAgentSessionId?: string,
@@ -114,6 +115,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     images?: Array<{ data: string; media_type: string }>
   ): Promise<AgentStream> {
     const aiStream = new ClaudeCodeStream()
+    const promptText = getPromptText(prompt)
 
     // Validate session accessible paths and make sure it exists as a directory
     const cwd = session.accessible_paths[0]
@@ -161,7 +163,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       logger.error('Provider route is unsupported for Claude Code runtime', { modelInfo })
       aiStream.emit('data', {
         type: 'error',
-        error: new Error(`Provider type '${provider.type}' is not supported by the Claude Code runtime.`)
+        error: new Error(
+          `Provider type '${provider.type}' is not supported by the Claude runtime. Select the Codex or OpenCode runtime for this provider instead.`
+        )
       })
       return aiStream
     }
@@ -184,10 +188,6 @@ class ClaudeCodeService implements AgentServiceInterface {
     // by stripping any trailing API version (e.g. `/v1`).
     // For Azure OpenAI providers, the Anthropic endpoint lives under /anthropic.
     const resolveAnthropicBaseUrl = (): string => {
-      if (providerRoute === 'compat_proxy_openai' || providerRoute === 'compat_proxy_vertex') {
-        return `http://${apiConfig.host}:${apiConfig.port}/${provider.id}`
-      }
-
       if (provider.type === 'azure-openai') {
         const host = withoutTrailingApiVersion(provider.apiHost).replace(/\/openai$/, '')
         return `${host}/anthropic`
@@ -195,14 +195,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       return withoutTrailingApiVersion(provider.anthropicApiHost?.trim() || provider.apiHost)
     }
     const anthropicBaseUrl = resolveAnthropicBaseUrl()
-    const nativeAnthropicCredentials =
-      providerRoute === 'native_anthropic' ? await resolveClaudeCodeAnthropicCredentials(provider) : null
-    const anthropicApiKey =
-      providerRoute === 'native_anthropic' ? (nativeAnthropicCredentials?.apiKey ?? '') : apiConfig.apiKey
-    const anthropicAuthToken =
-      providerRoute === 'native_anthropic'
-        ? (nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? '')
-        : apiConfig.apiKey
+    const nativeAnthropicCredentials = await resolveClaudeCodeAnthropicCredentials(provider)
+    const anthropicApiKey = nativeAnthropicCredentials?.apiKey ?? ''
+    const anthropicAuthToken = nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? ''
 
     const env = {
       ...loginShellEnv,
@@ -680,14 +675,14 @@ class ClaudeCodeService implements AgentServiceInterface {
       })
     }
 
-    if (lastAgentSessionId && !NO_RESUME_COMMANDS.some((cmd) => prompt.includes(cmd))) {
+    if (lastAgentSessionId && !NO_RESUME_COMMANDS.some((cmd) => promptText.includes(cmd))) {
       options.resume = lastAgentSessionId
       // TODO: use fork session when we support branching sessions
       // options.forkSession = true
     }
 
     logger.info('Starting Claude Code SDK query', {
-      prompt,
+      prompt: promptText,
       cwd: options.cwd,
       model: options.model,
       providerRoute,
@@ -698,7 +693,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     })
 
     const { stream: userInputStream, close: closeUserStream } = await this.createUserMessageStream(
-      prompt,
+      promptText,
       abortController.signal,
       images
     )

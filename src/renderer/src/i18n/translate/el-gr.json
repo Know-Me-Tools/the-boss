@@ -2949,15 +2949,15 @@
     },
     "skip": "Παράλειψη",
     "toast": {
-      "connected": "Συνδέθηκε επιτυχώς με το CherryIN"
+      "connected": "Συνδέθηκε επιτυχώς με το The Boss"
     },
     "welcome": {
-      "login_cherryin": "Σύνδεση με CherryIN",
+      "login_cherryin": "Σύνδεση με The Boss",
       "or_continue_with": "Ή ΣΥΝΕΧΕΙΑ ΜΕ",
       "other_provider": "Επιλέξτε Άλλους Παρόχους",
       "select_other_provider": "Επιλέξτε Άλλο Πάροχο",
       "setup_hint": "Παρακαλούμε ρυθμίστε τουλάχιστον έναν πάροχο για την καλύτερη εμπειρία",
-      "subtitle": "Απολαύστε κορυφαίες υπηρεσίες τεχνητής νοημοσύνης με την CherryIN",
+      "subtitle": "Απολαύστε κορυφαίες υπηρεσίες τεχνητής νοημοσύνης με την The Boss",
       "title": "Καλώς ήρθατε στο The Boss"
     }
   },
@@ -3439,7 +3439,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "AliCloud Bailian",
     "deepseek": "Βαθιά Αναζήτηση",
@@ -5831,6 +5831,14 @@
       "author": "Συγγραφέας",
       "batchUninstallSuccess": "{{count}} δεξιότητες απεγκαταστάθηκαν",
       "builtin": "Ενσωματωμένο",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Είστε σίγουροι ότι θέλετε να απεγκαταστήσετε {{count}} επιλεγμένες δεξιότητες;",
       "confirmUninstall": "Είσαι σίγουρος ότι θέλεις να απεγκαταστήσεις αυτή την ικανότητα;",
       "directory": "Κατάλογος",

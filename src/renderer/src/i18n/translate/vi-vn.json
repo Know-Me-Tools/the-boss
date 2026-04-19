@@ -418,6 +418,9 @@
         },
         "title": "Cài đặt nâng cao"
       },
+      "contextSkills": {
+        "tab": "[to be translated]:Context & Skills"
+      },
       "essential": "Cài đặt thiết yếu",
       "permissionMode": {
         "tab": "Chế độ cấp quyền",
@@ -490,6 +493,7 @@
       },
       "prompt": "Cài đặt lời nhắc",
       "skills": {
+        "addMore": "[to be translated]:Add More Skills",
         "builtin": "Tích hợp sẵn",
         "noFilterResults": "Không có kỹ năng phù hợp",
         "noSkills": "Chưa cài đặt kỹ năng nào. Cài đặt kỹ năng từ Cài đặt > Kỹ năng.",
@@ -1087,6 +1091,15 @@
       "context_count": {
         "tip": "Ngữ cảnh / Ngữ cảnh tối đa"
       },
+      "conversation_skills": {
+        "all_enabled": "[to be translated]:All enabled skills are eligible in this conversation",
+        "custom_selected": "[to be translated]:{{count}} conversation-selected skills are eligible",
+        "description": "[to be translated]:Select which installed skills are eligible for this conversation",
+        "inherited": "[to be translated]:Using assistant defaults for this conversation",
+        "locked_by_assistant": "[to be translated]:Excluded by assistant defaults",
+        "none_selected": "[to be translated]:This conversation currently disables all skills",
+        "title": "[to be translated]:Conversation Skills"
+      },
       "estimated_tokens": {
         "tip": "Tokens estimados"
       },
@@ -1108,9 +1121,7 @@
       "placeholder_without_triggers": "Nhập tin nhắn của bạn ở đây, nhấn {{key}} để gửi",
       "resource_panel": {
         "categories": {
-          "agents": "Đặc vụ",
-          "files": "Tệp tin",
-          "skills": "Kỹ năng"
+          "files": "Tệp tin"
         },
         "description": "Chọn từ tệp, tác nhân hoặc kỹ năng",
         "loading": "Đang tải...",
@@ -1600,6 +1611,7 @@
     "current": "Hiện tại",
     "cut": "Cắt",
     "default": "Mặc định",
+    "defaultValue": "[to be translated]:Default",
     "delete": "Xóa",
     "delete_confirm": "Bạn có chắc chắn muốn xóa không?",
     "delete_failed": "Không xóa được",
@@ -2269,6 +2281,21 @@
       },
       "success": "Sao lưu thành công"
     },
+    "block": {
+      "skill": {
+        "activation_method": "[to be translated]:Method",
+        "context_method": "[to be translated]:Context method",
+        "injected_content": "[to be translated]:Injected context",
+        "managed_tokens": "[to be translated]:Final tokens",
+        "original_tokens": "[to be translated]:Original tokens",
+        "selection_reason": "[to be translated]:Why selected",
+        "skill_id": "[to be translated]:Skill ID",
+        "token_count": "[to be translated]:Tokens injected",
+        "token_count_value": "[to be translated]:{{value}} tokens injected",
+        "tokens_saved": "[to be translated]:Tokens saved",
+        "trigger_tokens": "[to be translated]:Matched terms"
+      }
+    },
     "branch": {
       "error": "Creación de rama fallida"
     },
@@ -2392,6 +2419,17 @@
       "code_style": "Phong cách mã",
       "compact": {
         "title": "Cuộc trò chuyện được nén gọn"
+      },
+      "contextManagement": {
+        "agent": "[to be translated]:Agent",
+        "assistant": "[to be translated]:Assistant",
+        "messageCounts": "[to be translated]:Messages",
+        "summaryPreview": "[to be translated]:Summary Preview",
+        "title": "[to be translated]:Context Management",
+        "tokensAfter": "[to be translated]:Tokens after",
+        "tokensBefore": "[to be translated]:Tokens before",
+        "tokensSaved": "[to be translated]:Tokens saved",
+        "trigger": "[to be translated]:Trigger"
       },
       "delete": {
         "content": "Bạn có chắc chắn muốn xóa tin nhắn này không?",
@@ -2911,15 +2949,15 @@
     },
     "skip": "Bỏ qua",
     "toast": {
-      "connected": "Đã kết nối thành công với CherryIN"
+      "connected": "Đã kết nối thành công với The Boss"
     },
     "welcome": {
-      "login_cherryin": "Đăng nhập bằng CherryIN",
+      "login_cherryin": "Đăng nhập bằng The Boss",
       "or_continue_with": "HOẶC TIẾP TỤC VỚI",
       "other_provider": "Chọn Nhà Cung Cấp Khác",
       "select_other_provider": "Chọn Nhà Cung Cấp Khác",
       "setup_hint": "Vui lòng cấu hình ít nhất một nhà cung cấp để có trải nghiệm tốt nhất",
-      "subtitle": "Tận hưởng các dịch vụ AI hàng đầu với CherryIN",
+      "subtitle": "Tận hưởng các dịch vụ AI hàng đầu với The Boss",
       "title": "Chào mừng bạn đến với Cherry Studio"
     }
   },
@@ -3393,6 +3431,7 @@
     "aionly": "Chỉ có AI",
     "alayanew": "Alaya NeW",
     "anthropic": "Anthropic",
+    "anthropic-max": "[to be translated]:Anthropic Max",
     "aws-bedrock": "AWS Bedrock",
     "azure-openai": "Azure OpenAI",
     "baichuan": "Baichuan",
@@ -3400,7 +3439,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -3944,6 +3983,54 @@
       "auto_switch_to_topics": "Tự động chuyển sang chủ đề",
       "title": "Cài đặt nâng cao"
     },
+    "artifacts": {
+      "add_service": "[to be translated]:Add Service",
+      "base_css": "[to be translated]:Base CSS",
+      "custom_css": "[to be translated]:Custom CSS",
+      "default_grant": "[to be translated]:Default Grant",
+      "default_html_runtime": "[to be translated]:Default HTML Runtime",
+      "default_react_runtime": "[to be translated]:Default React/TSX Runtime",
+      "default_theme": "[to be translated]:Default Theme",
+      "description": "[to be translated]:Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
+      "internet_default": "[to be translated]:Internet Enabled By Default",
+      "library": {
+        "delete_success": "[to be translated]:Artifact deleted",
+        "description": "[to be translated]:Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
+        "empty": "[to be translated]:No saved artifacts yet. Save one from an artifact preview to build the local library.",
+        "filter_all": "[to be translated]:All Artifacts",
+        "filter_html": "[to be translated]:HTML",
+        "filter_react": "[to be translated]:React/TSX",
+        "fork_action": "[to be translated]:Fork",
+        "fork_success": "[to be translated]:Artifact forked",
+        "preview_loading": "[to be translated]:Preparing artifact preview...",
+        "rename_success": "[to be translated]:Artifact renamed",
+        "save_action": "[to be translated]:Save To Library",
+        "save_failed": "[to be translated]:Failed to save artifact to the local library",
+        "save_success": "[to be translated]:Artifact saved to the local library",
+        "search_placeholder": "[to be translated]:Search saved artifacts",
+        "title": "[to be translated]:Local Artifact Library",
+        "versions": "[to be translated]:{{count}} version",
+        "versions_other": "[to be translated]:{{count}} versions"
+      },
+      "no_services": "[to be translated]:No service profiles configured yet.",
+      "package_kind": "[to be translated]:Kind",
+      "package_name": "[to be translated]:Package",
+      "package_registry_description": "[to be translated]:Approved libraries and managed components available to artifact runtimes.",
+      "package_registry_title": "[to be translated]:Package Registry",
+      "package_runtime": "[to be translated]:Runtime",
+      "package_version": "[to be translated]:Version",
+      "react_compiling": "[to be translated]:Compiling React/TSX artifact...",
+      "service_label": "[to be translated]:Profile Label",
+      "services_description": "[to be translated]:Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
+      "services_title": "[to be translated]:Service Profiles",
+      "show_package_registry": "[to be translated]:Show Package Registry In Settings",
+      "styling_description": "[to be translated]:Shared CSS injected into HTML artifacts and React shadow roots before per-artifact overrides are applied.",
+      "styling_title": "[to be translated]:Styling",
+      "supabase_anon_key": "[to be translated]:Supabase ANON Key",
+      "supabase_service_role_key": "[to be translated]:Supabase Service Role Key (Optional)",
+      "supabase_url": "[to be translated]:Supabase URL",
+      "title": "[to be translated]:Artifacts"
+    },
     "assistant": {
       "icon": {
         "type": {
@@ -3960,6 +4047,68 @@
     "channels": {
       "description": "Kết nối các tác nhân với các nền tảng nhắn tin như Telegram, Feishu, Discord và nhiều hơn nữa.",
       "title": "Kênh"
+    },
+    "contextStrategy": {
+      "agentConfiguration": "[to be translated]:Agent strategy defaults",
+      "agentLegacyStrategyWarning": "[to be translated]:This session used a strategy type that is not yet implemented for SDK sessions; threshold + /compact still applies. Saving will use SDK compaction (threshold) going forward.",
+      "agentPhase1Notice": "[to be translated]:Agent strategies (Phase 1): enabling a non-None strategy applies a token threshold and may run SDK /compact before your next message. Chat-style summarize/hierarchical pipelines are not applied to SDK sessions yet.",
+      "agentSessionsDescription": "[to be translated]:Optional defaults for autonomous agents. Per-agent and per-session settings can override. Uses SDK resume and may run /compact when token usage exceeds your threshold.",
+      "agentSessionsTitle": "[to be translated]:Agent context (SDK sessions)",
+      "agentSummarizationModel": "[to be translated]:Agent summarization model",
+      "assistantDescription": "[to be translated]:Automatically manages the assistant's conversation context before requests are sent. Conversation-specific settings can still override this default.",
+      "compactTriggerPlaceholder": "[to be translated]:Default 180000",
+      "compactTriggerTokens": "[to be translated]:Compact when prior turn ≥ tokens",
+      "compactTriggerTokensHelp": "[to be translated]:Uses the Claude Agent SDK session. When the last turn's total token usage is at or above this value, /compact runs automatically before your next message (resumed sessions only).",
+      "configuration": "[to be translated]:Strategy Configuration",
+      "configurationHelp": "[to be translated]:Configure how context is managed when conversations approach model limits. Different strategies offer different tradeoffs between context preservation and token efficiency.",
+      "configure": "[to be translated]:Configure",
+      "descriptions": {
+        "agent_sliding_window": "[to be translated]:Runs the Claude Agent SDK /compact when the last turn's total token usage reaches your threshold (resumed sessions). This is not the same as chat sliding-window trimming.",
+        "hierarchical": "[to be translated]:Three-tier memory system: recent messages verbatim, older messages summarized, key facts extracted. Best for long-running conversations.",
+        "none": "[to be translated]:No context management. May exceed model limits on long conversations.",
+        "sliding_window": "[to be translated]:Keeps only the most recent messages within the token budget. Simple and predictable.",
+        "summarize": "[to be translated]:Progressively summarizes older messages to preserve key information while reducing tokens.",
+        "truncate_middle": "[to be translated]:Preserves initial instructions and recent context, removes middle messages."
+      },
+      "globalDescription": "[to be translated]:Automatically manages conversation context to prevent exceeding model limits. This setting applies globally and can be overridden per assistant or conversation.",
+      "howItWorks": "[to be translated]:How It Works",
+      "inheritedStrategy": "[to be translated]:Currently using:",
+      "keepFirst": "[to be translated]:Keep First Messages",
+      "keepFirstHelp": "[to be translated]:Number of initial messages to preserve, such as setup instructions or early context.",
+      "keepLast": "[to be translated]:Keep Last Messages",
+      "keepLastHelp": "[to be translated]:Number of most recent messages to keep verbatim.",
+      "longTermBudget": "[to be translated]:Long-term Budget",
+      "longTermBudgetHelp": "[to be translated]:Token budget reserved for extracted long-term facts and preferences.",
+      "maxMessages": "[to be translated]:Max Messages",
+      "maxMessagesHelp": "[to be translated]:Maximum number of messages to keep. Leave empty for automatic (token-based) management.",
+      "midTermBudget": "[to be translated]:Mid-term Budget",
+      "midTermBudgetHelp": "[to be translated]:Token budget reserved for summarized mid-term memory.",
+      "noSummarizationModel": "[to be translated]:Select a summarization model in Context Management settings to enable this strategy.",
+      "selectModel": "[to be translated]:Model",
+      "selectModelPlaceholder": "[to be translated]:Select summarization model",
+      "shortTermTurns": "[to be translated]:Short-term Turns",
+      "shortTermTurnsHelp": "[to be translated]:Number of recent turns to preserve verbatim before summarization begins.",
+      "strategy": "[to be translated]:Strategy",
+      "summarizationModel": "[to be translated]:Summarization Model",
+      "summarizationModelDescription": "[to be translated]:This model will be used to generate conversation summaries. Choose a fast model to minimize latency. If not set, the current conversation model will be used.",
+      "summarizationModelHelp": "[to be translated]:Select a fast, lightweight model for generating summaries. Recommended: Claude Haiku, GPT-3.5 Turbo, or similar quick models.",
+      "summarizeThreshold": "[to be translated]:Summarize After Messages",
+      "summarizeThresholdHelp": "[to be translated]:Minimum number of messages before progressive summarization starts.",
+      "summaryMaxTokens": "[to be translated]:Summary Budget",
+      "summaryMaxTokensHelp": "[to be translated]:Maximum tokens allocated for the conversation summary.",
+      "title": "[to be translated]:Context Management",
+      "topicDescription": "[to be translated]:Manage context for this conversation only. This overrides the assistant default while keeping the same global safety rails.",
+      "types": {
+        "agent_sliding_window": "[to be translated]:SDK compaction (token threshold)",
+        "hierarchical": "[to be translated]:Hierarchical Memory",
+        "none": "[to be translated]:None (No Management)",
+        "sliding_window": "[to be translated]:Sliding Window",
+        "summarize": "[to be translated]:Progressive Summarization",
+        "truncate_middle": "[to be translated]:Keep First & Last"
+      },
+      "useAssistantDefault": "[to be translated]:Use Assistant Default",
+      "useGlobalDefault": "[to be translated]:Use Global Default",
+      "useInherited": "[to be translated]:Use Default"
     },
     "data": {
       "app_data": {
@@ -5258,12 +5407,16 @@
         "authenticated": "Đã xác minh",
         "authenticating": "Xác thực",
         "cancel": "Hủy",
+        "claude_code_active": "[to be translated]:Claude Code credentials are active (env var or ~/.claude/credentials.json)",
         "code_error": "Mã ủy quyền không hợp lệ, vui lòng thử lại",
         "code_placeholder": "Vui lòng nhập mã xác thực hiện thị trong trình duyệt của bạn",
         "code_required": "Mã ủy quyền không được để trống",
         "description": "OAuth-autentisering",
         "description_detail": "Bạn cần đăng ký Claude Pro hoặc phiên bản cao hơn để sử dụng phương thức xác thực này.",
         "enter_auth_code": "Mã ủy quyền",
+        "import_claude_credentials": "[to be translated]:Use Claude Code Credentials",
+        "import_failed": "[to be translated]:No Claude Code credentials found. Ensure ~/.claude/credentials.json exists or set CLAUDE_CODE_OAUTH_TOKEN.",
+        "import_success": "[to be translated]:Claude Code credentials imported successfully",
         "logout": "Đăng xuất",
         "logout_failed": "Đăng xuất thất bại, vui lòng thử lại",
         "logout_success": "Đã đăng xuất khỏi Anthropic thành công",
@@ -5275,6 +5428,11 @@
       "anthropic_api_host": "Máy chủ API của Anthropic",
       "anthropic_api_host_preview": "Xem trước Anthropic: {{url}}",
       "anthropic_api_host_tooltip": "Chỉ sử dụng khi nhà cung cấp cung cấp URL cơ sở tương thích với Claude.",
+      "anthropic_max": {
+        "auth_token_label": "[to be translated]:Auth token",
+        "auth_token_tip": "[to be translated]:Stored Anthropic OAuth credentials are used first. If none are available, the manual auth token entered here will be used.",
+        "oauth_priority": "[to be translated]:Anthropic OAuth credentials take priority over the manual auth token for Anthropic Max."
+      },
       "api": {
         "key": {
           "check": {
@@ -5447,7 +5605,7 @@
         "balance": "Cân bằng",
         "button": "Iniciar sesión con {{provider}}",
         "cherryIn": {
-          "description": "Đăng nhập vào CherryIN bằng OAuth 2.0",
+          "description": "Đăng nhập vào The Boss bằng OAuth 2.0",
           "logged_in": "Đã đăng nhập qua OAuth",
           "login_button": "Đăng nhập bằng OAuth",
           "logout_button": "Keluar",
@@ -5469,7 +5627,49 @@
         "usage_title": "Cách sử dụng"
       },
       "openai": {
-        "alert": "Nhà cung cấp OpenAI không còn hỗ trợ các phương thức gọi cũ. Nếu đang sử dụng API của bên thứ ba, vui lòng tạo một nhà cung cấp dịch vụ mới."
+        "alert": "Nhà cung cấp OpenAI không còn hỗ trợ các phương thức gọi cũ. Nếu đang sử dụng API của bên thứ ba, vui lòng tạo một nhà cung cấp dịch vụ mới.",
+        "oauth": {
+          "action_failed": "[to be translated]:OpenAI OAuth action failed",
+          "action_success": "[to be translated]:OpenAI OAuth status updated",
+          "api_key": "[to be translated]:API key",
+          "auth_file": "[to be translated]:Auth file",
+          "auth_method": "[to be translated]:Authentication method",
+          "available_models": "[to be translated]:Available models",
+          "check": "[to be translated]:Check sidecar",
+          "credential_status": "[to be translated]:Credential status",
+          "details": "[to be translated]:Details",
+          "health_status": "[to be translated]:Health",
+          "hide_details": "[to be translated]:Hide details",
+          "install": "[to be translated]:Check sidecar",
+          "install_status": "[to be translated]:Sidecar",
+          "local_endpoint": "[to be translated]:Local endpoint",
+          "oauth": "[to be translated]:ChatGPT OAuth",
+          "port": "[to be translated]:Local port",
+          "port_saved": "[to be translated]:OpenAI OAuth proxy port saved",
+          "proxy_status": "[to be translated]:Proxy",
+          "refresh": "[to be translated]:Refresh",
+          "save_port": "[to be translated]:Save port",
+          "show_details": "[to be translated]:Show details",
+          "start": "[to be translated]:Start proxy",
+          "startup_failed": "[to be translated]:Proxy startup failed",
+          "state": {
+            "error": "[to be translated]:Error",
+            "healthy": "[to be translated]:Healthy",
+            "installed": "[to be translated]:Installed",
+            "invalid": "[to be translated]:Invalid",
+            "missing": "[to be translated]:Missing",
+            "running": "[to be translated]:Running",
+            "starting": "[to be translated]:Starting",
+            "stopped": "[to be translated]:Stopped",
+            "unhealthy": "[to be translated]:Unhealthy",
+            "unsupported": "[to be translated]:Unsupported",
+            "valid": "[to be translated]:Valid"
+          },
+          "status_load_failed": "[to be translated]:Failed to load OpenAI OAuth status",
+          "stop": "[to be translated]:Stop proxy",
+          "warning_description": "[to be translated]:This uses a local, unofficial community proxy that reuses your file-backed Codex auth cache. It should be used only on a trusted machine and never shared.",
+          "warning_title": "[to be translated]:Local sidecar only"
+        }
       },
       "remove_duplicate_keys": "Xóa các khóa trùng lặp",
       "remove_invalid_keys": "Xóa các khóa không hợp lệ",
@@ -5582,10 +5782,63 @@
       "zoom_out": "Thu nhỏ",
       "zoom_reset": "Đặt lại thu phóng"
     },
+    "skill": {
+      "context": {
+        "chunked_rag": "[to be translated]:Chunked RAG",
+        "full_injection": "[to be translated]:Full Injection",
+        "prefix_cache_aware": "[to be translated]:Prefix Cache Aware",
+        "progressive": "[to be translated]:Progressive",
+        "summarized": "[to be translated]:Summarized"
+      },
+      "context_method": "[to be translated]:Context Management",
+      "embedding_model": {
+        "label": "[to be translated]:Embedding Model",
+        "placeholder": "[to be translated]:Use fastembed default"
+      },
+      "max_tokens": "[to be translated]:Max Skill Tokens",
+      "method": {
+        "embedding": {
+          "description": "[to be translated]:Pure semantic retrieval. Uses the selected embedding model to score every skill and activate the top matches.",
+          "label": "[to be translated]:Embedding (Semantic)"
+        },
+        "hybrid": {
+          "description": "[to be translated]:Reciprocal-rank fusion of keyword and dense retrieval. Useful when exact terms matter as much as semantic similarity.",
+          "label": "[to be translated]:Hybrid (BM25 + Dense)"
+        },
+        "llm_delegated": {
+          "description": "[to be translated]:Embedding prefilter plus an LLM that selects the final skills and explains why. If no delegation model is chosen, the current chat or agent model is used.",
+          "label": "[to be translated]:LLM Delegated"
+        },
+        "llm_router": {
+          "description": "[to be translated]:Embedding prefilter plus an LLM router that ranks candidate skills. If no routing model is chosen, the current chat or agent model is used.",
+          "label": "[to be translated]:LLM Router"
+        },
+        "two_stage": {
+          "description": "[to be translated]:Keyword and BM25 candidate generation followed by embedding re-ranking. Good when you want tighter candidate filtering before dense scoring.",
+          "label": "[to be translated]:Two-Stage"
+        }
+      },
+      "routing_model": {
+        "label": "[to be translated]:Routing LLM Model",
+        "placeholder": "[to be translated]:Use current chat or agent model"
+      },
+      "selection_method": "[to be translated]:Selection Method",
+      "similarity_threshold": "[to be translated]:Similarity Threshold",
+      "title": "[to be translated]:Skill Configuration",
+      "top_k": "[to be translated]:Max Skills (Top K)"
+    },
     "skills": {
       "author": "Tác giả",
       "batchUninstallSuccess": "{{count}} kỹ năng đã được gỡ cài đặt",
       "builtin": "Tích hợp sẵn",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Êtes-vous certain de vouloir désinstaller {{count}} compétences sélectionnées ?",
       "confirmUninstall": "Bạn có chắc chắn muốn gỡ cài đặt kỹ năng này không?",
       "directory": "Thư mục",
@@ -5611,6 +5864,13 @@
       "searchRegistryTitle": "Tìm kiếm sổ đăng ký kỹ năng trực tuyến",
       "searchTitle": "Kỹ năng tìm kiếm",
       "selectFile": "Chọn một tệp để xem",
+      "summary": {
+        "all": "[to be translated]:All enabled skills · {{count}} available",
+        "contextMethod": "[to be translated]:Context: {{strategy}}",
+        "custom": "[to be translated]:Selected skills only · {{count}} selected",
+        "none": "[to be translated]:Disable all skills",
+        "selectionMethod": "[to be translated]:Selection: {{method}}"
+      },
       "title": "Kỹ năng",
       "uninstall": "Gỡ cài đặt",
       "uninstallSuccess": "Kỹ năng đã gỡ cài đặt: {{name}}",

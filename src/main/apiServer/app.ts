@@ -180,7 +180,12 @@ app.get('/', (_req, res) => {
 setupOpenAPIDocumentation(app)
 
 app.use('/_internal/openai-oauth', authMiddleware, extendMessagesTimeout, openAIOAuthInternalRoutes)
-app.use('/_internal/anthropic-oauth', anthropicOAuthInternalAuthMiddleware, extendMessagesTimeout, anthropicOAuthInternalRoutes)
+app.use(
+  '/_internal/anthropic-oauth',
+  anthropicOAuthInternalAuthMiddleware,
+  extendMessagesTimeout,
+  anthropicOAuthInternalRoutes
+)
 
 // Provider-specific messages route requires authentication
 app.use('/:provider/v1/messages', authMiddleware, extendMessagesTimeout, messagesProviderRoutes)

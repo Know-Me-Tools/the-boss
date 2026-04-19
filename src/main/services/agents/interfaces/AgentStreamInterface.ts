@@ -7,6 +7,8 @@ import type { Options } from '@anthropic-ai/claude-agent-sdk'
 import type { GetAgentSessionResponse } from '@types'
 import type { TextStreamPart } from 'ai'
 
+import type { AgentTurnInput } from '../services/runtime/RuntimeContextBundle'
+
 // Generic agent stream event that works with any agent type
 export interface AgentStreamEvent {
   type: 'chunk' | 'error' | 'complete' | 'cancelled'
@@ -31,7 +33,7 @@ export interface AgentThinkingOptions {
 // Base agent service interface
 export interface AgentServiceInterface {
   invoke(
-    prompt: string,
+    prompt: AgentTurnInput,
     session: GetAgentSessionResponse,
     abortController: AbortController,
     lastAgentSessionId?: string,

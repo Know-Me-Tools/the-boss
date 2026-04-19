@@ -1,0 +1,155 @@
+{
+  "phase": "assistant-skill-scope-foundation",
+  "objective": "Restore assistant skill access through DB-backed skill scopes while preserving agent runtime skill support.",
+  "status": "COMPLETED_WITH_REPO_BLOCKERS",
+  "backend": "codex",
+  "updated_at": "2026-04-17T17:54:00Z",
+  "changes": [
+    {
+      "id": "change-001-kbd-state",
+      "description": "Create canonical KBD state for this phase.",
+      "status": "DONE",
+      "qa": "SKIPPED_DOCUMENTATION_ONLY"
+    },
+    {
+      "id": "change-002-schema-migration",
+      "description": "Add skill scope schema and migration.",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": [
+        "src/main/services/agents/database/schema/skillScopes.schema.ts",
+        "resources/database/drizzle/0008_skill_scopes.sql",
+        "resources/database/drizzle/meta/_journal.json"
+      ]
+    },
+    {
+      "id": "change-003-scope-service",
+      "description": "Add DB-backed scope repository/service.",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK_AND_TARGETED_TESTS",
+      "artifacts": [
+        "src/main/services/agents/skills/SkillScopeRepository.ts",
+        "src/main/services/agents/skills/SkillScopeService.ts"
+      ]
+    },
+    {
+      "id": "change-004-ipc-preload",
+      "description": "Expose scope APIs.",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK",
+      "artifacts": [
+        "packages/shared/IpcChannel.ts",
+        "src/main/ipc.ts",
+        "src/preload/index.ts",
+        "src/renderer/src/types/skill.ts"
+      ]
+    },
+    {
+      "id": "change-005-skill-loaders",
+      "description": "Make skill descriptor loading scope-aware.",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK_AND_TARGETED_TESTS",
+      "artifacts": [
+        "src/main/services/skills/installedSkillDescriptors.ts",
+        "src/renderer/src/services/skills/installedSkillDescriptors.ts",
+        "src/renderer/src/hooks/useSkills.ts",
+        "src/renderer/src/pages/settings/components/ContextSkillsPanel.tsx"
+      ]
+    },
+    {
+      "id": "change-006-assistant-ux",
+      "description": "Restore assistant skill UI and topic override persistence.",
+      "status": "DONE",
+      "qa": "PASSED_TARGETED_RENDERER_TESTS",
+      "artifacts": [
+        "src/renderer/src/pages/settings/AssistantSettings/AssistantSkillsSettings.tsx",
+        "src/renderer/src/pages/settings/AssistantSettings/index.tsx",
+        "src/renderer/src/pages/settings/ConversationSettingsPopup.tsx"
+      ]
+    },
+    {
+      "id": "change-007-chat-agent-injection",
+      "description": "Use resolved scopes in assistant chat and agent runtime.",
+      "status": "DONE",
+      "qa": "PASSED_TYPECHECK_AND_TARGETED_TESTS",
+      "artifacts": [
+        "src/renderer/src/store/thunk/messageThunk.ts",
+        "src/main/services/agents/services/SessionMessageService.ts",
+        "src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts"
+      ]
+    },
+    {
+      "id": "change-008-conversion-helper",
+      "description": "Add assistant-to-agent draft helper.",
+      "status": "DONE",
+      "qa": "PASSED_TARGETED_RENDERER_TESTS",
+      "artifacts": [
+        "src/renderer/src/services/AssistantAgentDraftService.ts",
+        "src/renderer/src/services/__tests__/AssistantAgentDraftService.test.ts"
+      ]
+    },
+    {
+      "id": "change-009-tests-verification",
+      "description": "Add targeted tests and record verification.",
+      "status": "DONE_WITH_REPO_BLOCKERS",
+      "qa": "TARGETED_PASS_FULL_REPO_BLOCKED",
+      "artifacts": [
+        "src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSkillsSettings.test.tsx",
+        "src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSettingsPopup.test.tsx",
+        "src/renderer/src/pages/settings/__tests__/ConversationSettingsPopup.test.tsx",
+        "src/renderer/src/pages/settings/components/__tests__/ContextSkillsPanel.test.tsx"
+      ]
+    }
+  ],
+  "verification": {
+    "commands": [
+      {
+        "command": "pnpm run typecheck:node",
+        "status": "PASS",
+        "notes": "Final rerun after test updates passed."
+      },
+      {
+        "command": "pnpm run typecheck:web",
+        "status": "PASS",
+        "notes": "Final rerun after test updates passed."
+      },
+      {
+        "command": "pnpm format",
+        "status": "PASS",
+        "notes": "Biome reported schema version info only: config schema 2.2.4 vs CLI 2.4.10."
+      },
+      {
+        "command": "pnpm exec vitest run --silent --project renderer src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSkillsSettings.test.tsx src/renderer/src/services/__tests__/AssistantAgentDraftService.test.ts src/renderer/src/pages/settings/AssistantSettings/__tests__/AssistantSettingsPopup.test.tsx src/renderer/src/pages/settings/__tests__/ConversationSettingsPopup.test.tsx src/renderer/src/pages/settings/components/__tests__/ContextSkillsPanel.test.tsx",
+        "status": "PASS",
+        "notes": "5 files, 8 tests passed. jsdom emitted a getComputedStyle warning from AntD portal code but exit status was 0."
+      },
+      {
+        "command": "pnpm exec vitest run --silent --project main src/main/services/agents/services/__tests__/SessionMessageService.knowledge.test.ts",
+        "status": "PASS",
+        "notes": "1 file, 2 tests passed; verifies agent/session skill scope resolution on SessionMessageService."
+      },
+      {
+        "command": "pnpm lint",
+        "status": "FAIL_REPO_BLOCKER",
+        "notes": "Repo-wide existing React Compiler and lint issues remain outside this phase, including OpenAIAlert setState-in-effect, CodeEditor refs during render, and broad existing warnings."
+      },
+      {
+        "command": "pnpm test",
+        "status": "FAIL_REPO_BLOCKER",
+        "notes": "Post-fix full run: 16 failed files, 113 failed tests, 4229 passed, 72 skipped. Failures are broad existing Vitest 4 constructor mock/snapshot/environment blockers; phase-owned targeted tests pass."
+      }
+    ]
+  },
+  "blockers": [
+    {
+      "id": "repo-lint-react-compiler",
+      "type": "existing_repo_blocker",
+      "description": "pnpm lint fails on pre-existing React Compiler and lint findings outside the skill-scope phase."
+    },
+    {
+      "id": "repo-test-vitest4-mocks",
+      "type": "existing_repo_blocker",
+      "description": "pnpm test fails on constructor-style mocks after Vitest 4 migration in electron-store, Bonjour, Slack, Telegram, Feishu, WeChat, TurndownService, MutationObserver, plus unrelated snapshots/environment expectations."
+    }
+  ]
+}

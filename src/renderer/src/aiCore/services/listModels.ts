@@ -10,6 +10,8 @@ import {
   zodSchema
 } from '@ai-sdk/provider-utils'
 import { loggerService } from '@logger'
+import { SYSTEM_MODELS } from '@renderer/config/models/default'
+import { getControlPlaneCatalogModels } from '@renderer/services/ControlPlaneService'
 import type { EndpointType, Model, Provider } from '@renderer/types'
 import { SystemProviderIds } from '@renderer/types'
 import { formatApiHost, withoutTrailingSlash } from '@renderer/utils'
@@ -30,6 +32,9 @@ import {
 } from './schemas'
 
 const logger = loggerService.withContext('ModelListService')
+
+const MOONSHOT_CHINA_HOST = 'api.moonshot.cn'
+const MOONSHOT_INTERNATIONAL_ORIGIN = 'https://api.moonshot.ai'
 
 // === Types ===
 
@@ -75,6 +80,57 @@ async function getFromApi<T>({
   })
 
   return value
+}
+
+function isAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const status = (error as Error & { statusCode?: number; status?: number }).statusCode
+  const responseStatus = (error as Error & { response?: { status?: number } }).response?.status
+  return status === 401 || responseStatus === 401 || /401|invalid authentication/i.test(error.message)
+}
+
+function getMoonshotInternationalUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (parsed.host !== MOONSHOT_CHINA_HOST) {
+      return null
+    }
+
+    parsed.protocol = 'https:'
+    parsed.host = new URL(MOONSHOT_INTERNATIONAL_ORIGIN).host
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+async function getFromApiWithMoonshotFallback<T>({
+  provider,
+  url,
+  headers,
+  responseSchema,
+  abortSignal
+}: {
+  provider: Provider
+  url: string
+  headers?: Record<string, string>
+  responseSchema: z.ZodType<T>
+  abortSignal?: AbortSignal
+}): Promise<T> {
+  try {
+    return await getFromApi({ url, headers, responseSchema, abortSignal })
+  } catch (error) {
+    const retryUrl =
+      provider.id === SystemProviderIds.moonshot && isAuthError(error) && getMoonshotInternationalUrl(url)
+    if (!retryUrl) {
+      throw error
+    }
+
+    return getFromApi({ url: retryUrl, headers, responseSchema, abortSignal })
+  }
 }
 
 // === Helpers ===
@@ -178,7 +234,25 @@ function pickPreferredString(values: Array<unknown>): string | undefined {
   return undefined
 }
 
+function fallbackTheBossModels(): Model[] {
+  return SYSTEM_MODELS.theboss.map((model) => ({ ...model }))
+}
+
 // === Fetchers ===
+
+const theBossControlPlaneFetcher: ModelFetcher = {
+  match: (p) => p.id === SystemProviderIds.theboss,
+  fetch: async (_provider, signal) => {
+    try {
+      const catalogSignal = signal ?? new AbortController().signal
+      const models = await getControlPlaneCatalogModels(catalogSignal)
+      return models.length > 0 ? models : fallbackTheBossModels()
+    } catch (error) {
+      logger.warn('Control-plane model catalog failed; using static The Boss fallback catalog', error as Error)
+      return fallbackTheBossModels()
+    }
+  }
+}
 
 const ollamaFetcher: ModelFetcher = {
   match: (p) => isOllamaProvider(p),
@@ -407,7 +481,8 @@ const openAICompatibleFetcher: ModelFetcher = {
   match: () => true,
   fetch: async (provider, signal) => {
     const baseUrl = formatApiHost(provider.apiHost)
-    const response = await getFromApi({
+    const response = await getFromApiWithMoonshotFallback({
+      provider,
       url: `${baseUrl}/models`,
       headers: defaultHeaders(provider),
       responseSchema: OpenAIModelsResponseSchema,
@@ -420,6 +495,7 @@ const openAICompatibleFetcher: ModelFetcher = {
 // === Registry (order matters: first match wins) ===
 
 const fetchers: ModelFetcher[] = [
+  theBossControlPlaneFetcher,
   aiHubMixFetcher,
   ollamaFetcher,
   geminiFetcher,

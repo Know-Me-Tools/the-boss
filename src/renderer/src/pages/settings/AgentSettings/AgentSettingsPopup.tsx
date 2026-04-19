@@ -11,6 +11,7 @@ import EssentialSettings from './components/EssentialSettings'
 import KnowledgeBaseSettings from './components/KnowledgeBaseSettings'
 import PermissionModeSettings from './components/PermissionModeSettings'
 import PromptSettings from './components/PromptSettings'
+import RuntimeSettings from './components/RuntimeSettings'
 import { InstalledSkillsSettings } from './components/SkillsSettings/SkillsSettings'
 import ToolsSettings from './components/ToolsSettings'
 import { AgentLabel, isSoulModeEnabled } from './shared'
@@ -37,6 +38,7 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
         { key: 'essential', label: t('agent.settings.essential') },
         { key: 'prompt', label: t('agent.settings.prompt') },
         { key: 'knowledge', label: t('common.knowledge_base') },
+        { key: 'runtime', label: t('agent.settings.runtime.tab', 'Runtime') },
         { key: 'context-skills', label: t('agent.settings.contextSkills.tab', 'Context & Skills') },
         !isSoul && { key: 'permission-mode', label: t('agent.settings.permissionMode.tab', 'Permission Mode') },
         { key: 'tools-mcp', label: t('agent.settings.toolsMcp.tab', 'Tools & MCP') },
@@ -56,6 +58,8 @@ const AgentSettingPopupContainer: React.FC<AgentSettingPopupParams> = ({ tab, ag
         return <PromptSettings agentBase={agent} update={updateAgent} />
       case 'knowledge':
         return <KnowledgeBaseSettings agentBase={agent} update={updateAgent} />
+      case 'runtime':
+        return <RuntimeSettings agentBase={agent} update={updateAgent} />
       case 'context-skills':
         return <ContextSkillsSettings agentBase={agent} update={updateAgent} />
       case 'permission-mode':

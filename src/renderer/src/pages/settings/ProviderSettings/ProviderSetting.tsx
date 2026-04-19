@@ -80,7 +80,7 @@ const ANTHROPIC_COMPATIBLE_PROVIDER_IDS = [
   SystemProviderIds.modelscope,
   SystemProviderIds.aihubmix,
   SystemProviderIds.grok,
-  SystemProviderIds.cherryin,
+  SystemProviderIds.theboss,
   SystemProviderIds.longcat,
   SystemProviderIds.minimax,
   SystemProviderIds.silicon,
@@ -115,7 +115,8 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
 
   const isAzureOpenAI = isAzureOpenAIProvider(provider)
   const isDmxapi = provider.id === 'dmxapi'
-  const isCherryIN = provider.id === 'cherryin'
+  const isTheBossManagedProvider =
+    provider.id === SystemProviderIds.theboss || provider.id === SystemProviderIds.cherryin
   const isChineseUser = i18n.language.startsWith('zh')
   const noAPIInputProviders = ['aws-bedrock'] as const satisfies SystemProviderId[]
   const hideApiInput = noAPIInputProviders.some((id) => id === provider.id)
@@ -399,7 +400,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   }, [provider.anthropicApiHost])
 
   const canConfigureAnthropicHost = useMemo(() => {
-    if (isCherryIN) {
+    if (isTheBossManagedProvider) {
       return false
     }
     if (isNewApiProvider(provider)) {
@@ -408,7 +409,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
     return (
       provider.type !== 'anthropic' && isSystemProviderId(provider.id) && isAnthropicCompatibleProviderId(provider.id)
     )
-  }, [isCherryIN, provider])
+  }, [isTheBossManagedProvider, provider])
 
   const anthropicHostPreview = useMemo(() => {
     const rawHost = anthropicApiHost ?? provider.anthropicApiHost
@@ -484,7 +485,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
       </SettingTitle>
       <Divider style={{ width: '100%', margin: '10px 0' }} />
       {isProviderSupportAuth(provider) && <ProviderOAuth providerId={provider.id} />}
-      {isCherryIN && <CherryINOAuth providerId={provider.id} />}
+      {isTheBossManagedProvider && <CherryINOAuth providerId={provider.id} />}
       {provider.id === 'openai' && <OpenAIAlert />}
       {provider.id === 'openai' && (
         <>
@@ -600,7 +601,7 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
               </SettingSubtitle>
               {activeHostField === 'apiHost' && (
                 <>
-                  {isCherryIN && isChineseUser ? (
+                  {isTheBossManagedProvider && isChineseUser ? (
                     <CherryINSettings providerId={provider.id} apiHost={apiHost} setApiHost={setApiHost} />
                   ) : (
                     <Space.Compact style={{ width: '100%', marginTop: 5 }}>

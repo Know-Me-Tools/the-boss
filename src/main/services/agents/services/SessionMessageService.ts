@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { loggerService } from '@logger'
+import { skillScopeService } from '@main/services/agents/skills/SkillScopeService'
 import knowledgeService from '@main/services/KnowledgeService'
 import { buildSkillStreamParts, type PreparedSkillContext } from '@main/services/skills/buildSkillStreamParts'
 import { loadInstalledSkillSelectionResources } from '@main/services/skills/installedSkillDescriptors'
@@ -19,9 +20,9 @@ import type {
   KnowledgeReference,
   KnowledgeSearchResult,
   ListOptions,
-  SkillGlobalConfig
+  SkillScopeRef
 } from '@types'
-import { DEFAULT_SKILL_CONFIG, resolveSkillConfig } from '@types'
+import { AgentConfigurationSchema, resolveSkillConfig } from '@types'
 import type { TextStreamPart } from 'ai'
 import { and, desc, eq, not } from 'drizzle-orm'
 
@@ -36,10 +37,14 @@ import {
   setAgentSessionLastTotalTokens,
   shouldRunSdkCompactBeforeTurn
 } from './agentContextStrategy'
-import ClaudeCodeService from './claudecode'
+import { AgentRuntimeRouter } from './runtime/AgentRuntimeRouter'
+import { createRuntimeContextBundle } from './runtime/RuntimeContextBundle'
+import { runtimeControlService } from './runtime/RuntimeControlService'
+import { runtimeSessionBindingRepository } from './runtime/RuntimeSessionBindingRepository'
+import { resolveRuntimeKind } from './runtime/types'
 import { sessionService } from './SessionService'
 
-const claudeCodeService = new ClaudeCodeService()
+const agentRuntimeRouter = new AgentRuntimeRouter()
 
 const logger = loggerService.withContext('SessionMessageService')
 const DEFAULT_KNOWLEDGE_DOCUMENT_COUNT = 6
@@ -350,10 +355,11 @@ export class SessionMessageService extends BaseService {
   ): Promise<{
     prompt: string
     externalToolResult?: ExternalToolResult
+    skipSkillInjection: boolean
   }> {
     const trimmedPrompt = prompt.trim()
     if (!trimmedPrompt) {
-      return { prompt }
+      return { prompt, skipSkillInjection: false }
     }
 
     const { knowledgeBases, knowledgeRecognition, runtimeConfigs } = this.resolveEffectiveKnowledgeConfig(
@@ -361,12 +367,12 @@ export class SessionMessageService extends BaseService {
       agent
     )
     if (knowledgeRecognition !== 'on' || knowledgeBases.length === 0) {
-      return { prompt }
+      return { prompt, skipSkillInjection: false }
     }
 
     const knowledgeReferences = await this.searchKnowledgeReferences(trimmedPrompt, knowledgeBases, runtimeConfigs)
     if (knowledgeReferences.length === 0) {
-      return { prompt }
+      return { prompt, skipSkillInjection: false }
     }
 
     return {
@@ -374,6 +380,7 @@ export class SessionMessageService extends BaseService {
         '{references}',
         JSON.stringify(knowledgeReferences, null, 2)
       ),
+      skipSkillInjection: false,
       externalToolResult: {
         knowledge: knowledgeReferences
       }
@@ -397,20 +404,10 @@ export class SessionMessageService extends BaseService {
     }
   }
 
-  private async loadGlobalSkillConfig(): Promise<SkillGlobalConfig> {
-    try {
-      const { reduxService } = await import('@main/services/ReduxService')
-      const globalSkillConfig = await reduxService.select('state.skillConfig.global')
-      return resolveSkillConfig(globalSkillConfig ?? DEFAULT_SKILL_CONFIG)
-    } catch {
-      return resolveSkillConfig(DEFAULT_SKILL_CONFIG)
-    }
-  }
-
   /**
-   * Consume a Claude Code stream for a single-shot operation (e.g. `/compact`) without exposing SSE.
+   * Consume an agent runtime stream for a single-shot operation (e.g. `/compact`) without exposing SSE.
    */
-  private async drainClaudeStreamForCompaction(stream: AgentStream, session: GetAgentSessionResponse): Promise<void> {
+  private async drainAgentStreamForCompaction(stream: AgentStream, session: GetAgentSessionResponse): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const onData = (event: AgentStreamEvent) => {
         if (event.type === 'chunk' && event.chunk) {
@@ -445,14 +442,30 @@ export class SessionMessageService extends BaseService {
     abortController: AbortController,
     options?: CreateMessageOptions
   ): Promise<SessionStreamResult> {
-    const agentSessionId = await this.getLastAgentSessionId(session.id)
-    logger.debug('Session Message stream message data:', { message: req, session_id: agentSessionId })
-
     await sessionService.ensureLastTotalTokensInMemory(session.agent_id, session.id)
 
     const persistedSession =
       (await this.getPersistedSession(session.id)) ?? (session as PersistedSessionKnowledgeEntity)
     const persistedAgent = await this.getPersistedAgent(session.agent_id)
+    const runtimeConfig = await runtimeControlService.resolveEffectiveRuntimeConfig(persistedSession)
+    const effectiveRuntimeSession = {
+      ...persistedSession,
+      configuration: AgentConfigurationSchema.parse({
+        ...persistedSession.configuration,
+        runtime: runtimeConfig
+      })
+    } satisfies PersistedSessionKnowledgeEntity
+    const runtimeKind = resolveRuntimeKind(effectiveRuntimeSession)
+    const runtimeBoundSessionId = await runtimeSessionBindingRepository.getRuntimeSessionId(session.id, runtimeKind)
+    const legacyAgentSessionId = await this.getLastAgentSessionId(session.id)
+    const agentSessionId = runtimeBoundSessionId || legacyAgentSessionId
+    logger.debug('Session Message stream message data:', {
+      message: req,
+      runtime: runtimeKind,
+      runtimeBoundSessionId,
+      legacyAgentSessionId,
+      session_id: agentSessionId
+    })
 
     const globalAgent = await this.loadGlobalAgentContextSettings()
     const effectiveContext = getEffectiveAgentContextStrategy({
@@ -471,6 +484,7 @@ export class SessionMessageService extends BaseService {
     let skillStreamParts: Array<TextStreamPart<Record<string, any>>> = []
     const knowledgeAugmentation = await this.prepareKnowledgeAugmentation(req.content, persistedSession, persistedAgent)
     let promptWithSkillContext = knowledgeAugmentation.prompt
+    let preparedSkillContexts: PreparedSkillContext[] = []
 
     if (
       shouldRunSdkCompactBeforeTurn({
@@ -483,18 +497,15 @@ export class SessionMessageService extends BaseService {
       const tokensBeforeCompact = getAgentSessionLastTotalTokens(session.id)
       try {
         const compactAbort = new AbortController()
-        const compactStream = await claudeCodeService.invoke(
-          '/compact',
-          session,
-          compactAbort,
-          agentSessionId,
-          {
-            effort: req.effort,
-            thinking: req.thinking
-          },
-          undefined
-        )
-        await this.drainClaudeStreamForCompaction(compactStream, session)
+        const compactStream = await agentRuntimeRouter.compact(effectiveRuntimeSession, compactAbort, agentSessionId, {
+          effort: req.effort,
+          thinking: req.thinking
+        })
+        if (!compactStream) {
+          logger.info('Agent context: runtime does not support SDK /compact; skipping', { sessionId: session.id })
+        } else {
+          await this.drainAgentStreamForCompaction(compactStream, session)
+        }
         const tokensAfterCompact = getAgentSessionLastTotalTokens(session.id)
         agentContextNotice = {
           surface: 'agent',
@@ -517,29 +528,35 @@ export class SessionMessageService extends BaseService {
     }
 
     try {
-      const globalSkillConfig = await this.loadGlobalSkillConfig()
+      const skillScopes: SkillScopeRef[] = [
+        { type: 'agent', id: session.agent_id },
+        { type: 'session', id: session.id }
+      ]
+      const scopedSkillConfig = await skillScopeService.resolveConfig(skillScopes)
       const effectiveSkillConfig = resolveSkillConfig(
-        globalSkillConfig,
+        scopedSkillConfig,
         persistedAgent?.configuration?.skill_config,
         persistedSession.configuration?.skill_config
       )
 
       if (knowledgeAugmentation.prompt.trim()) {
-        const { skills, registry } = await loadInstalledSkillSelectionResources(effectiveSkillConfig)
-        let preparedSkills: PreparedSkillContext[] = []
+        const { skills, registry } = await loadInstalledSkillSelectionResources(effectiveSkillConfig, {
+          scopes: skillScopes
+        })
         skillStreamParts = await buildSkillStreamParts({
           prompt: knowledgeAugmentation.prompt,
           config: effectiveSkillConfig,
           activeModel: persistedSession.model || persistedAgent?.model,
           skills,
           registry,
+          disabled: knowledgeAugmentation.skipSkillInjection,
           onPreparedSkills: (value) => {
-            preparedSkills = value
+            preparedSkillContexts = value
           }
         })
 
-        if (preparedSkills.length > 0) {
-          promptWithSkillContext = appendSkillContextToPrompt(knowledgeAugmentation.prompt, preparedSkills)
+        if (preparedSkillContexts.length > 0) {
+          promptWithSkillContext = appendSkillContextToPrompt(knowledgeAugmentation.prompt, preparedSkillContexts)
         }
       }
     } catch (error) {
@@ -549,9 +566,18 @@ export class SessionMessageService extends BaseService {
       })
     }
 
-    const claudeStream = await claudeCodeService.invoke(
-      promptWithSkillContext,
-      persistedSession,
+    const runtimeTurn = createRuntimeContextBundle({
+      session: effectiveRuntimeSession,
+      prompt: promptWithSkillContext,
+      originalPrompt: req.content,
+      skills: preparedSkillContexts,
+      knowledgeReferences: knowledgeAugmentation.externalToolResult?.knowledge ?? [],
+      images: options?.images
+    })
+
+    const agentStream = await agentRuntimeRouter.invoke(
+      runtimeTurn,
+      effectiveRuntimeSession,
       abortController,
       agentSessionId,
       {
@@ -581,7 +607,7 @@ export class SessionMessageService extends BaseService {
     const cleanup = () => {
       if (finished) return
       finished = true
-      claudeStream.removeAllListeners()
+      agentStream.removeAllListeners()
     }
 
     const stream = new ReadableStream<TextStreamPart<Record<string, any>>>({
@@ -604,7 +630,7 @@ export class SessionMessageService extends BaseService {
         for (const part of skillStreamParts) {
           controller.enqueue(part)
         }
-        claudeStream.on('data', async (event: AgentStreamEvent) => {
+        agentStream.on('data', async (event: AgentStreamEvent) => {
           if (finished) return
           try {
             switch (event.type) {
@@ -650,14 +676,15 @@ export class SessionMessageService extends BaseService {
                 controller.close()
                 if (options?.persist) {
                   // Read SDK session_id from the stream object (set by ClaudeCodeService on init)
-                  const resolvedSessionId = claudeStream.sdkSessionId || agentSessionId
+                  const resolvedSessionId = agentStream.sdkSessionId || agentSessionId
                   logger.debug('Persisting headless exchange with agent session ID', {
-                    sdkSessionId: claudeStream.sdkSessionId,
+                    sdkSessionId: agentStream.sdkSessionId,
                     fallback: agentSessionId,
                     resolved: resolvedSessionId
                   })
+                  void this.persistRuntimeSessionBinding(effectiveRuntimeSession, runtimeKind, resolvedSessionId)
                   this.persistHeadlessExchange(
-                    persistedSession,
+                    effectiveRuntimeSession,
                     options?.displayContent ?? req.content,
                     accumulator.getText(),
                     resolvedSessionId,
@@ -670,6 +697,8 @@ export class SessionMessageService extends BaseService {
                       resolveCompletion({})
                     })
                 } else {
+                  const resolvedSessionId = agentStream.sdkSessionId || agentSessionId
+                  void this.persistRuntimeSessionBinding(effectiveRuntimeSession, runtimeKind, resolvedSessionId)
                   resolveCompletion({})
                 }
                 break
@@ -679,11 +708,12 @@ export class SessionMessageService extends BaseService {
                 cleanup()
                 controller.close()
                 if (options?.persist) {
-                  const resolvedSessionId = claudeStream.sdkSessionId || agentSessionId
+                  const resolvedSessionId = agentStream.sdkSessionId || agentSessionId
                   const partialText = accumulator.getText()
+                  void this.persistRuntimeSessionBinding(effectiveRuntimeSession, runtimeKind, resolvedSessionId)
                   if (partialText) {
                     this.persistHeadlessExchange(
-                      persistedSession,
+                      effectiveRuntimeSession,
                       options?.displayContent ?? req.content,
                       partialText,
                       resolvedSessionId,
@@ -699,13 +729,15 @@ export class SessionMessageService extends BaseService {
                     resolveCompletion({})
                   }
                 } else {
+                  const resolvedSessionId = agentStream.sdkSessionId || agentSessionId
+                  void this.persistRuntimeSessionBinding(effectiveRuntimeSession, runtimeKind, resolvedSessionId)
                   resolveCompletion({})
                 }
                 break
               }
 
               default:
-                logger.warn('Unknown event type from Claude Code service:', {
+                logger.warn('Unknown event type from agent runtime service:', {
                   type: event.type
                 })
                 break
@@ -844,6 +876,31 @@ export class SessionMessageService extends BaseService {
     })
 
     return result
+  }
+
+  private async persistRuntimeSessionBinding(
+    session: GetAgentSessionResponse,
+    runtimeKind: ReturnType<typeof resolveRuntimeKind>,
+    runtimeSessionId: string
+  ): Promise<void> {
+    if (!runtimeSessionId) {
+      return
+    }
+
+    try {
+      await runtimeSessionBindingRepository.upsertBinding({
+        sessionId: session.id,
+        agentId: session.agent_id,
+        runtimeKind,
+        runtimeSessionId
+      })
+    } catch (error) {
+      logger.warn('Failed to persist runtime session binding', {
+        sessionId: session.id,
+        runtimeKind,
+        error: error instanceof Error ? error.message : String(error)
+      })
+    }
   }
 
   private async getLastAgentSessionId(sessionId: string): Promise<string> {

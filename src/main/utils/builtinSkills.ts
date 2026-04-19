@@ -3,7 +3,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
-import { parseSkillMetadata } from '@main/utils/markdownParser'
+import { findAllSkillDirectories, findSkillMdPath, parseSkillMetadata } from '@main/utils/markdownParser'
 import { app } from 'electron'
 
 import { SkillRepository } from '../services/agents/skills/SkillRepository'
@@ -13,6 +13,15 @@ import { getDataPath, toAsarUnpackedPath } from '.'
 const logger = loggerService.withContext('builtinSkills')
 
 const VERSION_FILE = '.version'
+const PROMETHEUS_SKILL_SYSTEM_DIR = 'prometheus-skill-system'
+const PROMETHEUS_SKILL_SYSTEM_REPO = 'git@github.com:Prometheus-AGS/prometheus-skill-system.git'
+
+type BuiltinSkillSource = {
+  folderName: string
+  sourcePath: string
+  sourceFolderPath: string
+  sourceUrl: string | null
+}
 
 /**
  * Copy built-in skills from app resources to the global skills storage
@@ -43,35 +52,80 @@ export async function installBuiltinSkills(): Promise<void> {
     return
   }
 
-  const entries = await fs.readdir(resourceSkillsPath, { withFileTypes: true })
-  const dirs = entries.filter((e) => {
-    if (!e.isDirectory()) return false
-    const destPath = path.join(globalSkillsPath, e.name)
-    return destPath.startsWith(globalSkillsPath + path.sep)
-  })
+  const sources = await discoverBuiltinSkillSources(resourceSkillsPath)
 
   let installed = 0
   // Process sequentially to avoid interleaved delete+insert on the skills
   // table when multiple builtins require a metadata refresh.
-  for (const entry of dirs) {
-    const destPath = path.join(globalSkillsPath, entry.name)
+  for (const source of sources) {
+    const destPath = path.join(globalSkillsPath, source.folderName)
     const filesUpdated = !(await isUpToDate(destPath, appVersion))
 
     if (filesUpdated) {
       await fs.mkdir(destPath, { recursive: true })
-      await fs.cp(path.join(resourceSkillsPath, entry.name), destPath, { recursive: true })
+      await fs.cp(source.sourceFolderPath, destPath, { recursive: true })
       await fs.writeFile(path.join(destPath, VERSION_FILE), appVersion, 'utf-8')
       installed++
     }
 
     // Register (or refresh) the DB row; fan the skill out to existing agents
     // only when this is the first time we see it.
-    await syncBuiltinSkillToDb(entry.name, destPath, filesUpdated)
+    await syncBuiltinSkillToDb(source.folderName, destPath, filesUpdated, source.sourcePath, source.sourceUrl)
   }
 
   if (installed > 0) {
     logger.info('Built-in skills installed', { installed, version: appVersion })
   }
+}
+
+async function discoverBuiltinSkillSources(resourceSkillsPath: string): Promise<BuiltinSkillSource[]> {
+  const entries = await fs.readdir(resourceSkillsPath, { withFileTypes: true })
+  const sources: BuiltinSkillSource[] = []
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    if (!isSafeResourceEntryName(entry.name)) continue
+
+    const entryPath = path.join(resourceSkillsPath, entry.name)
+    const directDestPath = path.join(getDataPath('Skills'), sanitizeSkillFolderName(entry.name))
+    if (!directDestPath.startsWith(getDataPath('Skills') + path.sep)) continue
+
+    const directSkillPath = await findSkillMdPath(entryPath)
+    if (directSkillPath) {
+      sources.push({
+        folderName: sanitizeSkillFolderName(entry.name),
+        sourcePath: entry.name,
+        sourceFolderPath: entryPath,
+        sourceUrl: null
+      })
+      continue
+    }
+
+    if (entry.name !== PROMETHEUS_SKILL_SYSTEM_DIR) {
+      continue
+    }
+
+    const nestedSkillDirs = await findAllSkillDirectories(entryPath, entryPath, 12)
+    for (const nestedSkillDir of nestedSkillDirs) {
+      const relativeSourcePath = path.join(entry.name, nestedSkillDir.sourcePath)
+      sources.push({
+        folderName: sanitizeSkillFolderName(relativeSourcePath),
+        sourcePath: relativeSourcePath,
+        sourceFolderPath: nestedSkillDir.folderPath,
+        sourceUrl: `${PROMETHEUS_SKILL_SYSTEM_REPO}#${nestedSkillDir.sourcePath}`
+      })
+    }
+  }
+
+  return sources
+}
+
+function sanitizeSkillFolderName(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, '__').replace(/^__+|__+$/g, '')
+}
+
+function isSafeResourceEntryName(value: string): boolean {
+  return value !== '..' && !value.includes('/') && !value.includes('\\') && !value.includes('\0')
 }
 
 /**
@@ -81,14 +135,20 @@ export async function installBuiltinSkills(): Promise<void> {
  * entirely (first time we see this builtin) the skill is fanned out to every
  * existing agent's workspace.
  */
-async function syncBuiltinSkillToDb(folderName: string, destPath: string, filesUpdated: boolean): Promise<void> {
+async function syncBuiltinSkillToDb(
+  folderName: string,
+  destPath: string,
+  filesUpdated: boolean,
+  sourcePath: string,
+  sourceUrl: string | null
+): Promise<void> {
   try {
     const repo = SkillRepository.getInstance()
     const existing = await repo.getByFolderName(folderName)
 
     if (existing && !filesUpdated) return
 
-    const metadata = await parseSkillMetadata(destPath, folderName, 'skills')
+    const metadata = await parseSkillMetadata(destPath, sourcePath, 'skills')
     const contentHash = await computeHash(destPath)
 
     const tags = metadata.tags ? JSON.stringify(metadata.tags) : null
@@ -110,7 +170,7 @@ async function syncBuiltinSkillToDb(folderName: string, destPath: string, filesU
         description: metadata.description ?? null,
         folder_name: folderName,
         source: 'builtin',
-        source_url: null,
+        source_url: sourceUrl,
         namespace: null,
         author: metadata.author ?? null,
         tags,
