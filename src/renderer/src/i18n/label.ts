@@ -37,6 +37,7 @@ const providerKeyMap = {
   burncloud: 'provider.burncloud',
   cephalon: 'provider.cephalon',
   cherryin: 'provider.cherryin',
+  theboss: 'provider.theboss',
   copilot: 'provider.copilot',
   dashscope: 'provider.dashscope',
   deepseek: 'provider.deepseek',
