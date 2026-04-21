@@ -1,5 +1,5 @@
 import type { GetAgentSessionResponse, UpdateAgentBaseForm } from '@renderer/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type * as Antd from 'antd'
 import type * as ReactI18Next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -102,7 +102,9 @@ describe('RuntimeSettings', () => {
           state: 'ready',
           endpoint: 'http://127.0.0.1:1906',
           message: 'UAR sidecar is ready.'
-        }))
+        })),
+        listCodexModels: vi.fn(async () => createCodexModels()),
+        listOpenCodeModels: vi.fn(async () => createOpenCodeModels())
       }
     } as never
   })
@@ -138,6 +140,118 @@ describe('RuntimeSettings', () => {
     expect(screen.getByLabelText('Approval policy')).toBeInTheDocument()
     expect(screen.getByLabelText('Network access')).toBeInTheDocument()
     expect(screen.getByLabelText('Reasoning effort')).toBeInTheDocument()
+  })
+
+  it('selecting Codex loads Codex models and replaces an invalid model with the default', async () => {
+    const update = vi.fn()
+    render(<RuntimeSettings agentBase={createAgentBase('claude')} update={update} />)
+
+    fireEvent.change(screen.getByLabelText('Runtime'), { target: { value: 'codex' } })
+
+    await waitFor(() => expect(window.api.agentRuntime.listCodexModels).toHaveBeenCalled())
+    expect(update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          runtime: expect.objectContaining({
+            kind: 'codex',
+            modelId: 'gpt-5.2-codex',
+            reasoningEffort: 'medium'
+          })
+        })
+      }),
+      { showSuccessToast: false }
+    )
+  })
+
+  it('preserves a valid Codex model selection when loading runtime models', async () => {
+    const update = vi.fn()
+    render(
+      <RuntimeSettings
+        agentBase={createAgentBase('codex', {
+          modelId: 'gpt-5.1-codex',
+          reasoningEffort: 'high'
+        })}
+        update={update}
+      />
+    )
+
+    await waitFor(() => expect(window.api.agentRuntime.listCodexModels).toHaveBeenCalled())
+
+    expect(update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          runtime: expect.objectContaining({
+            modelId: 'gpt-5.2-codex'
+          })
+        })
+      }),
+      expect.anything()
+    )
+  })
+
+  it('renders Codex model override as a closed set from the Codex CLI catalog', async () => {
+    render(<RuntimeSettings agentBase={createAgentBase('codex')} update={vi.fn()} />)
+
+    await screen.findByRole('option', { name: 'GPT-5.2 Codex' })
+    const modelSelect = screen.getByLabelText('Model Override')
+
+    expect(modelSelect.tagName).toBe('SELECT')
+    expect(screen.queryByDisplayValue('not-a-codex-model')).not.toBeInTheDocument()
+  })
+
+  it('selecting OpenCode loads OpenCode models and replaces an invalid model with the default', async () => {
+    const update = vi.fn()
+    render(<RuntimeSettings agentBase={createAgentBase('claude')} update={update} />)
+
+    fireEvent.change(screen.getByLabelText('Runtime'), { target: { value: 'opencode' } })
+
+    await waitFor(() => expect(window.api.agentRuntime.listOpenCodeModels).toHaveBeenCalled())
+    expect(update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          runtime: expect.objectContaining({
+            kind: 'opencode',
+            modelId: 'openai/gpt-5.2'
+          })
+        })
+      }),
+      { showSuccessToast: false }
+    )
+  })
+
+  it('preserves a valid OpenCode model selection when loading runtime models', async () => {
+    const update = vi.fn()
+    render(
+      <RuntimeSettings
+        agentBase={createAgentBase('opencode', {
+          modelId: 'anthropic/claude-sonnet-4-5'
+        })}
+        update={update}
+      />
+    )
+
+    await waitFor(() => expect(window.api.agentRuntime.listOpenCodeModels).toHaveBeenCalled())
+
+    expect(update).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          runtime: expect.objectContaining({
+            modelId: 'openai/gpt-5.2'
+          })
+        })
+      }),
+      expect.anything()
+    )
+  })
+
+  it('renders OpenCode model override as a closed set from the OpenCode catalog', async () => {
+    render(<RuntimeSettings agentBase={createAgentBase('opencode')} update={vi.fn()} />)
+
+    await screen.findByRole('option', { name: 'OpenAI / GPT 5.2' })
+    const modelSelect = screen.getByLabelText('Model Override')
+
+    expect(modelSelect.tagName).toBe('SELECT')
+    expect(screen.queryByDisplayValue('not-an-opencode-model')).not.toBeInTheDocument()
   })
 
   it('calls the backend runtime health API when testing the selected runtime', async () => {
@@ -193,17 +307,25 @@ describe('RuntimeSettings', () => {
   })
 })
 
-function createAgentBase(kind: 'codex' | 'uar'): GetAgentSessionResponse {
+function createAgentBase(
+  kind: 'claude' | 'codex' | 'opencode' | 'uar',
+  runtimeOverride: Record<string, unknown> = {}
+): GetAgentSessionResponse {
   const runtime =
     kind === 'uar'
       ? {
           kind: 'uar' as const,
           mode: 'embedded' as const
         }
-      : {
-          kind: 'codex' as const,
-          mode: 'managed' as const
-        }
+      : kind === 'claude'
+        ? {
+            kind: 'claude' as const,
+            mode: 'managed' as const
+          }
+        : {
+            kind,
+            mode: 'managed' as const
+          }
 
   return {
     id: 'session-id',
@@ -218,7 +340,66 @@ function createAgentBase(kind: 'codex' | 'uar'): GetAgentSessionResponse {
       permission_mode: 'default',
       max_turns: 100,
       env_vars: {},
-      runtime
+      runtime: {
+        ...runtime,
+        ...runtimeOverride
+      }
     }
   }
+}
+
+function createCodexModels() {
+  return [
+    {
+      id: 'gpt-5.2-codex',
+      model: 'gpt-5.2-codex',
+      displayName: 'GPT-5.2 Codex',
+      description: 'Default Codex model',
+      hidden: false,
+      isDefault: true,
+      supportedReasoningEfforts: ['low', 'medium', 'high'],
+      defaultReasoningEffort: 'medium'
+    },
+    {
+      id: 'gpt-5.1-codex',
+      model: 'gpt-5.1-codex',
+      displayName: 'GPT-5.1 Codex',
+      description: 'Previous Codex model',
+      hidden: false,
+      isDefault: false,
+      supportedReasoningEfforts: ['low', 'medium', 'high'],
+      defaultReasoningEffort: 'medium'
+    }
+  ]
+}
+
+function createOpenCodeModels() {
+  return [
+    {
+      id: 'openai/gpt-5.2',
+      providerId: 'openai',
+      modelId: 'gpt-5.2',
+      displayName: 'GPT 5.2',
+      providerName: 'OpenAI',
+      hidden: false,
+      isDefault: true,
+      capabilities: {
+        reasoning: true,
+        toolcall: true
+      }
+    },
+    {
+      id: 'anthropic/claude-sonnet-4-5',
+      providerId: 'anthropic',
+      modelId: 'claude-sonnet-4-5',
+      displayName: 'Claude Sonnet 4.5',
+      providerName: 'Anthropic',
+      hidden: false,
+      isDefault: false,
+      capabilities: {
+        reasoning: true,
+        toolcall: true
+      }
+    }
+  ]
 }

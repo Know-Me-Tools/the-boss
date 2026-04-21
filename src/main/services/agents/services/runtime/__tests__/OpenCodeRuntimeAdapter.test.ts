@@ -3,24 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentStream, AgentStreamEvent } from '../../../interfaces/AgentStreamInterface'
 import * as openCodeRuntimeModule from '../OpenCodeRuntimeAdapter'
 
-const modelValidation = vi.hoisted(() => ({
-  result: {
-    valid: true,
-    modelId: 'gpt-5.2',
-    provider: {
-      id: 'openai',
-      type: 'openai',
-      apiKey: 'test-key',
-      apiHost: 'https://api.openai.com/v1'
-    }
-  }
-}))
+const validateModelIdMock = vi.hoisted(() => vi.fn())
 
-const opencodeMock = vi.hoisted(() => {
+const openCodeServiceMock = vi.hoisted(() => {
   const state = {
-    createOpencodeCalls: [] as any[],
-    createClientCalls: [] as any[],
+    resolveClientCalls: [] as any[],
     clients: [] as any[],
+    clientsByKey: new Map<string, any>(),
     closes: 0,
     sessionCounter: 0,
     promptResponse: undefined as any,
@@ -55,38 +44,40 @@ const opencodeMock = vi.hoisted(() => {
     return client
   }
 
-  const createOpencode = vi.fn(async (options) => {
-    state.createOpencodeCalls.push(options)
-    return {
-      client: createClient('managed'),
-      server: {
-        url: 'http://127.0.0.1:4096',
-        close: vi.fn(() => {
-          state.closes += 1
-        })
-      }
+  const resolveClient = vi.fn(async (runtimeConfig, cwd, config) => {
+    state.resolveClientCalls.push({ runtimeConfig, cwd, config })
+    if (runtimeConfig.mode === 'remote' && !runtimeConfig.endpoint) {
+      throw new Error('OpenCode remote runtime requires a configured endpoint')
     }
+    const key =
+      runtimeConfig.mode === 'remote' ? `remote:${runtimeConfig.endpoint}` : `${cwd}:${JSON.stringify(config)}`
+    if (!state.clientsByKey.has(key)) {
+      state.clientsByKey.set(key, createClient(runtimeConfig.mode === 'remote' ? 'remote' : 'managed'))
+    }
+    return state.clientsByKey.get(key)
   })
 
-  const createOpencodeClient = vi.fn((options) => {
-    state.createClientCalls.push(options)
-    return createClient('remote')
+  const dispose = vi.fn(async () => {
+    state.closes += state.clientsByKey.size
+    state.clientsByKey.clear()
   })
 
   return {
-    createOpencode,
-    createOpencodeClient,
+    resolveClient,
+    dispose,
     state
   }
 })
 
 vi.mock('@main/apiServer/utils', () => ({
-  validateModelId: vi.fn(async () => modelValidation.result)
+  validateModelId: validateModelIdMock
 }))
 
-vi.mock('@opencode-ai/sdk', () => ({
-  createOpencode: opencodeMock.createOpencode,
-  createOpencodeClient: opencodeMock.createOpencodeClient
+vi.mock('../OpenCodeCliService', () => ({
+  openCodeCliService: {
+    resolveClient: openCodeServiceMock.resolveClient,
+    dispose: openCodeServiceMock.dispose
+  }
 }))
 
 vi.mock('electron', () => ({
@@ -99,23 +90,13 @@ describe('OpenCodeRuntimeAdapter', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     await (openCodeRuntimeModule as any).disposeOpenCodeManagedServers?.()
-    opencodeMock.state.createOpencodeCalls = []
-    opencodeMock.state.createClientCalls = []
-    opencodeMock.state.clients = []
-    opencodeMock.state.closes = 0
-    opencodeMock.state.sessionCounter = 0
-    opencodeMock.state.promptResponse = undefined
-    opencodeMock.state.events = []
-    modelValidation.result = {
-      valid: true,
-      modelId: 'gpt-5.2',
-      provider: {
-        id: 'openai',
-        type: 'openai',
-        apiKey: 'test-key',
-        apiHost: 'https://api.openai.com/v1'
-      }
-    }
+    openCodeServiceMock.state.resolveClientCalls = []
+    openCodeServiceMock.state.clients = []
+    openCodeServiceMock.state.clientsByKey.clear()
+    openCodeServiceMock.state.closes = 0
+    openCodeServiceMock.state.sessionCounter = 0
+    openCodeServiceMock.state.promptResponse = undefined
+    openCodeServiceMock.state.events = []
   })
 
   it('reuses a managed OpenCode server across resumed turns', async () => {
@@ -131,11 +112,13 @@ describe('OpenCodeRuntimeAdapter', () => {
     )
     await collectEvents(secondStream)
 
-    expect(opencodeMock.createOpencode).toHaveBeenCalledTimes(1)
-    expect(opencodeMock.state.closes).toBe(0)
-    expect(opencodeMock.state.clients[0].session.create).toHaveBeenCalledTimes(1)
-    expect(opencodeMock.state.clients[0].session.prompt).toHaveBeenCalledTimes(2)
-    expect(opencodeMock.state.clients[0].session.prompt.mock.calls[1][0].path.id).toBe(firstStream.sdkSessionId)
+    expect(openCodeServiceMock.resolveClient).toHaveBeenCalledTimes(2)
+    expect(openCodeServiceMock.state.clients).toHaveLength(1)
+    expect(openCodeServiceMock.state.closes).toBe(0)
+    expect(openCodeServiceMock.state.clients[0].session.create).toHaveBeenCalledTimes(1)
+    expect(openCodeServiceMock.state.clients[0].session.prompt).toHaveBeenCalledTimes(2)
+    expect(openCodeServiceMock.state.clients[0].session.prompt.mock.calls[1][0].path.id).toBe(firstStream.sdkSessionId)
+    expect(validateModelIdMock).not.toHaveBeenCalled()
   })
 
   it('maps remote endpoint, auth, model, permissions, tools, and MCP into OpenCode config', async () => {
@@ -168,28 +151,22 @@ describe('OpenCodeRuntimeAdapter', () => {
 
     await collectEvents(stream)
 
-    expect(opencodeMock.createOpencodeClient).toHaveBeenCalledWith(
+    expect(openCodeServiceMock.resolveClient).toHaveBeenCalledWith(
       expect.objectContaining({
-        baseUrl: 'http://127.0.0.1:4097',
-        directory: '/tmp/workspace',
-        headers: {
-          authorization: 'Bearer remote-token'
-        }
+        mode: 'remote',
+        endpoint: 'http://127.0.0.1:4097',
+        authRef: 'remote-token'
+      }),
+      '/tmp/workspace',
+      expect.objectContaining({
+        model: 'openai/gpt-5.2'
       })
     )
-    expect(opencodeMock.state.clients[0].config.update).toHaveBeenCalledWith(
+    expect(openCodeServiceMock.state.clients[0].config.update).toHaveBeenCalledWith(
       expect.objectContaining({
         query: { directory: '/tmp/workspace' },
         body: expect.objectContaining({
           model: 'openai/gpt-5.2',
-          provider: {
-            openai: expect.objectContaining({
-              options: {
-                apiKey: 'test-key',
-                baseURL: 'https://api.openai.com/v1'
-              }
-            })
-          },
           mcp: {
             git: {
               type: 'local',
@@ -216,11 +193,15 @@ describe('OpenCodeRuntimeAdapter', () => {
         })
       })
     )
-    expect(opencodeMock.state.clients[0].session.prompt).toHaveBeenCalledWith(
+    expect(openCodeServiceMock.state.clients[0].session.prompt).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
           agent: 'builder',
           system: 'Use the project conventions.',
+          model: {
+            providerID: 'openai',
+            modelID: 'gpt-5.2'
+          },
           tools: {
             bash: true,
             edit: true
@@ -231,7 +212,7 @@ describe('OpenCodeRuntimeAdapter', () => {
   })
 
   it('normalizes response parts and permission events into runtime chunks', async () => {
-    opencodeMock.state.promptResponse = {
+    openCodeServiceMock.state.promptResponse = {
       data: {
         info: { id: 'assistant-message' },
         parts: [
@@ -263,7 +244,7 @@ describe('OpenCodeRuntimeAdapter', () => {
         ]
       }
     }
-    opencodeMock.state.events = [
+    openCodeServiceMock.state.events = [
       {
         type: 'permission.updated',
         properties: {
@@ -307,7 +288,7 @@ describe('OpenCodeRuntimeAdapter', () => {
     expect(events.find((event) => event.type === 'error')?.error?.message).toContain(
       'OpenCode remote runtime requires a configured endpoint'
     )
-    expect(opencodeMock.createOpencode).not.toHaveBeenCalled()
+    expect(openCodeServiceMock.resolveClient).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -327,13 +308,13 @@ function createSession(overrides: Record<string, any> = {}): any {
     agent_id: 'agent-id',
     name: 'Test Session',
     instructions: overrides.instructions,
-    model: 'openai:gpt-5.2',
+    model: 'openai/gpt-5.2',
     accessible_paths: overrides.accessible_paths ?? ['/tmp/workspace'],
     allowed_tools: overrides.allowed_tools ?? [],
     configuration: {
       runtime: {
         kind: 'opencode',
-        modelId: 'openai:gpt-5.2',
+        modelId: 'openai/gpt-5.2',
         ...runtime
       }
     }

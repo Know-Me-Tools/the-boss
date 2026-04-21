@@ -2,6 +2,8 @@ import { loggerService } from '@logger'
 import type { AgentRuntimeConfig, AgentRuntimeKind, GetAgentSessionResponse } from '@types'
 import { AgentRuntimeConfigSchema } from '@types'
 
+import { codexCliService, type CodexRuntimeModel } from './CodexCliService'
+import { openCodeCliService, type OpenCodeRuntimeModel } from './OpenCodeCliService'
 import {
   RuntimeProfileRepository,
   type UpsertRuntimeProfileInput,
@@ -50,18 +52,40 @@ type UniversalAgentRuntimeServiceLike = {
   stop(): Promise<void>
 }
 
+type CodexCliServiceLike = {
+  resolveBinary(runtimeConfig?: AgentRuntimeConfig): {
+    state: 'ready' | 'missing-binary' | 'unsupported-platform'
+    message: string
+  }
+  listModels(runtimeConfig?: AgentRuntimeConfig): Promise<CodexRuntimeModel[]>
+}
+
+type OpenCodeCliServiceLike = {
+  resolveBinary(runtimeConfig?: AgentRuntimeConfig): {
+    state: 'ready' | 'missing-binary' | 'unsupported-platform'
+    message: string
+  }
+  listModels(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeRuntimeModel[]>
+}
+
 interface RuntimeControlServiceDependencies {
   runtimeProfileRepository?: RuntimeProfileRepositoryLike
   universalAgentRuntimeService?: UniversalAgentRuntimeServiceLike
+  codexCliService?: CodexCliServiceLike
+  openCodeCliService?: OpenCodeCliServiceLike
 }
 
 export class RuntimeControlService {
   private readonly runtimeProfileRepository: RuntimeProfileRepositoryLike
   private readonly uarService: UniversalAgentRuntimeServiceLike
+  private readonly codexService: CodexCliServiceLike
+  private readonly openCodeService: OpenCodeCliServiceLike
 
   constructor(dependencies: RuntimeControlServiceDependencies = {}) {
     this.runtimeProfileRepository = dependencies.runtimeProfileRepository ?? RuntimeProfileRepository.getInstance()
     this.uarService = dependencies.universalAgentRuntimeService ?? universalAgentRuntimeService
+    this.codexService = dependencies.codexCliService ?? codexCliService
+    this.openCodeService = dependencies.openCodeCliService ?? openCodeCliService
   }
 
   listProfiles(kind?: AgentRuntimeKind) {
@@ -78,6 +102,14 @@ export class RuntimeControlService {
 
   upsertSettings(input: UpsertRuntimeSettingsInput) {
     return this.runtimeProfileRepository.upsertSettings(input)
+  }
+
+  listCodexModels(runtimeConfig?: AgentRuntimeConfig): Promise<CodexRuntimeModel[]> {
+    return this.codexService.listModels(runtimeConfig)
+  }
+
+  listOpenCodeModels(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeRuntimeModel[]> {
+    return this.openCodeService.listModels(runtimeConfig)
   }
 
   async resolveEffectiveRuntimeConfig(session: GetAgentSessionResponse): Promise<AgentRuntimeConfig> {
@@ -125,6 +157,24 @@ export class RuntimeControlService {
       return this.testHttpEndpoint(config.kind, config.endpoint)
     }
 
+    if (config.kind === 'codex') {
+      const resolution = this.codexService.resolveBinary(config)
+      return {
+        kind: 'codex',
+        state: resolution.state,
+        message: resolution.message
+      }
+    }
+
+    if (config.kind === 'opencode') {
+      const resolution = this.openCodeService.resolveBinary(config)
+      return {
+        kind: 'opencode',
+        state: resolution.state,
+        message: resolution.message
+      }
+    }
+
     return {
       kind: config.kind,
       state: 'ready',
@@ -159,6 +209,15 @@ export class RuntimeControlService {
     const config = AgentRuntimeConfigSchema.parse(runtimeConfig)
     if (config.kind === 'uar') {
       return mapUarStatus(await this.uarService.getStatus(config))
+    }
+
+    if (config.kind === 'opencode' && config.mode !== 'remote') {
+      const resolution = this.openCodeService.resolveBinary(config)
+      return {
+        kind: 'opencode',
+        state: resolution.state,
+        message: resolution.message
+      }
     }
 
     return {

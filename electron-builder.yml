@@ -89,6 +89,7 @@ asarUnpack:
   - "node_modules/@img/sharp-libvips-*/**"
   - "node_modules/@libsql/**/*.node"
   - "node_modules/@napi-rs/**/*.node"
+  - "node_modules/@openai/codex*/vendor/**"
   - "node_modules/esbuild/bin/**"
   - "node_modules/font-list/libs/**"
   - "node_modules/selection-hook/**/*.node"

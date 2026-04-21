@@ -8,7 +8,7 @@ The agent runtime setting selects which execution backend handles an agent sessi
 |---|---|---|---|
 | Claude | `managed` | Native Claude Agent SDK execution | Supports compaction, approvals, tool use, MCP, skills, knowledge, file access, shell access, and session resume. |
 | Codex | `managed` | OpenAI Codex SDK execution | Requires an OpenAI-compatible provider. Supports workspace sandboxing, approvals, tools, MCP, skills, knowledge, file access, shell access, and session resume. Does not support Claude SDK compaction. |
-| OpenCode | `managed`, `remote` | OpenCode server execution | Managed mode starts a local OpenCode server and reuses it across turns. Remote mode connects to an existing OpenCode endpoint. Does not support Claude SDK compaction. |
+| OpenCode | `managed`, `remote` | OpenCode server execution | Managed mode starts the pinned embedded `opencode serve` executable and reuses it across turns. Remote mode connects to an existing OpenCode endpoint. Does not support Claude SDK compaction. |
 | UAR | `embedded`, `remote` | Universal Agent Runtime sidecar execution | Embedded mode resolves an explicit path, `UAR_SIDECAR_PATH`, a verified managed binary, then the bundled fallback. Remote mode connects to an existing UAR endpoint. UAR currently reports degraded approval, resume, and compaction support. |
 
 The compatibility resolver must remain the source of truth for degraded support. Do not document a runtime as lossless if `resolveRuntimeCompatibility` returns warnings.
@@ -29,6 +29,53 @@ Common fields:
 - `skills.enabled`: enables runtime skill bridge materialization for non-Claude runtimes.
 
 ## Sidecar Setup
+
+### OpenCode
+
+OpenCode is vendored at `vendor/opencode`, but the app intentionally does not package OpenCode as a runtime Node dependency. Managed OpenCode uses a pinned executable resource built from the vendored source and launched as a local server:
+
+```bash
+pnpm opencode:build:runtime
+```
+
+The vendored OpenCode build currently requires Bun 1.3.11 or newer.
+
+The build runs:
+
+```bash
+bun run --cwd vendor/opencode/packages/opencode build --single --skip-embed-web-ui
+```
+
+Then it copies the current-platform binary into:
+
+```text
+resources/opencode/<platform-arch>/opencode
+```
+
+On Windows the executable name is `opencode.exe`. The `resources/**/*` packaging rule includes this artifact, and `resources/**` is unpacked from ASAR so Electron can spawn it. OpenCode CLI packages should not be added to runtime external dependency packaging; the executable is a resource artifact.
+
+Managed execution starts:
+
+```bash
+opencode serve --hostname 127.0.0.1 --port 0
+```
+
+The main process passes runtime overrides through `OPENCODE_CONFIG_CONTENT`, parses the server URL from stdout, and creates an SDK client with `createOpencodeClient({ baseUrl })`. The app uses the public OpenCode SDK/server surface for configuration, provider/model discovery, agents, sessions, prompts, permissions, and events. This matches the official architecture: `opencode serve` exposes the OpenAPI server used by clients, and the JS/TS SDK is a type-safe client for that server.
+
+The in-process vendored-source path is intentionally rejected for this phase. It would depend on private OpenCode internals rather than the stable SDK/server API, increasing maintenance risk whenever the vendored submodule changes.
+
+OpenCode config precedence for this integration:
+
+```text
+global ~/.config/opencode/opencode.json or opencode.jsonc
+OPENCODE_CONFIG / OpenCode-managed project discovery
+project opencode config and .opencode directories
+OPENCODE_CONFIG_CONTENT runtime overrides
+```
+
+The runtime model picker uses `client.config.get()` and `client.config.providers()` as the source of truth. Model IDs are stored as canonical `provider/model` strings. When no usable machine-level OpenCode provider/model config exists, the main process creates `~/.config/opencode/opencode.json` from enabled Cherry providers and models, then lets the OpenCode server load that config.
+
+### UAR
 
 UAR is vendored at `vendor/universal-agent-runtime` and pinned by `UniversalAgentRuntimeService.UAR_EXPECTED_COMMIT`.
 
@@ -107,6 +154,7 @@ Run from the current 1.9.x branch. Do not use `v2`.
 1. Build or verify dependencies:
    ```bash
    pnpm install
+   pnpm opencode:build:runtime
    pnpm uar:build:sidecar
    ```
 2. Run validation gates:
@@ -125,8 +173,13 @@ Run from the current 1.9.x branch. Do not use `v2`.
    - Verify runtime telemetry shows `codex`, sandbox/approval metadata, session id, tool events, and token usage.
 5. OpenCode managed session:
    - Select runtime `opencode`, mode `managed`.
+   - Verify binary resolution points at `resources/opencode/<platform-arch>/opencode` or the ASAR-unpacked equivalent in a packaged build.
+   - Verify `opencode serve` starts and `client.config.providers()` returns providers/models.
+   - Verify invalid OpenCode model selections default to the server-reported default or the first visible model.
    - Run two turns in the same session.
    - Verify the managed server is reused, session id persists, and permission events render as approval UI.
+   - Verify a permission response is delivered back to the OpenCode server.
+   - In a packaged build, verify the spawned path is under `app.asar.unpacked`, not inside `app.asar`.
 6. OpenCode remote session:
    - Start an OpenCode-compatible endpoint.
    - Select runtime `opencode`, mode `remote`, and set `endpoint`.

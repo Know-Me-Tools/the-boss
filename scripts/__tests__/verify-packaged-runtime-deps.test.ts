@@ -62,7 +62,14 @@ describe('verify-packaged-runtime-deps', () => {
     expect(new Set(runtimeExternalPackages).size).toBe(runtimeExternalPackages.length)
     expect(runtimeExternalPackages).toContain('esbuild')
     expect(runtimeExternalPackages).toEqual(
-      expect.arrayContaining(['@anush008/tokenizers', '@mastra/fastembed', 'fastembed', 'onnxruntime-node'])
+      expect.arrayContaining([
+        '@anush008/tokenizers',
+        '@mastra/fastembed',
+        '@openai/codex',
+        '@openai/codex-sdk',
+        'fastembed',
+        'onnxruntime-node'
+      ])
     )
   })
 

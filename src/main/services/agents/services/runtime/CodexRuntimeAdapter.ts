@@ -3,6 +3,7 @@ import type { GetAgentSessionResponse } from '@types'
 import type { TextStreamPart } from 'ai'
 
 import type { AgentServiceInterface, AgentStream, AgentThinkingOptions } from '../../interfaces/AgentStreamInterface'
+import { codexCliService } from './CodexCliService'
 import { RuntimeAgentStream } from './RuntimeAgentStream'
 import { type AgentTurnInput, getPromptText, resolveAgentTurnInput } from './RuntimeContextBundle'
 import { type AgentRuntimeCapabilities, DEFAULT_RUNTIME_CAPABILITIES, resolveRuntimeConfig } from './types'
@@ -42,24 +43,9 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
     }
 
     const selectedModel = session.configuration?.runtime?.modelId ?? session.model
-    const modelInfo = await validateModelId(selectedModel)
-    if (!modelInfo.valid || !modelInfo.provider) {
-      return deferRuntimeError(
-        new Error(`Invalid Codex model ID '${selectedModel}': ${JSON.stringify(modelInfo.error)}`)
-      )
-    }
-
-    const provider = modelInfo.provider
-    const modelId = modelInfo.modelId
-    if (!modelId) {
-      return deferRuntimeError(new Error(`Invalid Codex model ID '${selectedModel}': missing provider model ID`))
-    }
-    if (provider.type !== 'openai' && provider.type !== 'openai-response') {
-      return deferRuntimeError(
-        new Error(
-          `Provider type '${provider.type}' is not supported by the Codex runtime. Select Claude or OpenCode instead.`
-        )
-      )
+    const modelSelection = await resolveCodexModelSelection(selectedModel)
+    if (modelSelection.error) {
+      return deferRuntimeError(modelSelection.error)
     }
 
     const runtimeConfig = resolveRuntimeConfig(session)
@@ -68,7 +54,7 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
     let codexConfig: CodexConfigObject | undefined
     try {
       threadOptions = removeUndefinedValues({
-        model: modelId,
+        model: modelSelection.modelId,
         workingDirectory: cwd,
         additionalDirectories: session.accessible_paths.slice(1),
         sandboxMode: resolveCodexSandboxMode(runtimeConfig.sandbox?.mode),
@@ -95,14 +81,19 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
     void (async () => {
       try {
         const { Codex } = await import('@openai/codex-sdk')
+        const binaryResolution = codexCliService.resolveBinary(runtimeConfig)
+        if (!binaryResolution.path) {
+          stream.emitError(new Error(binaryResolution.message))
+          return
+        }
+
         const codex = new Codex(
           removeUndefinedValues({
-            apiKey: provider.apiKey,
-            baseUrl: runtimeConfig.endpoint ?? provider.apiHost,
+            codexPathOverride: binaryResolution.path,
+            apiKey: modelSelection.apiKey,
+            baseUrl: runtimeConfig.endpoint ?? modelSelection.baseUrl,
             config: codexConfig,
-            env: {
-              OPENAI_API_KEY: provider.apiKey ?? ''
-            }
+            env: modelSelection.apiKey ? buildCodexEnv(modelSelection.apiKey) : undefined
           })
         )
 
@@ -178,6 +169,45 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
   }
 }
 
+async function resolveCodexModelSelection(selectedModel: string): Promise<{
+  modelId?: string
+  apiKey?: string
+  baseUrl?: string
+  error?: Error
+}> {
+  if (!selectedModel) {
+    return { error: new Error('No Codex model selected') }
+  }
+
+  if (!selectedModel.includes(':')) {
+    return { modelId: selectedModel }
+  }
+
+  const modelInfo = await validateModelId(selectedModel)
+  if (!modelInfo.valid || !modelInfo.provider) {
+    return { error: new Error(`Invalid Codex model ID '${selectedModel}': ${JSON.stringify(modelInfo.error)}`) }
+  }
+
+  const provider = modelInfo.provider
+  const modelId = modelInfo.modelId
+  if (!modelId) {
+    return { error: new Error(`Invalid Codex model ID '${selectedModel}': missing provider model ID`) }
+  }
+  if (provider.type !== 'openai' && provider.type !== 'openai-response') {
+    return {
+      error: new Error(
+        `Provider type '${provider.type}' is not supported by the Codex runtime. Select Claude or OpenCode instead.`
+      )
+    }
+  }
+
+  return {
+    modelId,
+    apiKey: provider.apiKey,
+    baseUrl: provider.apiHost
+  }
+}
+
 function deferRuntimeError(error: Error): AgentStream {
   const stream = new RuntimeAgentStream()
   setTimeout(() => {
@@ -247,6 +277,15 @@ function buildCodexConfig(runtimeConfig: ReturnType<typeof resolveRuntimeConfig>
   }
 
   return Object.keys(config).length > 0 ? config : undefined
+}
+
+function buildCodexEnv(apiKey: string): Record<string, string> {
+  return {
+    ...Object.fromEntries(
+      Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined)
+    ),
+    OPENAI_API_KEY: apiKey
+  }
 }
 
 function resolveCodexMcpServers(value: unknown): CodexConfigObject | undefined {

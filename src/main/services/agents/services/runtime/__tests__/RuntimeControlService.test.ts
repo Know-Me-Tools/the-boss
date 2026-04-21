@@ -190,6 +190,60 @@ describe('RuntimeControlService', () => {
     )
     expect(installManagedBinary).not.toHaveBeenCalled()
   })
+
+  it('checks managed Codex binary health through the Codex CLI service', async () => {
+    const service = new RuntimeControlService({
+      codexCliService: {
+        resolveBinary: vi.fn(() => ({
+          state: 'missing-binary' as const,
+          message: 'Codex CLI executable was not found.'
+        })),
+        listModels: vi.fn()
+      }
+    })
+
+    await expect(service.testConnection({ kind: 'codex', mode: 'managed' })).resolves.toEqual({
+      kind: 'codex',
+      state: 'missing-binary',
+      message: 'Codex CLI executable was not found.'
+    })
+  })
+
+  it('checks managed OpenCode binary health and lists OpenCode models through the OpenCode service', async () => {
+    const listModels = vi.fn(async () => [
+      {
+        id: 'openai/gpt-5.2',
+        providerId: 'openai',
+        modelId: 'gpt-5.2',
+        displayName: 'GPT 5.2',
+        providerName: 'OpenAI',
+        hidden: false,
+        isDefault: true,
+        capabilities: {}
+      }
+    ])
+    const service = new RuntimeControlService({
+      openCodeCliService: {
+        resolveBinary: vi.fn(() => ({
+          state: 'ready' as const,
+          message: 'OpenCode executable resolved from packaged.'
+        })),
+        listModels
+      }
+    })
+
+    await expect(service.testConnection({ kind: 'opencode', mode: 'managed' })).resolves.toEqual({
+      kind: 'opencode',
+      state: 'ready',
+      message: 'OpenCode executable resolved from packaged.'
+    })
+    await expect(service.listOpenCodeModels({ kind: 'opencode', mode: 'managed' })).resolves.toEqual([
+      expect.objectContaining({
+        id: 'openai/gpt-5.2'
+      })
+    ])
+    expect(listModels).toHaveBeenCalledWith({ kind: 'opencode', mode: 'managed' })
+  })
 })
 
 function createSettings(): AgentRuntimeSettings {

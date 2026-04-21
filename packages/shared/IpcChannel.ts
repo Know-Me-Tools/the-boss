@@ -142,6 +142,8 @@ export enum IpcChannel {
   AgentRuntime_StopSidecar = 'agent-runtime:stop-sidecar',
   AgentRuntime_GetStatus = 'agent-runtime:get-status',
   AgentRuntime_InstallManagedBinary = 'agent-runtime:install-managed-binary',
+  AgentRuntime_ListCodexModels = 'agent-runtime:list-codex-models',
+  AgentRuntime_ListOpenCodeModels = 'agent-runtime:list-opencode-models',
   AgentRuntime_RespondToApproval = 'agent-runtime:respond-to-approval',
 
   AgentToolPermission_Request = 'agent-tool-permission:request',

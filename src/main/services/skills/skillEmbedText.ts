@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import EmbeddingsFactory from '@main/knowledge/embedjs/embeddings/EmbeddingsFactory'
 import type { ApiClient } from '@types'
+import type { FlagEmbedding } from 'fastembed'
 
 const logger = loggerService.withContext('SkillEmbedText')
 
@@ -8,9 +9,9 @@ const logger = loggerService.withContext('SkillEmbedText')
  * Cached fastembed model instance. Initialized once on first use to avoid repeated
  * ONNX session creation (each FlagEmbedding.init() is ~1-2s and CPU-intensive).
  */
-let fastembedModelPromise: Promise<import('fastembed').FlagEmbedding> | null = null
+let fastembedModelPromise: Promise<FlagEmbedding> | null = null
 
-async function getFastembedModel(): Promise<import('fastembed').FlagEmbedding> {
+async function getFastembedModel(): Promise<FlagEmbedding> {
   if (!fastembedModelPromise) {
     fastembedModelPromise = (async () => {
       const { FlagEmbedding, EmbeddingModel } = await import('fastembed')

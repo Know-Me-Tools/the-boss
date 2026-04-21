@@ -1,30 +1,20 @@
-import { validateModelId } from '@main/apiServer/utils'
-import type * as OpenCodeSdk from '@opencode-ai/sdk'
 import type { GetAgentSessionResponse } from '@types'
 import type { TextStreamPart } from 'ai'
-import { app } from 'electron'
 
 import type { AgentServiceInterface, AgentStream } from '../../interfaces/AgentStreamInterface'
+import { openCodeCliService } from './OpenCodeCliService'
 import { emitTextBlock, RuntimeAgentStream } from './RuntimeAgentStream'
 import { type AgentTurnInput, getPromptText, resolveAgentTurnInput } from './RuntimeContextBundle'
 import { type AgentRuntimeCapabilities, DEFAULT_RUNTIME_CAPABILITIES, resolveRuntimeConfig } from './types'
 
 type OpenCodeClient = any
-type OpenCodeServer = { url: string; close(): void }
-type OpenCodeModule = typeof OpenCodeSdk
 type OpenCodePermissionMode = 'ask' | 'allow' | 'deny'
-type ManagedOpenCodeServer = {
-  client: OpenCodeClient
-  server: OpenCodeServer
-}
 type OpenCodePermissionClientRef = {
   client: OpenCodeClient
   sessionId: string
 }
 
-const managedOpenCodeServers = new Map<string, Promise<ManagedOpenCodeServer>>()
 const openCodePermissionClients = new Map<string, OpenCodePermissionClientRef>()
-let shutdownHookRegistered = false
 
 export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
   readonly capabilities: AgentRuntimeCapabilities = {
@@ -51,16 +41,9 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
     }
 
     const selectedModel = session.configuration?.runtime?.modelId ?? session.model
-    const modelInfo = await validateModelId(selectedModel)
-    if (!modelInfo.valid || !modelInfo.provider) {
-      return deferRuntimeError(
-        new Error(`Invalid OpenCode model ID '${selectedModel}': ${JSON.stringify(modelInfo.error)}`)
-      )
-    }
-    const provider = modelInfo.provider
-    const modelId = modelInfo.modelId
-    if (!modelId) {
-      return deferRuntimeError(new Error(`Invalid OpenCode model ID '${selectedModel}': missing provider model ID`))
+    const modelSelection = parseOpenCodeModelSelection(selectedModel)
+    if (!modelSelection) {
+      return deferRuntimeError(new Error(`Invalid OpenCode model ID '${selectedModel}'. Expected 'provider/model'.`))
     }
 
     const runtimeConfig = resolveRuntimeConfig(session)
@@ -73,8 +56,8 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
       opencodeConfig = buildOpenCodeConfig({
         session,
         runtimeConfig,
-        provider,
-        modelId,
+        providerId: modelSelection.providerId,
+        modelId: modelSelection.modelId,
         agentName,
         tools
       })
@@ -86,8 +69,7 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
 
     void (async () => {
       try {
-        const opencode = await import('@opencode-ai/sdk')
-        const client = await resolveOpenCodeClient(opencode, runtimeConfig, cwd, opencodeConfig)
+        const client = await openCodeCliService.resolveClient(runtimeConfig, cwd, opencodeConfig)
         if (runtimeConfig.mode === 'remote') {
           await updateRemoteOpenCodeConfig(client, cwd, opencodeConfig, abortController.signal)
         }
@@ -99,7 +81,7 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
           phase: lastAgentSessionId ? 'session.resumed' : 'session.created',
           runtimeSessionId: sessionId,
           config: {
-            model: `${provider.id}/${modelId}`,
+            model: modelSelection.id,
             agent: agentName,
             permission: opencodeConfig.permission
           },
@@ -116,8 +98,8 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
           query: { directory: cwd },
           body: {
             model: {
-              providerID: provider.id,
-              modelID: modelId
+              providerID: modelSelection.providerId,
+              modelID: modelSelection.modelId
             },
             agent: agentName,
             system: session.instructions?.trim() || undefined,
@@ -150,7 +132,9 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
           stream.emit('data', { type: 'cancelled' })
           return
         }
-        stream.emitError(error instanceof Error ? error : new Error(String(error)))
+        setTimeout(() => {
+          stream.emitError(error instanceof Error ? error : new Error(String(error)))
+        }, 0)
       }
     })()
 
@@ -159,14 +143,8 @@ export class OpenCodeRuntimeAdapter implements AgentServiceInterface {
 }
 
 export async function disposeOpenCodeManagedServers(): Promise<void> {
-  const entries = await Promise.allSettled(managedOpenCodeServers.values())
-  managedOpenCodeServers.clear()
   openCodePermissionClients.clear()
-  for (const entry of entries) {
-    if (entry.status === 'fulfilled') {
-      entry.value.server.close()
-    }
-  }
+  await openCodeCliService.dispose()
 }
 
 export async function respondToOpenCodePermission(request: {
@@ -222,53 +200,6 @@ function deferRuntimeError(error: Error): AgentStream {
   return stream
 }
 
-async function resolveOpenCodeClient(
-  opencode: OpenCodeModule,
-  runtimeConfig: ReturnType<typeof resolveRuntimeConfig>,
-  cwd: string,
-  config: Record<string, unknown>
-): Promise<OpenCodeClient> {
-  if (runtimeConfig.mode === 'remote') {
-    if (!runtimeConfig.endpoint) {
-      throw new Error('OpenCode remote runtime requires a configured endpoint')
-    }
-    return opencode.createOpencodeClient(
-      removeUndefinedValues({
-        baseUrl: runtimeConfig.endpoint,
-        directory: cwd,
-        headers: resolveOpenCodeAuthHeaders(runtimeConfig.authRef)
-      })
-    )
-  }
-
-  registerOpenCodeShutdownHook()
-  const key = `${cwd}:${JSON.stringify(config)}`
-  if (!managedOpenCodeServers.has(key)) {
-    managedOpenCodeServers.set(
-      key,
-      opencode.createOpencode({
-        directory: cwd,
-        config
-      } as any)
-    )
-  }
-  return (await managedOpenCodeServers.get(key)!).client
-}
-
-function registerOpenCodeShutdownHook(): void {
-  if (shutdownHookRegistered) {
-    return
-  }
-  shutdownHookRegistered = true
-  app.once('before-quit', () => {
-    void disposeOpenCodeManagedServers()
-  })
-}
-
-function resolveOpenCodeAuthHeaders(authRef?: string): Record<string, string> | undefined {
-  return authRef ? { authorization: `Bearer ${authRef}` } : undefined
-}
-
 async function updateRemoteOpenCodeConfig(
   client: OpenCodeClient,
   cwd: string,
@@ -288,23 +219,15 @@ async function updateRemoteOpenCodeConfig(
 function buildOpenCodeConfig(params: {
   session: GetAgentSessionResponse
   runtimeConfig: ReturnType<typeof resolveRuntimeConfig>
-  provider: any
+  providerId: string
   modelId: string
   agentName: string
   tools?: Record<string, boolean>
 }): Record<string, unknown> {
-  const model = `${params.provider.id}/${params.modelId}`
+  const model = `${params.providerId}/${params.modelId}`
   const permission = resolveOpenCodePermissionConfig(params.runtimeConfig.permissions?.mode)
   return removeUndefinedValues({
     model,
-    provider: {
-      [params.provider.id]: {
-        options: removeUndefinedValues({
-          apiKey: params.provider.apiKey,
-          baseURL: params.provider.apiHost
-        })
-      }
-    },
     mcp: resolveOpenCodeMcp(params.runtimeConfig.mcp),
     agent: {
       [params.agentName]: removeUndefinedValues({
@@ -317,6 +240,31 @@ function buildOpenCodeConfig(params: {
     permission,
     tools: params.tools
   })
+}
+
+function parseOpenCodeModelSelection(
+  value: string | undefined
+): { id: string; providerId: string; modelId: string } | null {
+  if (!value || typeof value !== 'string') {
+    return null
+  }
+
+  const separator = value.includes('/') ? '/' : value.includes(':') ? ':' : null
+  if (!separator) {
+    return null
+  }
+
+  const [providerId, ...modelParts] = value.split(separator)
+  const modelId = modelParts.join(separator)
+  if (!providerId || !modelId) {
+    return null
+  }
+
+  return {
+    id: `${providerId}/${modelId}`,
+    providerId,
+    modelId
+  }
 }
 
 function resolveOpenCodeAgentName(runtimeConfig: ReturnType<typeof resolveRuntimeConfig>): string {

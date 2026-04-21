@@ -301,6 +301,12 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRuntime_InstallManagedBinary, async (_event, request) =>
     runtimeControlService.installManagedBinary(request)
   )
+  ipcMain.handle(IpcChannel.AgentRuntime_ListCodexModels, async (_event, runtimeConfig) =>
+    runtimeControlService.listCodexModels(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_ListOpenCodeModels, async (_event, runtimeConfig) =>
+    runtimeControlService.listOpenCodeModels(runtimeConfig)
+  )
   ipcMain.handle(IpcChannel.AgentRuntime_RespondToApproval, async (_event, request) =>
     runtimeApprovalService.respond(request)
   )

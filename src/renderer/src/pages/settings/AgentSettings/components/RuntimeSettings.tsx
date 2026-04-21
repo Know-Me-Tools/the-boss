@@ -1,4 +1,10 @@
-import type { AgentRuntimeKind, AgentRuntimeMode, AgentRuntimeProfile, UpdateAgentBaseForm } from '@renderer/types'
+import type {
+  AgentRuntimeConfig,
+  AgentRuntimeKind,
+  AgentRuntimeMode,
+  AgentRuntimeProfile,
+  UpdateAgentBaseForm
+} from '@renderer/types'
 import { AgentConfigurationSchema } from '@renderer/types'
 import { Alert, Button, Input, Select, Switch, Tag } from 'antd'
 import type { FC } from 'react'
@@ -38,6 +44,29 @@ interface RuntimeHealthResult {
   message: string
 }
 
+interface CodexRuntimeModel {
+  id: string
+  model: string
+  displayName: string
+  description?: string
+  hidden: boolean
+  isDefault: boolean
+  supportedReasoningEfforts: string[]
+  defaultReasoningEffort?: string
+}
+
+interface OpenCodeRuntimeModel {
+  id: string
+  providerId: string
+  modelId: string
+  displayName: string
+  providerName: string
+  hidden: boolean
+  isDefault: boolean
+  capabilities: Record<string, unknown>
+  defaultAgent?: string
+}
+
 const capabilityLabels: Record<AgentRuntimeKind, string[]> = {
   claude: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume', 'Compaction'],
   codex: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume'],
@@ -53,6 +82,10 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     text: string
   } | null>(null)
   const [uarBinaryStatus, setUarBinaryStatus] = useState<RuntimeHealthResult | null>(null)
+  const [codexModels, setCodexModels] = useState<CodexRuntimeModel[]>([])
+  const [openCodeModels, setOpenCodeModels] = useState<OpenCodeRuntimeModel[]>([])
+  const [isLoadingCodexModels, setIsLoadingCodexModels] = useState(false)
+  const [isLoadingOpenCodeModels, setIsLoadingOpenCodeModels] = useState(false)
   const [isTestingHealth, setIsTestingHealth] = useState(false)
   const [isLoadingUarBinaryStatus, setIsLoadingUarBinaryStatus] = useState(false)
   const [isInstallingManagedBinary, setIsInstallingManagedBinary] = useState(false)
@@ -150,6 +183,54 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     }
   }, [selectedKind, t])
 
+  const loadCodexModels = useCallback(
+    async (nextRuntime = runtime): Promise<CodexRuntimeModel[]> => {
+      setIsLoadingCodexModels(true)
+      try {
+        const models = await window.api.agentRuntime.listCodexModels(nextRuntime)
+        setCodexModels(models)
+        return models
+      } catch (error) {
+        setCodexModels([])
+        setHealthMessage({
+          type: 'warning',
+          text:
+            error instanceof Error
+              ? error.message
+              : t('agent.settings.runtime.codex.modelLoadFailed', 'Failed to load Codex models.')
+        })
+        return []
+      } finally {
+        setIsLoadingCodexModels(false)
+      }
+    },
+    [runtime, t]
+  )
+
+  const loadOpenCodeModels = useCallback(
+    async (nextRuntime = runtime): Promise<OpenCodeRuntimeModel[]> => {
+      setIsLoadingOpenCodeModels(true)
+      try {
+        const models = await window.api.agentRuntime.listOpenCodeModels(nextRuntime)
+        setOpenCodeModels(models)
+        return models
+      } catch (error) {
+        setOpenCodeModels([])
+        setHealthMessage({
+          type: 'warning',
+          text:
+            error instanceof Error
+              ? error.message
+              : t('agent.settings.runtime.opencode.modelLoadFailed', 'Failed to load OpenCode models.')
+        })
+        return []
+      } finally {
+        setIsLoadingOpenCodeModels(false)
+      }
+    },
+    [runtime, t]
+  )
+
   const refreshUarBinaryStatus = useCallback(async () => {
     if (selectedKind !== 'uar' || selectedMode !== 'embedded') {
       setUarBinaryStatus(null)
@@ -197,6 +278,99 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     },
     [agentBase, configuration, runtime, update]
   )
+
+  const resolveCodexRuntimeDefaults = useCallback((nextRuntime: typeof runtime, models: CodexRuntimeModel[]) => {
+    const visibleModels = models.filter((model) => !model.hidden)
+    const candidates = visibleModels.length > 0 ? visibleModels : models
+    const selectedModel = candidates.find((model) => model.id === nextRuntime.modelId)
+    const defaultModel = candidates.find((model) => model.isDefault) ?? candidates[0]
+
+    if (selectedModel) {
+      return {
+        modelId: selectedModel.id,
+        reasoningEffort: (nextRuntime as any).reasoningEffort ?? selectedModel.defaultReasoningEffort
+      }
+    }
+
+    return {
+      modelId: defaultModel?.id,
+      reasoningEffort: (nextRuntime as any).reasoningEffort ?? defaultModel?.defaultReasoningEffort
+    }
+  }, [])
+
+  const resolveOpenCodeRuntimeDefaults = useCallback((nextRuntime: typeof runtime, models: OpenCodeRuntimeModel[]) => {
+    const visibleModels = models.filter((model) => !model.hidden)
+    const candidates = visibleModels.length > 0 ? visibleModels : models
+    const selectedModel = candidates.find((model) => model.id === nextRuntime.modelId)
+    const configuredModel = candidates.find((model) => model.id === (nextRuntime as any).model)
+    const defaultModel = configuredModel ?? candidates.find((model) => model.isDefault) ?? candidates[0]
+
+    if (selectedModel) {
+      return {
+        modelId: selectedModel.id,
+        agentName: (nextRuntime as any).agentName ?? selectedModel.defaultAgent
+      }
+    }
+
+    return {
+      modelId: defaultModel?.id,
+      agentName: (nextRuntime as any).agentName ?? defaultModel?.defaultAgent
+    }
+  }, [])
+
+  useEffect(() => {
+    if (selectedKind !== 'codex') {
+      setCodexModels([])
+      return
+    }
+
+    let disposed = false
+    void loadCodexModels(runtime).then((models) => {
+      if (disposed || models.length === 0) {
+        return
+      }
+
+      const defaults = resolveCodexRuntimeDefaults(runtime, models)
+      if (
+        defaults.modelId &&
+        (runtime.modelId !== defaults.modelId ||
+          ((runtime as any).reasoningEffort === undefined && defaults.reasoningEffort !== undefined))
+      ) {
+        updateRuntime(defaults)
+      }
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [loadCodexModels, resolveCodexRuntimeDefaults, runtime, selectedKind, updateRuntime])
+
+  useEffect(() => {
+    if (selectedKind !== 'opencode') {
+      setOpenCodeModels([])
+      return
+    }
+
+    let disposed = false
+    void loadOpenCodeModels(runtime).then((models) => {
+      if (disposed || models.length === 0) {
+        return
+      }
+
+      const defaults = resolveOpenCodeRuntimeDefaults(runtime, models)
+      if (
+        defaults.modelId &&
+        (runtime.modelId !== defaults.modelId ||
+          ((runtime as any).agentName === undefined && defaults.agentName !== undefined))
+      ) {
+        updateRuntime(defaults)
+      }
+    })
+
+    return () => {
+      disposed = true
+    }
+  }, [loadOpenCodeModels, resolveOpenCodeRuntimeDefaults, runtime, selectedKind, updateRuntime])
 
   const updateRuntimeGroup = useCallback(
     (group: 'sandbox' | 'permissions' | 'sidecar' | 'skills', patch: Record<string, unknown>) => {
@@ -293,10 +467,33 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
             value={selectedKind}
             options={runtimeOptions.map((option) => ({ value: option.value, label: option.label }))}
             onChange={(kind: AgentRuntimeKind) => {
-              updateRuntime({
+              const nextRuntime = {
+                ...runtime,
                 kind,
                 mode: runtimeModes[kind][0].value
-              })
+              } as AgentRuntimeConfig
+
+              if (kind === 'codex') {
+                void loadCodexModels(nextRuntime).then((models) => {
+                  updateRuntime({
+                    ...nextRuntime,
+                    ...resolveCodexRuntimeDefaults(nextRuntime, models)
+                  })
+                })
+                return
+              }
+
+              if (kind === 'opencode') {
+                void loadOpenCodeModels(nextRuntime).then((models) => {
+                  updateRuntime({
+                    ...nextRuntime,
+                    ...resolveOpenCodeRuntimeDefaults(nextRuntime, models)
+                  })
+                })
+                return
+              }
+
+              updateRuntime(nextRuntime)
             }}
           />
           <span className="text-foreground-500 text-xs">
@@ -343,12 +540,52 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
       </SettingsItem>
       <SettingsItem>
         <SettingsTitle>{t('agent.settings.runtime.model', 'Model Override')}</SettingsTitle>
-        <Input
-          value={runtime.modelId}
-          onChange={(event) => updateRuntime({ modelId: event.target.value || undefined })}
-          placeholder={agentBase.model}
-          aria-label={t('agent.settings.runtime.model', 'Model Override')}
-        />
+        {selectedKind === 'codex' ? (
+          <Select
+            value={runtime.modelId}
+            loading={isLoadingCodexModels}
+            aria-label={t('agent.settings.runtime.model', 'Model Override')}
+            options={codexModels
+              .filter((model) => !model.hidden)
+              .map((model) => ({
+                value: model.id,
+                label: model.displayName || model.id
+              }))}
+            onChange={(modelId: string) => {
+              const model = codexModels.find((item) => item.id === modelId)
+              updateRuntime({
+                modelId,
+                reasoningEffort: (runtime as any).reasoningEffort ?? model?.defaultReasoningEffort
+              })
+            }}
+          />
+        ) : selectedKind === 'opencode' ? (
+          <Select
+            value={runtime.modelId}
+            loading={isLoadingOpenCodeModels}
+            aria-label={t('agent.settings.runtime.model', 'Model Override')}
+            options={openCodeModels
+              .filter((model) => !model.hidden)
+              .map((model) => ({
+                value: model.id,
+                label: `${model.providerName} / ${model.displayName || model.id}`
+              }))}
+            onChange={(modelId: string) => {
+              const model = openCodeModels.find((item) => item.id === modelId)
+              updateRuntime({
+                modelId,
+                agentName: (runtime as any).agentName ?? model?.defaultAgent
+              })
+            }}
+          />
+        ) : (
+          <Input
+            value={runtime.modelId}
+            onChange={(event) => updateRuntime({ modelId: event.target.value || undefined })}
+            placeholder={agentBase.model}
+            aria-label={t('agent.settings.runtime.model', 'Model Override')}
+          />
+        )}
       </SettingsItem>
       {selectedKind === 'claude' && (
         <SettingsItem>
@@ -433,12 +670,6 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         <SettingsItem>
           <SettingsTitle>{t('agent.settings.runtime.opencode.title', 'OpenCode runtime')}</SettingsTitle>
           <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
-              aria-label={t('agent.settings.runtime.opencode.serverUrl', 'Server URL')}
-              value={runtime.endpoint}
-              onChange={(event) => updateRuntime({ endpoint: event.target.value || undefined })}
-              placeholder="http://127.0.0.1:4096"
-            />
             <Input
               aria-label={t('agent.settings.runtime.opencode.agentName', 'Agent name')}
               value={runtime.agentName as string}

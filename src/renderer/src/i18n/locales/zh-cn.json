@@ -492,6 +492,9 @@
         "uninstalling": "卸载中..."
       },
       "prompt": "提示词设置",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "添加更多技能",
         "builtin": "内置",

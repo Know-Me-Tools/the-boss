@@ -67,6 +67,16 @@ vi.mock('@openai/codex-sdk', () => ({
   Codex: codexMock.Codex
 }))
 
+vi.mock('../CodexCliService', () => ({
+  codexCliService: {
+    resolveBinary: vi.fn(() => ({
+      path: '/mock/codex',
+      state: 'ready',
+      message: 'Codex CLI executable resolved.'
+    }))
+  }
+}))
+
 describe('CodexRuntimeAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -153,10 +163,11 @@ describe('CodexRuntimeAdapter', () => {
     expect(codexMock.state.constructorOptions[0]).toEqual(
       expect.objectContaining({
         apiKey: 'test-key',
+        codexPathOverride: '/mock/codex',
         baseUrl: 'https://openai-proxy.example/v1',
-        env: {
+        env: expect.objectContaining({
           OPENAI_API_KEY: 'test-key'
-        },
+        }),
         config: {
           mcp_servers: {
             git: {
@@ -203,6 +214,27 @@ describe('CodexRuntimeAdapter', () => {
         workingDirectory: '/tmp/workspace'
       })
     })
+  })
+
+  it('accepts Codex-native model slugs without provider validation', async () => {
+    const adapter = new CodexRuntimeAdapter()
+    const stream = await adapter.invoke(
+      'hello',
+      createSession({
+        runtime: {
+          modelId: 'gpt-5.2-codex'
+        }
+      }),
+      new AbortController()
+    )
+
+    await collectEvents(stream)
+
+    expect(codexMock.state.threads[0].options).toEqual(
+      expect.objectContaining({
+        model: 'gpt-5.2-codex'
+      })
+    )
   })
 
   it('rejects invalid sandbox or approval settings before starting Codex', async () => {

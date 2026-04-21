@@ -664,6 +664,10 @@ const api = {
       ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
     installManagedBinary: (request: { name: 'universal-agent-runtime' }) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_InstallManagedBinary, request),
+    listCodexModels: (runtimeConfig?: AgentRuntimeConfig) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_ListCodexModels, runtimeConfig),
+    listOpenCodeModels: (runtimeConfig?: AgentRuntimeConfig) =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_ListOpenCodeModels, runtimeConfig),
     respondToApproval: (request: {
       runtime: AgentRuntimeKind
       sessionId: string
