@@ -1,10 +1,12 @@
 import { AiProvider } from '@renderer/aiCore'
 import { buildProviderOptions } from '@renderer/aiCore/utils/options'
+import { isEmbeddingModel } from '@renderer/config/models'
 import { getStoreProviders } from '@renderer/hooks/useStore'
 import { getDefaultAssistant, getDefaultModel, getProviderByModel } from '@renderer/services/AssistantService'
-import type { Model } from '@renderer/types'
+import type { ApiClient, Model } from '@renderer/types'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 import { getSkillMethodEmbeddingModelId } from '@renderer/types/skillConfig'
+import { routeToEndpoint } from '@renderer/utils'
 
 import { EmbeddingResolver } from './embeddingResolver'
 import type { SkillRegistry } from './skillRegistry'
@@ -29,11 +31,70 @@ export class SkillSelector extends SkillSelectorCore<Model> {
       config,
       registry: registry ?? defaultRegistry,
       activeModel: resolveModelReference(activeModelOrId) ?? getDefaultModel(),
-      resolver: resolver ?? new EmbeddingResolver(getSkillMethodEmbeddingModelId(config)),
+      resolver: resolver ?? buildEmbeddingResolver(config),
       llmSelectionInvoker: llmSelectionInvoker ?? invokeLlmSkillSelection,
       resolveModelReference
     })
   }
+}
+
+/**
+ * Returns an `EmbeddingResolver` backed by the configured embedding model,
+ * falling back to the first enabled embedding model from the user's providers,
+ * or an unconfigured resolver (fastembed) as a last resort.
+ */
+function buildEmbeddingResolver(config: SkillGlobalConfig): EmbeddingResolver {
+  const configuredModelId = getSkillMethodEmbeddingModelId(config)
+  if (configuredModelId) {
+    return new EmbeddingResolver({ modelId: configuredModelId })
+  }
+
+  const apiClient = resolveSystemEmbeddingApiClient()
+  if (apiClient) {
+    return new EmbeddingResolver({ modelId: apiClient.model, apiClient })
+  }
+
+  return new EmbeddingResolver()
+}
+
+/**
+ * Finds the first enabled embedding model from the user's configured providers
+ * and builds an `ApiClient` suitable for calling its embedding API.
+ * Returns `undefined` when no embedding model is available.
+ */
+function resolveSystemEmbeddingApiClient(): ApiClient | undefined {
+  const providers = getStoreProviders()
+
+  for (const provider of providers) {
+    if (!provider.enabled) continue
+    const model = provider.models.find(isEmbeddingModel)
+    if (!model) continue
+
+    const aiProvider = new AiProvider(model)
+    const actualProvider = aiProvider.getActualProvider() ?? provider
+    const { baseURL } = routeToEndpoint(actualProvider.apiHost)
+    const apiKey = aiProvider.getApiKey() || 'secret'
+
+    return {
+      model: model.id,
+      provider: provider.id,
+      apiKey,
+      baseURL
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Returns true when the skill selection is embedding-based and no embedding source
+ * (configured model or system provider model) is available. Callers can use this
+ * to skip selection entirely and avoid an unnecessary fastembed cold-start.
+ */
+export function shouldSkipEmbeddingSelection(config: SkillGlobalConfig): boolean {
+  const configuredModelId = getSkillMethodEmbeddingModelId(config)
+  if (configuredModelId) return false
+  return resolveSystemEmbeddingApiClient() === undefined
 }
 
 async function invokeLlmSkillSelection(request: LlmSkillSelectionRequest<Model>): Promise<LlmSkillSelectionResponse> {

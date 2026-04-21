@@ -235,13 +235,13 @@ if (!app.requestSingleInstanceLock()) {
           await apiServerService.start()
         }
 
-        // Restore CherryClaw schedulers after services are ready
+        // Restore Boss Claw schedulers after services are ready
         await schedulerService.restoreSchedulers()
 
         // Register IPC handlers for session stream before starting channels
         registerSessionStreamIpc()
 
-        // Start CherryClaw channel adapters (Telegram, etc.)
+        // Start Boss Claw channel adapters (Telegram, etc.)
         await channelManager.start()
       } catch (error: any) {
         logger.error('Failed to check/start API server:', error)

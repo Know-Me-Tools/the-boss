@@ -26,5 +26,5 @@ export function isPerplexityProvider(provider: Provider): boolean {
 }
 
 export function isCherryAIProvider(provider: Provider): boolean {
-  return provider.id === 'cherryai'
+  return provider.id === 'cherryai' || provider.id === 'theboss'
 }

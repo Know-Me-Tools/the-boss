@@ -1,9 +1,10 @@
 import { loggerService } from '@logger'
 import type { InstalledSkill } from '@renderer/types'
+import type { SkillConfigScopeListRequest } from '@renderer/types'
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 import { escapeRegExp } from 'lodash'
 
-import { type SkillDescriptor,SkillRegistry } from './skillRegistry'
+import { type SkillDescriptor, SkillRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('InstalledSkillDescriptors')
 const contentCache = new Map<string, string>()
@@ -11,24 +12,28 @@ const contentCache = new Map<string, string>()
 type LoadedSkillSelectionResources = {
   skills: SkillDescriptor[]
   registry: SkillRegistry
+  installedSkills: InstalledSkill[]
 }
 
 export async function loadInstalledSkillSelectionResources(
-  config: SkillGlobalConfig
+  config: SkillGlobalConfig,
+  options: { scopes?: SkillConfigScopeListRequest } = {}
 ): Promise<LoadedSkillSelectionResources> {
   if (config.selectedSkillIds?.length === 0) {
     return {
       skills: [],
-      registry: new SkillRegistry()
+      registry: new SkillRegistry(),
+      installedSkills: []
     }
   }
 
-  const result = await window.api.skill.list()
+  const result = await window.api.skillScope.listSkills(options.scopes ?? { type: 'global', id: 'default' })
   if (!result.success) {
     logger.warn('Failed to load installed skills for selection')
     return {
       skills: [],
-      registry: new SkillRegistry()
+      registry: new SkillRegistry(),
+      installedSkills: []
     }
   }
 
@@ -48,7 +53,8 @@ export async function loadInstalledSkillSelectionResources(
 
   return {
     skills: registry.getAll(),
-    registry
+    registry,
+    installedSkills
   }
 }
 

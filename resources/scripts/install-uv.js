@@ -6,7 +6,7 @@ const StreamZip = require('node-stream-zip')
 const { downloadWithRedirects } = require('./download')
 
 // Base URL for downloading uv binaries
-const UV_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/uv/releases/download'
+const UV_RELEASE_BASE_URL = 'https://cdn.know-me.tools/mirrors/uv/releases/download'
 const DEFAULT_UV_VERSION = '0.9.5'
 const APP_HOME_DIR = process.env.THE_BOSS_HOME_DIR || '.the-boss'
 

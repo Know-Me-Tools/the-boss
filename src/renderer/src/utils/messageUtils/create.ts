@@ -1,6 +1,7 @@
 import { loggerService } from '@logger'
 import type { Assistant, ContextManagementMethod, FileMetadata, SkillSelectionMethod, Topic } from '@renderer/types'
 import { FILE_TYPE } from '@renderer/types'
+import type { RuntimeEventChunk } from '@renderer/types/chunk'
 import type { SerializedError } from '@renderer/types/error'
 import type {
   BaseMessageBlock,
@@ -13,6 +14,8 @@ import type {
   ImageMessageBlock,
   MainTextMessageBlock,
   Message,
+  RuntimeMessageBlock,
+  RuntimeMessageBlockEvent,
   SkillMessageBlock,
   ThinkingMessageBlock,
   ToolMessageBlock,
@@ -327,6 +330,56 @@ export function createContextManagementBlock(
     ...baseBlock,
     payload
   }
+}
+
+export function createRuntimeBlock(
+  messageId: string,
+  event: RuntimeEventChunk,
+  overrides: Partial<Omit<RuntimeMessageBlock, 'id' | 'messageId' | 'type' | 'events'>> = {}
+): RuntimeMessageBlock {
+  const runtimeEvent = createRuntimeBlockEvent(event)
+  const { runtime, sessionId, approval, ...baseOverrides } = overrides
+  const baseBlock = createBaseMessageBlock(messageId, MessageBlockType.RUNTIME, {
+    status: getRuntimeBlockStatus(event),
+    ...baseOverrides
+  })
+
+  return {
+    ...baseBlock,
+    runtime: runtime ?? event.runtime,
+    sessionId: sessionId ?? getRuntimeSessionId(event.data),
+    events: [runtimeEvent],
+    approval: approval ?? event.approval
+  }
+}
+
+export function createRuntimeBlockEvent(event: RuntimeEventChunk): RuntimeMessageBlockEvent {
+  return {
+    eventKind: event.eventKind,
+    runtime: event.runtime,
+    title: event.title,
+    summary: event.summary,
+    approval: event.approval,
+    data: event.data,
+    createdAt: new Date().toISOString()
+  }
+}
+
+export function getRuntimeBlockStatus(event: RuntimeEventChunk): MessageBlockStatus {
+  if (event.eventKind === 'error') {
+    return MessageBlockStatus.ERROR
+  }
+  if (event.eventKind === 'approval') {
+    return MessageBlockStatus.PAUSED
+  }
+  if (event.eventKind === 'usage') {
+    return MessageBlockStatus.SUCCESS
+  }
+  return MessageBlockStatus.STREAMING
+}
+
+function getRuntimeSessionId(data: Record<string, unknown>): string | undefined {
+  return typeof data.runtimeSessionId === 'string' ? data.runtimeSessionId : undefined
 }
 
 /**

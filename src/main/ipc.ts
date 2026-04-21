@@ -2,10 +2,8 @@ import fs from 'node:fs'
 import { arch } from 'node:os'
 import path from 'node:path'
 
-import type { TokenUsageData } from '@cherrystudio/analytics-client'
 import { loggerService } from '@logger'
 import { isLinux, isMac, isPortable, isWin } from '@main/constant'
-import { generateSignature } from '@main/integration/cherryai'
 import anthropicService from '@main/services/AnthropicService'
 import { getDependencyStatus, getDependencyStatuses } from '@main/utils/dependencyStatus'
 import { getIpCountry } from '@main/utils/ipService'
@@ -19,6 +17,7 @@ import {
 } from '@main/utils/process'
 import { handleZoomFactor } from '@main/utils/zoom'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
+import type { TokenUsageData } from '@shared/analytics'
 import type { UpgradeChannel } from '@shared/config/constant'
 import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from '@shared/config/constant'
 import type { LocalTransferConnectPayload } from '@shared/config/types'
@@ -26,6 +25,7 @@ import { IpcChannel } from '@shared/IpcChannel'
 import { extractPdfText } from '@shared/utils/pdf'
 import type {
   AgentPersistedMessage,
+  ApiClient,
   FileMetadata,
   Notification,
   OcrProvider,
@@ -42,6 +42,9 @@ import fontList from 'font-list'
 import { config as apiServerConfig } from './apiServer'
 import { getAnthropicInternalHeaders } from './apiServer/middleware/anthropicOAuthInternalAuth'
 import { agentMessageRepository } from './services/agents/database'
+import { runtimeApprovalService } from './services/agents/services/runtime/RuntimeApprovalService'
+import { runtimeControlService } from './services/agents/services/runtime/RuntimeControlService'
+import { skillScopeService } from './services/agents/skills/SkillScopeService'
 import { skillService } from './services/agents/skills/SkillService'
 import { analyticsService } from './services/AnalyticsService'
 import { apiServerService } from './services/ApiServerService'
@@ -275,6 +278,37 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
         throw error
       }
     }
+  )
+
+  ipcMain.handle(IpcChannel.AgentRuntime_ListProfiles, async (_event, kind) => runtimeControlService.listProfiles(kind))
+  ipcMain.handle(IpcChannel.AgentRuntime_UpsertProfile, async (_event, input) =>
+    runtimeControlService.upsertProfile(input)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_GetSettings, async (_event, kind) => runtimeControlService.getSettings(kind))
+  ipcMain.handle(IpcChannel.AgentRuntime_UpsertSettings, async (_event, input) =>
+    runtimeControlService.upsertSettings(input)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_TestConnection, async (_event, runtimeConfig) =>
+    runtimeControlService.testConnection(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_StartSidecar, async (_event, runtimeConfig) =>
+    runtimeControlService.startSidecar(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_StopSidecar, async () => runtimeControlService.stopSidecar())
+  ipcMain.handle(IpcChannel.AgentRuntime_GetStatus, async (_event, runtimeConfig) =>
+    runtimeControlService.getStatus(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_InstallManagedBinary, async (_event, request) =>
+    runtimeControlService.installManagedBinary(request)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_ListCodexModels, async (_event, runtimeConfig) =>
+    runtimeControlService.listCodexModels(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_ListOpenCodeModels, async (_event, runtimeConfig) =>
+    runtimeControlService.listOpenCodeModels(runtimeConfig)
+  )
+  ipcMain.handle(IpcChannel.AgentRuntime_RespondToApproval, async (_event, request) =>
+    runtimeApprovalService.respond(request)
   )
 
   //only for mac
@@ -1036,9 +1070,7 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.Anthropic_GetAccessToken, () => anthropicService.getValidAccessToken())
   ipcMain.handle(IpcChannel.Anthropic_HasCredentials, () => anthropicService.hasCredentials())
   ipcMain.handle(IpcChannel.Anthropic_ClearCredentials, () => anthropicService.clearCredentials())
-  ipcMain.handle(IpcChannel.Anthropic_ImportClaudeCredentials, () =>
-    anthropicService.importClaudeCodeCredentials()
-  )
+  ipcMain.handle(IpcChannel.Anthropic_ImportClaudeCredentials, () => anthropicService.importClaudeCodeCredentials())
 
   // Claude OAuth Proxy (via existing API server at /_internal/anthropic-oauth)
   ipcMain.handle(IpcChannel.AnthropicProxy_Start, async () => {
@@ -1115,13 +1147,10 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     ipcMain.handle(IpcChannel.Ovms_StopOVMS, fallback)
   }
 
-  // CherryAI
-  ipcMain.handle(IpcChannel.Cherryai_GetSignature, (_, params) => generateSignature(params))
-
   // Global Skills
-  ipcMain.handle(IpcChannel.Skill_List, async () => {
+  ipcMain.handle(IpcChannel.Skill_List, async (_, agentId?: string) => {
     try {
-      const data = await skillService.list()
+      const data = await skillService.list(agentId)
       return { success: true, data }
     } catch (error) {
       logger.error('Failed to list skills', { error })
@@ -1151,6 +1180,16 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   ipcMain.handle(IpcChannel.Skill_Toggle, async (_, options) => {
     try {
+      if (
+        !options ||
+        typeof options.skillId !== 'string' ||
+        !options.skillId ||
+        typeof options.agentId !== 'string' ||
+        !options.agentId ||
+        typeof options.isEnabled !== 'boolean'
+      ) {
+        return { success: false, error: 'Invalid toggle options' }
+      }
       const data = await skillService.toggle(options)
       return { success: true, data }
     } catch (error) {
@@ -1201,10 +1240,46 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
 
   ipcMain.handle(IpcChannel.Skill_ListLocal, async (_, workdir: string) => {
     try {
+      if (!workdir || typeof workdir !== 'string') {
+        return { success: false, error: 'Invalid workdir' }
+      }
       const data = await skillService.listLocal(workdir)
       return { success: true, data }
     } catch (error) {
       logger.error('Failed to list local plugins', { workdir, error })
+      return { success: false, error }
+    }
+  })
+
+  ipcMain.handle(IpcChannel.SkillScope_GetConfig, async (_, scope) => {
+    try {
+      const data = await skillScopeService.getConfig(scope)
+      return { success: true, data }
+    } catch (error) {
+      logger.error('Failed to get skill scope config', { scope, error })
+      return { success: false, error }
+    }
+  })
+
+  ipcMain.handle(IpcChannel.SkillScope_SetConfig, async (_, options) => {
+    try {
+      if (!options?.scope || !('config' in options)) {
+        return { success: false, error: 'Invalid skill scope options' }
+      }
+      const data = await skillScopeService.setConfig(options.scope, options.config)
+      return { success: true, data }
+    } catch (error) {
+      logger.error('Failed to set skill scope config', { options, error })
+      return { success: false, error }
+    }
+  })
+
+  ipcMain.handle(IpcChannel.SkillScope_ListSkills, async (_, scopes) => {
+    try {
+      const data = await skillScopeService.listSkillsForScope(scopes)
+      return { success: true, data }
+    } catch (error) {
+      logger.error('Failed to list scoped skills', { scopes, error })
       return { success: false, error }
     }
   })
@@ -1220,10 +1295,20 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     lanTransferClientService.sendFile(payload.filePath)
   )
   ipcMain.handle(IpcChannel.LocalTransfer_CancelTransfer, () => lanTransferClientService.cancelTransfer())
-  ipcMain.handle(IpcChannel.Skill_EmbedText, async (_, payload: { modelId?: string; text: string }) => {
-    const { embedTextInMainProcess } = await import('./services/skills/skillEmbedText')
-    return embedTextInMainProcess(payload)
-  })
+  ipcMain.handle(
+    IpcChannel.Skill_EmbedText,
+    async (_, payload: { modelId?: string; apiClient?: ApiClient; text: string }) => {
+      const { embedTextInMainProcess } = await import('./services/skills/skillEmbedText')
+      return embedTextInMainProcess(payload)
+    }
+  )
+  ipcMain.handle(
+    IpcChannel.Skill_EmbedTextsBatch,
+    async (_, payload: { modelId?: string; apiClient?: ApiClient; texts: string[] }) => {
+      const { embedTextsBatchInMainProcess } = await import('./services/skills/skillEmbedText')
+      return embedTextsBatchInMainProcess(payload)
+    }
+  )
 
   ipcMain.handle(IpcChannel.APP_CrashRenderProcess, () => {
     mainWindow.webContents.forcefullyCrashRenderer()

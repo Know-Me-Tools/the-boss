@@ -268,7 +268,7 @@
         "title": "Προγραμματισμένες εργασίες"
       },
       "warning": {
-        "bypassPermissions": "Οι πράκτορες CherryClaw εκτελούνται σε πλήρη αυτόματη λειτουργία από προεπιλογή. Όλα τα εργαλεία εκτελούνται χωρίς να ζητούν έγκριση."
+        "bypassPermissions": "Οι πράκτορες Boss Claw εκτελούνται σε πλήρη αυτόματη λειτουργία από προεπιλογή. Όλα τα εργαλεία εκτελούνται χωρίς να ζητούν έγκριση."
       }
     },
     "delete": {
@@ -492,6 +492,9 @@
         "uninstalling": "Απεγκατάσταση..."
       },
       "prompt": "Ρυθμίσεις Προτροπής",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Προσθήκη περισσότερων δεξιοτήτων",
         "builtin": "Ενσωματωμένο",
@@ -1121,7 +1124,8 @@
       "placeholder_without_triggers": "Γράψτε το μήνυμά σας εδώ, πατήστε {{key}} για αποστολή",
       "resource_panel": {
         "categories": {
-          "files": "Αρχεία"
+          "files": "Αρχεία",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Επιλέξτε από αρχεία, πράκτορες ή δεξιότητες",
         "loading": "Φόρτωση...",
@@ -2282,6 +2286,17 @@
       "success": "Η αντιγραφή ασφαλείας ήταν επιτυχής"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2964,15 @@
     },
     "skip": "Παράλειψη",
     "toast": {
-      "connected": "Συνδέθηκε επιτυχώς με το CherryIN"
+      "connected": "Συνδέθηκε επιτυχώς με το The Boss"
     },
     "welcome": {
-      "login_cherryin": "Σύνδεση με CherryIN",
+      "login_cherryin": "Σύνδεση με The Boss",
       "or_continue_with": "Ή ΣΥΝΕΧΕΙΑ ΜΕ",
       "other_provider": "Επιλέξτε Άλλους Παρόχους",
       "select_other_provider": "Επιλέξτε Άλλο Πάροχο",
       "setup_hint": "Παρακαλούμε ρυθμίστε τουλάχιστον έναν πάροχο για την καλύτερη εμπειρία",
-      "subtitle": "Απολαύστε κορυφαίες υπηρεσίες τεχνητής νοημοσύνης με την CherryIN",
+      "subtitle": "Απολαύστε κορυφαίες υπηρεσίες τεχνητής νοημοσύνης με την The Boss",
       "title": "Καλώς ήρθατε στο The Boss"
     }
   },
@@ -3439,7 +3454,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "AliCloud Bailian",
     "deepseek": "Βαθιά Αναζήτηση",
@@ -3484,6 +3499,7 @@
     "sophnet": "SophNet",
     "stepfun": "Βήμα Ουράς",
     "tencent-cloud-ti": "Tencent Cloud TI",
+    "theboss": "[to be translated]:The Boss",
     "together": "Together",
     "tokenflux": "TokenFlux",
     "vertexai": "Vertex AI",
@@ -5831,6 +5847,14 @@
       "author": "Συγγραφέας",
       "batchUninstallSuccess": "{{count}} δεξιότητες απεγκαταστάθηκαν",
       "builtin": "Ενσωματωμένο",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Είστε σίγουροι ότι θέλετε να απεγκαταστήσετε {{count}} επιλεγμένες δεξιότητες;",
       "confirmUninstall": "Είσαι σίγουρος ότι θέλεις να απεγκαταστήσεις αυτή την ικανότητα;",
       "directory": "Κατάλογος",

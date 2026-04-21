@@ -9,6 +9,7 @@ import type {
 import type {
   Chunk,
   ProviderMetadata,
+  RuntimeEventChunk,
   SkillActivatedChunk,
   SkillCompleteChunk,
   SkillContentDeltaChunk
@@ -36,6 +37,8 @@ export interface StreamProcessorCallbacks {
   onThinkingChunk?: (text: string, thinking_millsec?: number) => void
   onThinkingComplete?: (text: string, thinking_millsec?: number) => void
   onContextManagement?: (data: ContextManagementStreamPayload) => void | Promise<void>
+  // Agent runtime telemetry and approval events
+  onRuntimeEvent?: (data: RuntimeEventChunk) => void | Promise<void>
   // Skill activated (skill context injection started)
   onSkillActivated?: (data: SkillActivatedChunk) => void | Promise<void>
   // Skill content delta (streaming skill content)
@@ -118,6 +121,10 @@ export function createStreamProcessor(callbacks: StreamProcessorCallbacks = {}) 
         }
         case ChunkType.CONTEXT_MANAGEMENT: {
           if (callbacks.onContextManagement) void callbacks.onContextManagement(data.payload)
+          break
+        }
+        case ChunkType.RUNTIME_EVENT: {
+          if (callbacks.onRuntimeEvent) void callbacks.onRuntimeEvent(data)
           break
         }
         case ChunkType.SKILL_ACTIVATED: {

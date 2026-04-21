@@ -268,7 +268,7 @@ const ServicesSettings = () => {
         return (
           <Card
             key={service.serviceId}
-            className='border border-default-200'
+            className="border border-default-200"
             title={
               <CardHeader>
                 <div>
@@ -280,7 +280,7 @@ const ServicesSettings = () => {
                 </div>
                 <Space wrap>
                   <Button
-                    size='small'
+                    size="small"
                     icon={<TestTube2 size={14} />}
                     onClick={async () => {
                       const result = await window.api.services.testConnection(service.serviceId)
@@ -294,7 +294,7 @@ const ServicesSettings = () => {
                     {t('settings.services.test', 'Test')}
                   </Button>
                   <Button
-                    size='small'
+                    size="small"
                     onClick={() => {
                       setEditingService(service)
                       setEditingProjectedTools(mapProjectedTools(service))
@@ -304,7 +304,7 @@ const ServicesSettings = () => {
                   </Button>
                   <Button
                     danger
-                    size='small'
+                    size="small"
                     icon={<Trash2 size={14} />}
                     onClick={() => void deleteService(service.serviceId)}>
                     {t('common.delete', 'Delete')}
@@ -334,8 +334,10 @@ const ServicesSettings = () => {
                   count: service.headerTemplates.length
                 })}
               </span>
-              <span>{t('settings.services.authType', { defaultValue: 'Auth: {{type}}', type: service.auth.type })}</span>
-              {healthState[service.serviceId] ? <Tag color='processing'>{healthState[service.serviceId]}</Tag> : null}
+              <span>
+                {t('settings.services.authType', { defaultValue: 'Auth: {{type}}', type: service.auth.type })}
+              </span>
+              {healthState[service.serviceId] ? <Tag color="processing">{healthState[service.serviceId]}</Tag> : null}
             </CardMeta>
           </Card>
         )
@@ -402,7 +404,7 @@ const ServicesSettings = () => {
 
         {importKind === 'openapi' ? (
           <FormCard>
-            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
               <Input
                 placeholder={t('settings.services.namePlaceholder', 'Display name')}
                 value={openApiDraft.name}
@@ -432,13 +434,16 @@ const ServicesSettings = () => {
                 value={openApiDraft.endpoint}
                 onChange={(event) => setOpenApiDraft((prev) => ({ ...prev, endpoint: event.target.value }))}
               />
-              <AuthEditor auth={openApiDraft.auth} onChange={(auth) => setOpenApiDraft((prev) => ({ ...prev, auth }))} />
+              <AuthEditor
+                auth={openApiDraft.auth}
+                onChange={(auth) => setOpenApiDraft((prev) => ({ ...prev, auth }))}
+              />
               <HeaderEditor
                 headers={openApiDraft.headers}
                 onChange={(headers) => setOpenApiDraft((prev) => ({ ...prev, headers }))}
               />
               <Button
-                type='primary'
+                type="primary"
                 onClick={async () => {
                   const request: ImportOpenAPIServiceRequest = {
                     name: openApiDraft.name,
@@ -459,7 +464,7 @@ const ServicesSettings = () => {
 
         {importKind === 'graphql' ? (
           <FormCard>
-            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
               <Input
                 placeholder={t('settings.services.namePlaceholder', 'Display name')}
                 value={graphqlDraft.name}
@@ -473,14 +478,15 @@ const ServicesSettings = () => {
               <Input
                 placeholder={t('settings.services.graphqlSubscriptionEndpoint', 'Subscription endpoint (optional)')}
                 value={graphqlDraft.subscriptionEndpoint}
-                onChange={(event) =>
-                  setGraphqlDraft((prev) => ({ ...prev, subscriptionEndpoint: event.target.value }))
-                }
+                onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, subscriptionEndpoint: event.target.value }))}
               />
               <Select
                 value={graphqlDraft.sourceType}
                 options={[
-                  { label: t('settings.services.graphqlIntrospection', 'Schema introspection'), value: 'introspection' },
+                  {
+                    label: t('settings.services.graphqlIntrospection', 'Schema introspection'),
+                    value: 'introspection'
+                  },
                   { label: t('settings.services.graphqlSdl', 'Pasted SDL'), value: 'sdl' }
                 ]}
                 onChange={(value) => setGraphqlDraft((prev) => ({ ...prev, sourceType: value }))}
@@ -493,7 +499,10 @@ const ServicesSettings = () => {
                   onChange={(event) => setGraphqlDraft((prev) => ({ ...prev, source: event.target.value }))}
                 />
               ) : null}
-              <AuthEditor auth={graphqlDraft.auth} onChange={(auth) => setGraphqlDraft((prev) => ({ ...prev, auth }))} />
+              <AuthEditor
+                auth={graphqlDraft.auth}
+                onChange={(auth) => setGraphqlDraft((prev) => ({ ...prev, auth }))}
+              />
               <HeaderEditor
                 headers={graphqlDraft.headers}
                 onChange={(headers) => setGraphqlDraft((prev) => ({ ...prev, headers }))}
@@ -501,7 +510,7 @@ const ServicesSettings = () => {
               <SectionLabel>{t('settings.services.savedOperations', 'Saved operations')}</SectionLabel>
               {graphqlDraft.operations.map((operation, index) => (
                 <OperationCard key={operation.id}>
-                  <Space direction='vertical' style={{ width: '100%' }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
                     <Input
                       placeholder={t('settings.services.operationName', 'Operation name')}
                       value={operation.name}
@@ -581,7 +590,7 @@ const ServicesSettings = () => {
                 {t('settings.services.addOperation', 'Add GraphQL Operation')}
               </Button>
               <Button
-                type='primary'
+                type="primary"
                 onClick={async () => {
                   const request: ImportGraphQLServiceRequest = {
                     name: graphqlDraft.name,
@@ -608,7 +617,7 @@ const ServicesSettings = () => {
 
         {importKind === 'supabase' ? (
           <FormCard>
-            <Space direction='vertical' style={{ width: '100%' }} size={12}>
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
               <Input
                 placeholder={t('settings.services.namePlaceholder', 'Display name')}
                 value={supabaseDraft.name}
@@ -659,10 +668,7 @@ const ServicesSettings = () => {
               />
               <Input.TextArea
                 rows={3}
-                placeholder={t(
-                  'settings.services.supabaseRpc',
-                  'RPC functions to scaffold as tools, comma-separated'
-                )}
+                placeholder={t('settings.services.supabaseRpc', 'RPC functions to scaffold as tools, comma-separated')}
                 value={supabaseDraft.rpcFunctions}
                 onChange={(event) => setSupabaseDraft((prev) => ({ ...prev, rpcFunctions: event.target.value }))}
               />
@@ -685,7 +691,7 @@ const ServicesSettings = () => {
                 onChange={(headers) => setSupabaseDraft((prev) => ({ ...prev, headers }))}
               />
               <Button
-                type='primary'
+                type="primary"
                 onClick={async () => {
                   const request: ImportSupabaseServiceRequest = {
                     name: supabaseDraft.name,
@@ -745,7 +751,9 @@ const ServicesSettings = () => {
             projectUrl: editingService.kind === 'supabase' ? editingService.projectUrl : undefined,
             databaseSchema: editingService.kind === 'supabase' ? editingService.databaseSchema : undefined,
             projectedTools:
-              editingService.kind === 'openapi' || editingService.kind === 'supabase' ? editingProjectedTools : undefined,
+              editingService.kind === 'openapi' || editingService.kind === 'supabase'
+                ? editingProjectedTools
+                : undefined,
             graphqlOperations:
               editingService.kind === 'graphql' ? toGraphqlOperations(editingGraphqlOperations) : undefined
           })
@@ -753,7 +761,7 @@ const ServicesSettings = () => {
         }}
         destroyOnClose>
         {editingService ? (
-          <Space direction='vertical' style={{ width: '100%' }} size={12}>
+          <Space direction="vertical" style={{ width: '100%' }} size={12}>
             <Input
               value={editingService.name}
               onChange={(event) => setEditingService((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
@@ -819,7 +827,7 @@ const ServicesSettings = () => {
                 <SectionLabel>{t('settings.services.savedOperations', 'Saved operations')}</SectionLabel>
                 {editingGraphqlOperations.map((operation, index) => (
                   <OperationCard key={operation.id}>
-                    <Space direction='vertical' style={{ width: '100%' }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
                       <Input
                         value={operation.name}
                         onChange={(event) =>
@@ -882,7 +890,9 @@ const ServicesSettings = () => {
                     </Space>
                   </OperationCard>
                 ))}
-                <Button icon={<Plus size={14} />} onClick={() => setEditingGraphqlOperations((prev) => [...prev, createOperationDraft()])}>
+                <Button
+                  icon={<Plus size={14} />}
+                  onClick={() => setEditingGraphqlOperations((prev) => [...prev, createOperationDraft()])}>
                   {t('settings.services.addOperation', 'Add GraphQL Operation')}
                 </Button>
               </>
@@ -891,7 +901,7 @@ const ServicesSettings = () => {
                 <SectionLabel>{t('settings.services.toolProjection', 'Tool projection')}</SectionLabel>
                 {editingProjectedTools.map((tool, index) => (
                   <OperationCard key={tool.id}>
-                    <Space direction='vertical' style={{ width: '100%' }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
                       <Input
                         value={tool.name}
                         onChange={(event) =>
@@ -943,7 +953,7 @@ const ServicesSettings = () => {
 const AuthEditor = ({ auth, onChange }: { auth: AuthDraft; onChange: (auth: AuthDraft) => void }) => (
   <Section>
     <SectionLabel>Auth & Headers</SectionLabel>
-    <Space direction='vertical' style={{ width: '100%' }} size={12}>
+    <Space direction="vertical" style={{ width: '100%' }} size={12}>
       <Select
         value={auth.type}
         options={[
@@ -971,74 +981,78 @@ const AuthEditor = ({ auth, onChange }: { auth: AuthDraft; onChange: (auth: Auth
         }}
       />
       {auth.type === 'bearer' ? (
-        <Space direction='vertical' style={{ width: '100%' }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder='Header name'
+            placeholder="Header name"
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
-          <Input value={auth.scheme} placeholder='Scheme' onChange={(event) => onChange({ ...auth, scheme: event.target.value })} />
+          <Input
+            value={auth.scheme}
+            placeholder="Scheme"
+            onChange={(event) => onChange({ ...auth, scheme: event.target.value })}
+          />
           <Input
             value={auth.tokenLabel}
-            placeholder='Secret label'
+            placeholder="Secret label"
             onChange={(event) => onChange({ ...auth, tokenLabel: event.target.value })}
           />
           <Input.Password
             value={auth.tokenValue}
-            placeholder='Secret value'
+            placeholder="Secret value"
             onChange={(event) => onChange({ ...auth, tokenValue: event.target.value })}
           />
         </Space>
       ) : null}
       {auth.type === 'api-key' ? (
-        <Space direction='vertical' style={{ width: '100%' }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder='Header name'
+            placeholder="Header name"
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
           <Input
             value={auth.prefix}
-            placeholder='Prefix (optional)'
+            placeholder="Prefix (optional)"
             onChange={(event) => onChange({ ...auth, prefix: event.target.value })}
           />
           <Input
             value={auth.tokenLabel}
-            placeholder='Secret label'
+            placeholder="Secret label"
             onChange={(event) => onChange({ ...auth, tokenLabel: event.target.value })}
           />
           <Input.Password
             value={auth.tokenValue}
-            placeholder='Secret value'
+            placeholder="Secret value"
             onChange={(event) => onChange({ ...auth, tokenValue: event.target.value })}
           />
         </Space>
       ) : null}
       {auth.type === 'basic' ? (
-        <Space direction='vertical' style={{ width: '100%' }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
           <Input
             value={auth.headerName}
-            placeholder='Header name'
+            placeholder="Header name"
             onChange={(event) => onChange({ ...auth, headerName: event.target.value })}
           />
           <Input
             value={auth.usernameLabel}
-            placeholder='Username label'
+            placeholder="Username label"
             onChange={(event) => onChange({ ...auth, usernameLabel: event.target.value })}
           />
           <Input
             value={auth.usernameValue}
-            placeholder='Username'
+            placeholder="Username"
             onChange={(event) => onChange({ ...auth, usernameValue: event.target.value })}
           />
           <Input
             value={auth.passwordLabel}
-            placeholder='Password label'
+            placeholder="Password label"
             onChange={(event) => onChange({ ...auth, passwordLabel: event.target.value })}
           />
           <Input.Password
             value={auth.passwordValue}
-            placeholder='Password'
+            placeholder="Password"
             onChange={(event) => onChange({ ...auth, passwordValue: event.target.value })}
           />
         </Space>
@@ -1056,12 +1070,12 @@ const HeaderEditor = ({
 }) => (
   <Section>
     <SectionLabel>Custom Header Templates</SectionLabel>
-    <Space direction='vertical' style={{ width: '100%' }} size={12}>
+    <Space direction="vertical" style={{ width: '100%' }} size={12}>
       {headers.map((header, index) => (
         <OperationCard key={header.id}>
-          <Space direction='vertical' style={{ width: '100%' }}>
+          <Space direction="vertical" style={{ width: '100%' }}>
             <Input
-              placeholder='Header name'
+              placeholder="Header name"
               value={header.name}
               onChange={(event) =>
                 onChange(
@@ -1098,7 +1112,7 @@ const HeaderEditor = ({
             />
             {header.mode === 'secret' ? (
               <Input.Password
-                placeholder='Secret value'
+                placeholder="Secret value"
                 value={header.value}
                 onChange={(event) =>
                   onChange(

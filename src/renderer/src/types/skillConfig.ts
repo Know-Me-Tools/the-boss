@@ -6,6 +6,7 @@ import * as z from 'zod'
  * is injected into the LLM context window before each request.
  */
 export enum SkillSelectionMethod {
+  KEYWORD = 'keyword',
   LLM_DELEGATED = 'llm_delegated',
   EMBEDDING = 'embedding',
   HYBRID = 'hybrid',
@@ -19,6 +20,10 @@ export enum ContextManagementMethod {
   CHUNKED_RAG = 'chunked_rag',
   SUMMARIZED = 'summarized',
   PROGRESSIVE = 'progressive'
+}
+
+export interface KeywordSkillMethodConfig {
+  topK: number
 }
 
 export interface EmbeddingSkillMethodConfig {
@@ -53,6 +58,7 @@ export interface LlmDelegatedSkillMethodConfig {
 }
 
 export type SkillMethodConfigMap = {
+  [SkillSelectionMethod.KEYWORD]: KeywordSkillMethodConfig
   [SkillSelectionMethod.EMBEDDING]: EmbeddingSkillMethodConfig
   [SkillSelectionMethod.HYBRID]: HybridSkillMethodConfig
   [SkillSelectionMethod.TWO_STAGE]: TwoStageSkillMethodConfig
@@ -61,6 +67,7 @@ export type SkillMethodConfigMap = {
 }
 
 export type SkillMethodOverrideMap = Partial<{
+  [SkillSelectionMethod.KEYWORD]: Partial<KeywordSkillMethodConfig>
   [SkillSelectionMethod.EMBEDDING]: Partial<EmbeddingSkillMethodConfig>
   [SkillSelectionMethod.HYBRID]: Partial<HybridSkillMethodConfig>
   [SkillSelectionMethod.TWO_STAGE]: Partial<TwoStageSkillMethodConfig>
@@ -100,6 +107,7 @@ export interface SkillConfigOverride {
 export type AgentSkillConfigOverride = SkillConfigOverride
 
 const skillMethodEntries = [
+  SkillSelectionMethod.KEYWORD,
   SkillSelectionMethod.EMBEDDING,
   SkillSelectionMethod.HYBRID,
   SkillSelectionMethod.TWO_STAGE,
@@ -108,6 +116,7 @@ const skillMethodEntries = [
 ] as const
 
 const METHOD_FIELDS = {
+  [SkillSelectionMethod.KEYWORD]: ['topK'],
   [SkillSelectionMethod.EMBEDDING]: ['embeddingModelId', 'similarityThreshold', 'topK'],
   [SkillSelectionMethod.HYBRID]: ['embeddingModelId', 'topK'],
   [SkillSelectionMethod.TWO_STAGE]: ['embeddingModelId', 'similarityThreshold', 'topK'],
@@ -116,6 +125,9 @@ const METHOD_FIELDS = {
 } as const
 
 export const DEFAULT_SKILL_METHOD_CONFIGS: SkillMethodConfigMap = {
+  [SkillSelectionMethod.KEYWORD]: {
+    topK: 3
+  },
   [SkillSelectionMethod.EMBEDDING]: {
     similarityThreshold: 0.35,
     topK: 3
@@ -138,11 +150,15 @@ export const DEFAULT_SKILL_METHOD_CONFIGS: SkillMethodConfigMap = {
 }
 
 export const DEFAULT_SKILL_CONFIG: SkillGlobalConfig = {
-  selectionMethod: SkillSelectionMethod.EMBEDDING,
+  selectionMethod: SkillSelectionMethod.KEYWORD,
   contextManagementMethod: ContextManagementMethod.PREFIX_CACHE_AWARE,
   maxSkillTokens: 4096,
   methods: cloneSkillMethodConfigs(DEFAULT_SKILL_METHOD_CONFIGS)
 }
+
+const KeywordSkillMethodConfigSchema = z.object({
+  topK: z.number()
+})
 
 const EmbeddingSkillMethodConfigSchema = z.object({
   embeddingModelId: z.string().optional(),
@@ -177,6 +193,7 @@ const LlmDelegatedSkillMethodConfigSchema = z.object({
 
 export const SkillMethodOverrideMapSchema = z
   .object({
+    [SkillSelectionMethod.KEYWORD]: KeywordSkillMethodConfigSchema.partial().optional(),
     [SkillSelectionMethod.EMBEDDING]: EmbeddingSkillMethodConfigSchema.partial().optional(),
     [SkillSelectionMethod.HYBRID]: HybridSkillMethodConfigSchema.partial().optional(),
     [SkillSelectionMethod.TWO_STAGE]: TwoStageSkillMethodConfigSchema.partial().optional(),
@@ -205,6 +222,7 @@ export const SkillGlobalConfigSchema = z.object({
   maxSkillTokens: z.number(),
   selectedSkillIds: z.array(z.string()).optional(),
   methods: z.object({
+    [SkillSelectionMethod.KEYWORD]: KeywordSkillMethodConfigSchema,
     [SkillSelectionMethod.EMBEDDING]: EmbeddingSkillMethodConfigSchema,
     [SkillSelectionMethod.HYBRID]: HybridSkillMethodConfigSchema,
     [SkillSelectionMethod.TWO_STAGE]: TwoStageSkillMethodConfigSchema,
@@ -225,8 +243,22 @@ export const SIMILARITY_THRESHOLD_METHODS = new Set<SkillSelectionMethod>([
   SkillSelectionMethod.LLM_DELEGATED
 ])
 
+export const EMBEDDING_DEPENDENT_METHODS = new Set<SkillSelectionMethod>([
+  SkillSelectionMethod.EMBEDDING,
+  SkillSelectionMethod.HYBRID,
+  SkillSelectionMethod.TWO_STAGE,
+  SkillSelectionMethod.LLM_ROUTER,
+  SkillSelectionMethod.LLM_DELEGATED
+])
+
+/** Returns true when the configured selection method requires an embedding model. */
+export function needsEmbeddingModel(method: SkillSelectionMethod): boolean {
+  return EMBEDDING_DEPENDENT_METHODS.has(method)
+}
+
 export function cloneSkillMethodConfigs(configs: SkillMethodConfigMap): SkillMethodConfigMap {
   return {
+    [SkillSelectionMethod.KEYWORD]: { ...configs[SkillSelectionMethod.KEYWORD] },
     [SkillSelectionMethod.EMBEDDING]: { ...configs[SkillSelectionMethod.EMBEDDING] },
     [SkillSelectionMethod.HYBRID]: { ...configs[SkillSelectionMethod.HYBRID] },
     [SkillSelectionMethod.TWO_STAGE]: { ...configs[SkillSelectionMethod.TWO_STAGE] },
@@ -298,7 +330,9 @@ export function applySkillConfigOverride(
     contextManagementMethod: override.contextManagementMethod ?? base.contextManagementMethod,
     maxSkillTokens: override.maxSkillTokens ?? base.maxSkillTokens,
     selectedSkillIds:
-      override.selectedSkillIds !== undefined ? normalizeSelectedSkillIds(override.selectedSkillIds) : base.selectedSkillIds,
+      override.selectedSkillIds !== undefined
+        ? normalizeSelectedSkillIds(override.selectedSkillIds)
+        : base.selectedSkillIds,
     methods: cloneSkillMethodConfigs(base.methods)
   }
 
@@ -407,10 +441,7 @@ function normalizeSelectedSkillIds(selectedSkillIds: string[]): string[] {
   return Array.from(new Set(selectedSkillIds))
 }
 
-function intersectSelectedSkillIds(
-  current: string[] | undefined,
-  next: string[]
-): string[] {
+function intersectSelectedSkillIds(current: string[] | undefined, next: string[]): string[] {
   const normalizedNext = normalizeSelectedSkillIds(next)
 
   if (current === undefined) {

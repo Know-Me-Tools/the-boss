@@ -1,11 +1,11 @@
 import { loggerService } from '@logger'
-import type { SkillGlobalConfig } from '@types'
+import { getSkillMethodEmbeddingModelId, type SkillGlobalConfig } from '@types'
 import type { TextStreamPart } from 'ai'
 
 import { ContextManager } from './contextManager'
 import { MainSkillSelector } from './MainSkillSelector'
 import type { SkillDescriptor, SkillRegistry } from './skillRegistry'
-import { SkillRegistry as SkillRegistryClass,skillRegistry as defaultRegistry } from './skillRegistry'
+import { SkillRegistry as SkillRegistryClass, skillRegistry as defaultRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('BuildSkillStreamParts')
 
@@ -35,8 +35,15 @@ export async function buildSkillStreamParts(params: {
   skills?: SkillDescriptor[]
   registry?: SkillRegistry
   onPreparedSkills?: (skills: PreparedSkillContext[]) => void
+  disabled?: boolean
 }): Promise<Array<TextStreamPart<Record<string, any>>>> {
   const { prompt, config, activeModel } = params
+
+  if (params.disabled) {
+    logger.info('Skipping backend skill selection for this request')
+    return []
+  }
+
   const registry = params.registry ?? buildRegistry(params.skills)
   const allSkills = params.skills ?? registry.getAll()
 
@@ -44,8 +51,34 @@ export async function buildSkillStreamParts(params: {
     return []
   }
 
-  const selector = new MainSkillSelector(config, registry, activeModel)
+  const startedAt = Date.now()
+  const embeddingModelId = getSkillMethodEmbeddingModelId(config)
+  const fallbackReason = 'semantic_selection_disabled_startup_path'
+  logger.info('Skill selection started', {
+    selectionMethod: config.selectionMethod,
+    skillCount: allSkills.length,
+    activeModel,
+    semanticSelectionEnabled: false,
+    embeddingModelId,
+    embeddingColdStartStatus: 'skipped'
+  })
+
+  const selector = new MainSkillSelector(config, registry, activeModel, {
+    semanticSelectionEnabled: false
+  })
   const selectedSkills = await selector.select(prompt, allSkills)
+
+  logger.info('Skill selection completed', {
+    selectionMethod: config.selectionMethod,
+    skillCount: allSkills.length,
+    selectedCount: selectedSkills.length,
+    durationMs: Date.now() - startedAt,
+    semanticSelectionEnabled: false,
+    embeddingModelId,
+    embeddingColdStartStatus: 'skipped',
+    fallbackReason
+  })
+
   if (selectedSkills.length === 0) {
     return []
   }

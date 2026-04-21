@@ -1,4 +1,5 @@
 import { loggerService } from '@logger'
+import { CONTROL_PLANE_API_URL } from '@shared/config/branding'
 import { net } from 'electron'
 
 const logger = loggerService.withContext('IpService')
@@ -13,7 +14,7 @@ export async function getIpCountry(): Promise<string> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000)
 
-    const ipinfo = await net.fetch(`https://api.ipinfo.io/lite/me?token=5aa4105b40adbc`, {
+    const ipinfo = await net.fetch(`${CONTROL_PLANE_API_URL}/geo/ip-country`, {
       signal: controller.signal
     })
 

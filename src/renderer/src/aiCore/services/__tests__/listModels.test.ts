@@ -29,7 +29,13 @@ vi.mock('@shared/utils', () => ({
   defaultAppHeaders: () => ({ 'X-App': 'TheBoss' })
 }))
 
+const mockGetControlPlaneCatalogModels = vi.fn()
+vi.mock('@renderer/services/ControlPlaneService', () => ({
+  getControlPlaneCatalogModels: (...args: unknown[]) => mockGetControlPlaneCatalogModels(...args)
+}))
+
 const { listModels } = await import('../listModels')
+const { OllamaTagsResponseSchema } = await import('../schemas')
 
 const REAL_ANTHROPIC = {
   data: [
@@ -242,10 +248,51 @@ function assertValidModels(models: { id: string; name: string; provider: string;
 
 beforeEach(() => {
   mockGetFromApi.mockReset()
+  mockGetControlPlaneCatalogModels.mockReset()
   vi.stubGlobal('window', { ...globalThis.window, keyv: { get: vi.fn(), set: vi.fn() } })
 })
 
 describe('listModels', () => {
+  describe('The Boss control-plane catalog', () => {
+    it('uses control-plane catalog models when available', async () => {
+      mockGetControlPlaneCatalogModels.mockResolvedValue([
+        {
+          id: 'theboss-fast',
+          name: 'The Boss Fast',
+          provider: 'theboss',
+          group: 'The Boss',
+          owned_by: 'know-me'
+        }
+      ])
+
+      const models = await listModels(makeProvider({ id: 'theboss', apiHost: 'https://api.know-me.tools/v1' }))
+
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledTimes(1)
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledWith(expect.any(AbortSignal))
+      expect(mockGetFromApi).not.toHaveBeenCalled()
+      expect(models).toEqual([
+        {
+          id: 'theboss-fast',
+          name: 'The Boss Fast',
+          provider: 'theboss',
+          group: 'The Boss',
+          owned_by: 'know-me'
+        }
+      ])
+    })
+
+    it('falls back to static The Boss models when the control-plane catalog is unavailable', async () => {
+      mockGetControlPlaneCatalogModels.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      const models = await listModels(makeProvider({ id: 'theboss', apiHost: 'https://api.know-me.tools/v1' }))
+
+      expect(mockGetControlPlaneCatalogModels).toHaveBeenCalledTimes(1)
+      expect(mockGetFromApi).not.toHaveBeenCalled()
+      expect(models.map((model) => model.id)).toEqual(['theboss-default'])
+      expect(models.every((model) => model.provider === 'theboss')).toBe(true)
+    })
+  })
+
   describe('OpenAI-compatible (DeepSeek)', () => {
     it('should convert real DeepSeek response', async () => {
       mockGetFromApi.mockResolvedValue({ value: REAL_DEEPSEEK })
@@ -276,6 +323,26 @@ describe('listModels', () => {
       expect(models[0].owned_by).toBe('Alibaba Cloud')
       expect(models[1].owned_by).toBe('Groq')
       expect(models).toMatchSnapshot()
+    })
+  })
+
+  describe('OpenAI-compatible (Moonshot)', () => {
+    it('retries model listing against the international endpoint after China endpoint authentication failure', async () => {
+      const authError = new Error('Invalid Authentication') as Error & { statusCode?: number }
+      authError.statusCode = 401
+      mockGetFromApi.mockRejectedValueOnce(authError).mockResolvedValueOnce({ value: REAL_DEEPSEEK })
+
+      const models = await listModels(makeProvider({ id: 'moonshot', apiHost: 'https://api.moonshot.cn/v1' }))
+
+      expect(mockGetFromApi).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ url: 'https://api.moonshot.cn/v1/models' })
+      )
+      expect(mockGetFromApi).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ url: 'https://api.moonshot.ai/v1/models' })
+      )
+      expect(models.map((model) => model.provider)).toEqual(['moonshot', 'moonshot'])
     })
   })
 
@@ -477,6 +544,62 @@ describe('listModels', () => {
       mockGetFromApi.mockResolvedValue({ value: duped })
       const models = await listModels(makeProvider({ id: 'aihubmix' }))
       expect(models).toHaveLength(2)
+    })
+  })
+
+  describe('Ollama', () => {
+    it('should accept null families in Ollama tags schema', () => {
+      const parsed = OllamaTagsResponseSchema.parse({
+        models: [
+          {
+            name: 'glm-5:cloud',
+            model: 'glm-5:cloud',
+            details: {
+              parent_model: '',
+              format: '',
+              family: '',
+              families: null,
+              parameter_size: '',
+              quantization_level: ''
+            }
+          }
+        ]
+      })
+
+      expect(parsed.models[0].details?.families).toBeUndefined()
+    })
+
+    it('should accept null families in real Ollama tag responses', async () => {
+      mockGetFromApi.mockResolvedValue({
+        value: {
+          models: [
+            {
+              name: 'glm-5:cloud',
+              model: 'glm-5:cloud',
+              details: {
+                parent_model: '',
+                format: '',
+                family: '',
+                families: null,
+                parameter_size: '',
+                quantization_level: ''
+              }
+            },
+            {
+              name: 'qwen3.5:9b',
+              model: 'qwen3.5:9b',
+              details: {
+                family: 'qwen35',
+                families: ['qwen35']
+              }
+            }
+          ]
+        }
+      })
+
+      const models = await listModels(makeProvider({ id: 'ollama', type: 'ollama', apiHost: 'http://localhost:11434' }))
+      assertValidModels(models)
+      expect(models.map((m) => m.id)).toEqual(['glm-5:cloud', 'qwen3.5:9b'])
     })
   })
 

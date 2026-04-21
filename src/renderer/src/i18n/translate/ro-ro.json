@@ -268,7 +268,7 @@
         "title": "Sarcini programate"
       },
       "warning": {
-        "bypassPermissions": "Agenții CherryClaw rulează în mod automat complet în mod implicit. Toate instrumentele se execută fără a solicita aprobare."
+        "bypassPermissions": "Agenții Boss Claw rulează în mod automat complet în mod implicit. Toate instrumentele se execută fără a solicita aprobare."
       }
     },
     "delete": {
@@ -492,6 +492,9 @@
         "uninstalling": "Se dezinstalează..."
       },
       "prompt": "Setări prompt",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Adaugă mai multe abilități",
         "builtin": "Încorporat",
@@ -1121,7 +1124,8 @@
       "placeholder_without_triggers": "Scrie mesajul tău aici, apasă {{key}} pentru a trimite",
       "resource_panel": {
         "categories": {
-          "files": "Fișiere"
+          "files": "Fișiere",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Selectați din fișiere, agenți sau competențe",
         "loading": "Se încarcă...",
@@ -2282,6 +2286,17 @@
       "success": "Backup reușit"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2964,15 @@
     },
     "skip": "Sariți",
     "toast": {
-      "connected": "Conectat cu succes la CherryIN"
+      "connected": "Conectat cu succes la The Boss"
     },
     "welcome": {
-      "login_cherryin": "Conectare cu CherryIN",
+      "login_cherryin": "Conectare cu The Boss",
       "or_continue_with": "SAU CONTINUAȚI CU",
       "other_provider": "Alegeți alți furnizori",
       "select_other_provider": "Selectați alt furnizor",
       "setup_hint": "Vă rugăm să configurați cel puțin un furnizor pentru cea mai bună experiență",
-      "subtitle": "Bucurați-vă de servicii AI de top cu CherryIN",
+      "subtitle": "Bucurați-vă de servicii AI de top cu The Boss",
       "title": "Bun venit la The Boss"
     }
   },
@@ -3439,7 +3454,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -3484,6 +3499,7 @@
     "sophnet": "SophNet",
     "stepfun": "StepFun",
     "tencent-cloud-ti": "Tencent Cloud TI",
+    "theboss": "[to be translated]:The Boss",
     "together": "Together",
     "tokenflux": "TokenFlux",
     "vertexai": "Vertex AI",
@@ -5831,6 +5847,14 @@
       "author": "Autor",
       "batchUninstallSuccess": "{{count}} competențe dezinstalate",
       "builtin": "Încorporat",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Sigur dorești să dezinstalezi {{count}} competențe selectate?",
       "confirmUninstall": "Ești sigur că vrei să dezinstalezi această abilitate?",
       "directory": "Director",

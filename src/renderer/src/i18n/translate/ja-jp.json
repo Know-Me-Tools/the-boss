@@ -268,7 +268,7 @@
         "title": "スケジュールタスク"
       },
       "warning": {
-        "bypassPermissions": "CherryClaw エージェントはデフォルトでフルオートモードで実行されます。すべてのツールは承認なしで実行されます。"
+        "bypassPermissions": "Boss Claw エージェントはデフォルトでフルオートモードで実行されます。すべてのツールは承認なしで実行されます。"
       }
     },
     "delete": {
@@ -492,6 +492,9 @@
         "uninstalling": "アンインストール中..."
       },
       "prompt": "プロンプト設定",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "スキルを追加",
         "builtin": "組み込み",
@@ -1121,7 +1124,8 @@
       "placeholder_without_triggers": "ここにメッセージを入力し、{{key}} を押して送信...",
       "resource_panel": {
         "categories": {
-          "files": "ファイル"
+          "files": "ファイル",
+          "skills": "[to be translated]:Skills"
         },
         "description": "ファイル、エージェント、またはスキルから選択",
         "loading": "読み込み中...",
@@ -2282,6 +2286,17 @@
       "success": "バックアップに成功しました"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2964,15 @@
     },
     "skip": "スキップ",
     "toast": {
-      "connected": "CherryINに正常に接続されました"
+      "connected": "The Bossに正常に接続されました"
     },
     "welcome": {
-      "login_cherryin": "CherryINでログイン",
+      "login_cherryin": "The Bossでログイン",
       "or_continue_with": "または続行",
       "other_provider": "他のプロバイダーを選択",
       "select_other_provider": "他のプロバイダーを選択",
       "setup_hint": "ベストな体験のために、少なくとも1つのプロバイダーを設定してください",
-      "subtitle": "CherryINでトップクラスのAIサービスをお楽しみください",
+      "subtitle": "The BossでトップクラスのAIサービスをお楽しみください",
       "title": "The Bossへようこそ"
     }
   },
@@ -3439,7 +3454,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -3484,6 +3499,7 @@
     "sophnet": "SophNet",
     "stepfun": "StepFun",
     "tencent-cloud-ti": "Tencent Cloud TI",
+    "theboss": "[to be translated]:The Boss",
     "together": "Together",
     "tokenflux": "TokenFlux",
     "vertexai": "Vertex AI",
@@ -5831,6 +5847,14 @@
       "author": "著者",
       "batchUninstallSuccess": "{{count}}個のスキルがアンインストールされました",
       "builtin": "組み込み",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "{{count}}個の選択したスキルをアンインストールしてもよろしいですか？",
       "confirmUninstall": "このスキルをアンインストールしてもよろしいですか？",
       "directory": "ディレクトリ",

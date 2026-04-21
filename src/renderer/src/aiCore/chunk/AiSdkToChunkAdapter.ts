@@ -12,7 +12,7 @@ import type {
   WebSearchSource
 } from '@renderer/types'
 import { WEB_SEARCH_SOURCE } from '@renderer/types'
-import type { Chunk, ProviderMetadata } from '@renderer/types/chunk'
+import type { Chunk, ProviderMetadata, RuntimeEventKind } from '@renderer/types/chunk'
 import { ChunkType } from '@renderer/types/chunk'
 import { ProviderSpecificError } from '@renderer/types/provider-specific-error'
 import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
@@ -58,6 +58,20 @@ type ExternalToolInProgressStreamPart = {
 type ExternalToolCompleteStreamPart = {
   type: 'data-external-tool-complete'
   data: ExternalToolResult
+}
+
+type RuntimeStreamPartType =
+  | 'data-agent-runtime-status'
+  | 'data-agent-runtime-permission'
+  | 'data-agent-runtime-tool'
+  | 'data-agent-runtime-usage'
+  | 'data-agent-runtime-file'
+  | 'data-agent-runtime-item'
+  | 'data-agent-runtime-event'
+
+type RuntimeStreamPart = {
+  type: RuntimeStreamPartType
+  data: Record<string, unknown>
 }
 
 /**
@@ -146,6 +160,7 @@ export class AiSdkToChunkAdapter {
       | SkillCompleteStreamPart
       | ExternalToolInProgressStreamPart
       | ExternalToolCompleteStreamPart
+      | RuntimeStreamPart
     >
   ) {
     const reader = fullStream.getReader()
@@ -222,7 +237,8 @@ export class AiSdkToChunkAdapter {
       | SkillContentDeltaStreamPart
       | SkillCompleteStreamPart
       | ExternalToolInProgressStreamPart
-      | ExternalToolCompleteStreamPart,
+      | ExternalToolCompleteStreamPart
+      | RuntimeStreamPart,
     final: {
       text: string
       reasoningContent: string
@@ -485,6 +501,25 @@ export class AiSdkToChunkAdapter {
         })
         break
       }
+      case 'data-agent-runtime-status':
+      case 'data-agent-runtime-permission':
+      case 'data-agent-runtime-tool':
+      case 'data-agent-runtime-usage':
+      case 'data-agent-runtime-file':
+      case 'data-agent-runtime-item':
+      case 'data-agent-runtime-event': {
+        const eventKind = getRuntimeEventKind(chunk.type)
+        this.onChunk({
+          type: ChunkType.RUNTIME_EVENT,
+          eventKind,
+          runtime: getRuntimeName(chunk.data),
+          title: getRuntimeTitle(chunk.data, eventKind),
+          summary: getRuntimeSummary(chunk.data, eventKind),
+          approval: getRuntimeApproval(chunk.data),
+          data: chunk.data
+        })
+        break
+      }
       case 'data-skill-activated': {
         this.onChunk({
           type: ChunkType.SKILL_ACTIVATED,
@@ -569,6 +604,79 @@ export class AiSdkToChunkAdapter {
       time_completion_millsec: timeCompletion
     }
   }
+}
+
+function getRuntimeEventKind(type: RuntimeStreamPartType): RuntimeEventKind {
+  switch (type) {
+    case 'data-agent-runtime-status':
+      return 'status'
+    case 'data-agent-runtime-permission':
+      return 'approval'
+    case 'data-agent-runtime-tool':
+      return 'tool'
+    case 'data-agent-runtime-usage':
+      return 'usage'
+    case 'data-agent-runtime-file':
+      return 'file'
+    case 'data-agent-runtime-item':
+      return 'item'
+    case 'data-agent-runtime-event':
+      return 'event'
+  }
+}
+
+function getRuntimeName(data: Record<string, unknown>): string | undefined {
+  return typeof data.runtime === 'string' ? data.runtime : undefined
+}
+
+function getRuntimeTitle(data: Record<string, unknown>, eventKind: RuntimeEventKind): string | undefined {
+  const candidates = [data.phase, data.eventType, data.event, data.itemType, eventKind]
+  const title = candidates.find((candidate) => typeof candidate === 'string' && candidate.length > 0)
+  return typeof title === 'string' ? title : undefined
+}
+
+function getRuntimeSummary(data: Record<string, unknown>, eventKind: RuntimeEventKind): string | undefined {
+  if (typeof data.runtimeSessionId === 'string') {
+    return data.runtimeSessionId
+  }
+
+  const approval = getRuntimeApproval(data)
+  if (approval?.permissionId) {
+    return approval.permissionId
+  }
+
+  if (typeof data.status === 'string') {
+    return data.status
+  }
+
+  if (typeof data.itemId === 'string') {
+    return data.itemId
+  }
+
+  const payload = data.payload
+  if (eventKind === 'event' && isRecord(payload) && Array.isArray(payload.data)) {
+    return `${payload.data.length} ${payload.data.length === 1 ? 'model' : 'models'}`
+  }
+
+  return undefined
+}
+
+function getRuntimeApproval(data: Record<string, unknown>) {
+  if (!isRecord(data.approval)) {
+    return undefined
+  }
+
+  return {
+    kind: typeof data.approval.kind === 'string' ? data.approval.kind : undefined,
+    permissionId: typeof data.approval.permissionId === 'string' ? data.approval.permissionId : undefined,
+    responses: Array.isArray(data.approval.responses)
+      ? data.approval.responses.filter((response): response is string => typeof response === 'string')
+      : undefined
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
 }
 
 export default AiSdkToChunkAdapter

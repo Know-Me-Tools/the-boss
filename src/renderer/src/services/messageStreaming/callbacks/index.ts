@@ -6,12 +6,14 @@ import { createCitationCallbacks } from './citationCallbacks'
 import { createCompactCallbacks } from './compactCallbacks'
 import { createContextManagementCallbacks } from './contextManagementCallbacks'
 import { createImageCallbacks } from './imageCallbacks'
+import { createRuntimeCallbacks } from './runtimeCallbacks'
 import { createSkillCallbacks } from './skillCallbacks'
 import { createTextCallbacks } from './textCallbacks'
 import { createThinkingCallbacks } from './thinkingCallbacks'
 import { createToolCallbacks } from './toolCallbacks'
 import { createVideoCallbacks } from './videoCallbacks'
 
+export { createRuntimeCallbacks } from './runtimeCallbacks'
 export { createSkillCallbacks } from './skillCallbacks'
 
 interface CallbacksDependencies {
@@ -87,6 +89,11 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     assistantMsgId
   })
 
+  const runtimeCallbacks = createRuntimeCallbacks({
+    blockManager,
+    assistantMsgId
+  })
+
   // 创建textCallbacks时传入citationCallbacks的getCitationBlockId方法和compactCallbacks的handleTextComplete方法
   const textCallbacks = createTextCallbacks({
     blockManager,
@@ -108,6 +115,7 @@ export const createCallbacks = (deps: CallbacksDependencies) => {
     ...videoCallbacks,
     ...compactCallbacks,
     ...contextManagementCallbacks,
+    ...runtimeCallbacks,
     ...skillCallbacks,
     // 清理资源的方法
     cleanup: () => {

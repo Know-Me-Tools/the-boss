@@ -1,9 +1,11 @@
 import { ContextManagementMethod, DEFAULT_SKILL_CONFIG, SkillSelectionMethod } from '@renderer/types/skillConfig'
 import { render, screen } from '@testing-library/react'
 import type * as ReactI18Next from 'react-i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AssistantSkillSettingsSummary from '../AssistantSkillSettingsSummary'
+
+const translationKeys: string[] = []
 
 vi.mock('@renderer/store', () => ({
   useAppSelector: (selector: (state: any) => unknown) =>
@@ -43,6 +45,7 @@ vi.mock('react-i18next', async (importOriginal) => {
     ...actual,
     useTranslation: () => ({
       t: (key: string, options?: { defaultValue?: string; count?: number; method?: string; strategy?: string }) => {
+        translationKeys.push(key)
         if (options?.defaultValue) {
           return options.defaultValue
             .replace('{{count}}', String(options.count ?? ''))
@@ -56,6 +59,10 @@ vi.mock('react-i18next', async (importOriginal) => {
 })
 
 describe('AssistantSkillSettingsSummary', () => {
+  beforeEach(() => {
+    translationKeys.length = 0
+  })
+
   it('renders a live-derived assistant skill summary with strategy information', () => {
     render(
       <AssistantSkillSettingsSummary
@@ -91,5 +98,13 @@ describe('AssistantSkillSettingsSummary', () => {
     expect(screen.getByText('Selection: Hybrid')).toBeInTheDocument()
     expect(screen.getByText('Context: Summarized')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Configure' })).toBeInTheDocument()
+    expect(translationKeys).toEqual(
+      expect.arrayContaining([
+        'settings.skills.summary.custom',
+        'settings.skills.summary.selectionMethod',
+        'settings.skills.summary.contextMethod'
+      ])
+    )
+    expect(translationKeys).not.toEqual(expect.arrayContaining(['settings.skill.summary.custom']))
   })
 })

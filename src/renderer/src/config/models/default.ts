@@ -1,10 +1,10 @@
 import type { Model, SystemProviderId } from '@renderer/types'
 
 export const qwenModel: Model = {
-  id: 'qwen',
-  name: 'Qwen',
-  provider: 'cherryai',
-  group: 'Qwen'
+  id: 'theboss-default',
+  name: 'The Boss Default',
+  provider: 'theboss',
+  group: 'The Boss'
 }
 
 export const SYSTEM_MODELS: Record<SystemProviderId | 'defaultModel', Model[]> = {
@@ -18,6 +18,7 @@ export const SYSTEM_MODELS: Record<SystemProviderId | 'defaultModel', Model[]> =
     // Default quick assistant model
     qwenModel
   ],
+  theboss: [qwenModel],
   cherryin: [],
   vertexai: [],
   sophnet: [],

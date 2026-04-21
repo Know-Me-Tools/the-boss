@@ -1,6 +1,6 @@
-# CherryClaw 频道系统
+# Boss Claw 频道系统
 
-频道系统为 CherryClaw 提供 IM 集成能力，允许用户通过 Telegram 等即时通讯平台与代理交互。系统采用抽象适配器模式，支持未来扩展到 Discord、Slack 等平台。
+频道系统为 Boss Claw 提供 IM 集成能力，允许用户通过 Telegram 等即时通讯平台与代理交互。系统采用抽象适配器模式，支持未来扩展到 Discord、Slack 等平台。
 
 ## 架构
 
@@ -8,7 +8,7 @@
 ChannelManager (单例, 生命周期管理)
   ├── adapters Map<key, ChannelAdapter>      — 活跃的适配器实例
   ├── notifyChannels Set<key>                — 标记为通知接收者的频道
-  ├── start()   → 加载所有 CherryClaw agent，为启用的频道创建适配器
+  ├── start()   → 加载所有 Boss Claw agent，为启用的频道创建适配器
   ├── stop()    → 断开所有适配器
   └── syncAgent(agentId) → 断开旧适配器，根据当前配置重建
 
@@ -70,7 +70,7 @@ registerAdapterFactory('telegram', (channel, agentId) => {
 
 ## 流式响应
 
-CherryClaw 的流式响应遵循以下规则：
+Boss Claw 的流式响应遵循以下规则：
 
 - `text-delta` 事件在同一个文本块内是**累积的**——每个事件包含到目前为止的完整文本，而非增量
 - `ChannelMessageHandler` 在块内使用 `text = value.text`（替换），在 `text-end` 时提交

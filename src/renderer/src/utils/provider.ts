@@ -125,6 +125,7 @@ const SUPPORT_URL_CONTEXT_PROVIDER_TYPES = [
 export const isSupportUrlContextProvider = (provider: Provider) => {
   return (
     SUPPORT_URL_CONTEXT_PROVIDER_TYPES.some((type) => type === provider.type) ||
+    provider.id === SystemProviderIds.theboss ||
     provider.id === SystemProviderIds.cherryin
   )
 }

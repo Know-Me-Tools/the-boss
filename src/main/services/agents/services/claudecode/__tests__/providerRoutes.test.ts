@@ -18,19 +18,23 @@ function makeProvider(overrides: Partial<Provider> = {}): Provider {
 }
 
 describe('providerRoutes', () => {
-  it('routes OpenAI-compatible providers through the local compatibility proxy', () => {
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai' }))).toBe('compat_proxy_openai')
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai-response' }))).toBe('compat_proxy_openai')
+  it('does not route OpenAI-compatible providers through the Claude runtime', () => {
+    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai' }))).toBeNull()
+    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai-response' }))).toBeNull()
   })
 
-  it('routes Vertex providers through the local compatibility proxy', () => {
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'vertexai' }))).toBe('compat_proxy_vertex')
+  it('does not route Vertex providers through the Claude runtime', () => {
+    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'vertexai' }))).toBeNull()
   })
 
   it('routes all Anthropic providers (including OAuth) through the native_anthropic route', () => {
     expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'anthropic' }))).toBe('native_anthropic')
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'anthropic', authType: 'apiKey' }))).toBe('native_anthropic')
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'anthropic', authType: 'oauth' }))).toBe('native_anthropic')
+    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'anthropic', authType: 'apiKey' }))).toBe(
+      'native_anthropic'
+    )
+    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'anthropic', authType: 'oauth' }))).toBe(
+      'native_anthropic'
+    )
     expect(
       resolveClaudeCodeProviderRoute(makeProvider({ type: 'new-api', anthropicApiHost: 'https://anthropic.proxy/v1' }))
     ).toBe('native_anthropic')
@@ -38,12 +42,5 @@ describe('providerRoutes', () => {
 
   it('returns null for providers without a supported route', () => {
     expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'gemini' }))).toBeNull()
-  })
-
-  it('routes OpenAI OAuth through the OpenAI compat proxy (OAuth token injected server-side)', () => {
-    expect(resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai', authType: 'oauth' }))).toBe('compat_proxy_openai')
-    expect(
-      resolveClaudeCodeProviderRoute(makeProvider({ type: 'openai-response', authType: 'oauth' }))
-    ).toBe('compat_proxy_openai')
   })
 })

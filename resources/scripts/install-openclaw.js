@@ -7,21 +7,21 @@ const StreamZip = require('node-stream-zip')
 const { downloadWithRedirects } = require('./download')
 
 // Download sources
-const GITCODE_RELEASE_BASE_URL = 'https://gitcode.com/CherryHQ/openclaw-releases/releases/download'
-const GITHUB_RELEASE_BASE_URL = 'https://github.com/CherryHQ/openclaw/releases/download'
-const GITHUB_API_LATEST_RELEASE = 'https://api.github.com/repos/CherryHQ/openclaw/releases/latest'
+const CONTROL_PLANE_RUNTIME_RELEASE_BASE_URL = 'https://cdn.know-me.tools/runtimes/openclaw/releases/download'
+const CONTROL_PLANE_RUNTIME_MIRROR_BASE_URL = 'https://cdn.know-me.tools/mirrors/openclaw/releases/download'
+const CONTROL_PLANE_LATEST_RELEASE = 'https://api.know-me.tools/runtimes/openclaw/latest'
 const DEFAULT_VERSION = 'v2026.3.13'
 const API_TIMEOUT_MS = 5000
 
 /**
- * Fetches the latest release version from GitHub API with timeout
+ * Fetches the latest release version from The Boss control plane with timeout.
  * @param {number} timeoutMs Timeout in milliseconds
  * @returns {Promise<string>} The latest version tag or DEFAULT_VERSION on failure
  */
 async function getLatestVersion(timeoutMs = API_TIMEOUT_MS) {
   return new Promise((resolve) => {
     const request = https.get(
-      GITHUB_API_LATEST_RELEASE,
+      CONTROL_PLANE_LATEST_RELEASE,
       {
         headers: {
           'User-Agent': 'the-boss-installer',
@@ -31,7 +31,7 @@ async function getLatestVersion(timeoutMs = API_TIMEOUT_MS) {
       },
       (res) => {
         if (res.statusCode !== 200) {
-          console.warn(`GitHub API returned status ${res.statusCode}, using default version`)
+          console.warn(`Control plane returned status ${res.statusCode}, using default version`)
           resolve(DEFAULT_VERSION)
           return
         }
@@ -44,14 +44,14 @@ async function getLatestVersion(timeoutMs = API_TIMEOUT_MS) {
           try {
             const json = JSON.parse(data)
             if (json.tag_name) {
-              console.log(`Found latest version from GitHub: ${json.tag_name}`)
+              console.log(`Found latest version from control plane: ${json.tag_name}`)
               resolve(json.tag_name)
             } else {
-              console.warn('No tag_name in GitHub response, using default version')
+              console.warn('No tag_name in control plane response, using default version')
               resolve(DEFAULT_VERSION)
             }
           } catch (e) {
-            console.warn(`Failed to parse GitHub response: ${e.message}, using default version`)
+            console.warn(`Failed to parse control plane response: ${e.message}, using default version`)
             resolve(DEFAULT_VERSION)
           }
         })
@@ -59,13 +59,13 @@ async function getLatestVersion(timeoutMs = API_TIMEOUT_MS) {
     )
 
     request.on('timeout', () => {
-      console.warn(`GitHub API request timed out after ${timeoutMs}ms, using default version`)
+      console.warn(`Control plane request timed out after ${timeoutMs}ms, using default version`)
       request.destroy()
       resolve(DEFAULT_VERSION)
     })
 
     request.on('error', (err) => {
-      console.warn(`GitHub API request failed: ${err.message}, using default version`)
+      console.warn(`Control plane request failed: ${err.message}, using default version`)
       resolve(DEFAULT_VERSION)
     })
   })
@@ -92,12 +92,12 @@ const OPENCLAW_PACKAGES = {
 async function downloadWithFallback(version, packageName, tempFilename, preferMirror = false) {
   const sources = preferMirror
     ? [
-        { name: 'GitCode mirror', baseUrl: GITCODE_RELEASE_BASE_URL },
-        { name: 'GitHub', baseUrl: GITHUB_RELEASE_BASE_URL }
+        { name: 'The Boss CDN mirror', baseUrl: CONTROL_PLANE_RUNTIME_MIRROR_BASE_URL },
+        { name: 'The Boss CDN', baseUrl: CONTROL_PLANE_RUNTIME_RELEASE_BASE_URL }
       ]
     : [
-        { name: 'GitHub', baseUrl: GITHUB_RELEASE_BASE_URL },
-        { name: 'GitCode mirror', baseUrl: GITCODE_RELEASE_BASE_URL }
+        { name: 'The Boss CDN', baseUrl: CONTROL_PLANE_RUNTIME_RELEASE_BASE_URL },
+        { name: 'The Boss CDN mirror', baseUrl: CONTROL_PLANE_RUNTIME_MIRROR_BASE_URL }
       ]
 
   let lastError = null

@@ -18,6 +18,7 @@ import type {
   WebSearchResponse,
   WebSearchSource
 } from '.'
+import type { RuntimeApprovalRequest, RuntimeEventKind } from './chunk'
 import type { SerializedError } from './error'
 import type { ContextManagementMethod, SkillSelectionMethod } from './skillConfig'
 
@@ -36,6 +37,7 @@ export enum MessageBlockType {
   VIDEO = 'video', // 视频内容
   COMPACT = 'compact', // Compact command response
   CONTEXT_MANAGEMENT = 'context_management', // Context strategy / compacting event
+  RUNTIME = 'runtime', // Agent runtime telemetry
   SKILL = 'skill' // Skill activation block
 }
 
@@ -162,6 +164,24 @@ export interface ContextManagementMessageBlock extends BaseMessageBlock {
   payload: ContextManagementStreamPayload
 }
 
+export interface RuntimeMessageBlockEvent {
+  eventKind: RuntimeEventKind
+  runtime?: string
+  title?: string
+  summary?: string
+  approval?: RuntimeApprovalRequest
+  data: Record<string, unknown>
+  createdAt: string
+}
+
+export interface RuntimeMessageBlock extends BaseMessageBlock {
+  type: MessageBlockType.RUNTIME
+  runtime?: string
+  sessionId?: string
+  events: RuntimeMessageBlockEvent[]
+  approval?: RuntimeApprovalRequest
+}
+
 /** Skill activation block — shows which skill fired and what content was injected */
 export interface SkillMessageBlock extends BaseMessageBlock {
   type: MessageBlockType.SKILL
@@ -208,6 +228,7 @@ export type MessageBlock =
   | VideoMessageBlock
   | CompactMessageBlock
   | ContextManagementMessageBlock
+  | RuntimeMessageBlock
   | SkillMessageBlock
 
 export enum UserMessageStatus {

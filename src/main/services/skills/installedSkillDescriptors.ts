@@ -1,9 +1,10 @@
 import { loggerService } from '@logger'
+import { GLOBAL_SKILL_SCOPE, skillScopeService } from '@main/services/agents/skills/SkillScopeService'
 import { SkillService } from '@main/services/agents/skills/SkillService'
-import type { InstalledSkill, SkillGlobalConfig } from '@types'
+import type { InstalledSkill, SkillConfigScopeListRequest, SkillGlobalConfig } from '@types'
 import { escapeRegExp } from 'lodash'
 
-import { type SkillDescriptor,SkillRegistry } from './skillRegistry'
+import { type SkillDescriptor, SkillRegistry } from './skillRegistry'
 
 const logger = loggerService.withContext('MainInstalledSkillDescriptors')
 const contentCache = new Map<string, string>()
@@ -14,7 +15,8 @@ type LoadedSkillSelectionResources = {
 }
 
 export async function loadInstalledSkillSelectionResources(
-  config: SkillGlobalConfig
+  config: SkillGlobalConfig,
+  options: { scopes?: SkillConfigScopeListRequest } = {}
 ): Promise<LoadedSkillSelectionResources> {
   if (config.selectedSkillIds?.length === 0) {
     return {
@@ -25,13 +27,14 @@ export async function loadInstalledSkillSelectionResources(
 
   const skillService = SkillService.getInstance()
   const selectedSkillSet = config.selectedSkillIds ? new Set(config.selectedSkillIds) : undefined
-  const installedSkills = (await skillService.list()).filter(
+  const scopedSkills = await skillScopeService.listSkillsForScope(options.scopes ?? GLOBAL_SKILL_SCOPE)
+  const installedSkills = scopedSkills.filter(
     (skill) => skill.isEnabled && (selectedSkillSet === undefined || selectedSkillSet.has(skill.id))
   )
 
-  const descriptors = (await Promise.all(installedSkills.map((skill) => loadInstalledSkillDescriptor(skillService, skill)))).filter(
-    (descriptor): descriptor is SkillDescriptor => descriptor !== null
-  )
+  const descriptors = (
+    await Promise.all(installedSkills.map((skill) => loadInstalledSkillDescriptor(skillService, skill)))
+  ).filter((descriptor): descriptor is SkillDescriptor => descriptor !== null)
 
   const registry = new SkillRegistry()
   for (const descriptor of descriptors) {

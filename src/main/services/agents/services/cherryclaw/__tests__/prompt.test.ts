@@ -72,8 +72,8 @@ describe('PromptBuilder', () => {
 
     const result = await builder.buildSystemPrompt('/workspace')
 
-    expect(result).toContain('You are CherryClaw')
-    expect(result).toContain('## CherryClaw Tools')
+    expect(result).toContain('You are Boss Claw')
+    expect(result).toContain('## Boss Claw Tools')
     expect(result).not.toContain('## Memories')
   })
 
@@ -85,7 +85,7 @@ describe('PromptBuilder', () => {
     const result = await builder.buildSystemPrompt('/workspace')
 
     expect(result).toContain('You are CustomBot')
-    expect(result).not.toContain('You are CherryClaw')
+    expect(result).not.toContain('You are Boss Claw')
   })
 
   it('includes soul.md in memories section', async () => {
@@ -262,8 +262,8 @@ describe('PromptBuilder', () => {
       expect(result).toContain('## Workspace Memory')
       expect(result).toContain('mcp__agent-memory__memory')
       expect(result).toContain('## Web Search & Browser Strategy')
-      expect(result).toContain('mcp__exa__web_search_exa')
-      expect(result).not.toContain('## CherryClaw Tools')
+      expect(result).toContain('mcp__browser__')
+      expect(result).not.toContain('## Boss Claw Tools')
       expect(result).not.toContain('mcp__claw__cron')
       expect(result).not.toContain('mcp__claw__notify')
       expect(result).not.toContain('mcp__claw__config')
@@ -272,7 +272,7 @@ describe('PromptBuilder', () => {
     it('includes claw section when hasClaw is true', () => {
       const result = builder.buildToolGuidance({ hasClaw: true })
 
-      expect(result).toContain('## CherryClaw Tools')
+      expect(result).toContain('## Boss Claw Tools')
       expect(result).toContain('mcp__claw__cron')
       expect(result).toContain('mcp__claw__notify')
       expect(result).toContain('mcp__claw__config')
@@ -285,7 +285,7 @@ describe('PromptBuilder', () => {
     it('places claw guidance before skills/memory when present', () => {
       const result = builder.buildToolGuidance({ hasClaw: true })
 
-      const clawIdx = result.indexOf('## CherryClaw Tools')
+      const clawIdx = result.indexOf('## Boss Claw Tools')
       const skillsIdx = result.indexOf('## Skills')
       const memoryIdx = result.indexOf('## Workspace Memory')
       const webIdx = result.indexOf('## Web Search & Browser Strategy')
@@ -318,7 +318,7 @@ describe('PromptBuilder', () => {
       const guidance = builder.buildToolGuidance({ hasClaw: true })
 
       // The Soul prompt should embed every section the with-claw guidance has.
-      expect(soulPrompt).toContain('## CherryClaw Tools')
+      expect(soulPrompt).toContain('## Boss Claw Tools')
       expect(soulPrompt).toContain('## Skills')
       expect(soulPrompt).toContain('## Workspace Memory')
       expect(soulPrompt).toContain('## Web Search & Browser Strategy')

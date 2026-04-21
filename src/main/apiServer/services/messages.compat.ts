@@ -100,10 +100,7 @@ function convertToolChoice(toolChoice: AnthropicToolChoice | undefined) {
   }
 }
 
-function convertToolResultContent(
-  content: AnthropicToolResultBlock['content'],
-  isError?: boolean
-): any {
+function convertToolResultContent(content: AnthropicToolResultBlock['content'], isError?: boolean): any {
   if (typeof content === 'string') {
     return {
       type: isError ? 'error-text' : 'text',
@@ -187,7 +184,7 @@ function convertAnthropicMessages(messages: MessageCreateParams['messages']): Mo
         content:
           userContent.length === 1 && userContent[0].type === 'text'
             ? userContent[0].text
-            : userContent.map((part) =>
+            : (userContent.map((part) =>
                 part.type === 'text'
                   ? part
                   : {
@@ -195,7 +192,7 @@ function convertAnthropicMessages(messages: MessageCreateParams['messages']): Mo
                       image: part.image,
                       mediaType: part.mediaType
                     }
-              ) as any
+              ) as any)
       })
       userContent = []
     }
@@ -290,7 +287,11 @@ function buildUsage(usage?: { inputTokens?: number; outputTokens?: number }) {
   }
 }
 
-async function buildExecution(provider: Provider, request: MessageCreateParams, requestedModelId?: string): Promise<CompatExecution> {
+async function buildExecution(
+  provider: Provider,
+  request: MessageCreateParams,
+  requestedModelId?: string
+): Promise<CompatExecution> {
   const resolvedModelId = requestedModelId ?? request.model
   const model = provider.models.find((entry) => entry.id === resolvedModelId)
 
@@ -460,7 +461,9 @@ export async function streamCompatMessage(
           }
 
           const text = typeof value.text === 'string' ? value.text : ''
-          const deltaText = text.startsWith(activeTextBlock.lastText) ? text.slice(activeTextBlock.lastText.length) : text
+          const deltaText = text.startsWith(activeTextBlock.lastText)
+            ? text.slice(activeTextBlock.lastText.length)
+            : text
           activeTextBlock.lastText = text
 
           if (deltaText) {

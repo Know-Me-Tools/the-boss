@@ -1,7 +1,7 @@
 {
   "name": "@cherrystudio/ai-sdk-provider",
   "version": "0.1.6",
-  "description": "The Boss AI SDK provider bundle with CherryIN routing.",
+  "description": "The Boss AI SDK provider bundle with first-party routing.",
   "keywords": ["ai-sdk", "provider", "cherryin", "vercel-ai-sdk", "the-boss"],
   "author": "The Boss",
   "license": "MIT",

@@ -3,7 +3,7 @@ import { SelectAgentModelPopup } from '@renderer/components/Popups/SelectModelPo
 import { agentModelFilter } from '@renderer/config/models'
 import { useApiModel } from '@renderer/hooks/agents/useModel'
 import { getProviderNameById } from '@renderer/services/ProviderService'
-import type { AgentBaseWithId, ApiModel } from '@renderer/types'
+import { type AgentBaseWithId, AgentConfigurationSchema, type ApiModel } from '@renderer/types'
 import { isAgentSessionEntity } from '@renderer/types'
 import { isAgentEntity } from '@renderer/types'
 import { getModelFilterByAgentType } from '@renderer/utils/agentSession'
@@ -48,6 +48,9 @@ const SelectAgentBaseModelButton = ({
 }: Props) => {
   const { t } = useTranslation()
   const model = useApiModel({ id: agent?.model })
+  const runtime = AgentConfigurationSchema.parse(agent?.configuration ?? {}).runtime
+  const isCodexRuntime = runtime?.kind === 'codex'
+  const isOpenCodeRuntime = runtime?.kind === 'opencode'
 
   const apiFilter = isAgentEntity(agent)
     ? getModelFilterByAgentType(agent.type)
@@ -58,6 +61,60 @@ const SelectAgentBaseModelButton = ({
   if (!agent) return null
 
   const onSelectModel = async () => {
+    if (isCodexRuntime) {
+      const codexModels = await window.api.agentRuntime.listCodexModels(runtime)
+      const selectedModel = await SelectAgentModelPopup.show({
+        model,
+        models: codexModels
+          .filter((item) => !item.hidden)
+          .map(
+            (item) =>
+              ({
+                id: item.id,
+                object: 'model',
+                created: 0,
+                name: item.displayName || item.id,
+                owned_by: 'Codex',
+                provider: 'codex',
+                provider_name: 'Codex',
+                provider_model_id: item.model
+              }) as ApiModel
+          ),
+        modelFilter: agentModelFilter
+      })
+      if (selectedModel && selectedModel.id !== agent.model) {
+        void onSelect(selectedModel)
+      }
+      return
+    }
+
+    if (isOpenCodeRuntime) {
+      const openCodeModels = await window.api.agentRuntime.listOpenCodeModels(runtime)
+      const selectedModel = await SelectAgentModelPopup.show({
+        model,
+        models: openCodeModels
+          .filter((item) => !item.hidden)
+          .map(
+            (item) =>
+              ({
+                id: item.id,
+                object: 'model',
+                created: 0,
+                name: item.displayName || item.id,
+                owned_by: item.providerName,
+                provider: item.providerId,
+                provider_name: item.providerName,
+                provider_model_id: item.modelId
+              }) as ApiModel
+          ),
+        modelFilter: agentModelFilter
+      })
+      if (selectedModel && selectedModel.id !== agent.model) {
+        void onSelect(selectedModel)
+      }
+      return
+    }
+
     const selectedModel = await SelectAgentModelPopup.show({
       model,
       apiFilter: apiFilter,

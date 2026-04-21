@@ -74,10 +74,7 @@ describe('ArtifactService', () => {
       resourcesPath: '/Applications/The Boss.app/Contents/Resources'
     })
 
-    expect(resolvePaths).toEqual([
-      '/Applications/The Boss.app/Contents/Resources',
-      '/workspace/project'
-    ])
+    expect(resolvePaths).toEqual(['/Applications/The Boss.app/Contents/Resources', '/workspace/project'])
   })
 
   it('persists, updates, forks, and deletes artifacts in the local library', async () => {

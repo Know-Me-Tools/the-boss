@@ -292,7 +292,8 @@ const ArtifactSettings = () => {
         <SettingDivider />
         <SectionHeading>Projected Service Tools</SectionHeading>
         <SettingDescription>
-          Allow the specific shared tools that HTML and React artifacts may call through `artifactServices.invokeTool(...)`.
+          Allow the specific shared tools that HTML and React artifacts may call through
+          `artifactServices.invokeTool(...)`.
         </SettingDescription>
         {serviceToolsLoading ? (
           <SettingDescription>Loading shared service tools...</SettingDescription>

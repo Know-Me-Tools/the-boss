@@ -1,7 +1,7 @@
-import type { TokenUsageData } from '@cherrystudio/analytics-client'
-import { AnalyticsClient } from '@cherrystudio/analytics-client'
 import { loggerService } from '@logger'
 import { generateUserAgent } from '@main/utils/systemInfo'
+import type { AnalyticsEventPayload, TokenUsageData } from '@shared/analytics'
+import { CONTROL_PLANE_API_URL } from '@shared/config/branding'
 import { APP_NAME } from '@shared/config/constant'
 import { app } from 'electron'
 
@@ -10,8 +10,8 @@ import { configManager } from './ConfigManager'
 const logger = loggerService.withContext('AnalyticsService')
 
 class AnalyticsService {
-  private client: AnalyticsClient | null = null
   private static instance: AnalyticsService
+  private initialized = false
 
   public static getInstance(): AnalyticsService {
     if (!AnalyticsService.instance) {
@@ -21,20 +21,13 @@ class AnalyticsService {
   }
 
   public init(): void {
-    this.client = new AnalyticsClient({
-      clientId: configManager.getClientId(),
-      channel: 'the-boss',
-      onError: (error) => logger.error('Analytics error:', error),
-      headers: {
-        'User-Agent': generateUserAgent(),
-        'Client-Id': configManager.getClientId(),
-        'App-Name': APP_NAME,
-        'App-Version': `v${app.getVersion()}`,
-        OS: process.platform
-      }
-    })
+    if (!configManager.getEnableDataCollection()) {
+      logger.info('Analytics service disabled by user preference')
+      return
+    }
 
-    this.client.trackAppLaunch({
+    this.initialized = true
+    void this.sendEvent('app_launch', {
       version: app.getVersion(),
       os: process.platform
     })
@@ -43,28 +36,55 @@ class AnalyticsService {
   }
 
   public trackTokenUsage(data: TokenUsageData): void {
-    const enableDataCollection = configManager.getEnableDataCollection()
-
-    if (!this.client || !enableDataCollection) {
+    if (!this.initialized || !configManager.getEnableDataCollection()) {
       return
     }
 
-    this.client.trackTokenUsage(data)
+    void this.sendEvent('token_usage', { ...data })
   }
 
   public async trackAppUpdate(): Promise<void> {
-    if (!this.client) {
+    if (!this.initialized || !configManager.getEnableDataCollection()) {
       return
     }
 
-    await this.client.trackAppUpdate()
+    await this.sendEvent('app_update', {
+      version: app.getVersion()
+    })
   }
 
   public async destroy(): Promise<void> {
-    if (!this.client) return
-    await this.client.destroy()
-    this.client = null
+    this.initialized = false
     logger.info('Analytics service destroyed')
+  }
+
+  private async sendEvent(event: AnalyticsEventPayload['event'], data?: Record<string, unknown>): Promise<void> {
+    try {
+      const payload: AnalyticsEventPayload = {
+        event,
+        clientId: configManager.getClientId(),
+        channel: 'the-boss',
+        appName: APP_NAME,
+        appVersion: `v${app.getVersion()}`,
+        os: process.platform,
+        data
+      }
+
+      await fetch(`${CONTROL_PLANE_API_URL}/analytics/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': generateUserAgent(),
+          'Client-Id': configManager.getClientId(),
+          'App-Name': APP_NAME,
+          'App-Version': `v${app.getVersion()}`,
+          OS: process.platform
+        },
+        body: JSON.stringify(payload)
+      })
+    } catch (error) {
+      logger.warn('Analytics event delivery failed', { event, error })
+    }
   }
 }
 

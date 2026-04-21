@@ -1,0 +1,17 @@
+{
+  "project": "The Boss / Cherry Studio fork",
+  "phase": "multi-runtime-agent-parity-assessment",
+  "status": "execution_complete",
+  "lastUpdated": "2026-04-18T20:28:00Z",
+  "assessmentPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/assessment.md",
+  "planPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/plan.md",
+  "executionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/execution.md",
+  "reflectionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/reflection.md",
+  "binaryDistributionAssessmentPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-assessment.md",
+  "binaryDistributionPlanPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-plan.md",
+  "progressPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+  "openSpecDetected": false,
+  "next_pending_change": null,
+  "exact_next_command": "Run kbd-reflect for .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+  "nextRecommendedAction": "Generate kbd-reflect for the completed multi-runtime-agent-parity-assessment phase. Do not use v2."
+}

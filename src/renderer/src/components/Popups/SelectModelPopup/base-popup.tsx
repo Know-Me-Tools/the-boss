@@ -128,7 +128,7 @@ const SelectModelPopupView: React.FC<Props> = ({
     (model: Model, provider: Provider, isPinned: boolean, showIdentifier: boolean): FlatListModel => {
       const modelId = getModelUniqId(model)
       const groupName = getFancyProviderName(provider)
-      const isCherryAi = provider.id === 'cherryai'
+      const isFirstPartyModel = provider.id === 'theboss'
 
       return {
         key: isPinned ? `${modelId}_pinned` : modelId,
@@ -146,7 +146,7 @@ const SelectModelPopupView: React.FC<Props> = ({
               )}
               {isPinned && <span className="whitespace-nowrap text-[var(--color-text-3)]">| {groupName}</span>}
             </div>
-            {isCherryAi && <FreeTrialModelTag model={model} showLabel={false} />}
+            {isFirstPartyModel && <FreeTrialModelTag model={model} showLabel={false} />}
           </ModelName>
         ),
         tags: (
@@ -211,7 +211,7 @@ const SelectModelPopupView: React.FC<Props> = ({
 
       if (filteredModels.length === 0) return
 
-      const canNavigateToSettings = provider.id !== 'cherryai' && !!getProviderById(provider.id)
+      const canNavigateToSettings = provider.id !== 'theboss' && !!getProviderById(provider.id)
 
       // 添加 provider 分组标题
       items.push({

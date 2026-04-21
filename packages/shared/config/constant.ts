@@ -4,6 +4,7 @@ import {
   APP_PROTOCOL,
   PUBLIC_SUPPORT_URL,
   PUBLIC_WEBSITE_URL,
+  THE_BOSS_OPENAI_API_URL,
   UPDATE_CONFIG_URL,
   UPDATE_FEED_URL
 } from './branding'
@@ -504,11 +505,11 @@ export interface GitBashPathInfo {
   source: GitBashPathSource | null
 }
 
-// CherryIN OAuth configuration
+// The Boss first-party OAuth/control-plane configuration.
 export const CHERRYIN_CONFIG = {
-  CLIENT_ID: '2a348c87-bae1-4756-a62f-b2e97200fd6d',
-  ALLOWED_HOSTS: ['https://open.cherryin.ai', 'https://open.cherryin.dev'],
+  CLIENT_ID: 'the-boss-desktop',
+  ALLOWED_HOSTS: [THE_BOSS_OPENAI_API_URL.replace(/\/v1$/, ''), 'https://auth.know-me.tools'],
   REDIRECT_URI: `${APP_PROTOCOL}://oauth/callback`,
-  SCOPES: 'openid profile email offline_access balance:read usage:read tokens:read tokens:write'
+  SCOPES: 'openid profile email offline_access account:read usage:read tokens:read tokens:write model:invoke'
 }
 export { APP_NAME, PUBLIC_SUPPORT_URL, PUBLIC_WEBSITE_URL }

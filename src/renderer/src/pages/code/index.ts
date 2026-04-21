@@ -39,9 +39,9 @@ export const CLI_TOOLS = [
   { value: codeTools.openCode, label: 'OpenCode' }
 ]
 
-export const GEMINI_SUPPORTED_PROVIDERS = ['aihubmix', 'dmxapi', 'new-api', 'cherryin']
+export const GEMINI_SUPPORTED_PROVIDERS = ['aihubmix', 'dmxapi', 'new-api', 'theboss']
 
-export const OPENAI_CODEX_SUPPORTED_PROVIDERS = ['openai', 'openrouter', 'aihubmix', 'new-api', 'cherryin']
+export const OPENAI_CODEX_SUPPORTED_PROVIDERS = ['openai', 'openrouter', 'aihubmix', 'new-api', 'theboss']
 
 // Provider 过滤映射
 export const CLI_TOOL_PROVIDER_MAP: Record<string, (providers: Provider[]) => Provider[]> = {
@@ -75,7 +75,7 @@ export const getCodeToolsApiBaseUrl = (model: Model, type: EndpointType) => {
     },
     moonshot: {
       anthropic: {
-        api_base_url: 'https://api.moonshot.cn/anthropic'
+        api_base_url: 'https://api.moonshot.ai/anthropic'
       }
     },
     zhipu: {

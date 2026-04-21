@@ -7,6 +7,7 @@ import { useInstalledSkills, useSkillInstall, useSkillSearch } from '@renderer/h
 import { getFileIconName } from '@renderer/utils/fileIconName'
 import type { InstalledSkill, SkillFileNode, SkillSearchResult, SkillSearchSource } from '@types'
 import {
+  Alert,
   Button,
   Checkbox,
   Dropdown,
@@ -54,6 +55,7 @@ const SKILL_NAME_STYLE = {
   whiteSpace: 'nowrap'
 } as const
 const FONT_13_STYLE = { fontSize: 13 } as const
+const FONT_12_STYLE = { fontSize: 12 } as const
 const SEARCH_PREFIX_STYLE = { opacity: 0.4 } as const
 const EMPTY_ICON_STYLE = { opacity: 0.3 } as const
 const CLOSE_ICON_STYLE = { cursor: 'pointer', opacity: 0.5 } as const
@@ -224,7 +226,7 @@ const SkillsSettings: FC = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [fileContent, setFileContent] = useState<string | null>(null)
   const [loadingContent, setLoadingContent] = useState(false)
-  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(() => new Set())
 
   // Search state (online registry)
   const [searchQuery, setSearchQuery] = useState('')
@@ -236,7 +238,7 @@ const SkillsSettings: FC = () => {
 
   // Multi-select state
   const [multiSelectMode, setMultiSelectMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
 
   // Search tab state
   const [searchTab, setSearchTab] = useState<SkillSearchSource>('claude-plugins.dev')
@@ -321,6 +323,24 @@ const SkillsSettings: FC = () => {
     return results.filter((r) => r.sourceRegistry === searchTab)
   }, [results, searchTab])
 
+  const prometheusSkillStatus = useMemo(() => {
+    const packSkills = skills.filter((skill) => skill.sourceUrl?.includes('prometheus-skill-system.git#'))
+    const requiredSkills = ['kbd-process-orchestrator', 'kbd-execute', 'kbd-reflect', 'iterative-evolver']
+    const missingRequiredSkills = requiredSkills.filter(
+      (name) => !packSkills.some((skill) => skill.folderName.endsWith(name))
+    )
+    const newestUpdate = packSkills.reduce<number | null>(
+      (latest, skill) => (latest === null ? skill.updatedAt : Math.max(latest, skill.updatedAt)),
+      null
+    )
+
+    return {
+      count: packSkills.length,
+      missingRequiredSkills,
+      newestUpdate
+    }
+  }, [skills])
+
   // Pre-compute tab counts in one pass (js-combine-iterations)
   const tabCounts = useMemo(() => {
     const counts = new Map<SkillSearchSource, number>()
@@ -375,9 +395,7 @@ const SkillsSettings: FC = () => {
       title: t('settings.skills.confirmBatchUninstall', { count: toDelete.length }),
       centered: true,
       onOk: async () => {
-        for (const skill of toDelete) {
-          await uninstall(skill.id)
-        }
+        await Promise.all(toDelete.map((skill) => uninstall(skill.id)))
         setSelectedIds(new Set())
         setMultiSelectMode(false)
         setSelectedSkill(null)
@@ -449,11 +467,7 @@ const SkillsSettings: FC = () => {
     setSelectedSkill(null)
   }, [])
 
-  const selectedFileName = useMemo(() => {
-    if (!selectedFile) return null
-    const parts = selectedFile.split('/')
-    return parts[parts.length - 1]
-  }, [selectedFile])
+  const selectedFileName = selectedFile ? selectedFile.split('/').pop()! : null
 
   const handleCloseSearch = useCallback(() => {
     setSearchQuery('')
@@ -561,6 +575,45 @@ const SkillsSettings: FC = () => {
                   allowClear
                 />
               </FilterContainer>
+
+              <BuiltinPackStatus>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Typography.Text strong style={FONT_13_STYLE}>
+                      {t('settings.skills.builtinPack.prometheus', 'Prometheus built-ins')}
+                    </Typography.Text>
+                    <Typography.Text type="secondary" style={FONT_12_STYLE}>
+                      {prometheusSkillStatus.count > 0
+                        ? t('settings.skills.builtinPack.status', {
+                            count: prometheusSkillStatus.count,
+                            defaultValue: `${prometheusSkillStatus.count} default skills installed`
+                          })
+                        : t('settings.skills.builtinPack.missing', 'Default skill pack is not installed')}
+                    </Typography.Text>
+                  </div>
+                  <Button size="small" onClick={() => void refresh()}>
+                    {t('common.refresh', 'Refresh')}
+                  </Button>
+                </div>
+                {prometheusSkillStatus.newestUpdate ? (
+                  <Typography.Text type="secondary" style={FONT_12_STYLE}>
+                    {t('settings.skills.builtinPack.lastReconciled', {
+                      defaultValue: 'Last reconciled'
+                    })}
+                    : {new Date(prometheusSkillStatus.newestUpdate).toLocaleString()}
+                  </Typography.Text>
+                ) : null}
+                {prometheusSkillStatus.missingRequiredSkills.length > 0 ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={t('settings.skills.builtinPack.missingRequired', {
+                      names: prometheusSkillStatus.missingRequiredSkills.join(', '),
+                      defaultValue: `Missing required skills: ${prometheusSkillStatus.missingRequiredSkills.join(', ')}`
+                    })}
+                  />
+                ) : null}
+              </BuiltinPackStatus>
 
               {loading ? (
                 <SpinContainer>
@@ -863,6 +916,17 @@ const ListHeader = styled.div`
 
 const FilterContainer = styled.div`
   padding: 0 0 8px;
+`
+
+const BuiltinPackStatus = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 0.5px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-background-soft);
 `
 
 const RightContainer = styled.div`

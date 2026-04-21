@@ -1,0 +1,26 @@
+{
+  "tool": "manual-sycophancy-correction-skill-review",
+  "mcp_detect_sycophancy_available": false,
+  "evaluation_domain": "project_assessment",
+  "strictness": "standard",
+  "correction_mode": "detect_only",
+  "sycophancy_score": 0.18,
+  "patterns": {
+    "S-02": {
+      "status": "mitigated",
+      "rationale": "Positive classifications cite local code paths or public source evidence."
+    },
+    "S-03": {
+      "status": "mitigated",
+      "rationale": "Assessment surfaces multiple concrete gaps and risks."
+    },
+    "S-06": {
+      "status": "mitigated",
+      "rationale": "Assessment avoids unsupported certainty language and records evidence/inference boundaries."
+    }
+  },
+  "notes": [
+    "No sycophancy MCP detect tool was exposed by tool discovery in this session.",
+    "Manual review used the sycophancy-correction skill rubric from SKILL.md."
+  ]
+}

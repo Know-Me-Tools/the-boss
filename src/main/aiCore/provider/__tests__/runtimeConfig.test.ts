@@ -174,4 +174,30 @@ describe('getCompatExecutor', () => {
       })
     )
   })
+
+  it('adds Moonshot endpoint fallback fetch for China endpoint configs', async () => {
+    mockUsesAnthropicAuthToken.mockReturnValue(false)
+
+    await getCompatExecutor(
+      makeProvider({
+        id: 'moonshot',
+        type: 'openai',
+        name: 'Moonshot AI',
+        apiKey: 'sk-moonshot',
+        apiHost: 'https://api.moonshot.cn/v1',
+        authType: undefined
+      }),
+      makeModel({ id: 'kimi-k2.5', provider: 'moonshot' })
+    )
+
+    expect(mockCreateExecutor).toHaveBeenCalledWith(
+      'openai-compatible',
+      expect.objectContaining({
+        apiKey: 'sk-moonshot',
+        baseURL: 'https://api.moonshot.cn/v1',
+        fetch: expect.any(Function),
+        name: 'moonshot'
+      })
+    )
+  })
 })

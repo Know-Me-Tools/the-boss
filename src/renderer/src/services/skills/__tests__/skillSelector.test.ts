@@ -39,8 +39,10 @@ const skillC = makeSkill('skill-c', 'code generation and programming assistance'
 function buildMockResolver(vectorMap: Record<string, number[]>) {
   const dim = Object.values(vectorMap)[0]?.length ?? 3
   const defaultVec = new Array(dim).fill(0)
+  const embedFn = vi.fn(async (text: string) => vectorMap[text] ?? defaultVec)
   return {
-    embed: vi.fn(async (text: string) => vectorMap[text] ?? defaultVec),
+    embed: embedFn,
+    embedBatch: vi.fn(async (texts: string[]) => texts.map((t) => vectorMap[t] ?? defaultVec)),
     cosineSimilarity: (a: number[], b: number[]) => {
       let dot = 0
       let normA = 0
@@ -306,7 +308,12 @@ describe('SkillSelector', () => {
       [prompt]: [1, 0, 0],
       [skillA.description]: [1, 0, 0]
     })
-    const selector = new SkillSelector(makeConfig(), resolver as never, undefined, vi.fn())
+    const selector = new SkillSelector(
+      makeConfig({ selectionMethod: SkillSelectionMethod.EMBEDDING }),
+      resolver as never,
+      undefined,
+      vi.fn()
+    )
     const [result] = await selector.select(prompt, [skillA])
 
     expect(result).toHaveProperty('skill')

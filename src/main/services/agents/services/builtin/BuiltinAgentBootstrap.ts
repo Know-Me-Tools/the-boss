@@ -2,18 +2,23 @@
  * BuiltinAgentBootstrap
  *
  * Encapsulates all startup initialization logic for built-in skills and agents
- * (CherryClaw, Cherry Assistant, etc.). Keeps business details out of
+ * (Boss Claw, Boss Assistant, etc.). Keeps business details out of
  * the main entry point (`src/main/index.ts`).
  */
 import { loggerService } from '@logger'
 import { installBuiltinSkills } from '@main/utils/builtinSkills'
 
+import type { BuiltinAgentInitResult } from '../AgentService'
 import { agentService } from '../AgentService'
 import { schedulerService } from '../SchedulerService'
 import { sessionService } from '../SessionService'
+import { CHERRY_ASSISTANT_AGENT_ID, CHERRY_CLAW_AGENT_ID } from './BuiltinAgentIds'
 import { provisionBuiltinAgent } from './BuiltinAgentProvisioner'
 
 const logger = loggerService.withContext('BuiltinAgentBootstrap')
+const RETRY_DELAYS_MS = [5000, 15000, 30000]
+const retryAttempts = new Map<string, number>()
+const retryTimers = new Map<string, NodeJS.Timeout>()
 
 /**
  * Initialize all built-in skills and agents. Safe to call multiple times (idempotent).
@@ -27,49 +32,103 @@ export async function bootstrapBuiltinAgents(): Promise<void> {
   } catch (error) {
     logger.error('Failed to install built-in skills', error as Error)
   }
+
   await Promise.all([initCherryClaw(), initCherryAssistant()])
 }
 
-// ── CherryClaw ──────────────────────────────────────────────────────
+function clearRetry(agentId: string): void {
+  const timer = retryTimers.get(agentId)
+  if (timer) {
+    clearTimeout(timer)
+    retryTimers.delete(agentId)
+  }
+  retryAttempts.delete(agentId)
+}
 
-async function initCherryClaw(): Promise<void> {
-  try {
-    const agentId = await agentService.initDefaultCherryClawAgent()
-    if (!agentId) return
+function scheduleRetry(agentId: string, label: string, initFn: () => Promise<void>): void {
+  if (retryTimers.has(agentId)) {
+    return
+  }
 
-    // Ensure the default agent has at least one session
-    const { total } = await sessionService.listSessions(agentId, { limit: 1 })
-    if (total === 0) {
-      await sessionService.createSession(agentId, {})
-      logger.info('Default session created for CherryClaw agent')
-    }
+  const attempt = retryAttempts.get(agentId) ?? 0
+  const delay = RETRY_DELAYS_MS[attempt]
+  if (delay === undefined) {
+    logger.info(`Built-in ${label} bootstrap retries exhausted`, { agentId, attempts: attempt })
+    return
+  }
 
-    await schedulerService.ensureHeartbeatTask(agentId, 30)
-  } catch (error) {
-    logger.warn('Failed to init CherryClaw agent:', error as Error)
+  retryAttempts.set(agentId, attempt + 1)
+  logger.info(`Scheduling built-in ${label} bootstrap retry`, {
+    agentId,
+    attempt: attempt + 1,
+    delayMs: delay
+  })
+
+  const timer = setTimeout(() => {
+    retryTimers.delete(agentId)
+    void initFn()
+  }, delay)
+  retryTimers.set(agentId, timer)
+}
+
+async function ensureDefaultSession(agentId: string, label: string): Promise<void> {
+  const { total } = await sessionService.listSessions(agentId, { limit: 1 })
+  if (total === 0) {
+    await sessionService.createSession(agentId, {})
+    logger.info(`Default session created for ${label} agent`)
   }
 }
 
-// ── Cherry Assistant ────────────────────────────────────────────────
+async function handleInitResult(
+  agentId: string,
+  label: string,
+  result: BuiltinAgentInitResult,
+  initFn: () => Promise<void>,
+  onReady?: (resolvedAgentId: string) => Promise<void>
+): Promise<void> {
+  if (result.agentId) {
+    clearRetry(agentId)
+    await ensureDefaultSession(result.agentId, label)
+    if (onReady) {
+      await onReady(result.agentId)
+    }
+    return
+  }
 
-export const CHERRY_ASSISTANT_AGENT_ID = 'cherry-assistant-default'
+  if (result.skippedReason === 'deleted') {
+    clearRetry(agentId)
+    return
+  }
+
+  scheduleRetry(agentId, label, initFn)
+}
+
+// ── Boss Claw ───────────────────────────────────────────────────────
+
+async function initCherryClaw(): Promise<void> {
+  try {
+    const result = await agentService.initDefaultCherryClawAgent()
+    await handleInitResult(CHERRY_CLAW_AGENT_ID, 'Boss Claw', result, initCherryClaw, async (agentId) => {
+      await schedulerService.ensureHeartbeatTask(agentId, 30)
+    })
+  } catch (error) {
+    logger.warn('Failed to init Boss Claw agent:', error as Error)
+  }
+}
+
+// ── Boss Assistant ──────────────────────────────────────────────────
+
+export { CHERRY_ASSISTANT_AGENT_ID }
 
 async function initCherryAssistant(): Promise<void> {
   try {
-    const agentId = await agentService.initBuiltinAgent({
+    const result = await agentService.initBuiltinAgent({
       id: CHERRY_ASSISTANT_AGENT_ID,
       builtinRole: 'assistant',
       provisionWorkspace: provisionBuiltinAgent
     })
-    if (!agentId) return
-
-    // Ensure the assistant agent has at least one session
-    const { total } = await sessionService.listSessions(agentId, { limit: 1 })
-    if (total === 0) {
-      await sessionService.createSession(agentId, {})
-      logger.info('Default session created for Cherry Assistant agent')
-    }
+    await handleInitResult(CHERRY_ASSISTANT_AGENT_ID, 'Boss Assistant', result, initCherryAssistant)
   } catch (error) {
-    logger.warn('Failed to init Cherry Assistant agent:', error as Error)
+    logger.warn('Failed to init Boss Assistant agent:', error as Error)
   }
 }

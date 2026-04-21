@@ -39,6 +39,7 @@ mcp_server
 stats.html
 .eslintcache
 resources/binaries/
+services/the-boss-control-plane/target/
 
 # ENV
 .env

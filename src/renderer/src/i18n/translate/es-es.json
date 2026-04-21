@@ -268,7 +268,7 @@
         "title": "Tareas programadas"
       },
       "warning": {
-        "bypassPermissions": "Los agentes CherryClaw se ejecutan en modo automático completo por defecto. Todas las herramientas se ejecutan sin pedir aprobación."
+        "bypassPermissions": "Los agentes Boss Claw se ejecutan en modo automático completo por defecto. Todas las herramientas se ejecutan sin pedir aprobación."
       }
     },
     "delete": {
@@ -492,6 +492,9 @@
         "uninstalling": "Desinstalando..."
       },
       "prompt": "Configuración de indicaciones",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Añadir más habilidades",
         "builtin": "Incorporado",
@@ -1121,7 +1124,8 @@
       "placeholder_without_triggers": "Escribe tu mensaje aquí, presiona {{key}} para enviar",
       "resource_panel": {
         "categories": {
-          "files": "Archivos"
+          "files": "Archivos",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Selecciona entre archivos, agentes o habilidades",
         "loading": "Cargando...",
@@ -2282,6 +2286,17 @@
       "success": "Backup exitoso"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2964,15 @@
     },
     "skip": "Saltar",
     "toast": {
-      "connected": "Conectado con éxito a CherryIN"
+      "connected": "Conectado con éxito a The Boss"
     },
     "welcome": {
-      "login_cherryin": "Iniciar sesión con CherryIN",
+      "login_cherryin": "Iniciar sesión con The Boss",
       "or_continue_with": "O CONTINUAR CON",
       "other_provider": "Elegir Otros Proveedores",
       "select_other_provider": "Seleccionar Otro Proveedor",
       "setup_hint": "Por favor, configura al menos un proveedor para obtener la mejor experiencia.",
-      "subtitle": "Disfruta de servicios de IA de primer nivel con CherryIN",
+      "subtitle": "Disfruta de servicios de IA de primer nivel con The Boss",
       "title": "Bienvenido a The Boss"
     }
   },
@@ -3439,7 +3454,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copiloto",
     "dashscope": "Álibaba Nube BaiLiàn",
     "deepseek": "Profundo Buscar",
@@ -3484,6 +3499,7 @@
     "sophnet": "SophNet",
     "stepfun": "Función Salto",
     "tencent-cloud-ti": "Tencent Nube TI",
+    "theboss": "[to be translated]:The Boss",
     "together": "Juntos",
     "tokenflux": "TokenFlux",
     "vertexai": "Vertex AI",
@@ -5831,6 +5847,14 @@
       "author": "Autor",
       "batchUninstallSuccess": "{{count}} habilidades desinstaladas",
       "builtin": "Integrado",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "¿Estás seguro de que quieres desinstalar las {{count}} habilidades seleccionadas?",
       "confirmUninstall": "¿Estás seguro de que quieres desinstalar esta habilidad?",
       "directory": "Directorio",

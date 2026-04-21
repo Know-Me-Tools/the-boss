@@ -6,6 +6,8 @@
 
 import * as z from 'zod'
 
+import { SkillConfigOverrideSchema } from './skillConfig'
+
 // ============================================================================
 // Search source registries
 // ============================================================================
@@ -164,8 +166,40 @@ export interface SkillInstallOptions {
 
 export interface SkillToggleOptions {
   skillId: string
+  agentId: string
   isEnabled: boolean
 }
+
+// ============================================================================
+// Skill scopes
+// ============================================================================
+
+export const SkillScopeTypeSchema = z.enum(['global', 'assistant', 'topic', 'agent', 'session'])
+export type SkillScopeType = z.infer<typeof SkillScopeTypeSchema>
+
+export const SkillScopeRefSchema = z.object({
+  type: SkillScopeTypeSchema,
+  id: z.string().min(1)
+})
+export type SkillScopeRef = z.infer<typeof SkillScopeRefSchema>
+
+export const SkillScopeConfigRowSchema = z.object({
+  scopeType: SkillScopeTypeSchema,
+  scopeId: z.string(),
+  config: SkillConfigOverrideSchema.nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number()
+})
+export type SkillScopeConfigRow = z.infer<typeof SkillScopeConfigRowSchema>
+
+export const SkillScopeUpdateOptionsSchema = z.object({
+  scope: SkillScopeRefSchema,
+  config: SkillConfigOverrideSchema.nullable()
+})
+export type SkillScopeUpdateOptions = z.infer<typeof SkillScopeUpdateOptionsSchema>
+
+export const SkillConfigScopeListRequestSchema = z.union([SkillScopeRefSchema, z.array(SkillScopeRefSchema)])
+export type SkillConfigScopeListRequest = z.infer<typeof SkillConfigScopeListRequestSchema>
 
 export interface SkillInstallFromZipOptions {
   zipFilePath: string

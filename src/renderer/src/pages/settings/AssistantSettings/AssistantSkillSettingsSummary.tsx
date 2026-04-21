@@ -32,19 +32,19 @@ const AssistantSkillSettingsSummary: FC<Props> = ({ assistant, onConfigure }) =>
 
   const selectionSummaryLabel = useMemo(() => {
     if (selectionSummary.mode === 'none') {
-      return t('settings.skill.summary.none', {
+      return t('settings.skills.summary.none', {
         defaultValue: 'Disable all skills'
       })
     }
 
     if (selectionSummary.mode === 'custom') {
-      return t('settings.skill.summary.custom', {
+      return t('settings.skills.summary.custom', {
         defaultValue: 'Selected skills only · {{count}} selected',
         count: selectionSummary.selectedSkillCount
       })
     }
 
-    return t('settings.skill.summary.all', {
+    return t('settings.skills.summary.all', {
       defaultValue: 'All enabled skills · {{count}} available',
       count: selectionSummary.enabledSkillCount
     })
@@ -95,22 +95,20 @@ const AssistantSkillSettingsSummary: FC<Props> = ({ assistant, onConfigure }) =>
         <span style={{ color: 'var(--color-text-2)', fontSize: 12 }}>{selectionSummaryLabel}</span>
         <HStack gap={10} style={{ flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--color-text-3)', fontSize: 12 }}>
-            {t('settings.skill.summary.selectionMethod', {
+            {t('settings.skills.summary.selectionMethod', {
               defaultValue: 'Selection: {{method}}',
               method: selectionMethodLabel
             })}
           </span>
           <span style={{ color: 'var(--color-text-3)', fontSize: 12 }}>
-            {t('settings.skill.summary.contextMethod', {
+            {t('settings.skills.summary.contextMethod', {
               defaultValue: 'Context: {{strategy}}',
               strategy: contextMethodLabel
             })}
           </span>
         </HStack>
       </div>
-      <Button onClick={onConfigure}>
-        {t('settings.contextStrategy.configure', { defaultValue: 'Configure' })}
-      </Button>
+      <Button onClick={onConfigure}>{t('settings.contextStrategy.configure', { defaultValue: 'Configure' })}</Button>
     </SettingRow>
   )
 }

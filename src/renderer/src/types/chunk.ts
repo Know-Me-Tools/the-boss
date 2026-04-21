@@ -51,6 +51,7 @@ export enum ChunkType {
   THINKING_DELTA = 'thinking.delta',
   THINKING_COMPLETE = 'thinking.complete',
   CONTEXT_MANAGEMENT = 'context.management',
+  RUNTIME_EVENT = 'runtime.event',
   SKILL_ACTIVATED = 'skill.activated',
   SKILL_CONTENT_DELTA = 'skill.content_delta',
   SKILL_COMPLETE = 'skill.complete',
@@ -481,6 +482,24 @@ export interface ContextManagementChunk {
   payload: ContextManagementStreamPayload
 }
 
+export type RuntimeEventKind = 'status' | 'approval' | 'tool' | 'usage' | 'file' | 'item' | 'event' | 'error'
+
+export interface RuntimeApprovalRequest {
+  kind?: string
+  permissionId?: string
+  responses?: string[]
+}
+
+export interface RuntimeEventChunk {
+  type: ChunkType.RUNTIME_EVENT
+  eventKind: RuntimeEventKind
+  runtime?: string
+  title?: string
+  summary?: string
+  approval?: RuntimeApprovalRequest
+  data: Record<string, unknown>
+}
+
 export type Chunk =
   | BlockCreatedChunk // 消息块创建，无意义
   | BlockInProgressChunk // 消息块进行中，无意义
@@ -509,6 +528,7 @@ export type Chunk =
   | ThinkingDeltaChunk // 思考内容生成中
   | ThinkingCompleteChunk // 思考内容生成完成
   | ContextManagementChunk // 上下文管理事件
+  | RuntimeEventChunk // Agent runtime telemetry
   | SkillActivatedChunk // 技能激活
   | SkillContentDeltaChunk // 技能内容流式传输中
   | SkillCompleteChunk // 技能注入完成

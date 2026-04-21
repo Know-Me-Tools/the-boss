@@ -11,6 +11,8 @@ interface PopupParams {
   model?: ApiModel
   /** Api models filter */
   apiFilter?: ApiModelsFilter
+  /** Preloaded models, used by runtimes with their own model catalog. */
+  models?: ApiModel[]
   /** model filter */
   modelFilter?: (model: Model) => boolean
   /** Show tag filter section */
@@ -41,9 +43,17 @@ const buildFallbackProvider = (providerId: string, model: AdaptedApiModel): Prov
   }
 }
 
-const PopupContainer: React.FC<Props> = ({ model, apiFilter, modelFilter, showTagFilter = true, resolve }) => {
-  const { models, isLoading } = useApiModels(apiFilter)
+const PopupContainer: React.FC<Props> = ({
+  model,
+  apiFilter,
+  models: providedModels,
+  modelFilter,
+  showTagFilter = true,
+  resolve
+}) => {
+  const { models: fetchedModels, isLoading } = useApiModels(apiFilter)
   const allProviders = useAllProviders()
+  const models = providedModels ?? fetchedModels
 
   const providers = useMemo(() => {
     const providerOrderMap = new Map(allProviders.map((provider, index) => [provider.id, index]))
@@ -81,10 +91,10 @@ const PopupContainer: React.FC<Props> = ({ model, apiFilter, modelFilter, showTa
     <SelectModelPopupView
       providers={providers}
       model={selectedModel}
-      loading={isLoading}
+      loading={providedModels ? false : isLoading}
       showTagFilter={showTagFilter}
       showPinnedModels={false}
-      prioritizedProviderIds={['cherryin']}
+      prioritizedProviderIds={['theboss']}
       resolve={(value) => {
         if (value && isAdaptedApiModel(value)) {
           resolve(value.origin)

@@ -3,7 +3,7 @@ import { useAgent } from '@renderer/hooks/agents/useAgent'
 import ContextSkillsPanel from '@renderer/pages/settings/components/ContextSkillsPanel'
 import { useAppSelector } from '@renderer/store'
 import { selectGlobalSkillConfig } from '@renderer/store/skillConfig'
-import { type AgentConfiguration, AgentConfigurationSchema } from '@renderer/types'
+import { type AgentConfiguration, AgentConfigurationSchema, type SkillConfigScopeListRequest } from '@renderer/types'
 import type { ContextStrategyConfig } from '@renderer/types/contextStrategy'
 import { DEFAULT_AGENT_CONTEXT_STRATEGY_CONFIG } from '@renderer/types/contextStrategy'
 import { deriveSkillConfigOverride, hasSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
@@ -18,10 +18,21 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
   const { t } = useTranslation()
   const globalSkillConfig = useAppSelector(selectGlobalSkillConfig)
   const parentAgentId = agentBase && 'agent_id' in agentBase ? agentBase.agent_id : null
+  const skillScopes: SkillConfigScopeListRequest | undefined =
+    agentBase && parentAgentId
+      ? [
+          { type: 'agent', id: parentAgentId },
+          { type: 'session', id: agentBase.id }
+        ]
+      : agentBase
+        ? { type: 'agent', id: agentBase.id }
+        : undefined
   const { agent: parentAgent, isLoading: isParentAgentLoading } = useAgent(parentAgentId)
   const configuration = AgentConfigurationSchema.parse(agentBase?.configuration ?? {})
   const parentAgentConfiguration =
-    parentAgent && agentBase && 'agent_id' in agentBase ? AgentConfigurationSchema.parse(parentAgent.configuration ?? {}) : undefined
+    parentAgent && agentBase && 'agent_id' in agentBase
+      ? AgentConfigurationSchema.parse(parentAgent.configuration ?? {})
+      : undefined
   const baseSkillConfig =
     parentAgentConfiguration && agentBase && 'agent_id' in agentBase
       ? resolveSkillConfig(globalSkillConfig, parentAgentConfiguration.skill_config)
@@ -60,6 +71,7 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
     <ContextSkillsPanel
       theme={theme}
       skillConfig={skillConfig}
+      skillScopes={skillScopes}
       showInheritOption
       useInherited={useInheritedSkillConfig}
       onInheritedChange={(nextUseInherited) => {
@@ -72,12 +84,9 @@ const ContextSkillsSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, upd
           })
         }
       }}
-      inheritLabel={t(
-        parentAgentId ? 'settings.skill.useAgentDefault' : 'settings.skill.useGlobalDefault',
-        {
-          defaultValue: parentAgentId ? 'Use Agent Default' : 'Use Global Default'
-        }
-      )}
+      inheritLabel={t(parentAgentId ? 'settings.skill.useAgentDefault' : 'settings.skill.useGlobalDefault', {
+        defaultValue: parentAgentId ? 'Use Agent Default' : 'Use Global Default'
+      })}
       onSkillConfigChange={(patch) => {
         const nextSkillConfig = resolveSkillConfig(skillConfig, patch)
         const nextOverride = deriveSkillConfigOverride(baseSkillConfig, nextSkillConfig)

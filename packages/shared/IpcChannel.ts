@@ -133,6 +133,19 @@ export enum IpcChannel {
   AgentMessage_PersistExchange = 'agent-message:persist-exchange',
   AgentMessage_GetHistory = 'agent-message:get-history',
 
+  AgentRuntime_ListProfiles = 'agent-runtime:list-profiles',
+  AgentRuntime_UpsertProfile = 'agent-runtime:upsert-profile',
+  AgentRuntime_GetSettings = 'agent-runtime:get-settings',
+  AgentRuntime_UpsertSettings = 'agent-runtime:upsert-settings',
+  AgentRuntime_TestConnection = 'agent-runtime:test-connection',
+  AgentRuntime_StartSidecar = 'agent-runtime:start-sidecar',
+  AgentRuntime_StopSidecar = 'agent-runtime:stop-sidecar',
+  AgentRuntime_GetStatus = 'agent-runtime:get-status',
+  AgentRuntime_InstallManagedBinary = 'agent-runtime:install-managed-binary',
+  AgentRuntime_ListCodexModels = 'agent-runtime:list-codex-models',
+  AgentRuntime_ListOpenCodeModels = 'agent-runtime:list-opencode-models',
+  AgentRuntime_RespondToApproval = 'agent-runtime:respond-to-approval',
+
   AgentToolPermission_Request = 'agent-tool-permission:request',
   AgentToolPermission_Response = 'agent-tool-permission:response',
   AgentToolPermission_Result = 'agent-tool-permission:result',
@@ -364,8 +377,6 @@ export enum IpcChannel {
   Selection_ActionWindowClose = 'selection:action-window-close',
   Selection_ActionWindowMinimize = 'selection:action-window-minimize',
   Selection_ActionWindowPin = 'selection:action-window-pin',
-  // [Windows only] Electron bug workaround - can be removed once https://github.com/electron/electron/issues/48554 is fixed
-  Selection_ActionWindowResize = 'selection:action-window-resize',
   Selection_ProcessAction = 'selection:process-action',
   Selection_UpdateActionData = 'selection:update-action-data',
   Selection_GetLinuxEnvInfo = 'selection:get-linux-env-info',
@@ -450,9 +461,6 @@ export enum IpcChannel {
   Ovms_RunOVMS = 'ovms:run-ovms',
   Ovms_StopOVMS = 'ovms:stop-ovms',
 
-  // CherryAI
-  Cherryai_GetSignature = 'cherryai:get-signature',
-
   // Global Skills
   Skill_List = 'skill:list',
   Skill_Install = 'skill:install',
@@ -464,6 +472,10 @@ export enum IpcChannel {
   Skill_ListFiles = 'skill:list-files',
   Skill_ListLocal = 'skill:list-local',
   Skill_EmbedText = 'skill:embed-text',
+  Skill_EmbedTextsBatch = 'skill:embed-texts-batch',
+  SkillScope_GetConfig = 'skill-scope:get-config',
+  SkillScope_SetConfig = 'skill-scope:set-config',
+  SkillScope_ListSkills = 'skill-scope:list-skills',
 
   // Local Transfer
   LocalTransfer_ListServices = 'local-transfer:list',

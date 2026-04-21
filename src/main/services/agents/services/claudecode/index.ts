@@ -11,7 +11,6 @@ import type {
   HookCallback,
   McpHttpServerConfig,
   Options,
-  SDKMessage,
   SdkPluginConfig,
   SDKUserMessage,
   SpawnedProcess
@@ -54,13 +53,21 @@ import type {
   AgentStreamEvent,
   AgentThinkingOptions
 } from '../../interfaces/AgentStreamInterface'
+import { skillService } from '../../skills/SkillService'
 import { agentService } from '../AgentService'
 import { isProvisioned, provisionBuiltinAgent } from '../builtin/BuiltinAgentProvisioner'
 import { channelService } from '../ChannelService'
 import { PromptBuilder } from '../cherryclaw/prompt'
+import { type AgentTurnInput, getPromptText } from '../runtime/RuntimeContextBundle'
 import { sessionService } from '../SessionService'
 import { buildNamespacedToolCallId } from './claude-stream-state'
 import { resolveClaudeCodeProviderRoute } from './providerRoutes'
+import {
+  type ClaudeStreamTimeout,
+  createOneShotUserMessageStream,
+  createStreamWatchdog,
+  destroyClaudeChildProcess
+} from './streamSafety'
 import { promptForToolApproval } from './tool-permissions'
 import { ClaudeStreamState, transformSDKMessageToStreamParts } from './transform'
 
@@ -70,6 +77,10 @@ const promptBuilder = new PromptBuilder()
 const DEFAULT_AUTO_ALLOW_TOOLS = new Set(['Read', 'Glob', 'Grep'])
 const IMAGE_MAX_DIMENSION = 2000
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024 // 5MB API limit
+const CLAUDE_FIRST_BYTE_TIMEOUT_MS = 45_000
+const CLAUDE_INACTIVITY_TIMEOUT_MS = 180_000
+const CLAUDE_MAX_SDK_MESSAGES = 20_000
+const CLAUDE_CHILD_KILL_GRACE_MS = 2_000
 const shouldAutoApproveTools = process.env.CHERRY_AUTO_ALLOW_TOOLS === '1'
 const NO_RESUME_COMMANDS = ['/clear']
 
@@ -105,7 +116,7 @@ class ClaudeCodeService implements AgentServiceInterface {
   }
 
   async invoke(
-    prompt: string,
+    prompt: AgentTurnInput,
     session: GetAgentSessionResponse,
     abortController: AbortController,
     lastAgentSessionId?: string,
@@ -113,6 +124,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     images?: Array<{ data: string; media_type: string }>
   ): Promise<AgentStream> {
     const aiStream = new ClaudeCodeStream()
+    const promptText = getPromptText(prompt)
 
     // Validate session accessible paths and make sure it exists as a directory
     const cwd = session.accessible_paths[0]
@@ -122,6 +134,19 @@ class ClaudeCodeService implements AgentServiceInterface {
         error: new Error('No accessible paths defined for the agent session')
       })
       return aiStream
+    }
+
+    // Sync per-agent skill symlinks in this workspace with the `agent_skills`
+    // DB state before we spin up the SDK. This repairs drift from external
+    // edits (user deleted a symlink, workspace was moved, etc.) so Claude
+    // Code sees exactly the set of skills the agent should have enabled.
+    try {
+      await skillService.reconcileAgentSkills(session.agent_id, cwd)
+    } catch (error) {
+      logger.warn('Failed to reconcile agent skills before session start', {
+        agentId: session.agent_id,
+        error: error instanceof Error ? error.message : String(error)
+      })
     }
 
     // Validate model info
@@ -147,7 +172,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       logger.error('Provider route is unsupported for Claude Code runtime', { modelInfo })
       aiStream.emit('data', {
         type: 'error',
-        error: new Error(`Provider type '${provider.type}' is not supported by the Claude Code runtime.`)
+        error: new Error(
+          `Provider type '${provider.type}' is not supported by the Claude runtime. Select the Codex or OpenCode runtime for this provider instead.`
+        )
       })
       return aiStream
     }
@@ -170,10 +197,6 @@ class ClaudeCodeService implements AgentServiceInterface {
     // by stripping any trailing API version (e.g. `/v1`).
     // For Azure OpenAI providers, the Anthropic endpoint lives under /anthropic.
     const resolveAnthropicBaseUrl = (): string => {
-      if (providerRoute === 'compat_proxy_openai' || providerRoute === 'compat_proxy_vertex') {
-        return `http://${apiConfig.host}:${apiConfig.port}/${provider.id}`
-      }
-
       if (provider.type === 'azure-openai') {
         const host = withoutTrailingApiVersion(provider.apiHost).replace(/\/openai$/, '')
         return `${host}/anthropic`
@@ -181,14 +204,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       return withoutTrailingApiVersion(provider.anthropicApiHost?.trim() || provider.apiHost)
     }
     const anthropicBaseUrl = resolveAnthropicBaseUrl()
-    const nativeAnthropicCredentials =
-      providerRoute === 'native_anthropic' ? await resolveClaudeCodeAnthropicCredentials(provider) : null
-    const anthropicApiKey =
-      providerRoute === 'native_anthropic' ? (nativeAnthropicCredentials?.apiKey ?? '') : apiConfig.apiKey
-    const anthropicAuthToken =
-      providerRoute === 'native_anthropic'
-        ? (nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? '')
-        : apiConfig.apiKey
+    const nativeAnthropicCredentials = await resolveClaudeCodeAnthropicCredentials(provider)
+    const anthropicApiKey = nativeAnthropicCredentials?.apiKey ?? ''
+    const anthropicAuthToken = nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? ''
 
     const env = {
       ...loginShellEnv,
@@ -207,7 +225,9 @@ class ClaudeCodeService implements AgentServiceInterface {
       ELECTRON_NO_ATTACH_CONSOLE: '1',
       // Set CLAUDE_CONFIG_DIR to app's userData directory to avoid path encoding issues
       // on Windows when the username contains non-ASCII characters (e.g., Chinese characters)
-      // This prevents the SDK from using the user's home directory which may have encoding problems
+      // This prevents the SDK from using the user's home directory which may have encoding problems.
+      // Per-agent skills live in `<cwd>/.claude/skills/` and are picked up by the SDK's
+      // project-level skill loading layer — no need to point CLAUDE_CONFIG_DIR at the workspace.
       CLAUDE_CONFIG_DIR: path.join(app.getPath('userData'), '.claude'),
       ENABLE_TOOL_SEARCH: 'auto',
       CHERRY_STUDIO_BUN_PATH: bunPath,
@@ -433,7 +453,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     // shared web tool strategy. This is a lightweight strategy suffix that
     // sits on top of the SDK's `claude_code` preset rather than replacing it.
     // Soul agents already get the full guidance via `soulSystemPrompt`, and
-    // Cherry Assistant has its own specialized prompt path.
+    // Boss Assistant has its own specialized prompt path.
     const nonSoulToolGuidance = !soulEnabled && !isAssistant ? promptBuilder.buildToolGuidance() : ''
 
     // Recall side of the cross-session learning loop for non-Soul agents:
@@ -452,7 +472,7 @@ class ClaudeCodeService implements AgentServiceInterface {
       logger.info('Provisioned builtin agent workspace', { builtinRole, cwd })
     }
 
-    // Build lightweight environment snapshot for Cherry Assistant
+    // Build lightweight environment snapshot for Boss Assistant
     let assistantSystemPrompt: string | undefined
     if (isAssistant) {
       try {
@@ -465,6 +485,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     }
 
     // Build SDK options from session configuration
+    let activeClaudeChild: SpawnedProcess | undefined
     const options: Options = {
       abortController,
       cwd,
@@ -506,6 +527,23 @@ class ClaudeCodeService implements AgentServiceInterface {
           logger.warn('claude stderr', { chunk: text })
           errorChunks.push(text)
         })
+        activeClaudeChild = child as unknown as SpawnedProcess
+        const cleanupChild = () => {
+          logger.warn('Destroying Claude Code child process after abort', {
+            reason: abortController.signal.reason instanceof Error ? abortController.signal.reason.message : 'aborted'
+          })
+          destroyClaudeChildProcess(activeClaudeChild, 'abort', CLAUDE_CHILD_KILL_GRACE_MS)
+          activeClaudeChild = undefined
+        }
+        if (abortController.signal.aborted) {
+          cleanupChild()
+        } else {
+          abortController.signal.addEventListener('abort', cleanupChild, { once: true })
+          child.once('exit', () => {
+            abortController.signal.removeEventListener('abort', cleanupChild)
+            activeClaudeChild = undefined
+          })
+        }
         return child as unknown as SpawnedProcess
       },
       systemPrompt: assistantSystemPrompt
@@ -537,7 +575,7 @@ class ClaudeCodeService implements AgentServiceInterface {
       disallowedTools: [
         ...GLOBALLY_DISALLOWED_TOOLS,
         ...(soulEnabled ? SOUL_MODE_DISALLOWED_TOOLS : []),
-        // Cherry Assistant is a read-only guide; it should not ask users questions via tool
+        // Boss Assistant is a read-only guide; it should not ask users questions via tool
         ...(isAssistant ? ['AskUserQuestion'] : [])
       ],
       ...(thinkingOptions?.effort ? { effort: thinkingOptions.effort } : {}),
@@ -636,7 +674,7 @@ class ClaudeCodeService implements AgentServiceInterface {
       })
     }
 
-    // Cherry Assistant: inject navigate + diagnose MCP server
+    // Boss Assistant: inject navigate + diagnose MCP server
     if (isAssistant) {
       const assistantServer = new AssistantServer()
       options.mcpServers.assistant = {
@@ -658,20 +696,20 @@ class ClaudeCodeService implements AgentServiceInterface {
         options.allowedTools = ['mcp__assistant__*']
       }
 
-      logger.debug('Cherry Assistant: injected assistant MCP server', {
+      logger.debug('Boss Assistant: injected assistant MCP server', {
         agentId: session.agent_id,
         totalMcpServers: Object.keys(options.mcpServers).length
       })
     }
 
-    if (lastAgentSessionId && !NO_RESUME_COMMANDS.some((cmd) => prompt.includes(cmd))) {
+    if (lastAgentSessionId && !NO_RESUME_COMMANDS.some((cmd) => promptText.includes(cmd))) {
       options.resume = lastAgentSessionId
       // TODO: use fork session when we support branching sessions
       // options.forkSession = true
     }
 
     logger.info('Starting Claude Code SDK query', {
-      prompt,
+      prompt: promptText,
       cwd: options.cwd,
       model: options.model,
       providerRoute,
@@ -682,7 +720,7 @@ class ClaudeCodeService implements AgentServiceInterface {
     })
 
     const { stream: userInputStream, close: closeUserStream } = await this.createUserMessageStream(
-      prompt,
+      promptText,
       abortController.signal,
       images
     )
@@ -726,93 +764,8 @@ class ClaudeCodeService implements AgentServiceInterface {
     abortSignal: AbortSignal,
     images?: Array<{ data: string; media_type: string }>
   ) {
-    const queue: Array<UserInputMessage | null> = []
-    const waiters: Array<(value: UserInputMessage | null) => void> = []
-    let closed = false
-
-    const flushWaiters = (value: UserInputMessage | null) => {
-      const resolve = waiters.shift()
-      if (resolve) {
-        resolve(value)
-        return true
-      }
-      return false
-    }
-
-    const enqueue = (value: UserInputMessage | null) => {
-      if (closed) return
-      if (value === null) {
-        closed = true
-      }
-      if (!flushWaiters(value)) {
-        queue.push(value)
-      }
-    }
-
-    const close = () => {
-      if (closed) return
-      enqueue(null)
-    }
-
-    const onAbort = () => {
-      close()
-    }
-
-    if (abortSignal.aborted) {
-      close()
-    } else {
-      abortSignal.addEventListener('abort', onAbort, { once: true })
-    }
-
-    const iterator = (async function* () {
-      try {
-        while (true) {
-          let value: UserInputMessage | null
-          if (queue.length > 0) {
-            value = queue.shift() ?? null
-          } else if (closed) {
-            break
-          } else {
-            // Wait for next message or close signal
-            value = await new Promise<UserInputMessage | null>((resolve) => {
-              waiters.push(resolve)
-            })
-          }
-
-          if (value === null) {
-            break
-          }
-
-          yield value
-        }
-      } finally {
-        closed = true
-        abortSignal.removeEventListener('abort', onAbort)
-        while (waiters.length > 0) {
-          const resolve = waiters.shift()
-          resolve?.(null)
-        }
-      }
-    })()
-
-    // Kick off image processing asynchronously; enqueue the first message once ready
-    await this.buildMessageContent(initialPrompt, images).then((content) => {
-      enqueue({
-        type: 'user',
-        parent_tool_use_id: null,
-        session_id: '',
-        message: {
-          role: 'user',
-          content
-        }
-      })
-    })
-
-    return {
-      stream: iterator,
-      enqueue,
-      close
-    }
+    const content = await this.buildMessageContent(initialPrompt, images)
+    return createOneShotUserMessageStream(content, abortSignal)
   }
 
   private async buildMessageContent(
@@ -925,16 +878,62 @@ class ClaudeCodeService implements AgentServiceInterface {
     agentId: string,
     sessionId: string
   ): Promise<void> {
-    const jsonOutput: SDKMessage[] = []
+    let messageCount = 0
     let hasCompleted = false
     const startTime = Date.now()
     const streamState = new ClaudeStreamState({ agentSessionId: sessionId })
+    let terminalError: Error | undefined
+    let timeoutInfo: ClaudeStreamTimeout | undefined
+    const sdkAbortController = options.abortController ?? new AbortController()
+    options.abortController = sdkAbortController
+    const watchdog = createStreamWatchdog({
+      abortController: sdkAbortController,
+      firstByteTimeoutMs: CLAUDE_FIRST_BYTE_TIMEOUT_MS,
+      inactivityTimeoutMs: CLAUDE_INACTIVITY_TIMEOUT_MS,
+      onTimeout: (timeout) => {
+        timeoutInfo = timeout
+        terminalError = new Error(
+          `Claude SDK stream ${timeout.phase} timeout after ${Math.round(timeout.timeoutMs / 1000)}s`
+        )
+        logger.error('Claude SDK stream watchdog timeout', {
+          sessionId,
+          phase: timeout.phase,
+          timeoutMs: timeout.timeoutMs,
+          messageCount
+        })
+      }
+    })
+
+    const emitTerminalError = (error: Error, duration: number, stderr?: string[]) => {
+      if (hasCompleted) {
+        return
+      }
+      hasCompleted = true
+      logger.error('SDK query failed', {
+        duration,
+        error: { name: error.name, message: error.message },
+        messageCount,
+        timeout: timeoutInfo,
+        stderr
+      })
+      stream.emit('data', {
+        type: 'error',
+        error
+      })
+    }
 
     try {
       for await (const message of query({ prompt: promptStream, options })) {
         if (hasCompleted) break
 
-        jsonOutput.push(message)
+        watchdog.markMessageReceived()
+        messageCount++
+
+        if (messageCount > CLAUDE_MAX_SDK_MESSAGES) {
+          terminalError = new Error(`Claude SDK stream exceeded ${CLAUDE_MAX_SDK_MESSAGES} messages`)
+          sdkAbortController.abort(terminalError)
+          throw terminalError
+        }
 
         // Handle init message - merge builtin and SDK slash_commands
         if (message.type === 'system' && message.subtype === 'init') {
@@ -1015,15 +1014,32 @@ class ClaudeCodeService implements AgentServiceInterface {
             })
             closePromptStream()
             logger.info('Prompt stream closed successfully')
+            if (chunk.type === 'error') {
+              const errorMessage =
+                typeof chunk.error === 'object' && chunk.error && 'message' in chunk.error
+                  ? String(chunk.error.message)
+                  : 'Claude SDK stream returned an error'
+              terminalError = new Error(errorMessage)
+              throw terminalError
+            }
           }
         }
       }
 
       const duration = Date.now() - startTime
 
+      if (terminalError) {
+        emitTerminalError(terminalError, duration, errorChunks)
+        return
+      }
+
+      if (hasCompleted) {
+        return
+      }
+      hasCompleted = true
       logger.debug('SDK query completed successfully', {
         duration,
-        messageCount: jsonOutput.length
+        messageCount
       })
 
       stream.emit('data', {
@@ -1031,16 +1047,19 @@ class ClaudeCodeService implements AgentServiceInterface {
       })
     } catch (error) {
       if (hasCompleted) return
-      hasCompleted = true
 
       const duration = Date.now() - startTime
       const errorObj = error as any
+      if (terminalError) {
+        emitTerminalError(terminalError, duration, errorChunks)
+        return
+      }
+
       const isAborted =
-        errorObj?.name === 'AbortError' ||
-        errorObj?.message?.includes('aborted') ||
-        options.abortController?.signal.aborted
+        errorObj?.name === 'AbortError' || errorObj?.message?.includes('aborted') || sdkAbortController.signal.aborted
 
       if (isAborted) {
+        hasCompleted = true
         logger.info('SDK query aborted by client disconnect', { duration })
         stream.emit('data', {
           type: 'cancelled',
@@ -1051,24 +1070,16 @@ class ClaudeCodeService implements AgentServiceInterface {
 
       errorChunks.push(errorObj instanceof Error ? errorObj.message : String(errorObj))
       const errorMessage = errorChunks.join('\n\n')
-      logger.error('SDK query failed', {
-        duration,
-        error: errorObj instanceof Error ? { name: errorObj.name, message: errorObj.message } : String(errorObj),
-        stderr: errorChunks
-      })
-
-      stream.emit('data', {
-        type: 'error',
-        error: new Error(errorMessage)
-      })
+      emitTerminalError(new Error(errorMessage), duration, errorChunks)
     } finally {
+      watchdog.cleanup()
       closePromptStream()
     }
   }
 }
 
 /**
- * Build a lightweight environment snapshot (~200 tokens) for Cherry Assistant.
+ * Build a lightweight environment snapshot (~200 tokens) for Boss Assistant.
  * Injected into system prompt so the agent knows the user's setup immediately.
  */
 async function buildAssistantContext(): Promise<string> {

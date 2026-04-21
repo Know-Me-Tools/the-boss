@@ -1,11 +1,46 @@
+import type { Assistant, SkillConfigOverride, SkillConfigScopeListRequest, SkillGlobalConfig } from '@renderer/types'
 import { DEFAULT_SKILL_CONFIG } from '@renderer/types/skillConfig'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type * as ReactI18Next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AssistantSkillsSettings from '../AssistantSkillsSettings'
 
 let mockGlobalSkillConfig = DEFAULT_SKILL_CONFIG
+const mockGetConfig = vi.fn()
+const mockSetConfig = vi.fn()
+
+vi.mock('@renderer/context/ThemeProvider', () => ({
+  useTheme: () => ({ theme: 'light' })
+}))
+
+vi.mock('@renderer/pages/settings/components/ContextSkillsPanel', () => ({
+  default: ({
+    skillConfig,
+    skillScopes,
+    useInherited,
+    onInheritedChange,
+    onSkillConfigChange
+  }: {
+    skillConfig: SkillGlobalConfig
+    skillScopes?: SkillConfigScopeListRequest
+    useInherited?: boolean
+    onInheritedChange: (useInherited: boolean) => void
+    onSkillConfigChange: (patch: SkillConfigOverride) => void
+  }) => (
+    <div>
+      <div data-testid="selected">{skillConfig.selectedSkillIds?.join(',') ?? 'all'}</div>
+      <div data-testid="scope">{JSON.stringify(skillScopes)}</div>
+      <div data-testid="inherited">{String(useInherited)}</div>
+      <button type="button" onClick={() => onSkillConfigChange({ selectedSkillIds: [] })}>
+        disable-skills
+      </button>
+      <button type="button" onClick={() => onInheritedChange(true)}>
+        inherit
+      </button>
+    </div>
+  )
+}))
 
 vi.mock('@renderer/store', () => ({
   useAppSelector: (selector: (state: any) => unknown) =>
@@ -14,60 +49,6 @@ vi.mock('@renderer/store', () => ({
         global: mockGlobalSkillConfig
       }
     })
-}))
-
-vi.mock('@renderer/hooks/useSkills', () => ({
-  useInstalledSkills: () => ({
-    skills: [
-      {
-        id: 'skill-a',
-        name: 'Skill A',
-        description: 'Alpha skill',
-        folderName: 'skill-a',
-        source: 'local',
-        sourceUrl: null,
-        namespace: null,
-        author: 'Author A',
-        tags: [],
-        contentHash: 'skill-a-hash',
-        isEnabled: true,
-        createdAt: 1,
-        updatedAt: 1
-      },
-      {
-        id: 'skill-b',
-        name: 'Skill B',
-        description: 'Beta skill',
-        folderName: 'skill-b',
-        source: 'builtin',
-        sourceUrl: null,
-        namespace: null,
-        author: null,
-        tags: [],
-        contentHash: 'skill-b-hash',
-        isEnabled: true,
-        createdAt: 1,
-        updatedAt: 1
-      },
-      {
-        id: 'skill-c',
-        name: 'Skill C',
-        description: 'Gamma skill',
-        folderName: 'skill-c',
-        source: 'local',
-        sourceUrl: null,
-        namespace: null,
-        author: null,
-        tags: [],
-        contentHash: 'skill-c-hash',
-        isEnabled: false,
-        createdAt: 1,
-        updatedAt: 1
-      }
-    ],
-    loading: false,
-    error: null
-  })
 }))
 
 vi.mock('react-i18next', async (importOriginal) => {
@@ -80,120 +61,121 @@ vi.mock('react-i18next', async (importOriginal) => {
   }
 })
 
+const assistant: Assistant = {
+  id: 'assistant-1',
+  name: 'Assistant',
+  emoji: '😀',
+  prompt: '',
+  topics: [],
+  messages: [],
+  type: 'assistant',
+  regularPhrases: [],
+  settings: {
+    contextCount: 10,
+    temperature: 0,
+    topP: 1,
+    streamOutput: true,
+    reasoning_effort: 'default',
+    toolUseMode: 'function'
+  }
+}
+
 describe('AssistantSkillsSettings', () => {
   beforeEach(() => {
     mockGlobalSkillConfig = DEFAULT_SKILL_CONFIG
-  })
-
-  it('creates an assistant-level allowlist override when toggling from inherited defaults', () => {
-    const updateAssistantSettings = vi.fn()
-
-    render(
-      <AssistantSkillsSettings
-        assistant={{
-          id: 'assistant-1',
-          name: 'Assistant',
-          emoji: '😀',
-          prompt: '',
-          topics: [],
-          messages: [],
-          type: 'assistant',
-          regularPhrases: [],
-          settings: {
-            contextCount: 10,
-            temperature: 0,
-            topP: 1,
-            streamOutput: true,
-            reasoning_effort: 'default',
-            toolUseMode: 'function'
-          }
-        }}
-        updateAssistantSettings={updateAssistantSettings}
-      />
+    mockGetConfig.mockResolvedValue({ success: true, data: null })
+    mockSetConfig.mockImplementation(({ scope, config }) =>
+      Promise.resolve({
+        success: true,
+        data: {
+          scopeType: scope.type,
+          scopeId: scope.id,
+          config,
+          createdAt: 1,
+          updatedAt: 2
+        }
+      })
     )
 
-    const skillCard = screen.getByText('Skill A').closest('.ant-card')
-    expect(skillCard).toBeTruthy()
-    fireEvent.click(within(skillCard as HTMLElement).getByRole('switch'))
-
-    expect(updateAssistantSettings).toHaveBeenCalledWith({
-      skillConfig: {
-        selectedSkillIds: ['skill-b']
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: {
+        skillScope: {
+          getConfig: mockGetConfig,
+          setConfig: mockSetConfig
+        }
       }
     })
   })
 
-  it('keeps an explicit none override when the last selected assistant skill is turned off', () => {
-    const updateAssistantSettings = vi.fn()
+  it('writes assistant skill changes through skillScope IPC', async () => {
+    render(<AssistantSkillsSettings assistant={assistant} />)
 
+    await screen.findByTestId('selected')
+    fireEvent.click(screen.getByText('disable-skills'))
+
+    await waitFor(() => {
+      expect(mockSetConfig).toHaveBeenCalledWith({
+        scope: { type: 'assistant', id: 'assistant-1' },
+        config: { selectedSkillIds: [] }
+      })
+    })
+    expect(screen.getByTestId('scope')).toHaveTextContent('assistant')
+  })
+
+  it('uses legacy assistant skill config only when no DB scope exists', async () => {
     render(
       <AssistantSkillsSettings
         assistant={{
-          id: 'assistant-1',
-          name: 'Assistant',
-          emoji: '😀',
-          prompt: '',
-          topics: [],
-          messages: [],
-          type: 'assistant',
-          regularPhrases: [],
+          ...assistant,
           settings: {
-            contextCount: 10,
-            temperature: 0,
-            topP: 1,
-            streamOutput: true,
-            reasoning_effort: 'default',
-            toolUseMode: 'function',
+            ...assistant.settings,
             skillConfig: {
-              selectedSkillIds: ['skill-a']
+              selectedSkillIds: ['legacy-skill']
             }
           }
         }}
-        updateAssistantSettings={updateAssistantSettings}
       />
     )
 
-    const skillCard = screen.getByText('Skill A').closest('.ant-card')
-    expect(skillCard).toBeTruthy()
-    fireEvent.click(within(skillCard as HTMLElement).getByRole('switch'))
+    expect(await screen.findByTestId('selected')).toHaveTextContent('legacy-skill')
 
-    expect(updateAssistantSettings).toHaveBeenCalledWith({
-      skillConfig: {
-        selectedSkillIds: []
-      }
+    fireEvent.click(screen.getByText('inherit'))
+    await waitFor(() => {
+      expect(mockSetConfig).toHaveBeenCalledWith({
+        scope: { type: 'assistant', id: 'assistant-1' },
+        config: null
+      })
     })
   })
 
-  it('renders globally excluded skills as disabled with explanatory copy', () => {
-    mockGlobalSkillConfig = {
-      ...DEFAULT_SKILL_CONFIG,
-      selectedSkillIds: ['skill-a']
-    }
+  it('stops relying on legacy assistant skill config once a DB scope row exists', async () => {
+    mockGetConfig.mockResolvedValue({
+      success: true,
+      data: {
+        scopeType: 'assistant',
+        scopeId: 'assistant-1',
+        config: null,
+        createdAt: 1,
+        updatedAt: 1
+      }
+    })
 
     render(
       <AssistantSkillsSettings
         assistant={{
-          id: 'assistant-1',
-          name: 'Assistant',
-          emoji: '😀',
-          prompt: '',
-          topics: [],
-          messages: [],
-          type: 'assistant',
-          regularPhrases: [],
+          ...assistant,
           settings: {
-            contextCount: 10,
-            temperature: 0,
-            topP: 1,
-            streamOutput: true,
-            reasoning_effort: 'default',
-            toolUseMode: 'function'
+            ...assistant.settings,
+            skillConfig: {
+              selectedSkillIds: ['legacy-skill']
+            }
           }
         }}
-        updateAssistantSettings={vi.fn()}
       />
     )
 
-    expect(screen.getByText('Excluded by global skill defaults')).toBeInTheDocument()
+    expect(await screen.findByTestId('selected')).toHaveTextContent('all')
+    expect(screen.getByTestId('inherited')).toHaveTextContent('true')
   })
 })

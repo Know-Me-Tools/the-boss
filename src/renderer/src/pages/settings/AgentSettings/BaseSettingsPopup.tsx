@@ -12,6 +12,7 @@ export type SettingsPopupTab =
   | 'prompt'
   | 'knowledge'
   | 'context-skills'
+  | 'runtime'
   | 'permission-mode'
   | 'tools-mcp'
   | 'mcp'

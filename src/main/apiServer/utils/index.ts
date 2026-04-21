@@ -55,7 +55,7 @@ export async function getAvailableProviders(): Promise<Provider[]> {
     const finalProviders = formattedProviders.map((p: Provider) => {
       if (p.type === 'openai' && p.authType === 'oauth') {
         const existingIds = new Set(p.models?.map((m) => m.id) ?? [])
-        const missing = (defaultOpenAIOAuthModels)
+        const missing = defaultOpenAIOAuthModels
           .filter((id) => !existingIds.has(id))
           .map(
             (id) =>

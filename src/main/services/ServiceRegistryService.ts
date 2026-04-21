@@ -364,14 +364,13 @@ function buildSupabaseProjectedTools(
   return dedupeProjectionNames(
     operations.map<ServiceToolProjection>((operation) => {
       const previousProjection = previousProjections.get(operation.id)
-      const kind =
-        operation.kind.startsWith('table-')
-          ? 'supabase-table'
-          : operation.kind === 'rpc'
-            ? 'supabase-rpc'
-            : operation.kind.startsWith('auth-')
-              ? 'supabase-auth'
-              : 'supabase-storage'
+      const kind = operation.kind.startsWith('table-')
+        ? 'supabase-table'
+        : operation.kind === 'rpc'
+          ? 'supabase-rpc'
+          : operation.kind.startsWith('auth-')
+            ? 'supabase-auth'
+            : 'supabase-storage'
 
       return {
         id: previousProjection?.id ?? sanitizeIdentifier(operation.name),
@@ -1048,20 +1047,21 @@ export class ServiceRegistryService {
                 : current.headerTemplates,
               operations: nextSupabaseOperations ?? current.operations,
               projectedTools:
-                patch.projectedTools ?? buildSupabaseProjectedTools(nextSupabaseOperations ?? current.operations, current),
+                patch.projectedTools ??
+                buildSupabaseProjectedTools(nextSupabaseOperations ?? current.operations, current),
               updatedAt: timestamp
             }
-        : {
-            ...current,
-            name: patch.name ?? current.name,
-            endpoint: patch.endpoint ?? current.endpoint,
-            auth: patch.auth ? await this.materializeAuth(patch.auth) : current.auth,
-            headerTemplates: patch.headerTemplates
-              ? await this.materializeHeaderTemplates(patch.headerTemplates)
-              : current.headerTemplates,
-            projectedTools: patch.projectedTools ?? current.projectedTools,
-            updatedAt: timestamp
-          }
+          : {
+              ...current,
+              name: patch.name ?? current.name,
+              endpoint: patch.endpoint ?? current.endpoint,
+              auth: patch.auth ? await this.materializeAuth(patch.auth) : current.auth,
+              headerTemplates: patch.headerTemplates
+                ? await this.materializeHeaderTemplates(patch.headerTemplates)
+                : current.headerTemplates,
+              projectedTools: patch.projectedTools ?? current.projectedTools,
+              updatedAt: timestamp
+            }
 
     const nextRegistry: ServiceRegistryFile = {
       ...registry,

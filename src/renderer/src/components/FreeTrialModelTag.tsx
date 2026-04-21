@@ -18,19 +18,11 @@ interface Props {
 export const FreeTrialModelTag: FC<Props> = ({ model, showLabel = true }) => {
   const { t } = useTranslation()
 
-  if (model.provider !== 'cherryai') {
+  if (model.provider !== 'theboss') {
     return null
   }
 
-  let providerId
-
-  if (model.id === 'Qwen/Qwen3-8B') {
-    providerId = 'cherryin'
-  }
-
-  if (model.id === 'Qwen/Qwen3-Next-80B-A3B-Instruct') {
-    providerId = 'cherryin'
-  }
+  const providerId = 'theboss'
 
   const onSelectProvider = () => {
     NavigationService.navigate!(`/settings/provider?id=${providerId}`)

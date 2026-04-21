@@ -4,6 +4,26 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { ConversationSettingsPopupContainer } from '../ConversationSettingsPopup'
 
+Object.defineProperty(window, 'api', {
+  configurable: true,
+  value: {
+    ...(window as any).api,
+    skillScope: {
+      getConfig: vi.fn().mockResolvedValue({ success: true, data: null }),
+      setConfig: vi.fn().mockResolvedValue({
+        success: true,
+        data: {
+          scopeType: 'topic',
+          scopeId: 'topic-1',
+          config: null,
+          createdAt: 1,
+          updatedAt: 1
+        }
+      })
+    }
+  }
+})
+
 vi.mock('@renderer/hooks/useAssistant', () => ({
   useAssistant: () => ({
     assistant: {
@@ -46,6 +66,9 @@ vi.mock('@renderer/store', () => ({
     selector({
       settings: {
         contextStrategy: { type: 'sliding_window', maxMessages: 8 }
+      },
+      skillConfig: {
+        global: undefined
       }
     })
 }))

@@ -29,6 +29,7 @@ import {
   isSupportStreamOptionsProvider,
   isVertexProvider
 } from '@renderer/utils/provider'
+import { THE_BOSS_OPENAI_API_URL } from '@shared/config/branding'
 import { defaultAppHeaders } from '@shared/utils'
 import { cloneDeep, isEmpty } from 'lodash'
 
@@ -49,6 +50,45 @@ interface BuilderContext {
   baseConfig: BaseConfig
   endpoint?: string
   aiSdkProviderId: AppProviderId
+}
+
+const MOONSHOT_CHINA_HOST = 'api.moonshot.cn'
+const MOONSHOT_INTERNATIONAL_ORIGIN = 'https://api.moonshot.ai'
+
+function getMoonshotInternationalUrl(input: RequestInfo | URL): string | null {
+  const url = typeof input === 'string' || input instanceof URL ? new URL(input.toString()) : null
+  if (!url || url.host !== MOONSHOT_CHINA_HOST) {
+    return null
+  }
+
+  url.protocol = 'https:'
+  url.host = new URL(MOONSHOT_INTERNATIONAL_ORIGIN).host
+  return url.toString()
+}
+
+function createMoonshotEndpointFallbackFetch(): typeof fetch {
+  return async (input, init) => {
+    const response = await fetch(input, init)
+
+    if (response.status !== 401) {
+      return response
+    }
+
+    const retryUrl = getMoonshotInternationalUrl(input)
+    if (!retryUrl) {
+      return response
+    }
+
+    return fetch(retryUrl, init)
+  }
+}
+
+function isMoonshotChinaBaseUrl(baseURL: string): boolean {
+  try {
+    return new URL(baseURL).host === MOONSHOT_CHINA_HOST
+  } catch {
+    return false
+  }
 }
 
 // === Host Formatting ===
@@ -122,6 +162,7 @@ export function providerToAiSdkConfig(
 
   const builders: ConfigBuilderEntry[] = [
     { match: (p) => p.id === SystemProviderIds.copilot, build: buildCopilotConfig },
+    { match: (p) => p.id === SystemProviderIds.theboss, build: buildTheBossConfig },
     { match: (p) => p.id === 'cherryai', build: buildCherryAIConfig },
     { match: (p) => p.id === 'openai' && p.authType === 'oauth', build: buildOpenAIOAuthConfig },
     {
@@ -275,15 +316,64 @@ async function buildCherryAIConfig(ctx: BuilderContext): Promise<ProviderConfig<
       ...ctx.baseConfig,
       name: ctx.actualProvider.id,
       headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers },
-      fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
-        const signature = await window.api.cherryai.generateSignature({
-          method: 'POST',
-          path: '/chat/completions',
-          query: '',
-          body: init?.body && typeof init.body === 'string' ? JSON.parse(init.body) : undefined
-        })
-        return fetch(input, { ...init, headers: { ...init?.headers, ...signature } })
+      fetch: createCherryAISignatureFetch()
+    }
+  }
+}
+
+function createCherryAISignatureFetch(): typeof fetch {
+  return async (input, init) => {
+    const headers = new Headers(init?.headers)
+    const cherryAI = (
+      window.api as {
+        cherryai?: {
+          generateSignature?: (request: {
+            method: string
+            path: string
+            query: string
+            body?: unknown
+          }) => Promise<Record<string, string>>
+        }
       }
+    )?.cherryai
+    const signatureHeaders = await cherryAI?.generateSignature?.({
+      method: init?.method ?? 'POST',
+      path: '/chat/completions',
+      query: '',
+      body: init?.body && typeof init.body === 'string' ? JSON.parse(init.body) : undefined
+    })
+
+    for (const [key, value] of Object.entries(signatureHeaders ?? {})) {
+      headers.set(key, value)
+    }
+
+    return fetch(input, { ...init, headers })
+  }
+}
+
+function buildTheBossConfig(ctx: BuilderContext): ProviderConfig<'openai-compatible'> {
+  const apiKey = ctx.baseConfig.apiKey?.trim()
+  const baseURL = formatApiHost(
+    ctx.baseConfig.baseURL || THE_BOSS_OPENAI_API_URL,
+    !isWithTrailingSharp(ctx.baseConfig.baseURL)
+  )
+  const includeUsage = isSupportStreamOptionsProvider(ctx.actualProvider)
+    ? store.getState().settings.openAI?.streamOptions?.includeUsage
+    : undefined
+
+  return {
+    providerId: 'openai-compatible',
+    endpoint: ctx.endpoint,
+    providerSettings: {
+      ...ctx.baseConfig,
+      baseURL,
+      name: ctx.actualProvider.id,
+      headers: {
+        ...defaultAppHeaders(),
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        ...ctx.actualProvider.extra_headers
+      },
+      includeUsage
     }
   }
 }
@@ -391,11 +481,21 @@ function buildOpenAICompatibleConfig(ctx: BuilderContext): ProviderConfig<'opena
   const includeUsage = isSupportStreamOptionsProvider(ctx.actualProvider)
     ? store.getState().settings.openAI?.streamOptions?.includeUsage
     : undefined
+  const moonshotFallback =
+    ctx.actualProvider.id === SystemProviderIds.moonshot && isMoonshotChinaBaseUrl(ctx.baseConfig.baseURL)
+      ? { fetch: createMoonshotEndpointFallbackFetch() }
+      : {}
 
   return {
     providerId: 'openai-compatible',
     endpoint: ctx.endpoint,
-    providerSettings: { ...ctx.baseConfig, ...commonOptions, name: ctx.actualProvider.id, includeUsage }
+    providerSettings: {
+      ...ctx.baseConfig,
+      ...commonOptions,
+      name: ctx.actualProvider.id,
+      includeUsage,
+      ...moonshotFallback
+    }
   }
 }
 

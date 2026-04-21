@@ -268,7 +268,7 @@
         "title": "Tâches planifiées"
       },
       "warning": {
-        "bypassPermissions": "Les agents CherryClaw fonctionnent en mode automatique complet par défaut. Tous les outils s'exécutent sans demander d'approbation."
+        "bypassPermissions": "Les agents Boss Claw fonctionnent en mode automatique complet par défaut. Tous les outils s'exécutent sans demander d'approbation."
       }
     },
     "delete": {
@@ -492,6 +492,9 @@
         "uninstalling": "Désinstallation en cours..."
       },
       "prompt": "Paramètres de l'invite",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Ajouter plus de compétences",
         "builtin": "Intégré",
@@ -1121,7 +1124,8 @@
       "placeholder_without_triggers": "Tapez votre message ici, appuyez sur {{key}} pour envoyer",
       "resource_panel": {
         "categories": {
-          "files": "Fichiers"
+          "files": "Fichiers",
+          "skills": "[to be translated]:Skills"
         },
         "description": "Sélectionner parmi les fichiers, les agents ou les compétences",
         "loading": "Chargement...",
@@ -2282,6 +2286,17 @@
       "success": "La sauvegarde a réussi"
     },
     "block": {
+      "runtime": {
+        "approval": "[to be translated]:Approval",
+        "debug": "[to be translated]:Runtime details",
+        "knowledge": "[to be translated]:Knowledge",
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model",
+        "provider": "[to be translated]:Provider",
+        "sidecar": "[to be translated]:Sidecar",
+        "skills": "[to be translated]:Skills",
+        "unknown_runtime": "[to be translated]:runtime"
+      },
       "skill": {
         "activation_method": "[to be translated]:Method",
         "context_method": "[to be translated]:Context method",
@@ -2949,15 +2964,15 @@
     },
     "skip": "Passer",
     "toast": {
-      "connected": "Connecté avec succès à CherryIN"
+      "connected": "Connecté avec succès à The Boss"
     },
     "welcome": {
-      "login_cherryin": "Se connecter avec CherryIN",
+      "login_cherryin": "Se connecter avec The Boss",
       "or_continue_with": "OU CONTINUER AVEC",
       "other_provider": "Choisir d'autres fournisseurs",
       "select_other_provider": "Sélectionner un autre fournisseur",
       "setup_hint": "Veuillez configurer au moins un fournisseur pour une meilleure expérience",
-      "subtitle": "Profitez de services d'IA de premier ordre avec CherryIN",
+      "subtitle": "Profitez de services d'IA de premier ordre avec The Boss",
       "title": "Bienvenue à The Boss"
     }
   },
@@ -3439,7 +3454,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "The Boss",
     "copilot": "GitHub Copilote",
     "dashscope": "AliCloud BaiLian",
     "deepseek": "DeepSeek",
@@ -3484,6 +3499,7 @@
     "sophnet": "SophNet",
     "stepfun": "Échelon Étoile",
     "tencent-cloud-ti": "Tencent Cloud TI",
+    "theboss": "[to be translated]:The Boss",
     "together": "Ensemble",
     "tokenflux": "TokenFlux",
     "vertexai": "Vertex AI",
@@ -5831,6 +5847,14 @@
       "author": "Auteur",
       "batchUninstallSuccess": "{{count}} compétences désinstallées",
       "builtin": "Intégré",
+      "builtinPack": {
+        "lastReconciled": "[to be translated]:Last reconciled",
+        "missing": "[to be translated]:Default skill pack is not installed",
+        "missingRequired": "[to be translated]:Missing required skills: {{names}}",
+        "prometheus": "[to be translated]:Prometheus built-ins",
+        "status_one": "[to be translated]:{{count}} default skill installed",
+        "status_other": "[to be translated]:{{count}} default skills installed"
+      },
       "confirmBatchUninstall": "Êtes-vous sûr de vouloir désinstaller les {{count}} compétences sélectionnées ?",
       "confirmUninstall": "Êtes-vous sûr de vouloir désinstaller cette compétence ?",
       "directory": "Répertoire",

@@ -15,6 +15,7 @@ interface Props {
 }
 
 const methodColorMap: Record<SkillSelectionMethod, string> = {
+  [SkillSelectionMethod.KEYWORD]: 'orange',
   [SkillSelectionMethod.EMBEDDING]: 'blue',
   [SkillSelectionMethod.HYBRID]: 'purple',
   [SkillSelectionMethod.LLM_DELEGATED]: 'green',

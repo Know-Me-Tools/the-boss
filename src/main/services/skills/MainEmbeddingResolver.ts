@@ -1,6 +1,6 @@
 import { loggerService } from '@logger'
 
-import { embedTextInMainProcess } from './skillEmbedText'
+import { embedTextInMainProcess, embedTextsBatchInMainProcess } from './skillEmbedText'
 
 const logger = loggerService.withContext('MainEmbeddingResolver')
 
@@ -23,6 +23,18 @@ export class MainEmbeddingResolver {
     }
 
     throw new Error('Embedding returned an empty vector')
+  }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    try {
+      const vectors = await embedTextsBatchInMainProcess({ modelId: this.modelId, texts })
+      if (Array.isArray(vectors) && vectors.length === texts.length) {
+        return vectors
+      }
+    } catch (error) {
+      logger.warn('Skill batch embed failed, falling back to sequential', error as Error)
+    }
+    return Promise.all(texts.map((text) => this.embed(text)))
   }
 
   cosineSimilarity(left: number[], right: number[]): number {

@@ -2771,7 +2771,7 @@ const migrateConfig = {
             provider.anthropicApiHost = 'https://api.deepseek.com/anthropic'
             break
           case 'moonshot':
-            provider.anthropicApiHost = 'https://api.moonshot.cn/anthropic'
+            provider.anthropicApiHost = 'https://api.moonshot.ai/anthropic'
             break
           case 'zhipu':
             provider.anthropicApiHost = 'https://open.bigmodel.cn/api/anthropic'

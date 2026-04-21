@@ -106,6 +106,7 @@ The Boss is a desktop client that supports multiple LLM providers, available on 
 - 🎯 Drag-and-drop Sorting
 - 🔌 Mini Program Support
 - ⚙️ MCP(Model Context Protocol) Server
+- 🧩 DB-backed skill configuration for assistants, topics, agents, and sessions
 
 5. **Enhanced User Experience**:
 
@@ -114,6 +115,75 @@ The Boss is a desktop client that supports multiple LLM providers, available on 
 - 🎨 Light/Dark Themes and Transparent Window
 - 📝 Complete Markdown Rendering
 - 🤲 Easy Content Sharing
+
+6. **Agent Runtime & Skill Foundation**:
+
+- 🧠 Assistant and conversation skills are persisted through shared skill scopes instead of Redux-only assistant/topic state
+- 🧰 Prometheus built-in skills are bundled and reconciled on startup, including nested KBD skills such as `kbd-execute` and `kbd-reflect`
+- 🗂 Agent runtime skill selection resolves from global, agent, and session scopes while preserving `.claude/skills` symlink behavior
+- 🔄 Assistant skill choices are conversion-ready for Universal Agent Runtime agent creation
+- ⚙️ Optional Universal Agent Runtime sidecar support is available through remote URL or embedded sidecar mode
+
+# 🧩 Skills & Agent Runtime
+
+The Boss now uses a shared skill-scope layer for skill eligibility and prompt injection across assistants, conversations, agents, and sessions.
+
+## Skill Scope Model
+
+Skill scopes are stored in the agents SQLite database through the `skill_scopes` table. Supported scope types are:
+
+- `global`
+- `assistant`
+- `topic`
+- `agent`
+- `session`
+
+Each row stores a `SkillConfigOverride` JSON object:
+
+- `selectedSkillIds: undefined` means every installed skill is eligible
+- `selectedSkillIds: []` disables skill injection for that scope
+- `selectedSkillIds: ['skill-id']` limits the scope to the selected skills
+
+Assistant chat resolves skill config in this order:
+
+```text
+global -> assistant -> topic
+```
+
+Agent runtime execution resolves skill config in this order:
+
+```text
+global -> agent -> session
+```
+
+Agent workspace enablement still uses the existing `agent_skills` table because it owns the `.claude/skills` symlink side effects required by Claude Code workspaces.
+
+## Universal Agent Runtime Sidecar
+
+Universal Agent Runtime is vendored as a git submodule at `vendor/universal-agent-runtime` and pinned to commit `c7c8416b94d39358ec7cf03691738426c25b2df8`. The runtime remains optional: the app starts without the sidecar binary, and only embedded UAR sessions require it.
+
+Build the current platform sidecar with:
+
+```bash
+pnpm uar:build:sidecar
+```
+
+The build copies the binary to `resources/binaries/<platform-arch>/universal-agent-runtime` and writes `.uar-version` metadata beside it. AGPL license, source, and build notice materials are in `resources/licenses/universal-agent-runtime/`.
+
+## Skill Settings UX
+
+- Assistant Settings includes a Skills tab backed by `skill_scopes(assistant, assistantId)`
+- Conversation Settings keeps the Context & Skills panel and writes topic overrides to `skill_scopes(topic, topicId)`
+- Global Settings -> Skills remains the installed skill library and built-in pack status page
+- Legacy assistant/topic `skillConfig` values are read only as migration fallbacks
+
+## Built-in Prometheus Skills
+
+The app bundles the Prometheus skill system under `resources/skills/prometheus-skill-system`. On startup, built-in skills are copied into the global skill library and registered in the agents database.
+
+Nested skills are discovered recursively, so parent skills and child skills are installed together. This is required for KBD execution because `kbd-process-orchestrator`, `kbd-execute`, `kbd-reflect`, and `iterative-evolver` must all be present before agent runtime preflight can run.
+
+If the Settings -> Skills page reports missing Prometheus skills, use Refresh after launching a build that includes the recursive discovery fix.
 
 # 📝 Roadmap
 
@@ -187,6 +257,80 @@ Refer to the [Branching Strategy](docs/en/guides/branching-strategy.md) for cont
 For more detailed guidelines, please refer to our [Contributing Guide](CONTRIBUTING.md).
 
 Thank you for your support and contributions!
+
+# 🛠 Developer Notes
+
+## Local Setup
+
+The project uses Node.js, pnpm, Electron, React, TypeScript, Drizzle, and Vitest. Install dependencies with:
+
+```bash
+pnpm install
+```
+
+Run the desktop app in development mode:
+
+```bash
+pnpm dev
+```
+
+## Verification
+
+Common verification commands:
+
+```bash
+pnpm run typecheck:node
+pnpm run typecheck:web
+pnpm i18n:check
+pnpm format
+pnpm test
+pnpm lint
+```
+
+Targeted tests for the skill foundation include:
+
+```bash
+pnpm vitest run --project main src/main/utils/__tests__/markdownParser.test.ts src/main/__tests__/builtinSkills.test.ts
+```
+
+## macOS arm64 Build
+
+Build a signed macOS arm64 package with:
+
+```bash
+pnpm build:mac:arm64
+```
+
+Successful builds produce:
+
+```text
+dist/The-Boss-1.9.1-arm64.dmg
+dist/The-Boss-1.9.1-arm64.zip
+dist/The-Boss-1.9.1-arm64.zip.blockmap
+```
+
+The build runs OpenAPI generation, node/web/aiCore typechecks, Electron/Vite bundling, native module rebuilds, packaged runtime dependency verification, app signing, and DMG/ZIP creation. macOS notarization is skipped when `electron-builder.yml` explicitly sets notarization to `false`.
+
+## Skill Scope Developer APIs
+
+Renderer code accesses skill scopes through the preload `skillScope` API:
+
+- `skillScope.getConfig(scope)`
+- `skillScope.setConfig(scope, patch)`
+- `skillScope.listSkills(scope)`
+
+Main-process IPC channels:
+
+- `SkillScope_GetConfig`
+- `SkillScope_SetConfig`
+- `SkillScope_ListSkills`
+
+The global skill library APIs remain compatible:
+
+- `skill.list(agentId?)`
+- `skill.toggle(...)`
+- `skill.install(...)`
+- `skill.uninstall(...)`
 
 # 🔧 Developer Co-creation Program
 
