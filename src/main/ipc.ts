@@ -25,6 +25,7 @@ import { IpcChannel } from '@shared/IpcChannel'
 import { extractPdfText } from '@shared/utils/pdf'
 import type {
   AgentPersistedMessage,
+  ApiClient,
   FileMetadata,
   Notification,
   OcrProvider,
@@ -1288,14 +1289,20 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     lanTransferClientService.sendFile(payload.filePath)
   )
   ipcMain.handle(IpcChannel.LocalTransfer_CancelTransfer, () => lanTransferClientService.cancelTransfer())
-  ipcMain.handle(IpcChannel.Skill_EmbedText, async (_, payload: { modelId?: string; text: string }) => {
-    const { embedTextInMainProcess } = await import('./services/skills/skillEmbedText')
-    return embedTextInMainProcess(payload)
-  })
-  ipcMain.handle(IpcChannel.Skill_EmbedTextsBatch, async (_, payload: { modelId?: string; texts: string[] }) => {
-    const { embedTextsBatchInMainProcess } = await import('./services/skills/skillEmbedText')
-    return embedTextsBatchInMainProcess(payload)
-  })
+  ipcMain.handle(
+    IpcChannel.Skill_EmbedText,
+    async (_, payload: { modelId?: string; apiClient?: ApiClient; text: string }) => {
+      const { embedTextInMainProcess } = await import('./services/skills/skillEmbedText')
+      return embedTextInMainProcess(payload)
+    }
+  )
+  ipcMain.handle(
+    IpcChannel.Skill_EmbedTextsBatch,
+    async (_, payload: { modelId?: string; apiClient?: ApiClient; texts: string[] }) => {
+      const { embedTextsBatchInMainProcess } = await import('./services/skills/skillEmbedText')
+      return embedTextsBatchInMainProcess(payload)
+    }
+  )
 
   ipcMain.handle(IpcChannel.APP_CrashRenderProcess, () => {
     mainWindow.webContents.forcefullyCrashRenderer()

@@ -48,6 +48,7 @@ import type {
   AgentRuntimeKind,
   AgentRuntimeProfile,
   AgentRuntimeSettings,
+  ApiClient,
   AssistantMessage,
   FileListResponse,
   FileMetadata,
@@ -882,9 +883,9 @@ const api = {
       }
     }
   },
-  embedText: (payload: { modelId?: string; text: string }): Promise<number[]> =>
+  embedText: (payload: { modelId?: string; apiClient?: ApiClient; text: string }): Promise<number[]> =>
     ipcRenderer.invoke(IpcChannel.Skill_EmbedText, payload),
-  embedTextsBatch: (payload: { modelId?: string; texts: string[] }): Promise<number[][]> =>
+  embedTextsBatch: (payload: { modelId?: string; apiClient?: ApiClient; texts: string[] }): Promise<number[][]> =>
     ipcRenderer.invoke(IpcChannel.Skill_EmbedTextsBatch, payload),
   apiServer: {
     getStatus: (): Promise<GetApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_GetStatus),

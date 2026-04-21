@@ -12,6 +12,7 @@ const contentCache = new Map<string, string>()
 type LoadedSkillSelectionResources = {
   skills: SkillDescriptor[]
   registry: SkillRegistry
+  installedSkills: InstalledSkill[]
 }
 
 export async function loadInstalledSkillSelectionResources(
@@ -21,7 +22,8 @@ export async function loadInstalledSkillSelectionResources(
   if (config.selectedSkillIds?.length === 0) {
     return {
       skills: [],
-      registry: new SkillRegistry()
+      registry: new SkillRegistry(),
+      installedSkills: []
     }
   }
 
@@ -30,7 +32,8 @@ export async function loadInstalledSkillSelectionResources(
     logger.warn('Failed to load installed skills for selection')
     return {
       skills: [],
-      registry: new SkillRegistry()
+      registry: new SkillRegistry(),
+      installedSkills: []
     }
   }
 
@@ -50,7 +53,8 @@ export async function loadInstalledSkillSelectionResources(
 
   return {
     skills: registry.getAll(),
-    registry
+    registry,
+    installedSkills
   }
 }
 

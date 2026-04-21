@@ -243,6 +243,19 @@ export const SIMILARITY_THRESHOLD_METHODS = new Set<SkillSelectionMethod>([
   SkillSelectionMethod.LLM_DELEGATED
 ])
 
+export const EMBEDDING_DEPENDENT_METHODS = new Set<SkillSelectionMethod>([
+  SkillSelectionMethod.EMBEDDING,
+  SkillSelectionMethod.HYBRID,
+  SkillSelectionMethod.TWO_STAGE,
+  SkillSelectionMethod.LLM_ROUTER,
+  SkillSelectionMethod.LLM_DELEGATED
+])
+
+/** Returns true when the configured selection method requires an embedding model. */
+export function needsEmbeddingModel(method: SkillSelectionMethod): boolean {
+  return EMBEDDING_DEPENDENT_METHODS.has(method)
+}
+
 export function cloneSkillMethodConfigs(configs: SkillMethodConfigMap): SkillMethodConfigMap {
   return {
     [SkillSelectionMethod.KEYWORD]: { ...configs[SkillSelectionMethod.KEYWORD] },

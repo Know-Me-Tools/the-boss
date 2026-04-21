@@ -29,6 +29,7 @@ import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
 import { emitSkillChunks } from '@renderer/services/skills/emitSkillChunks'
 import { loadInstalledSkillSelectionResources } from '@renderer/services/skills/installedSkillDescriptors'
 import { appendSkillContextToSystemPrompt } from '@renderer/services/skills/skillPromptAugmentation'
+import { shouldSkipEmbeddingSelection } from '@renderer/services/skills/skillSelector'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
@@ -59,6 +60,7 @@ import {
   MessageBlockType,
   UserMessageStatus
 } from '@renderer/types/newMessage'
+import { needsEmbeddingModel } from '@renderer/types/skillConfig'
 import { uuid } from '@renderer/utils'
 import { addAbortController, removeAbortController } from '@renderer/utils/abortController'
 import {
@@ -962,9 +964,18 @@ const fetchAndProcessAssistantResponseImpl = async (
     const shouldSkipSkillInjection = Array.isArray(assistant.knowledge_bases) && assistant.knowledge_bases.length > 0
 
     if (userPrompt) {
-      const { skills, registry } = await loadInstalledSkillSelectionResources(skillConfig, {
+      const { skills, registry, installedSkills } = await loadInstalledSkillSelectionResources(skillConfig, {
         scopes: [assistantSkillScope, topicSkillScope]
       })
+
+      // Skip embedding-based selection when no embedding model is available (configured or from
+      // system providers) AND all installed skills are builtin. This prevents a fastembed cold
+      // start for users who haven't configured an embedding provider.
+      const allBuiltin = installedSkills.every((s) => s.source === 'builtin')
+      const embeddingUnavailable =
+        needsEmbeddingModel(skillConfig.selectionMethod) && shouldSkipEmbeddingSelection(skillConfig)
+      const skipDueToNoEmbedding = embeddingUnavailable && allBuiltin
+
       const preparedSkills = await emitSkillChunks({
         prompt: userPrompt,
         config: skillConfig,
@@ -972,7 +983,7 @@ const fetchAndProcessAssistantResponseImpl = async (
         activeModel: assistant.model || assistant.defaultModel,
         skills,
         registry,
-        disabled: shouldSkipSkillInjection
+        disabled: shouldSkipSkillInjection || skipDueToNoEmbedding
       })
 
       if (preparedSkills.length > 0) {
