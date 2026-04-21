@@ -1,9 +1,9 @@
 import type { BaseEmbeddings } from '@cherrystudio/embedjs-interfaces'
-import { OllamaEmbeddings } from '@cherrystudio/embedjs-ollama'
 import { OpenAiEmbeddings } from '@cherrystudio/embedjs-openai'
 import type { ApiClient } from '@types'
 import { net } from 'electron'
 
+import { ConfiguredOllamaEmbeddings } from './ConfiguredOllamaEmbeddings'
 import { VoyageEmbeddings } from './VoyageEmbeddings'
 
 export default class EmbeddingsFactory {
@@ -19,13 +19,10 @@ export default class EmbeddingsFactory {
       })
     }
     if (provider === 'ollama') {
-      return new OllamaEmbeddings({
-        model: model,
+      return new ConfiguredOllamaEmbeddings({
+        model,
         baseUrl: baseURL.replace(/\/api$/, ''),
-        requestOptions: {
-          // @ts-ignore expected
-          'encoding-format': 'float'
-        }
+        dimensions
       })
     }
     // NOTE: Azure OpenAI 也走 OpenAIEmbeddings, baseURL是https://xxxx.openai.azure.com/openai/v1

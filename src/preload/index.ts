@@ -517,7 +517,7 @@ const api = {
   shell: {
     openExternal: (url: string, options?: Electron.OpenExternalOptions) => {
       // Defense-in-depth: validate URL scheme before forwarding to shell.openExternal
-      const ALLOWED_PROTOCOLS = ['http:', 'https:', 'mailto:']
+      const ALLOWED_PROTOCOLS = ['http:', 'https:', 'mailto:', 'obsidian:']
       try {
         const parsed = new URL(url)
         if (!ALLOWED_PROTOCOLS.includes(parsed.protocol)) {
@@ -884,6 +884,8 @@ const api = {
   },
   embedText: (payload: { modelId?: string; text: string }): Promise<number[]> =>
     ipcRenderer.invoke(IpcChannel.Skill_EmbedText, payload),
+  embedTextsBatch: (payload: { modelId?: string; texts: string[] }): Promise<number[][]> =>
+    ipcRenderer.invoke(IpcChannel.Skill_EmbedTextsBatch, payload),
   apiServer: {
     getStatus: (): Promise<GetApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_GetStatus),
     start: (): Promise<StartApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_Start),

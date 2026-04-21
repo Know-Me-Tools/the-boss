@@ -32,6 +32,22 @@ export class EmbeddingResolver {
     throw new Error('Embedding returned an empty vector')
   }
 
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    const embedTextsBatch = window.api?.embedTextsBatch
+    if (embedTextsBatch) {
+      try {
+        const results = await embedTextsBatch({ modelId: this.modelId, texts })
+        if (Array.isArray(results) && results.length === texts.length) {
+          return results
+        }
+      } catch (err) {
+        logger.warn('embedTextsBatch failed, falling back to sequential', err as Error)
+      }
+    }
+    // Fallback: sequential embeds
+    return Promise.all(texts.map((text) => this.embed(text)))
+  }
+
   cosineSimilarity(a: number[], b: number[]): number {
     if (a.length !== b.length) {
       throw new Error('Vector length mismatch')

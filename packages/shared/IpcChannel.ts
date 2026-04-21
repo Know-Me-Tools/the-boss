@@ -470,6 +470,7 @@ export enum IpcChannel {
   Skill_ListFiles = 'skill:list-files',
   Skill_ListLocal = 'skill:list-local',
   Skill_EmbedText = 'skill:embed-text',
+  Skill_EmbedTextsBatch = 'skill:embed-texts-batch',
   SkillScope_GetConfig = 'skill-scope:get-config',
   SkillScope_SetConfig = 'skill-scope:set-config',
   SkillScope_ListSkills = 'skill-scope:list-skills',

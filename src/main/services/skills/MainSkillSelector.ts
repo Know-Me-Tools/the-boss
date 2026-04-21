@@ -231,6 +231,8 @@ export class MainSkillSelector {
     }
 
     switch (this.config.selectionMethod) {
+      case SkillSelectionMethod.KEYWORD:
+        return this.selectByKeyword(prompt, skills)
       case SkillSelectionMethod.EMBEDDING:
         return this.selectByEmbedding(prompt, skills)
       case SkillSelectionMethod.HYBRID:
@@ -242,8 +244,42 @@ export class MainSkillSelector {
       case SkillSelectionMethod.LLM_DELEGATED:
         return this.selectByLlm(prompt, skills, 'delegated', SkillSelectionMethod.LLM_DELEGATED)
       default:
-        return this.selectByEmbedding(prompt, skills)
+        return this.selectByKeyword(prompt, skills)
     }
+  }
+
+  private selectByKeyword(prompt: string, skills: SkillDescriptor[]): SkillSelectorResult[] {
+    const triggerMatches = skills.filter((skill) => this.registry.matchesTriggers(skill, prompt))
+    const bm25Map = computeBm25Scores(prompt, skills)
+
+    const seen = new Set<string>()
+    const ranked: Array<{ skill: SkillDescriptor; score: number; fromTrigger: boolean }> = []
+
+    for (const skill of triggerMatches) {
+      if (seen.has(skill.id)) continue
+      seen.add(skill.id)
+      ranked.push({ skill, score: bm25Map.get(skill.id) ?? 0, fromTrigger: true })
+    }
+
+    const bm25Sorted = [...skills]
+      .filter((s) => !seen.has(s.id))
+      .sort((a, b) => (bm25Map.get(b.id) ?? 0) - (bm25Map.get(a.id) ?? 0))
+
+    for (const skill of bm25Sorted) {
+      if (ranked.length >= this.topK) break
+      const score = bm25Map.get(skill.id) ?? 0
+      if (score <= 0) break
+      seen.add(skill.id)
+      ranked.push({ skill, score, fromTrigger: false })
+    }
+
+    return ranked.slice(0, this.topK).map(({ skill, score, fromTrigger }) => ({
+      skill,
+      score,
+      matchedKeywords: this.registry.getMatchedTokens(skill, prompt),
+      selectionReason: fromTrigger ? `Trigger pattern match` : `BM25 keyword score: ${score.toFixed(3)}`,
+      activationMethod: SkillSelectionMethod.KEYWORD
+    }))
   }
 
   private async selectByEmbedding(prompt: string, skills: SkillDescriptor[]): Promise<SkillSelectorResult[]> {
@@ -589,12 +625,11 @@ export class MainSkillSelector {
     promptVector: number[],
     skills: SkillDescriptor[]
   ): Promise<Array<{ skill: SkillDescriptor; score: number }>> {
-    return Promise.all(
-      skills.map(async (skill) => {
-        const descriptionVector = await this.resolver.embed(skill.description)
-        const score = this.resolver.cosineSimilarity(promptVector, descriptionVector)
-        return { skill, score }
-      })
-    )
+    const descriptions = skills.map((s) => s.description)
+    const vectors = await this.resolver.embedBatch(descriptions)
+    return skills.map((skill, i) => ({
+      skill,
+      score: this.resolver.cosineSimilarity(promptVector, vectors[i])
+    }))
   }
 }

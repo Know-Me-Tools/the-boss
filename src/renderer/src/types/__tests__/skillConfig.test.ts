@@ -31,11 +31,12 @@ describe('ContextManagementMethod', () => {
 })
 
 describe('DEFAULT_SKILL_CONFIG', () => {
-  it('defaults to EMBEDDING selection and PREFIX_CACHE_AWARE context', () => {
-    expect(DEFAULT_SKILL_CONFIG.selectionMethod).toBe(SkillSelectionMethod.EMBEDDING)
+  it('defaults to KEYWORD selection and PREFIX_CACHE_AWARE context', () => {
+    expect(DEFAULT_SKILL_CONFIG.selectionMethod).toBe(SkillSelectionMethod.KEYWORD)
     expect(DEFAULT_SKILL_CONFIG.contextManagementMethod).toBe(ContextManagementMethod.PREFIX_CACHE_AWARE)
     expect(DEFAULT_SKILL_CONFIG.maxSkillTokens).toBe(4096)
     expect(DEFAULT_SKILL_CONFIG.selectedSkillIds).toBeUndefined()
+    expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.KEYWORD).topK).toBe(3)
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).similarityThreshold).toBe(0.35)
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.EMBEDDING).topK).toBe(3)
     expect(getSkillMethodConfig(DEFAULT_SKILL_CONFIG, SkillSelectionMethod.HYBRID).topK).toBe(3)

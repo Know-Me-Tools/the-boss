@@ -21,6 +21,11 @@ class AnalyticsService {
   }
 
   public init(): void {
+    if (!configManager.getEnableDataCollection()) {
+      logger.info('Analytics service disabled by user preference')
+      return
+    }
+
     this.initialized = true
     void this.sendEvent('app_launch', {
       version: app.getVersion(),
@@ -39,7 +44,7 @@ class AnalyticsService {
   }
 
   public async trackAppUpdate(): Promise<void> {
-    if (!this.initialized) {
+    if (!this.initialized || !configManager.getEnableDataCollection()) {
       return
     }
 

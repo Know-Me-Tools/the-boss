@@ -392,6 +392,11 @@ function looksLikeSerializedModelRef(value: string): boolean {
 
 function getSelectionMethodDescription(t: ReturnType<typeof useTranslation>['t'], method: SkillSelectionMethod) {
   switch (method) {
+    case SkillSelectionMethod.KEYWORD:
+      return t('settings.skill.method.keyword.description', {
+        defaultValue:
+          'Fast keyword matching using trigger patterns and BM25 scoring. No embedding model required — ideal as a lightweight default.'
+      })
     case SkillSelectionMethod.EMBEDDING:
       return t('settings.skill.method.embedding.description', {
         defaultValue:
