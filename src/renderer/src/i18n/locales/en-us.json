@@ -492,6 +492,9 @@
         "uninstalling": "Uninstalling..."
       },
       "prompt": "Prompt Settings",
+      "runtime": {
+        "tab": "Runtime"
+      },
       "skills": {
         "addMore": "Add More Skills",
         "builtin": "Built-in",

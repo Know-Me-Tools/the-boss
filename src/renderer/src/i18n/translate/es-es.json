@@ -492,6 +492,9 @@
         "uninstalling": "Desinstalando..."
       },
       "prompt": "Configuración de indicaciones",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Añadir más habilidades",
         "builtin": "Incorporado",

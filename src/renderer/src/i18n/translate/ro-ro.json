@@ -492,6 +492,9 @@
         "uninstalling": "Se dezinstalează..."
       },
       "prompt": "Setări prompt",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Adaugă mai multe abilități",
         "builtin": "Încorporat",

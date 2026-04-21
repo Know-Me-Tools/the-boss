@@ -492,6 +492,9 @@
         "uninstalling": "Deinstallation läuft..."
       },
       "prompt": "Prompt-Einstellungen",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Weitere Skills hinzufügen",
         "builtin": "Integriert",

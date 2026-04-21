@@ -492,6 +492,9 @@
         "uninstalling": "Désinstallation en cours..."
       },
       "prompt": "Paramètres de l'invite",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Ajouter plus de compétences",
         "builtin": "Intégré",

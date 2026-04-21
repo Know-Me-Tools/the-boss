@@ -492,6 +492,9 @@
         "uninstalling": "アンインストール中..."
       },
       "prompt": "プロンプト設定",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "スキルを追加",
         "builtin": "組み込み",

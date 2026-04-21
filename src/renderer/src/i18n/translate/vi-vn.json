@@ -492,6 +492,9 @@
         "uninstalling": "Đang gỡ cài đặt..."
       },
       "prompt": "Cài đặt lời nhắc",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Thêm Kỹ Năng",
         "builtin": "Tích hợp sẵn",

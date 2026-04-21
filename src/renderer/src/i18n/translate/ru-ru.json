@@ -492,6 +492,9 @@
         "uninstalling": "Удаление..."
       },
       "prompt": "Настройки подсказки",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Добавить навыки",
         "builtin": "Встроенный",

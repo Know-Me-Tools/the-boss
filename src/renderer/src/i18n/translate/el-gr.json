@@ -492,6 +492,9 @@
         "uninstalling": "Απεγκατάσταση..."
       },
       "prompt": "Ρυθμίσεις Προτροπής",
+      "runtime": {
+        "tab": "[to be translated]:Runtime"
+      },
       "skills": {
         "addMore": "Προσθήκη περισσότερων δεξιοτήτων",
         "builtin": "Ενσωματωμένο",
