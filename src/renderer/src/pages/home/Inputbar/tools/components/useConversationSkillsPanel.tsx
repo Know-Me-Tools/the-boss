@@ -9,9 +9,10 @@ import {
 } from '@renderer/services/skills/scopedSkillSelection'
 import { useAppSelector } from '@renderer/store'
 import type { Assistant, Topic } from '@renderer/types'
+import type { SkillConfigOverride } from '@renderer/types/skillConfig'
 import { DEFAULT_SKILL_CONFIG, hasSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
 import { Zap } from 'lucide-react'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const logger = loggerService.withContext('useConversationSkillsPanel')
@@ -38,9 +39,30 @@ export const useConversationSkillsPanel = ({
   const globalSkillConfig = useAppSelector((state) => state.skillConfig?.global || DEFAULT_SKILL_CONFIG)
   const { skills } = useInstalledSkills()
 
+  // Fetch the DB-backed skill scope config for this assistant. The in-memory
+  // assistant.settings?.skillConfig is almost always undefined because skill
+  // config is persisted exclusively via window.api.skillScope.setConfig.
+  const [assistantScopeConfig, setAssistantScopeConfig] = useState<SkillConfigOverride | undefined>(undefined)
+  useEffect(() => {
+    window.api.skillScope
+      .getConfig({ type: 'assistant', id: assistant.id })
+      .then((result) => {
+        if (result.success && result.data?.config) {
+          setAssistantScopeConfig(result.data.config)
+        } else {
+          // Fall back to in-memory value so the hook degrades gracefully when
+          // the IPC call fails or no DB entry exists yet.
+          setAssistantScopeConfig(assistant.settings?.skillConfig)
+        }
+      })
+      .catch(() => {
+        setAssistantScopeConfig(assistant.settings?.skillConfig)
+      })
+  }, [assistant.id, assistant.settings?.skillConfig])
+
   const baseSkillConfig = useMemo(
-    () => resolveSkillConfig(globalSkillConfig, assistant.settings?.skillConfig),
-    [assistant.settings?.skillConfig, globalSkillConfig]
+    () => resolveSkillConfig(globalSkillConfig, assistantScopeConfig),
+    [assistantScopeConfig, globalSkillConfig]
   )
   const effectiveConversationSkillConfig = useMemo(
     () => resolveSkillConfig(baseSkillConfig, topic.skillConfig),

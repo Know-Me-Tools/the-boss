@@ -109,7 +109,9 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   const selectionMethodDescription = getSelectionMethodDescription(t, selectedMethod)
   const selectedSkillMode =
     skillConfig.selectedSkillIds === undefined ? 'all' : skillConfig.selectedSkillIds.length === 0 ? 'none' : 'custom'
-  const selectedSkillOptions = enabledSkills.map((skill) => ({
+  // Use ALL installed skills so the user can add any skill to the custom selection,
+  // not just the ones that already happen to be marked enabled in the current scope.
+  const selectedSkillOptions = skills.map((skill) => ({
     value: skill.id,
     label: skill.name
   }))
@@ -184,8 +186,12 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
                 return
               }
 
+              // Seed custom mode with all currently enabled skill IDs so the user
+              // keeps every skill that was active under "All enabled" and can then
+              // deselect specific ones. Falling back to [] would silently disable
+              // every skill, collapsing back to the "none" state.
               onSkillConfigChange({
-                selectedSkillIds: skillConfig.selectedSkillIds ?? []
+                selectedSkillIds: skillConfig.selectedSkillIds ?? enabledSkills.map((s) => s.id)
               })
             }}
           />

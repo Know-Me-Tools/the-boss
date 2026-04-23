@@ -41,6 +41,11 @@ function getArtifactLanguageHint(filePath?: string): string | null {
     return 'html'
   }
 
+  // SVG is XML-based and renders correctly inside an HTML sandbox iframe
+  if (normalizedPath.endsWith('.svg')) {
+    return 'html'
+  }
+
   return null
 }
 
