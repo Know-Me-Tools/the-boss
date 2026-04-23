@@ -493,7 +493,131 @@
       },
       "prompt": "Настройки подсказки",
       "runtime": {
-        "tab": "[to be translated]:Runtime"
+        "approvals": {
+          "allow": "[to be translated]:Allow",
+          "deny": "[to be translated]:Deny",
+          "never": "[to be translated]:Never",
+          "onFailure": "[to be translated]:On failure",
+          "onRequest": "[to be translated]:On request",
+          "untrusted": "[to be translated]:Untrusted only"
+        },
+        "capabilities": "[to be translated]:Capabilities",
+        "claude": {
+          "maxTurns": "[to be translated]:Max turns",
+          "permissionMode": "[to be translated]:Permission mode",
+          "title": "[to be translated]:Claude runtime"
+        },
+        "claudeProviderNotice": "[to be translated]:Claude runtime uses native Anthropic-compatible providers only. Use Codex for OpenAI models and OpenCode for broader provider routing.",
+        "codex": {
+          "approvalPolicy": "[to be translated]:Approval policy",
+          "modelLoadFailed": "[to be translated]:Failed to load Codex models.",
+          "networkAccess": "[to be translated]:Network access",
+          "reasoningEffort": "[to be translated]:Reasoning effort",
+          "sandbox": {
+            "fullAccess": "[to be translated]:Full access",
+            "readOnly": "[to be translated]:Read only",
+            "workspaceWrite": "[to be translated]:Workspace write"
+          },
+          "sandboxMode": "[to be translated]:Sandbox mode",
+          "title": "[to be translated]:Codex runtime"
+        },
+        "endpoint": "[to be translated]:Runtime endpoint",
+        "health": {
+          "failed": "[to be translated]:Runtime test failed.",
+          "test": "[to be translated]:Test connection",
+          "testing": "[to be translated]:Testing runtime connection...",
+          "title": "[to be translated]:Runtime health"
+        },
+        "log": {
+          "debug": "[to be translated]:Debug",
+          "error": "[to be translated]:Error",
+          "info": "[to be translated]:Info",
+          "warn": "[to be translated]:Warn"
+        },
+        "mode": "[to be translated]:Mode",
+        "model": "[to be translated]:Model Override",
+        "modes": {
+          "embeddedSidecar": "[to be translated]:Embedded sidecar",
+          "managedSdk": "[to be translated]:Managed SDK",
+          "managedServer": "[to be translated]:Managed server",
+          "native": "[to be translated]:Native",
+          "remoteUrl": "[to be translated]:Remote URL"
+        },
+        "opencode": {
+          "agentName": "[to be translated]:Agent name",
+          "modelLoadFailed": "[to be translated]:Failed to load OpenCode models.",
+          "permissionPolicy": "[to be translated]:Permission policy",
+          "skillTool": "[to be translated]:Skill tool",
+          "title": "[to be translated]:OpenCode runtime"
+        },
+        "options": {
+          "claude": {
+            "description": "[to be translated]:Native Anthropic-compatible Claude Agent SDK execution.",
+            "label": "[to be translated]:Claude"
+          },
+          "codex": {
+            "description": "[to be translated]:OpenAI Codex execution with workspace sandboxing and approvals.",
+            "label": "[to be translated]:Codex"
+          },
+          "opencode": {
+            "description": "[to be translated]:Managed or remote OpenCode server execution.",
+            "label": "[to be translated]:OpenCode"
+          },
+          "uar": {
+            "description": "[to be translated]:Embedded sidecar or remote Universal Agent Runtime execution.",
+            "label": "[to be translated]:UAR"
+          }
+        },
+        "profile": "[to be translated]:Runtime Profile",
+        "profileDefault": "[to be translated]:Default profile",
+        "profileLoadFailed": "[to be translated]:Failed to load runtime profiles.",
+        "reasoning": {
+          "high": "[to be translated]:High",
+          "low": "[to be translated]:Low",
+          "medium": "[to be translated]:Medium",
+          "xhigh": "[to be translated]:Extra high"
+        },
+        "status": {
+          "downloadFailed": "[to be translated]:Download failed",
+          "downloading": "[to be translated]:Downloading",
+          "installed": "[to be translated]:Installed",
+          "missingBinary": "[to be translated]:Missing binary",
+          "notInstalled": "[to be translated]:Not installed",
+          "notReady": "[to be translated]:Not ready",
+          "ready": "[to be translated]:Ready",
+          "starting": "[to be translated]:Starting",
+          "stopped": "[to be translated]:Stopped",
+          "unreachable": "[to be translated]:Unreachable",
+          "unsupported": "[to be translated]:Unsupported",
+          "unsupportedPlatform": "[to be translated]:Unsupported platform",
+          "updateAvailable": "[to be translated]:Update available",
+          "verificationFailed": "[to be translated]:Verification failed",
+          "verifying": "[to be translated]:Verifying"
+        },
+        "tab": "[to be translated]:Runtime",
+        "title": "[to be translated]:Runtime",
+        "uar": {
+          "authRef": "[to be translated]:Auth reference",
+          "binaryDownloading": "[to be translated]:Downloading UAR managed binary...",
+          "binaryInstallFailed": "[to be translated]:Failed to install UAR managed binary.",
+          "binaryPath": "[to be translated]:Binary path",
+          "binarySource": {
+            "bundled": "[to be translated]:Bundled fallback",
+            "configured": "[to be translated]:Configured path",
+            "environment": "[to be translated]:Environment path",
+            "managed": "[to be translated]:Managed binary"
+          },
+          "binaryStatusLoadFailed": "[to be translated]:Failed to load UAR binary status.",
+          "binaryStatusUnknown": "[to be translated]:UAR binary status has not been checked.",
+          "dataDir": "[to be translated]:Data directory",
+          "installManagedBinary": "[to be translated]:Install/update",
+          "logLevel": "[to be translated]:Log level",
+          "refreshBinaryStatus": "[to be translated]:Refresh status",
+          "remoteUrl": "[to be translated]:Remote URL",
+          "sidecarPort": "[to be translated]:Sidecar port",
+          "skillSync": "[to be translated]:Skill sync",
+          "title": "[to be translated]:Universal Agent Runtime"
+        }
       },
       "skills": {
         "addMore": "Добавить навыки",
@@ -1597,6 +1721,7 @@
     "assistant": "Ассистент",
     "assistant_one": "Помощник",
     "assistant_other": "ассистент",
+    "auto": "[to be translated]:Auto",
     "avatar": "Аватар",
     "back": "Назад",
     "browse": "Обзор",
@@ -5766,6 +5891,59 @@
       "selectTask": "Выберите задачу для просмотра подробностей",
       "title": "Запланированные задачи"
     },
+    "services": {
+      "addDescription": "[to be translated]:Pick a service type, capture credentials once, and decide which operations should appear as reusable shared tools.",
+      "addOperation": "[to be translated]:Add GraphQL Operation",
+      "addTitle": "[to be translated]:Add Service",
+      "authHeaders": "[to be translated]:Auth and headers",
+      "authHeadersHint": "[to be translated]:Secrets stay managed through import. Re-import if you need to rotate secret-backed auth or header values.",
+      "authType": "[to be translated]:Auth: {{type}}",
+      "description": "[to be translated]:Import and curate shared external interfaces once, then reuse their projected tools across assistants, agents, and artifacts.",
+      "editFallback": "[to be translated]:Edit service",
+      "editTitle": "[to be translated]:Edit {{name}}",
+      "empty": "[to be translated]:No services registered yet.",
+      "exposeOperation": "[to be translated]:Expose this operation as a shared tool",
+      "graphqlEndpoint": "[to be translated]:GraphQL endpoint",
+      "graphqlIntrospection": "[to be translated]:Schema introspection",
+      "graphqlPasteSdl": "[to be translated]:Paste GraphQL SDL",
+      "graphqlSdl": "[to be translated]:Pasted SDL",
+      "graphqlSubscriptionEndpoint": "[to be translated]:Subscription endpoint (optional)",
+      "headerCount": "[to be translated]:{{count}} header templates",
+      "importOpenApi": "[to be translated]:Import OpenAPI Service",
+      "importSupabase": "[to be translated]:Import Supabase Service",
+      "kindLabel": "[to be translated]:Service type",
+      "mutation": "[to be translated]:Mutation",
+      "namePlaceholder": "[to be translated]:Display name",
+      "openapiEndpoint": "[to be translated]:Endpoint override (optional)",
+      "openapiLocator": "[to be translated]:Enter the spec URL or local file path",
+      "openapiPaste": "[to be translated]:Paste OpenAPI 3.x JSON or YAML",
+      "openapiSourceFile": "[to be translated]:Local file",
+      "openapiSourceText": "[to be translated]:Pasted JSON/YAML",
+      "openapiSourceUrl": "[to be translated]:Spec URL",
+      "operationName": "[to be translated]:Operation name",
+      "operationText": "[to be translated]:Operation text",
+      "projectOperation": "[to be translated]:Project as reusable tool",
+      "projectedCount": "[to be translated]:{{count}} projected tools",
+      "projectionName": "[to be translated]:Projection name (optional)",
+      "query": "[to be translated]:Query",
+      "registryDescription": "[to be translated]:Review each shared service, test connectivity, and edit which operations project into the shared tool surface.",
+      "registryTitle": "[to be translated]:Registry",
+      "saveGraphql": "[to be translated]:Save GraphQL Service",
+      "savedOperations": "[to be translated]:Saved operations",
+      "secretLabel": "[to be translated]:Secret label",
+      "subscription": "[to be translated]:Subscription",
+      "subscriptionCount": "[to be translated]:{{count}} subscriptions",
+      "supabaseAnonKey": "[to be translated]:Anon key",
+      "supabaseAuthToggle": "[to be translated]:Include Supabase Auth helper tools",
+      "supabaseBuckets": "[to be translated]:Storage buckets to scaffold as tools, comma-separated",
+      "supabaseProjectUrl": "[to be translated]:Project URL",
+      "supabaseRpc": "[to be translated]:RPC functions to scaffold as tools, comma-separated",
+      "supabaseSchema": "[to be translated]:Database schema",
+      "supabaseServiceKey": "[to be translated]:Service role key (optional)",
+      "test": "[to be translated]:Test",
+      "title": "[to be translated]:Services",
+      "toolProjection": "[to be translated]:Tool projection"
+    },
     "shortcuts": {
       "action": "Действие",
       "actions": "操作",
@@ -5838,10 +6016,19 @@
         "label": "[to be translated]:Routing LLM Model",
         "placeholder": "[to be translated]:Use current chat or agent model"
       },
+      "selectedSkills": {
+        "all": "[to be translated]:All enabled skills",
+        "custom": "[to be translated]:Selected skills only",
+        "label": "[to be translated]:Selected skills",
+        "none": "[to be translated]:Disable all skills",
+        "placeholder": "[to be translated]:Choose which installed skills are eligible",
+        "scopeLabel": "[to be translated]:Eligible Skills"
+      },
       "selection_method": "[to be translated]:Selection Method",
       "similarity_threshold": "[to be translated]:Similarity Threshold",
       "title": "[to be translated]:Skill Configuration",
-      "top_k": "[to be translated]:Max Skills (Top K)"
+      "top_k": "[to be translated]:Max Skills (Top K)",
+      "useInherited": "[to be translated]:Use inherited settings"
     },
     "skills": {
       "author": "Автор",

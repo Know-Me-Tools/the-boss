@@ -280,18 +280,18 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
   )
 
   /**
-   * Like updateRuntime but also syncs the top-level `model` field so that
-   * header display and model selectors that read `agentBase.model` stay correct
-   * for Codex and OpenCode runtimes whose model IDs are not in the provider list.
+   * Like updateRuntime but accepts a modelId parameter (ignored at the top-level
+   * agent.model field to avoid Cherry's provider:model_id format validation
+   * rejecting raw Codex/OpenCode model IDs). The model is persisted only in
+   * configuration.runtime.modelId, which the display components already read.
    */
   const updateRuntimeWithModel = useCallback(
-    (patch: Record<string, unknown>, modelId?: string) => {
+    (patch: Record<string, unknown>, _modelId?: string) => {
       if (!agentBase) return
       const nextRuntime = { ...runtime, ...patch }
       void update(
         {
           id: agentBase.id,
-          ...(modelId ? { model: modelId } : {}),
           configuration: {
             ...configuration,
             runtime: nextRuntime

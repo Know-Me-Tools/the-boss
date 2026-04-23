@@ -493,7 +493,131 @@
       },
       "prompt": "Prompt Settings",
       "runtime": {
-        "tab": "Runtime"
+        "approvals": {
+          "allow": "Allow",
+          "deny": "Deny",
+          "never": "Never",
+          "onFailure": "On failure",
+          "onRequest": "On request",
+          "untrusted": "Untrusted only"
+        },
+        "capabilities": "Capabilities",
+        "claude": {
+          "maxTurns": "Max turns",
+          "permissionMode": "Permission mode",
+          "title": "Claude runtime"
+        },
+        "claudeProviderNotice": "Claude runtime uses native Anthropic-compatible providers only. Use Codex for OpenAI models and OpenCode for broader provider routing.",
+        "codex": {
+          "approvalPolicy": "Approval policy",
+          "modelLoadFailed": "Failed to load Codex models.",
+          "networkAccess": "Network access",
+          "reasoningEffort": "Reasoning effort",
+          "sandbox": {
+            "fullAccess": "Full access",
+            "readOnly": "Read only",
+            "workspaceWrite": "Workspace write"
+          },
+          "sandboxMode": "Sandbox mode",
+          "title": "Codex runtime"
+        },
+        "endpoint": "Runtime endpoint",
+        "health": {
+          "failed": "Runtime test failed.",
+          "test": "Test connection",
+          "testing": "Testing runtime connection...",
+          "title": "Runtime health"
+        },
+        "log": {
+          "debug": "Debug",
+          "error": "Error",
+          "info": "Info",
+          "warn": "Warn"
+        },
+        "mode": "Mode",
+        "model": "Model Override",
+        "modes": {
+          "embeddedSidecar": "Embedded sidecar",
+          "managedSdk": "Managed SDK",
+          "managedServer": "Managed server",
+          "native": "Native",
+          "remoteUrl": "Remote URL"
+        },
+        "opencode": {
+          "agentName": "Agent name",
+          "modelLoadFailed": "Failed to load OpenCode models.",
+          "permissionPolicy": "Permission policy",
+          "skillTool": "Skill tool",
+          "title": "OpenCode runtime"
+        },
+        "options": {
+          "claude": {
+            "description": "Native Anthropic-compatible Claude Agent SDK execution.",
+            "label": "Claude"
+          },
+          "codex": {
+            "description": "OpenAI Codex execution with workspace sandboxing and approvals.",
+            "label": "Codex"
+          },
+          "opencode": {
+            "description": "Managed or remote OpenCode server execution.",
+            "label": "OpenCode"
+          },
+          "uar": {
+            "description": "Embedded sidecar or remote Universal Agent Runtime execution.",
+            "label": "UAR"
+          }
+        },
+        "profile": "Runtime Profile",
+        "profileDefault": "Default profile",
+        "profileLoadFailed": "Failed to load runtime profiles.",
+        "reasoning": {
+          "high": "High",
+          "low": "Low",
+          "medium": "Medium",
+          "xhigh": "Extra high"
+        },
+        "status": {
+          "downloadFailed": "Download failed",
+          "downloading": "Downloading",
+          "installed": "Installed",
+          "missingBinary": "Missing binary",
+          "notInstalled": "Not installed",
+          "notReady": "Not ready",
+          "ready": "Ready",
+          "starting": "Starting",
+          "stopped": "Stopped",
+          "unreachable": "Unreachable",
+          "unsupported": "Unsupported",
+          "unsupportedPlatform": "Unsupported platform",
+          "updateAvailable": "Update available",
+          "verificationFailed": "Verification failed",
+          "verifying": "Verifying"
+        },
+        "tab": "Runtime",
+        "title": "Runtime",
+        "uar": {
+          "authRef": "Auth reference",
+          "binaryDownloading": "Downloading UAR managed binary...",
+          "binaryInstallFailed": "Failed to install UAR managed binary.",
+          "binaryPath": "Binary path",
+          "binarySource": {
+            "bundled": "Bundled fallback",
+            "configured": "Configured path",
+            "environment": "Environment path",
+            "managed": "Managed binary"
+          },
+          "binaryStatusLoadFailed": "Failed to load UAR binary status.",
+          "binaryStatusUnknown": "UAR binary status has not been checked.",
+          "dataDir": "Data directory",
+          "installManagedBinary": "Install/update",
+          "logLevel": "Log level",
+          "refreshBinaryStatus": "Refresh status",
+          "remoteUrl": "Remote URL",
+          "sidecarPort": "Sidecar port",
+          "skillSync": "Skill sync",
+          "title": "Universal Agent Runtime"
+        }
       },
       "skills": {
         "addMore": "Add More Skills",
@@ -1597,6 +1721,7 @@
     "assistant": "Agent",
     "assistant_one": "Assistant",
     "assistant_other": "Assistants",
+    "auto": "Auto",
     "avatar": "Avatar",
     "back": "Back",
     "browse": "Browse",
@@ -5766,6 +5891,59 @@
       "selectTask": "Select a task to view details",
       "title": "Scheduled Tasks"
     },
+    "services": {
+      "addDescription": "Pick a service type, capture credentials once, and decide which operations should appear as reusable shared tools.",
+      "addOperation": "Add GraphQL Operation",
+      "addTitle": "Add Service",
+      "authHeaders": "Auth and headers",
+      "authHeadersHint": "Secrets stay managed through import. Re-import if you need to rotate secret-backed auth or header values.",
+      "authType": "Auth: {{type}}",
+      "description": "Import and curate shared external interfaces once, then reuse their projected tools across assistants, agents, and artifacts.",
+      "editFallback": "Edit service",
+      "editTitle": "Edit {{name}}",
+      "empty": "No services registered yet.",
+      "exposeOperation": "Expose this operation as a shared tool",
+      "graphqlEndpoint": "GraphQL endpoint",
+      "graphqlIntrospection": "Schema introspection",
+      "graphqlPasteSdl": "Paste GraphQL SDL",
+      "graphqlSdl": "Pasted SDL",
+      "graphqlSubscriptionEndpoint": "Subscription endpoint (optional)",
+      "headerCount": "{{count}} header templates",
+      "importOpenApi": "Import OpenAPI Service",
+      "importSupabase": "Import Supabase Service",
+      "kindLabel": "Service type",
+      "mutation": "Mutation",
+      "namePlaceholder": "Display name",
+      "openapiEndpoint": "Endpoint override (optional)",
+      "openapiLocator": "Enter the spec URL or local file path",
+      "openapiPaste": "Paste OpenAPI 3.x JSON or YAML",
+      "openapiSourceFile": "Local file",
+      "openapiSourceText": "Pasted JSON/YAML",
+      "openapiSourceUrl": "Spec URL",
+      "operationName": "Operation name",
+      "operationText": "Operation text",
+      "projectOperation": "Project as reusable tool",
+      "projectedCount": "{{count}} projected tools",
+      "projectionName": "Projection name (optional)",
+      "query": "Query",
+      "registryDescription": "Review each shared service, test connectivity, and edit which operations project into the shared tool surface.",
+      "registryTitle": "Registry",
+      "saveGraphql": "Save GraphQL Service",
+      "savedOperations": "Saved operations",
+      "secretLabel": "Secret label",
+      "subscription": "Subscription",
+      "subscriptionCount": "{{count}} subscriptions",
+      "supabaseAnonKey": "Anon key",
+      "supabaseAuthToggle": "Include Supabase Auth helper tools",
+      "supabaseBuckets": "Storage buckets to scaffold as tools, comma-separated",
+      "supabaseProjectUrl": "Project URL",
+      "supabaseRpc": "RPC functions to scaffold as tools, comma-separated",
+      "supabaseSchema": "Database schema",
+      "supabaseServiceKey": "Service role key (optional)",
+      "test": "Test",
+      "title": "Services",
+      "toolProjection": "Tool projection"
+    },
     "shortcuts": {
       "action": "Action",
       "actions": "operation",
@@ -5838,10 +6016,19 @@
         "label": "Routing LLM Model",
         "placeholder": "Use current chat or agent model"
       },
+      "selectedSkills": {
+        "all": "All enabled skills",
+        "custom": "Selected skills only",
+        "label": "Selected skills",
+        "none": "Disable all skills",
+        "placeholder": "Choose which installed skills are eligible",
+        "scopeLabel": "Eligible Skills"
+      },
       "selection_method": "Selection Method",
       "similarity_threshold": "Similarity Threshold",
       "title": "Skill Configuration",
-      "top_k": "Max Skills (Top K)"
+      "top_k": "Max Skills (Top K)",
+      "useInherited": "Use inherited settings"
     },
     "skills": {
       "author": "Author",
