@@ -3,7 +3,7 @@ import { SelectAgentModelPopup } from '@renderer/components/Popups/SelectModelPo
 import { agentModelFilter } from '@renderer/config/models'
 import { useApiModel } from '@renderer/hooks/agents/useModel'
 import { getProviderNameById } from '@renderer/services/ProviderService'
-import { type AgentBaseWithId, AgentConfigurationSchema, type ApiModel } from '@renderer/types'
+import { type AgentBaseWithId, AgentConfigurationSchema, type AgentRuntimeConfig, type ApiModel } from '@renderer/types'
 import { isAgentSessionEntity } from '@renderer/types'
 import { isAgentEntity } from '@renderer/types'
 import { getModelFilterByAgentType } from '@renderer/utils/agentSession'
@@ -18,6 +18,13 @@ interface Props {
   agentBase: AgentBaseWithId
   onSelect: (model: ApiModel) => Promise<void>
   isDisabled?: boolean
+  /**
+   * Effective runtime inherited from the parent agent when the session entity
+   * does not yet carry its own `configuration.runtime`. Used as a fallback so
+   * the correct model list and display name are shown immediately after a
+   * runtime switch, before SWR revalidation propagates the change to the session.
+   */
+  effectiveRuntime?: AgentRuntimeConfig
   /** Custom className for the button */
   className?: string
   /** Custom inline styles for the button (merged with default styles) */
@@ -38,6 +45,7 @@ const SelectAgentBaseModelButton = ({
   agentBase: agent,
   onSelect,
   isDisabled,
+  effectiveRuntime,
   className,
   buttonStyle,
   buttonSize = 'small',
@@ -48,9 +56,14 @@ const SelectAgentBaseModelButton = ({
 }: Props) => {
   const { t } = useTranslation()
   const model = useApiModel({ id: agent?.model })
-  const runtime = AgentConfigurationSchema.parse(agent?.configuration ?? {}).runtime
-  const isCodexRuntime = runtime?.kind === 'codex'
-  const isOpenCodeRuntime = runtime?.kind === 'opencode'
+
+  // Prefer the runtime stored on the session; fall back to the one inherited
+  // from the parent agent (passed via effectiveRuntime prop).
+  const sessionRuntime = AgentConfigurationSchema.parse(agent?.configuration ?? {}).runtime
+  const resolvedRuntime = sessionRuntime ?? effectiveRuntime
+
+  const isCodexRuntime = resolvedRuntime?.kind === 'codex'
+  const isOpenCodeRuntime = resolvedRuntime?.kind === 'opencode'
 
   const apiFilter = isAgentEntity(agent)
     ? getModelFilterByAgentType(agent.type)
@@ -62,7 +75,8 @@ const SelectAgentBaseModelButton = ({
 
   const onSelectModel = async () => {
     if (isCodexRuntime) {
-      const codexModels = await window.api.agentRuntime.listCodexModels(runtime)
+      // resolvedRuntime is non-null here (isCodexRuntime guard)
+      const codexModels = await window.api.agentRuntime.listCodexModels(resolvedRuntime!)
       const selectedModel = await SelectAgentModelPopup.show({
         model,
         models: codexModels
@@ -89,7 +103,8 @@ const SelectAgentBaseModelButton = ({
     }
 
     if (isOpenCodeRuntime) {
-      const openCodeModels = await window.api.agentRuntime.listOpenCodeModels(runtime)
+      // resolvedRuntime is non-null here (isOpenCodeRuntime guard)
+      const openCodeModels = await window.api.agentRuntime.listOpenCodeModels(resolvedRuntime!)
       const selectedModel = await SelectAgentModelPopup.show({
         model,
         models: openCodeModels
@@ -127,6 +142,27 @@ const SelectAgentBaseModelButton = ({
 
   const providerName = model?.provider ? getProviderNameById(model.provider) : model?.provider_name
 
+  // For Codex and OpenCode runtimes the model ID is not in the cherry-studio
+  // provider list, so useApiModel returns undefined. Build fallback display
+  // values directly from the runtime config.
+  const runtimeModelId = resolvedRuntime?.modelId
+  // OpenCode model IDs use "provider/model" format — split for display.
+  const openCodeParts = isOpenCodeRuntime && runtimeModelId ? runtimeModelId.split('/') : null
+  const openCodeDisplayName =
+    openCodeParts && openCodeParts.length > 1 ? openCodeParts.slice(1).join('/') : runtimeModelId
+
+  const displayModelName =
+    isCodexRuntime && !model
+      ? (runtimeModelId ?? t('button.select_model'))
+      : isOpenCodeRuntime && !model
+        ? (openCodeDisplayName ?? t('button.select_model'))
+        : model
+          ? model.name
+          : t('button.select_model')
+
+  const displayProviderName =
+    isCodexRuntime && !model ? 'Codex' : isOpenCodeRuntime && !model ? (openCodeParts?.[0] ?? 'OpenCode') : providerName
+
   // Merge default styles with custom styles
   const mergedStyle: CSSProperties = {
     borderRadius: 20,
@@ -134,6 +170,23 @@ const SelectAgentBaseModelButton = ({
     padding: 2,
     ...buttonStyle
   }
+
+  // Use the resolved model for the avatar when available; otherwise construct
+  // a minimal stub so the avatar still renders something for runtime models.
+  const avatarModel = model
+    ? apiModelAdapter(model)
+    : (isCodexRuntime || isOpenCodeRuntime) && runtimeModelId
+      ? apiModelAdapter({
+          id: runtimeModelId,
+          name: displayModelName,
+          object: 'model',
+          created: 0,
+          owned_by: displayProviderName ?? '',
+          provider: isCodexRuntime ? 'codex' : (openCodeParts?.[0] ?? 'opencode'),
+          provider_name: displayProviderName ?? '',
+          provider_model_id: runtimeModelId
+        } as ApiModel)
+      : undefined
 
   return (
     <Button
@@ -145,9 +198,9 @@ const SelectAgentBaseModelButton = ({
       disabled={isDisabled}>
       <div className={containerClassName || 'flex w-full items-center gap-1.5'}>
         <div className="flex flex-1 items-center gap-1.5 overflow-x-hidden">
-          <ModelAvatar model={model ? apiModelAdapter(model) : undefined} size={avatarSize} />
+          <ModelAvatar model={avatarModel} size={avatarSize} />
           <span className="truncate text-(--color-text)">
-            {model ? model.name : t('button.select_model')} {providerName ? ' | ' + providerName : ''}
+            {displayModelName} {displayProviderName ? ' | ' + displayProviderName : ''}
           </span>
         </div>
         <ChevronsUpDown size={iconSize} color="var(--color-icon)" />

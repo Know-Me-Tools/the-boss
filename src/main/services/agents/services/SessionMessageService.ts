@@ -457,8 +457,11 @@ export class SessionMessageService extends BaseService {
     } satisfies PersistedSessionKnowledgeEntity
     const runtimeKind = resolveRuntimeKind(effectiveRuntimeSession)
     const runtimeBoundSessionId = await runtimeSessionBindingRepository.getRuntimeSessionId(session.id, runtimeKind)
-    const legacyAgentSessionId = await this.getLastAgentSessionId(session.id)
-    const agentSessionId = runtimeBoundSessionId || legacyAgentSessionId
+    // Only fall back to the legacy session ID (pre-bindings-table) for Claude.
+    // For codex/opencode/uar the legacy ID belongs to a different runtime and
+    // must not be used — those adapters must start a fresh thread on first use.
+    const legacyAgentSessionId = runtimeKind === 'claude' ? await this.getLastAgentSessionId(session.id) : null
+    const agentSessionId = runtimeBoundSessionId ?? legacyAgentSessionId ?? undefined
     logger.debug('Session Message stream message data:', {
       message: req,
       runtime: runtimeKind,

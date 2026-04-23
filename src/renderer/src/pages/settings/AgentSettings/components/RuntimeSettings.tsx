@@ -279,6 +279,30 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     [agentBase, configuration, runtime, update]
   )
 
+  /**
+   * Like updateRuntime but also syncs the top-level `model` field so that
+   * header display and model selectors that read `agentBase.model` stay correct
+   * for Codex and OpenCode runtimes whose model IDs are not in the provider list.
+   */
+  const updateRuntimeWithModel = useCallback(
+    (patch: Record<string, unknown>, modelId?: string) => {
+      if (!agentBase) return
+      const nextRuntime = { ...runtime, ...patch }
+      void update(
+        {
+          id: agentBase.id,
+          ...(modelId ? { model: modelId } : {}),
+          configuration: {
+            ...configuration,
+            runtime: nextRuntime
+          }
+        } satisfies UpdateAgentBaseForm,
+        { showSuccessToast: false }
+      )
+    },
+    [agentBase, configuration, runtime, update]
+  )
+
   const resolveCodexRuntimeDefaults = useCallback((nextRuntime: typeof runtime, models: CodexRuntimeModel[]) => {
     const visibleModels = models.filter((model) => !model.hidden)
     const candidates = visibleModels.length > 0 ? visibleModels : models
@@ -336,14 +360,14 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         (runtime.modelId !== defaults.modelId ||
           ((runtime as any).reasoningEffort === undefined && defaults.reasoningEffort !== undefined))
       ) {
-        updateRuntime(defaults)
+        updateRuntimeWithModel(defaults, defaults.modelId)
       }
     })
 
     return () => {
       disposed = true
     }
-  }, [loadCodexModels, resolveCodexRuntimeDefaults, runtime, selectedKind, updateRuntime])
+  }, [loadCodexModels, resolveCodexRuntimeDefaults, runtime, selectedKind, updateRuntimeWithModel])
 
   useEffect(() => {
     if (selectedKind !== 'opencode') {
@@ -363,14 +387,14 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         (runtime.modelId !== defaults.modelId ||
           ((runtime as any).agentName === undefined && defaults.agentName !== undefined))
       ) {
-        updateRuntime(defaults)
+        updateRuntimeWithModel(defaults, defaults.modelId)
       }
     })
 
     return () => {
       disposed = true
     }
-  }, [loadOpenCodeModels, resolveOpenCodeRuntimeDefaults, runtime, selectedKind, updateRuntime])
+  }, [loadOpenCodeModels, resolveOpenCodeRuntimeDefaults, runtime, selectedKind, updateRuntimeWithModel])
 
   const updateRuntimeGroup = useCallback(
     (group: 'sandbox' | 'permissions' | 'sidecar' | 'skills', patch: Record<string, unknown>) => {
@@ -475,20 +499,16 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
 
               if (kind === 'codex') {
                 void loadCodexModels(nextRuntime).then((models) => {
-                  updateRuntime({
-                    ...nextRuntime,
-                    ...resolveCodexRuntimeDefaults(nextRuntime, models)
-                  })
+                  const defaults = resolveCodexRuntimeDefaults(nextRuntime, models)
+                  updateRuntimeWithModel({ ...nextRuntime, ...defaults }, defaults.modelId)
                 })
                 return
               }
 
               if (kind === 'opencode') {
                 void loadOpenCodeModels(nextRuntime).then((models) => {
-                  updateRuntime({
-                    ...nextRuntime,
-                    ...resolveOpenCodeRuntimeDefaults(nextRuntime, models)
-                  })
+                  const defaults = resolveOpenCodeRuntimeDefaults(nextRuntime, models)
+                  updateRuntimeWithModel({ ...nextRuntime, ...defaults }, defaults.modelId)
                 })
                 return
               }
@@ -553,10 +573,10 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               }))}
             onChange={(modelId: string) => {
               const model = codexModels.find((item) => item.id === modelId)
-              updateRuntime({
-                modelId,
-                reasoningEffort: (runtime as any).reasoningEffort ?? model?.defaultReasoningEffort
-              })
+              updateRuntimeWithModel(
+                { modelId, reasoningEffort: (runtime as any).reasoningEffort ?? model?.defaultReasoningEffort },
+                modelId
+              )
             }}
           />
         ) : selectedKind === 'opencode' ? (
@@ -572,10 +592,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               }))}
             onChange={(modelId: string) => {
               const model = openCodeModels.find((item) => item.id === modelId)
-              updateRuntime({
-                modelId,
-                agentName: (runtime as any).agentName ?? model?.defaultAgent
-              })
+              updateRuntimeWithModel({ modelId, agentName: (runtime as any).agentName ?? model?.defaultAgent }, modelId)
             }}
           />
         ) : (

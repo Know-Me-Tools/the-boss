@@ -6,7 +6,7 @@ import { useNavbarPosition } from '@renderer/hooks/useSettings'
 import { useShowAssistants } from '@renderer/hooks/useStore'
 import { AgentSettingsPopup, SessionSettingsPopup } from '@renderer/pages/settings/AgentSettings'
 import { AgentLabel, SessionLabel } from '@renderer/pages/settings/AgentSettings/shared'
-import type { AgentEntity, ApiModel } from '@renderer/types'
+import { AgentConfigurationSchema, type AgentEntity, type ApiModel } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { t } from 'i18next'
 import { ChevronRight } from 'lucide-react'
@@ -37,6 +37,14 @@ const AgentContent = ({ activeAgent }: AgentContentProps) => {
     },
     [activeAgent, activeSession, updateModel]
   )
+
+  // Derive the effective runtime: prefer what is stored on the active session,
+  // fall back to the parent agent's configuration. This ensures the model button
+  // shows the correct runtime model immediately after a runtime switch — before
+  // the session SWR cache catches up.
+  const sessionRuntime = AgentConfigurationSchema.parse(activeSession?.configuration ?? {}).runtime
+  const agentRuntime = AgentConfigurationSchema.parse(activeAgent?.configuration ?? {}).runtime
+  const effectiveRuntime = sessionRuntime ?? agentRuntime
 
   return (
     <div className="flex w-full justify-between pr-2">
@@ -103,6 +111,7 @@ const AgentContent = ({ activeAgent }: AgentContentProps) => {
                 {/* Model Button */}
                 <SelectAgentBaseModelButton
                   agentBase={activeSession}
+                  effectiveRuntime={effectiveRuntime}
                   onSelect={async (model) => {
                     await handleUpdateModel(model)
                   }}
