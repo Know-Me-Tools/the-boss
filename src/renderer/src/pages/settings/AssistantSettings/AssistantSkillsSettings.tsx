@@ -73,6 +73,12 @@ const AssistantSkillsSettings: FC<Props> = ({ assistant }) => {
       onInheritedChange={(nextUseInherited) => {
         if (nextUseInherited) {
           void persistScopeConfig(null)
+        } else {
+          // Snapshot the currently resolved (= global) config as the assistant
+          // override so controls unlock immediately with the inherited values
+          // pre-populated, ready for the user to edit.
+          const snapshot = deriveSkillConfigOverride(globalSkillConfig, skillConfig)
+          void persistScopeConfig(snapshot ?? {})
         }
       }}
       inheritLabel={t('settings.skill.useGlobalDefault', { defaultValue: 'Use Global Default' })}
