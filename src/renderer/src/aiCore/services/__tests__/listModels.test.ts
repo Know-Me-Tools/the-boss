@@ -6,6 +6,7 @@ import type { Provider } from '@renderer/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockGetFromApi = vi.fn()
+const mockCopilotGetToken = vi.fn()
 vi.mock('@ai-sdk/provider-utils', () => ({
   createJsonResponseHandler: vi.fn(() => 'json-handler'),
   createJsonErrorResponseHandler: vi.fn(() => 'error-handler'),
@@ -32,6 +33,16 @@ vi.mock('@shared/utils', () => ({
 const mockGetControlPlaneCatalogModels = vi.fn()
 vi.mock('@renderer/services/ControlPlaneService', () => ({
   getControlPlaneCatalogModels: (...args: unknown[]) => mockGetControlPlaneCatalogModels(...args)
+}))
+
+vi.mock('@renderer/store', () => ({
+  default: {
+    getState: () => ({
+      copilot: {
+        defaultHeaders: {}
+      }
+    })
+  }
 }))
 
 const { listModels } = await import('../listModels')
@@ -244,12 +255,39 @@ function assertValidModels(models: { id: string; name: string; provider: string;
   }
 }
 
+const COPILOT_PROVIDER = makeProvider({
+  id: 'copilot',
+  apiHost: 'https://api.githubcopilot.com/'
+})
+
+const COPILOT_MODELS_RESPONSE = {
+  value: {
+    data: [
+      { id: 'accounts/msft/routers/f185i3v4' },
+      { id: 'tts-1', object: 'model' },
+      { id: 'gpt-4o-mini', owned_by: 'github' },
+      { id: 'claude-sonnet-4.5', policy: { state: 'disabled' } },
+      { id: 'gpt-4o-mini', owned_by: 'github' }
+    ]
+  }
+}
+
 // === Tests ===
 
 beforeEach(() => {
   mockGetFromApi.mockReset()
   mockGetControlPlaneCatalogModels.mockReset()
-  vi.stubGlobal('window', { ...globalThis.window, keyv: { get: vi.fn(), set: vi.fn() } })
+  mockCopilotGetToken.mockReset()
+  mockCopilotGetToken.mockResolvedValue({ token: 'copilot-dynamic-token' })
+  vi.stubGlobal('window', {
+    ...globalThis.window,
+    keyv: { get: vi.fn(), set: vi.fn() },
+    api: {
+      copilot: {
+        getToken: mockCopilotGetToken
+      }
+    }
+  })
 })
 
 describe('listModels', () => {
@@ -290,6 +328,26 @@ describe('listModels', () => {
       expect(mockGetFromApi).not.toHaveBeenCalled()
       expect(models.map((model) => model.id)).toEqual(['theboss-default'])
       expect(models.every((model) => model.provider === 'theboss')).toBe(true)
+    })
+  })
+
+  describe('Copilot', () => {
+    it('should use Copilot-specific token and filter unsupported Copilot entries', async () => {
+      mockGetFromApi.mockResolvedValue(COPILOT_MODELS_RESPONSE)
+
+      const models = await listModels(COPILOT_PROVIDER)
+      expect(mockGetFromApi).toHaveBeenCalledTimes(1)
+      const [request] = mockGetFromApi.mock.calls[0]
+
+      expect(mockCopilotGetToken).toHaveBeenCalledTimes(1)
+      expect(request).toMatchObject({
+        url: 'https://api.githubcopilot.com/models',
+        headers: {
+          Authorization: 'Bearer copilot-dynamic-token',
+          'Copilot-Integration-Id': 'vscode-chat'
+        }
+      })
+      expect(models.map((model) => model.id)).toEqual(['gpt-4o-mini'])
     })
   })
 
