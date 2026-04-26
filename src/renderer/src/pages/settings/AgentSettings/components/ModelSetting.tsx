@@ -1,6 +1,7 @@
 import { HelpTooltip } from '@renderer/components/TooltipIcons'
 import SelectAgentBaseModelButton from '@renderer/pages/agents/components/SelectAgentBaseModelButton'
 import type { AgentBaseWithId, ApiModel, UpdateAgentFunctionUnion } from '@renderer/types'
+import { buildRuntimeAwareModelUpdate } from '@renderer/utils/agentRuntimeModel'
 import { useTranslation } from 'react-i18next'
 
 import { SettingsItem, SettingsTitle } from '../shared'
@@ -16,7 +17,7 @@ export const ModelSetting = ({ base, update, isDisabled }: ModelSettingProps) =>
 
   const updateModel = async (model: ApiModel) => {
     if (!base) return
-    return update({ id: base.id, model: model.id })
+    return update(buildRuntimeAwareModelUpdate({ base, selectedModel: model }))
   }
 
   if (!base) return null

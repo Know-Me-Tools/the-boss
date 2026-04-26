@@ -24,6 +24,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SettingContainer, SettingDescription, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '..'
+import SkillEligibilitySelector from './SkillEligibilitySelector'
 
 interface ContextSkillsPanelProps {
   theme?: ThemeMode
@@ -57,7 +58,6 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   const { t } = useTranslation()
   const { providers } = useProviders()
   const { skills } = useScopedSkills(skillScopes)
-  const enabledSkills = useMemo(() => skills.filter((skill) => skill.isEnabled), [skills])
 
   const selectionMethodOptions = [
     { value: SkillSelectionMethod.EMBEDDING, label: t('settings.skill.method.embedding.label') },
@@ -107,14 +107,6 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
   })
 
   const selectionMethodDescription = getSelectionMethodDescription(t, selectedMethod)
-  const selectedSkillMode =
-    skillConfig.selectedSkillIds === undefined ? 'all' : skillConfig.selectedSkillIds.length === 0 ? 'none' : 'custom'
-  // Use ALL installed skills so the user can add any skill to the custom selection,
-  // not just the ones that already happen to be marked enabled in the current scope.
-  const selectedSkillOptions = skills.map((skill) => ({
-    value: skill.id,
-    label: skill.name
-  }))
   const controlsDisabled = showInheritOption && useInherited
 
   return (
@@ -145,79 +137,12 @@ const ContextSkillsPanel: FC<ContextSkillsPanelProps> = ({
         </SettingRow>
         <SettingDescription>{selectionMethodDescription}</SettingDescription>
 
-        <SettingRow>
-          <SettingRowTitle>
-            {t('settings.skill.selectedSkills.scopeLabel', {
-              defaultValue: 'Eligible Skills'
-            })}
-          </SettingRowTitle>
-          <Select
-            value={selectedSkillMode}
-            style={{ width: 240 }}
-            disabled={controlsDisabled}
-            options={[
-              {
-                value: 'all',
-                label: t('settings.skill.selectedSkills.all', {
-                  defaultValue: 'All enabled skills'
-                })
-              },
-              {
-                value: 'custom',
-                label: t('settings.skill.selectedSkills.custom', {
-                  defaultValue: 'Selected skills only'
-                })
-              },
-              {
-                value: 'none',
-                label: t('settings.skill.selectedSkills.none', {
-                  defaultValue: 'Disable all skills'
-                })
-              }
-            ]}
-            onChange={(value: 'all' | 'custom' | 'none') => {
-              if (value === 'all') {
-                onSkillConfigChange({ selectedSkillIds: undefined })
-                return
-              }
-
-              if (value === 'none') {
-                onSkillConfigChange({ selectedSkillIds: [] })
-                return
-              }
-
-              // Seed custom mode with all currently enabled skill IDs so the user
-              // keeps every skill that was active under "All enabled" and can then
-              // deselect specific ones. Falling back to [] would silently disable
-              // every skill, collapsing back to the "none" state.
-              onSkillConfigChange({
-                selectedSkillIds: skillConfig.selectedSkillIds ?? enabledSkills.map((s) => s.id)
-              })
-            }}
-          />
-        </SettingRow>
-
-        {selectedSkillMode === 'custom' && (
-          <SettingRow>
-            <SettingRowTitle>
-              {t('settings.skill.selectedSkills.label', {
-                defaultValue: 'Selected skills'
-              })}
-            </SettingRowTitle>
-            <Select
-              mode="multiple"
-              allowClear
-              style={{ width: 320 }}
-              disabled={controlsDisabled}
-              placeholder={t('settings.skill.selectedSkills.placeholder', {
-                defaultValue: 'Choose which installed skills are eligible'
-              })}
-              value={skillConfig.selectedSkillIds ?? []}
-              options={selectedSkillOptions}
-              onChange={(value) => onSkillConfigChange({ selectedSkillIds: value })}
-            />
-          </SettingRow>
-        )}
+        <SkillEligibilitySelector
+          skills={skills}
+          selectedSkillIds={skillConfig.selectedSkillIds}
+          disabled={controlsDisabled}
+          onSelectedSkillIdsChange={(selectedSkillIds) => onSkillConfigChange({ selectedSkillIds })}
+        />
 
         <SettingRow>
           <SettingRowTitle>

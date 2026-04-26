@@ -1,3 +1,4 @@
+import { DEFAULT_SESSION_PAGE_SIZE } from '@renderer/api/agent'
 import store from '@renderer/store'
 import type { AgentEntity, ListAgentsResponse, UpdateAgentForm } from '@renderer/types'
 import type { UpdateAgentBaseOptions, UpdateAgentFunction } from '@renderer/types/agent'
@@ -5,6 +6,7 @@ import { formatErrorMessageWithPrefix } from '@renderer/utils/error'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { mutate } from 'swr'
+import { unstable_serialize } from 'swr/infinite'
 
 import { useAgentClient } from './useAgentClient'
 
@@ -33,11 +35,15 @@ export const useUpdateAgent = () => {
         // Other sessions refresh via SWR stale-while-revalidate when navigated to.
         // Using store.getState() instead of useSelector to avoid adding reactive deps to useCallback.
         const { activeSessionIdMap } = store.getState().runtime.chat
+        const sessionPaths = client.getSessionPaths(form.id)
+        const sessionListKey = sessionPaths.base
+        const sessionInfiniteKey = unstable_serialize(() => [sessionListKey, 0, DEFAULT_SESSION_PAGE_SIZE])
         const activeSessionId = activeSessionIdMap?.[form.id]
         if (activeSessionId) {
-          const sessionKey = client.getSessionPaths(form.id).withId(activeSessionId)
+          const sessionKey = sessionPaths.withId(activeSessionId)
           void mutate(sessionKey)
         }
+        void mutate(sessionInfiniteKey)
 
         return result
       } catch (error) {

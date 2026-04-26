@@ -103,6 +103,13 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
         const { events } = await thread.runStreamed(promptText, { signal: abortController.signal })
 
         for await (const event of events) {
+          const eventType = (event as { type: string }).type
+          if (eventType === 'usage') {
+            emitRuntimeUsage(stream, (event as { usage?: unknown }).usage ?? event)
+            stream.emitComplete()
+            return
+          }
+
           if (event.type === 'thread.started') {
             stream.sdkSessionId = event.thread_id
             emitRuntimeStatus(stream, {
@@ -155,6 +162,10 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
             stream.emitError(new Error(event.message || 'Codex runtime failed'))
             return
           }
+        }
+
+        if (!abortController.signal.aborted) {
+          stream.emitComplete()
         }
       } catch (error) {
         if (abortController.signal.aborted) {
@@ -270,13 +281,18 @@ function buildCodexInput(promptText: string, instructions?: string): string {
 }
 
 function buildCodexConfig(runtimeConfig: ReturnType<typeof resolveRuntimeConfig>): CodexConfigObject | undefined {
-  const config: CodexConfigObject = {}
+  const config: CodexConfigObject = {
+    features: {
+      computer_use: false,
+      plugins: false
+    }
+  }
   const mcpServers = resolveCodexMcpServers(runtimeConfig.mcp)
   if (mcpServers) {
     config.mcp_servers = mcpServers
   }
 
-  return Object.keys(config).length > 0 ? config : undefined
+  return config
 }
 
 function buildCodexEnv(apiKey: string): Record<string, string> {

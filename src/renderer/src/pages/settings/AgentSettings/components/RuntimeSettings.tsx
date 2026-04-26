@@ -286,7 +286,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
    * configuration.runtime.modelId, which the display components already read.
    */
   const updateRuntimeWithModel = useCallback(
-    (patch: Record<string, unknown>, _modelId?: string) => {
+    (patch: Record<string, unknown>) => {
       if (!agentBase) return
       const nextRuntime = { ...runtime, ...patch }
       void update(
@@ -307,7 +307,8 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     const visibleModels = models.filter((model) => !model.hidden)
     const candidates = visibleModels.length > 0 ? visibleModels : models
     const selectedModel = candidates.find((model) => model.id === nextRuntime.modelId)
-    const defaultModel = candidates.find((model) => model.isDefault) ?? candidates[0]
+    const defaultModel =
+      candidates.find((model) => model.id === 'gpt-5.5') ?? candidates.find((model) => model.isDefault) ?? candidates[0]
 
     if (selectedModel) {
       return {
@@ -360,7 +361,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         (runtime.modelId !== defaults.modelId ||
           ((runtime as any).reasoningEffort === undefined && defaults.reasoningEffort !== undefined))
       ) {
-        updateRuntimeWithModel(defaults, defaults.modelId)
+        updateRuntimeWithModel(defaults)
       }
     })
 
@@ -387,7 +388,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         (runtime.modelId !== defaults.modelId ||
           ((runtime as any).agentName === undefined && defaults.agentName !== undefined))
       ) {
-        updateRuntimeWithModel(defaults, defaults.modelId)
+        updateRuntimeWithModel(defaults)
       }
     })
 
@@ -500,7 +501,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               if (kind === 'codex') {
                 void loadCodexModels(nextRuntime).then((models) => {
                   const defaults = resolveCodexRuntimeDefaults(nextRuntime, models)
-                  updateRuntimeWithModel({ ...nextRuntime, ...defaults }, defaults.modelId)
+                  updateRuntimeWithModel({ ...nextRuntime, ...defaults })
                 })
                 return
               }
@@ -508,7 +509,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               if (kind === 'opencode') {
                 void loadOpenCodeModels(nextRuntime).then((models) => {
                   const defaults = resolveOpenCodeRuntimeDefaults(nextRuntime, models)
-                  updateRuntimeWithModel({ ...nextRuntime, ...defaults }, defaults.modelId)
+                  updateRuntimeWithModel({ ...nextRuntime, ...defaults })
                 })
                 return
               }
@@ -573,10 +574,10 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               }))}
             onChange={(modelId: string) => {
               const model = codexModels.find((item) => item.id === modelId)
-              updateRuntimeWithModel(
-                { modelId, reasoningEffort: (runtime as any).reasoningEffort ?? model?.defaultReasoningEffort },
-                modelId
-              )
+              updateRuntimeWithModel({
+                modelId,
+                reasoningEffort: (runtime as any).reasoningEffort ?? model?.defaultReasoningEffort
+              })
             }}
           />
         ) : selectedKind === 'opencode' ? (
@@ -592,7 +593,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               }))}
             onChange={(modelId: string) => {
               const model = openCodeModels.find((item) => item.id === modelId)
-              updateRuntimeWithModel({ modelId, agentName: (runtime as any).agentName ?? model?.defaultAgent }, modelId)
+              updateRuntimeWithModel({ modelId, agentName: (runtime as any).agentName ?? model?.defaultAgent })
             }}
           />
         ) : (

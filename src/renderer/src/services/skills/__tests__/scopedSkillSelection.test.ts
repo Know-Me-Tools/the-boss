@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAssistantSkillOverride,
   buildConversationSkillOverride,
+  buildConversationSkillSelectionOverride,
   getSkillSelectionSummary
 } from '../scopedSkillSelection'
 
@@ -87,6 +88,35 @@ describe('scopedSkillSelection', () => {
           selectedSkillIds: ['skill-a']
         },
         skillId: 'skill-a'
+      })
+
+      expect(override).toBeUndefined()
+    })
+  })
+
+  describe('buildConversationSkillSelectionOverride', () => {
+    it('creates an explicit conversation allowlist for grouped bulk changes', () => {
+      const override = buildConversationSkillSelectionOverride({
+        baseSkillConfig: DEFAULT_SKILL_CONFIG,
+        effectiveSkillConfig: DEFAULT_SKILL_CONFIG,
+        selectableSkillIds: ['skill-a', 'skill-b', 'skill-c'],
+        selectedSkillIds: ['skill-a', 'skill-c']
+      })
+
+      expect(override).toEqual({
+        selectedSkillIds: ['skill-a', 'skill-c']
+      })
+    })
+
+    it('resets to inherited defaults when grouped changes match the base selection', () => {
+      const override = buildConversationSkillSelectionOverride({
+        baseSkillConfig: DEFAULT_SKILL_CONFIG,
+        effectiveSkillConfig: {
+          ...DEFAULT_SKILL_CONFIG,
+          selectedSkillIds: ['skill-a']
+        },
+        selectableSkillIds: ['skill-a', 'skill-b'],
+        selectedSkillIds: ['skill-a', 'skill-b']
       })
 
       expect(override).toBeUndefined()

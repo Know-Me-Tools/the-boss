@@ -574,4 +574,84 @@ describe('SessionMessageService knowledge retrieval', () => {
       runtimeSessionId: 'codex-thread-next'
     })
   })
+
+  it('emits a terminal finish part when a runtime completes without one', async () => {
+    vi.spyOn(sessionMessageService as any, 'getLastAgentSessionId').mockResolvedValue('legacy-shared-session')
+    vi.spyOn(sessionMessageService as any, 'getPersistedSession').mockResolvedValue({
+      ...baseSession,
+      configuration: {
+        runtime: {
+          kind: 'codex',
+          mode: 'managed'
+        }
+      }
+    })
+    vi.spyOn(sessionMessageService as any, 'getPersistedAgent').mockResolvedValue(null)
+    vi.spyOn(sessionMessageService as any, 'loadGlobalAgentContextSettings').mockResolvedValue({
+      strategy: { type: 'none' },
+      summarizationModelId: null
+    })
+    runtimeBindingGetMock.mockResolvedValue('codex-thread-existing')
+    resolveEffectiveRuntimeConfigMock.mockResolvedValue({
+      kind: 'codex',
+      mode: 'managed'
+    })
+
+    invokeMock.mockImplementation(async () => {
+      const stream = createClaudeStream()
+      stream.sdkSessionId = 'codex-thread-next'
+      setTimeout(() => {
+        stream.emit('data', { type: 'chunk', chunk: { type: 'text-start', id: 'codex-text' } })
+        stream.emit('data', { type: 'chunk', chunk: { type: 'text-delta', id: 'codex-text', text: 'Done' } })
+        stream.emit('data', {
+          type: 'chunk',
+          chunk: {
+            type: 'text-end',
+            id: 'codex-text',
+            providerMetadata: {
+              text: {
+                value: 'Done'
+              }
+            }
+          }
+        })
+        stream.emit('data', {
+          type: 'chunk',
+          chunk: {
+            type: 'data-agent-runtime-usage',
+            data: {
+              runtime: 'codex',
+              usage: {
+                input_tokens: 3,
+                output_tokens: 2
+              }
+            }
+          }
+        })
+        stream.emit('data', { type: 'complete' })
+      }, 0)
+      return stream as any
+    })
+
+    const { stream, completion } = await sessionMessageService.createSessionMessage(
+      baseSession as any,
+      { content: 'Finish this task.' } as any,
+      new AbortController()
+    )
+
+    const parts = await readAllParts(stream)
+    await completion
+
+    expect(parts.at(-1)).toEqual(
+      expect.objectContaining({
+        type: 'finish',
+        finishReason: 'stop',
+        totalUsage: {
+          inputTokens: 3,
+          outputTokens: 2,
+          totalTokens: 5
+        }
+      })
+    )
+  })
 })

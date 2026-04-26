@@ -1,6 +1,6 @@
 import type { SkillGlobalConfig } from '@renderer/types/skillConfig'
 import { DEFAULT_SKILL_CONFIG, resolveSkillConfig, SkillSelectionMethod } from '@renderer/types/skillConfig'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type * as ReactI18Next from 'react-i18next'
 import { beforeAll } from 'vitest'
 import { describe, expect, it, vi } from 'vitest'
@@ -27,8 +27,8 @@ vi.mock('@renderer/hooks/useSkills', () => ({
     skills: [
       {
         id: 'skill-a',
-        name: 'Skill A',
-        description: 'Alpha skill',
+        name: 'Local Skill',
+        description: 'Alpha workflow skill',
         folderName: 'skill-a',
         source: 'local',
         sourceUrl: null,
@@ -36,6 +36,51 @@ vi.mock('@renderer/hooks/useSkills', () => ({
         author: null,
         tags: [],
         contentHash: 'hash-a',
+        isEnabled: true,
+        createdAt: 1,
+        updatedAt: 1
+      },
+      {
+        id: 'skill-b',
+        name: 'React Skill',
+        description: 'Frontend interaction guidance',
+        folderName: 'react-skill',
+        source: 'marketplace',
+        sourceUrl: null,
+        namespace: 'owner/repo/react-skill',
+        author: 'Design Team',
+        tags: ['frontend', 'react'],
+        contentHash: 'hash-b',
+        isEnabled: true,
+        createdAt: 1,
+        updatedAt: 1
+      },
+      {
+        id: 'skill-c',
+        name: 'Disabled Skill',
+        description: 'Disabled skill',
+        folderName: 'disabled-skill',
+        source: 'marketplace',
+        sourceUrl: null,
+        namespace: 'owner/repo/disabled-skill',
+        author: null,
+        tags: [],
+        contentHash: 'hash-c',
+        isEnabled: false,
+        createdAt: 1,
+        updatedAt: 1
+      },
+      {
+        id: 'skill-d',
+        name: 'Audit Skill',
+        description: 'Accessibility and UX audit',
+        folderName: 'audit-skill',
+        source: 'marketplace',
+        sourceUrl: null,
+        namespace: 'owner/repo/audit-skill',
+        author: 'Design Team',
+        tags: ['audit'],
+        contentHash: 'hash-d',
         isEnabled: true,
         createdAt: 1,
         updatedAt: 1
@@ -60,27 +105,33 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: { defaultValue?: string }) =>
-        options?.defaultValue ??
-        {
-          'settings.skill.title': 'Skill Configuration',
-          'settings.skill.selection_method': 'Selection Method',
-          'settings.skill.similarity_threshold': 'Similarity Threshold',
-          'settings.skill.top_k': 'Max Skills (Top K)',
-          'settings.skill.context_method': 'Context Management',
-          'settings.skill.max_tokens': 'Max Skill Tokens',
-          'settings.skill.method.embedding': 'Embedding (Semantic)',
-          'settings.skill.method.hybrid': 'Hybrid (BM25 + Dense)',
-          'settings.skill.method.llm_router': 'LLM Router',
-          'settings.skill.method.two_stage': 'Two-Stage',
-          'settings.skill.method.llm_delegated': 'LLM Delegated',
-          'settings.skill.context.full_injection': 'Full Injection',
-          'settings.skill.context.prefix_cache_aware': 'Prefix Cache Aware',
-          'settings.skill.context.chunked_rag': 'Chunked RAG',
-          'settings.skill.context.summarized': 'Summarized',
-          'settings.skill.context.progressive': 'Progressive'
-        }[key] ??
-        key
+      t: (key: string, options?: { defaultValue?: string; [key: string]: unknown }) => {
+        const value =
+          options?.defaultValue ??
+          {
+            'settings.skill.title': 'Skill Configuration',
+            'settings.skill.selection_method': 'Selection Method',
+            'settings.skill.similarity_threshold': 'Similarity Threshold',
+            'settings.skill.top_k': 'Max Skills (Top K)',
+            'settings.skill.context_method': 'Context Management',
+            'settings.skill.max_tokens': 'Max Skill Tokens',
+            'settings.skill.method.embedding': 'Embedding (Semantic)',
+            'settings.skill.method.hybrid': 'Hybrid (BM25 + Dense)',
+            'settings.skill.method.llm_router': 'LLM Router',
+            'settings.skill.method.two_stage': 'Two-Stage',
+            'settings.skill.method.llm_delegated': 'LLM Delegated',
+            'settings.skill.context.full_injection': 'Full Injection',
+            'settings.skill.context.prefix_cache_aware': 'Prefix Cache Aware',
+            'settings.skill.context.chunked_rag': 'Chunked RAG',
+            'settings.skill.context.summarized': 'Summarized',
+            'settings.skill.context.progressive': 'Progressive'
+          }[key] ??
+          key
+
+        return value.replace(/\{\{(\w+)\}\}/g, (_, interpolationKey: string) =>
+          String(options?.[interpolationKey] ?? `{{${interpolationKey}}}`)
+        )
+      }
     })
   }
 })
@@ -136,5 +187,62 @@ describe('ContextSkillsPanel', () => {
     expect(screen.getByText('Embedding Model')).toBeInTheDocument()
     expect(screen.queryByText('Routing LLM Model')).not.toBeInTheDocument()
     expect(screen.queryByText('Similarity Threshold')).not.toBeInTheDocument()
+  })
+
+  it('seeds selected-only mode from all currently enabled skills', () => {
+    const onSkillConfigChange = vi.fn()
+
+    render(<ContextSkillsPanel skillConfig={makeConfig()} onSkillConfigChange={onSkillConfigChange} />)
+
+    fireEvent.click(screen.getByText('Selected only'))
+
+    expect(onSkillConfigChange).toHaveBeenCalledWith({
+      selectedSkillIds: ['skill-a', 'skill-b', 'skill-d']
+    })
+    expect(screen.getAllByText('owner/repo').length).toBeGreaterThan(0)
+  })
+
+  it('renders grouped skill metadata and filters search across provider data', async () => {
+    render(
+      <ContextSkillsPanel
+        skillConfig={makeConfig({
+          selectedSkillIds: ['skill-a', 'skill-b', 'skill-d']
+        })}
+        onSkillConfigChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Local Skill')).toBeInTheDocument()
+    expect(screen.getByText('React Skill')).toBeInTheDocument()
+    expect(screen.getAllByText('owner/repo').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('Search name, description, tag, source, or author'), {
+      target: { value: 'design react' }
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Local Skill')).not.toBeInTheDocument()
+    })
+    expect(screen.getByText('React Skill')).toBeInTheDocument()
+  })
+
+  it('supports group bulk selection and blocks unavailable skills', () => {
+    const onSkillConfigChange = vi.fn()
+
+    render(
+      <ContextSkillsPanel
+        skillConfig={makeConfig({
+          selectedSkillIds: ['skill-b']
+        })}
+        onSkillConfigChange={onSkillConfigChange}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText('Toggle owner/repo skills'))
+
+    expect(onSkillConfigChange).toHaveBeenCalledWith({
+      selectedSkillIds: ['skill-b', 'skill-d']
+    })
+    expect(screen.getByLabelText('Toggle Disabled Skill')).toBeDisabled()
   })
 })

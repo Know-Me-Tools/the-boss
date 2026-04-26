@@ -169,6 +169,10 @@ describe('CodexRuntimeAdapter', () => {
           OPENAI_API_KEY: 'test-key'
         }),
         config: {
+          features: {
+            computer_use: false,
+            plugins: false
+          },
           mcp_servers: {
             git: {
               command: 'git-mcp'
@@ -235,6 +239,60 @@ describe('CodexRuntimeAdapter', () => {
         model: 'gpt-5.2-codex'
       })
     )
+  })
+
+  it('completes when Codex emits standalone usage without turn.completed', async () => {
+    codexMock.state.events = [
+      { type: 'thread.started', thread_id: 'thread-new' },
+      { type: 'turn.started' },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'msg-1',
+          type: 'agent_message',
+          text: 'done'
+        }
+      },
+      {
+        type: 'usage',
+        usage: {
+          input_tokens: 3,
+          output_tokens: 2
+        }
+      }
+    ]
+
+    const adapter = new CodexRuntimeAdapter()
+    const stream = await adapter.invoke('hello', createSession(), new AbortController())
+
+    const events = await collectEvents(stream)
+
+    expect(events.at(-1)?.type).toBe('complete')
+    expect(chunkTypes(events)).toContain('data-agent-runtime-usage')
+    expect(textDeltas(events)).toEqual(['done'])
+  })
+
+  it('completes when Codex event iteration ends without a terminal event', async () => {
+    codexMock.state.events = [
+      { type: 'thread.started', thread_id: 'thread-new' },
+      { type: 'turn.started' },
+      {
+        type: 'item.completed',
+        item: {
+          id: 'msg-1',
+          type: 'agent_message',
+          text: 'done'
+        }
+      }
+    ]
+
+    const adapter = new CodexRuntimeAdapter()
+    const stream = await adapter.invoke('hello', createSession(), new AbortController())
+
+    const events = await collectEvents(stream)
+
+    expect(events.at(-1)?.type).toBe('complete')
+    expect(textDeltas(events)).toEqual(['done'])
   })
 
   it('rejects invalid sandbox or approval settings before starting Codex', async () => {

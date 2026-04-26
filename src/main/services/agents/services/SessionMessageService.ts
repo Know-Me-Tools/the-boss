@@ -120,6 +120,75 @@ function serializeError(error: unknown): { message: string; name?: string; stack
   }
 }
 
+type NormalizedTokenUsage = {
+  inputTokens?: number
+  outputTokens?: number
+  totalTokens?: number
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+}
+
+function normalizeRuntimeUsage(value: unknown): NormalizedTokenUsage | undefined {
+  const usage = readRecord(value)
+  if (!usage) return undefined
+
+  const tokens = readRecord(usage.tokens)
+  const inputTokens =
+    readNumber(usage.inputTokens) ??
+    readNumber(usage.input_tokens) ??
+    readNumber(usage.promptTokens) ??
+    readNumber(usage.prompt_tokens) ??
+    readNumber(tokens?.input) ??
+    readNumber(tokens?.prompt) ??
+    readNumber(tokens?.inputTokens) ??
+    readNumber(tokens?.input_tokens)
+  const outputTokens =
+    readNumber(usage.outputTokens) ??
+    readNumber(usage.output_tokens) ??
+    readNumber(usage.completionTokens) ??
+    readNumber(usage.completion_tokens) ??
+    readNumber(tokens?.output) ??
+    readNumber(tokens?.completion) ??
+    readNumber(tokens?.outputTokens) ??
+    readNumber(tokens?.output_tokens)
+  const totalTokens =
+    readNumber(usage.totalTokens) ??
+    readNumber(usage.total_tokens) ??
+    readNumber(tokens?.total) ??
+    readNumber(tokens?.totalTokens) ??
+    readNumber(tokens?.total_tokens) ??
+    (inputTokens !== undefined || outputTokens !== undefined ? (inputTokens ?? 0) + (outputTokens ?? 0) : undefined)
+
+  if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) {
+    return undefined
+  }
+
+  return { inputTokens, outputTokens, totalTokens }
+}
+
+function getRuntimeUsageFromChunk(chunk: TextStreamPart<Record<string, any>>): NormalizedTokenUsage | undefined {
+  if ((chunk as { type?: string }).type !== 'data-agent-runtime-usage') {
+    return undefined
+  }
+
+  const data = readRecord((chunk as { data?: unknown }).data)
+  return normalizeRuntimeUsage(data?.usage ?? data)
+}
+
+function createSyntheticFinishPart(totalUsage?: NormalizedTokenUsage): TextStreamPart<Record<string, any>> {
+  return {
+    type: 'finish',
+    finishReason: 'stop',
+    totalUsage
+  } as unknown as TextStreamPart<Record<string, any>>
+}
+
 class TextStreamAccumulator {
   private textBuffer = ''
   private totalText = ''
@@ -606,11 +675,23 @@ export class SessionMessageService extends BaseService {
     })
 
     let finished = false
+    let hasFinishPart = false
+    let lastRuntimeUsage: NormalizedTokenUsage | undefined
 
     const cleanup = () => {
       if (finished) return
       finished = true
       agentStream.removeAllListeners()
+    }
+
+    const enqueueFinishPartIfNeeded = (
+      controller: ReadableStreamDefaultController<TextStreamPart<Record<string, any>>>
+    ) => {
+      if (hasFinishPart) return
+      const finishPart = createSyntheticFinishPart(lastRuntimeUsage)
+      hasFinishPart = true
+      accumulator.add(finishPart)
+      controller.enqueue(finishPart)
     }
 
     const stream = new ReadableStream<TextStreamPart<Record<string, any>>>({
@@ -645,6 +726,7 @@ export class SessionMessageService extends BaseService {
                 }
 
                 if (chunk.type === 'finish') {
+                  hasFinishPart = true
                   const tokens = extractTotalTokensFromFinishPart(chunk as TextStreamPart<Record<string, any>>)
                   if (tokens !== undefined) {
                     setAgentSessionLastTotalTokens(session.id, tokens)
@@ -659,6 +741,7 @@ export class SessionMessageService extends BaseService {
                   }
                 }
 
+                lastRuntimeUsage = getRuntimeUsageFromChunk(chunk) ?? lastRuntimeUsage
                 accumulator.add(chunk)
                 controller.enqueue(chunk)
                 break
@@ -675,6 +758,7 @@ export class SessionMessageService extends BaseService {
               }
 
               case 'complete': {
+                enqueueFinishPartIfNeeded(controller)
                 cleanup()
                 controller.close()
                 if (options?.persist) {

@@ -81,6 +81,27 @@ export function buildConversationSkillOverride(params: {
   return deriveSkillConfigOverride(baseSkillConfig, nextSkillConfig)
 }
 
+export function buildConversationSkillSelectionOverride(params: {
+  baseSkillConfig: SkillGlobalConfig
+  effectiveSkillConfig: SkillGlobalConfig
+  selectableSkillIds: string[]
+  selectedSkillIds: string[]
+}): SkillConfigOverride | undefined {
+  const { baseSkillConfig, effectiveSkillConfig, selectableSkillIds, selectedSkillIds } = params
+  const normalizedSelectableSkillIds = Array.from(new Set(selectableSkillIds))
+  const orderedSelectedSkillIds = normalizedSelectableSkillIds.filter((id) => selectedSkillIds.includes(id))
+  const baseSelectedSkillIds = baseSkillConfig.selectedSkillIds ?? normalizedSelectableSkillIds
+  const shouldResetToBase = areStringArraysEqual(orderedSelectedSkillIds, baseSelectedSkillIds)
+
+  const nextSkillConfig = shouldResetToBase
+    ? baseSkillConfig
+    : resolveSkillConfig(effectiveSkillConfig, {
+        selectedSkillIds: orderedSelectedSkillIds
+      })
+
+  return deriveSkillConfigOverride(baseSkillConfig, nextSkillConfig)
+}
+
 export function buildAssistantSkillOverride(params: {
   baseSkillConfig: SkillGlobalConfig
   effectiveSkillConfig: SkillGlobalConfig
@@ -103,4 +124,12 @@ export function buildAssistantSkillOverride(params: {
   })
 
   return deriveSkillConfigOverride(baseSkillConfig, nextSkillConfig)
+}
+
+function areStringArraysEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
 }

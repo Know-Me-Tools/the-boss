@@ -13,6 +13,7 @@ const logger = loggerService.withContext('CodexCliService')
 const require_ = createRequire(import.meta.url)
 const MODEL_LIST_CACHE_TTL = 60 * 1000
 const APP_SERVER_TIMEOUT = 10 * 1000
+const DEFAULT_CODEX_MODEL_ID = 'gpt-5.5'
 
 export interface CodexBinaryResolution {
   path?: string
@@ -125,7 +126,7 @@ export class CodexCliService {
       throw new Error(resolution.message)
     }
 
-    const models = await this.fetchModelsFromAppServer(resolution.path)
+    const models = withDefaultCodexModel(await this.fetchModelsFromAppServer(resolution.path))
     this.modelCache = {
       expiresAt: Date.now() + MODEL_LIST_CACHE_TTL,
       models
@@ -301,6 +302,36 @@ function parseModelList(result: unknown): CodexRuntimeModel[] {
             ? item.default_reasoning_effort
             : undefined
     }))
+}
+
+function withDefaultCodexModel(models: CodexRuntimeModel[]): CodexRuntimeModel[] {
+  const defaultModel = models.find(
+    (model) => model.id === DEFAULT_CODEX_MODEL_ID || model.model === DEFAULT_CODEX_MODEL_ID
+  )
+  const normalizedDefault: CodexRuntimeModel = {
+    ...defaultModel,
+    id: DEFAULT_CODEX_MODEL_ID,
+    model: DEFAULT_CODEX_MODEL_ID,
+    displayName: defaultModel?.displayName ?? 'GPT-5.5',
+    description: defaultModel?.description,
+    hidden: false,
+    isDefault: true,
+    supportedReasoningEfforts:
+      defaultModel && defaultModel.supportedReasoningEfforts.length > 0
+        ? defaultModel.supportedReasoningEfforts
+        : ['minimal', 'low', 'medium', 'high', 'xhigh'],
+    defaultReasoningEffort: defaultModel?.defaultReasoningEffort ?? 'medium'
+  }
+
+  return [
+    normalizedDefault,
+    ...models
+      .filter((model) => model.id !== DEFAULT_CODEX_MODEL_ID && model.model !== DEFAULT_CODEX_MODEL_ID)
+      .map((model) => ({
+        ...model,
+        isDefault: false
+      }))
+  ]
 }
 
 function readConfiguredCodexPath(runtimeConfig?: AgentRuntimeConfig): string | undefined {

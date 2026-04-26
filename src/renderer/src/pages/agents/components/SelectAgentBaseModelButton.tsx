@@ -76,7 +76,7 @@ const SelectAgentBaseModelButton = ({
   const onSelectModel = async () => {
     if (isCodexRuntime) {
       // resolvedRuntime is non-null here (isCodexRuntime guard)
-      const codexModels = await window.api.agentRuntime.listCodexModels(resolvedRuntime!)
+      const codexModels = await window.api.agentRuntime.listCodexModels(resolvedRuntime)
       const selectedModel = await SelectAgentModelPopup.show({
         model,
         models: codexModels
@@ -104,7 +104,7 @@ const SelectAgentBaseModelButton = ({
 
     if (isOpenCodeRuntime) {
       // resolvedRuntime is non-null here (isOpenCodeRuntime guard)
-      const openCodeModels = await window.api.agentRuntime.listOpenCodeModels(resolvedRuntime!)
+      const openCodeModels = await window.api.agentRuntime.listOpenCodeModels(resolvedRuntime)
       const selectedModel = await SelectAgentModelPopup.show({
         model,
         models: openCodeModels
@@ -151,17 +151,19 @@ const SelectAgentBaseModelButton = ({
   const openCodeDisplayName =
     openCodeParts && openCodeParts.length > 1 ? openCodeParts.slice(1).join('/') : runtimeModelId
 
-  const displayModelName =
-    isCodexRuntime && !model
-      ? (runtimeModelId ?? t('button.select_model'))
-      : isOpenCodeRuntime && !model
-        ? (openCodeDisplayName ?? t('button.select_model'))
-        : model
-          ? model.name
-          : t('button.select_model')
+  const displayModelName = isCodexRuntime
+    ? (runtimeModelId ?? t('button.select_model'))
+    : isOpenCodeRuntime
+      ? (openCodeDisplayName ?? t('button.select_model'))
+      : model
+        ? model.name
+        : t('button.select_model')
 
-  const displayProviderName =
-    isCodexRuntime && !model ? 'Codex' : isOpenCodeRuntime && !model ? (openCodeParts?.[0] ?? 'OpenCode') : providerName
+  const displayProviderName = isCodexRuntime
+    ? 'Codex'
+    : isOpenCodeRuntime
+      ? (openCodeParts?.[0] ?? 'OpenCode')
+      : providerName
 
   // Merge default styles with custom styles
   const mergedStyle: CSSProperties = {
@@ -171,11 +173,8 @@ const SelectAgentBaseModelButton = ({
     ...buttonStyle
   }
 
-  // Use the resolved model for the avatar when available; otherwise construct
-  // a minimal stub so the avatar still renders something for runtime models.
-  const avatarModel = model
-    ? apiModelAdapter(model)
-    : (isCodexRuntime || isOpenCodeRuntime) && runtimeModelId
+  const runtimeAvatarModel =
+    (isCodexRuntime || isOpenCodeRuntime) && runtimeModelId
       ? apiModelAdapter({
           id: runtimeModelId,
           name: displayModelName,
@@ -187,6 +186,8 @@ const SelectAgentBaseModelButton = ({
           provider_model_id: runtimeModelId
         } as ApiModel)
       : undefined
+
+  const avatarModel = runtimeAvatarModel ?? (model ? apiModelAdapter(model) : undefined)
 
   return (
     <Button

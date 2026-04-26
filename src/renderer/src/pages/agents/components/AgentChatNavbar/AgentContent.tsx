@@ -7,6 +7,7 @@ import { useShowAssistants } from '@renderer/hooks/useStore'
 import { AgentSettingsPopup, SessionSettingsPopup } from '@renderer/pages/settings/AgentSettings'
 import { AgentLabel, SessionLabel } from '@renderer/pages/settings/AgentSettings/shared'
 import { AgentConfigurationSchema, type AgentEntity, type ApiModel } from '@renderer/types'
+import { buildRuntimeAwareModelUpdate } from '@renderer/utils/agentRuntimeModel'
 import { Tooltip } from 'antd'
 import { t } from 'i18next'
 import { ChevronRight } from 'lucide-react'
@@ -28,15 +29,7 @@ const AgentContent = ({ activeAgent }: AgentContentProps) => {
   const { showAssistants, toggleShowAssistants } = useShowAssistants()
   const { isTopNavbar } = useNavbarPosition()
   const { session: activeSession } = useActiveSession()
-  const { updateModel } = useUpdateSession(activeAgent?.id ?? null)
-
-  const handleUpdateModel = useCallback(
-    async (model: ApiModel) => {
-      if (!activeAgent || !activeSession) return
-      return updateModel(activeSession.id, model.id, { showSuccessToast: false })
-    },
-    [activeAgent, activeSession, updateModel]
-  )
+  const { updateSession } = useUpdateSession(activeAgent?.id ?? null)
 
   // Derive the effective runtime: prefer what is stored on the active session,
   // fall back to the parent agent's configuration. This ensures the model button
@@ -45,6 +38,21 @@ const AgentContent = ({ activeAgent }: AgentContentProps) => {
   const sessionRuntime = AgentConfigurationSchema.parse(activeSession?.configuration ?? {}).runtime
   const agentRuntime = AgentConfigurationSchema.parse(activeAgent?.configuration ?? {}).runtime
   const effectiveRuntime = sessionRuntime ?? agentRuntime
+
+  const handleUpdateModel = useCallback(
+    async (model: ApiModel) => {
+      if (!activeAgent || !activeSession) return
+      return updateSession(
+        buildRuntimeAwareModelUpdate({
+          base: activeSession,
+          selectedModel: model,
+          effectiveRuntime
+        }),
+        { showSuccessToast: false }
+      )
+    },
+    [activeAgent, activeSession, effectiveRuntime, updateSession]
+  )
 
   return (
     <div className="flex w-full justify-between pr-2">

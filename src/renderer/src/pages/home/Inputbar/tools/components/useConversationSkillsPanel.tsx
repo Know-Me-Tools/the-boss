@@ -2,16 +2,23 @@ import { loggerService } from '@logger'
 import type { QuickPanelListItem } from '@renderer/components/QuickPanel'
 import { useInstalledSkills } from '@renderer/hooks/useSkills'
 import type { ToolQuickPanelApi, ToolQuickPanelController } from '@renderer/pages/home/Inputbar/types'
+import ConversationSettingsPopup from '@renderer/pages/settings/ConversationSettingsPopup'
 import {
   buildConversationSkillOverride,
+  buildConversationSkillSelectionOverride,
   getSkillSelectionSummary,
   isSkillSelectableWithinBaseConfig
 } from '@renderer/services/skills/scopedSkillSelection'
+import {
+  buildSkillSearchRecords,
+  groupSkillRecords,
+  toggleSkillGroup
+} from '@renderer/services/skills/skillSelectionList'
 import { useAppSelector } from '@renderer/store'
 import type { Assistant, Topic } from '@renderer/types'
 import type { SkillConfigOverride } from '@renderer/types/skillConfig'
 import { DEFAULT_SKILL_CONFIG, hasSkillConfigOverride, resolveSkillConfig } from '@renderer/types/skillConfig'
-import { Zap } from 'lucide-react'
+import { Layers3, Settings2, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -69,9 +76,25 @@ export const useConversationSkillsPanel = ({
     [baseSkillConfig, topic.skillConfig]
   )
   const enabledSkills = useMemo(() => skills.filter((skill) => skill.isEnabled), [skills])
+  const selectableSkillIds = useMemo(
+    () =>
+      enabledSkills
+        .filter((skill) => isSkillSelectableWithinBaseConfig(baseSkillConfig, skill.id))
+        .map((skill) => skill.id),
+    [baseSkillConfig, enabledSkills]
+  )
   const selectionSummary = useMemo(
     () => getSkillSelectionSummary(effectiveConversationSkillConfig, enabledSkills),
     [effectiveConversationSkillConfig, enabledSkills]
+  )
+  const selectedSkillIds = useMemo(
+    () => effectiveConversationSkillConfig.selectedSkillIds ?? selectableSkillIds,
+    [effectiveConversationSkillConfig.selectedSkillIds, selectableSkillIds]
+  )
+  const skillRecords = useMemo(() => buildSkillSearchRecords(enabledSkills), [enabledSkills])
+  const groupedSkillRecords = useMemo(
+    () => groupSkillRecords(skillRecords, selectedSkillIds, selectableSkillIds),
+    [selectableSkillIds, selectedSkillIds, skillRecords]
   )
 
   const buildItems = useCallback((): QuickPanelListItem[] => {
@@ -103,29 +126,62 @@ export const useConversationSkillsPanel = ({
       action: () => {}
     }
 
-    const skillItems = enabledSkills.map((skill) => {
-      const selectable = isSkillSelectableWithinBaseConfig(baseSkillConfig, skill.id)
+    const manageItem: QuickPanelListItem = {
+      label: t('chat.input.conversation_skills.open_settings', {
+        defaultValue: 'Open skill settings'
+      }),
+      description: t('chat.input.conversation_skills.open_settings_description', {
+        defaultValue: 'Use the full grouped selector for this conversation'
+      }),
+      icon: <Settings2 size={16} />,
+      alwaysVisible: true,
+      action: ({ context }) => {
+        context.close('select')
+        void ConversationSettingsPopup.show({
+          assistantId: assistant.id,
+          topicId: topic.id
+        })
+      }
+    }
 
-      return {
-        label: skill.name,
-        description: selectable
-          ? skill.description || ''
-          : t('chat.input.conversation_skills.locked_by_assistant', {
-              defaultValue: 'Excluded by assistant defaults'
-            }),
-        icon: <Zap size={16} />,
-        filterText: `${skill.name} ${skill.description || ''} ${skill.folderName}`,
-        isSelected: effectiveConversationSkillConfig.selectedSkillIds?.includes(skill.id) ?? false,
-        disabled: !selectable,
+    const groupItems = groupedSkillRecords.flatMap((group) => {
+      const groupSelectableSkillIds = group.skills
+        .filter((skill) => isSkillSelectableWithinBaseConfig(baseSkillConfig, skill.id))
+        .map((skill) => skill.id)
+      const groupChecked = group.selectableCount > 0 && group.selectedCount === group.selectableCount
+      const groupIndeterminate = group.selectedCount > 0 && group.selectedCount < group.selectableCount
+      const groupItem: QuickPanelListItem = {
+        label: group.group.label,
+        description: groupIndeterminate
+          ? t('chat.input.conversation_skills.group_partial', {
+              defaultValue: '{{selected}} of {{total}} selected',
+              selected: group.selectedCount,
+              total: group.selectableCount
+            })
+          : groupChecked
+            ? t('chat.input.conversation_skills.group_clear', {
+                defaultValue: 'Clear all skills from this provider'
+              })
+            : t('chat.input.conversation_skills.group_select', {
+                defaultValue: 'Select all skills from this provider'
+              }),
+        icon: <Layers3 size={16} />,
+        filterText: `${group.group.label} ${group.group.description}`,
+        suffix: `${group.selectedCount}/${group.selectableCount}`,
+        isSelected: groupChecked,
+        disabled: group.selectableCount === 0,
         action: () => {
-          if (!selectable) {
-            return
-          }
-
-          const nextOverride = buildConversationSkillOverride({
+          const nextSelectedSkillIds = toggleSkillGroup(
+            selectedSkillIds,
+            selectableSkillIds,
+            groupSelectableSkillIds,
+            !groupChecked
+          )
+          const nextOverride = buildConversationSkillSelectionOverride({
             baseSkillConfig,
             effectiveSkillConfig: effectiveConversationSkillConfig,
-            skillId: skill.id
+            selectableSkillIds,
+            selectedSkillIds: nextSelectedSkillIds
           })
 
           updateTopic({
@@ -133,14 +189,55 @@ export const useConversationSkillsPanel = ({
             skillConfig: nextOverride
           })
         }
-      } satisfies QuickPanelListItem
+      }
+
+      const skillItems = group.skills.map((skill) => {
+        const selectable = isSkillSelectableWithinBaseConfig(baseSkillConfig, skill.id)
+
+        return {
+          label: skill.name,
+          description: selectable
+            ? skill.description || ''
+            : t('chat.input.conversation_skills.locked_by_assistant', {
+                defaultValue: 'Excluded by assistant defaults'
+              }),
+          icon: <Zap size={16} />,
+          filterText: `${skill.name} ${skill.description || ''} ${skill.folderName} ${skill.source} ${
+            skill.sourceUrl || ''
+          } ${skill.namespace || ''} ${skill.author || ''} ${skill.tags.join(' ')} ${group.group.label}`,
+          suffix: group.group.label,
+          isSelected: selectedSkillIds.includes(skill.id),
+          disabled: !selectable,
+          action: () => {
+            if (!selectable) {
+              return
+            }
+
+            const nextOverride = buildConversationSkillOverride({
+              baseSkillConfig,
+              effectiveSkillConfig: effectiveConversationSkillConfig,
+              skillId: skill.id
+            })
+
+            updateTopic({
+              ...topic,
+              skillConfig: nextOverride
+            })
+          }
+        } satisfies QuickPanelListItem
+      })
+
+      return [groupItem, ...skillItems]
     })
 
-    return [statusItem, ...skillItems]
+    return [statusItem, manageItem, ...groupItems]
   }, [
+    assistant.id,
     baseSkillConfig,
     effectiveConversationSkillConfig,
-    enabledSkills,
+    groupedSkillRecords,
+    selectableSkillIds,
+    selectedSkillIds,
     selectionSummary.mode,
     selectionSummary.selectedSkillCount,
     t,

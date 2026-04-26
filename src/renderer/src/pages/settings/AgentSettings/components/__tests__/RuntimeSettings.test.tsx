@@ -142,7 +142,7 @@ describe('RuntimeSettings', () => {
     expect(screen.getByLabelText('Reasoning effort')).toBeInTheDocument()
   })
 
-  it('selecting Codex loads Codex models and replaces an invalid model with the default', async () => {
+  it('selecting Codex loads Codex models and prefers the CLI-only GPT-5.5 default', async () => {
     const update = vi.fn()
     render(<RuntimeSettings agentBase={createAgentBase('claude')} update={update} />)
 
@@ -154,7 +154,7 @@ describe('RuntimeSettings', () => {
         configuration: expect.objectContaining({
           runtime: expect.objectContaining({
             kind: 'codex',
-            modelId: 'gpt-5.2-codex',
+            modelId: 'gpt-5.5',
             reasoningEffort: 'medium'
           })
         })
@@ -350,6 +350,16 @@ function createAgentBase(
 
 function createCodexModels() {
   return [
+    {
+      id: 'gpt-5.5',
+      model: 'gpt-5.5',
+      displayName: 'GPT-5.5',
+      description: 'CLI-only Codex model',
+      hidden: false,
+      isDefault: false,
+      supportedReasoningEfforts: ['low', 'medium', 'high'],
+      defaultReasoningEffort: 'medium'
+    },
     {
       id: 'gpt-5.2-codex',
       model: 'gpt-5.2-codex',
