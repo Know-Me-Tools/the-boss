@@ -50,16 +50,32 @@ const ApiServerSettings: FC = () => {
     window.toast.success(t('apiServer.messages.apiKeyCopied'))
   }
 
-  const regenerateApiKey = () => {
+  const regenerateApiKey = async () => {
     const newApiKey = `cs-sk-${uuidv4()}`
     dispatch(setApiServerApiKey(newApiKey))
+    const result = await window.api.apiServer.setConfig({ apiKey: newApiKey })
+    if (!result.success) {
+      window.toast.error(t('apiServer.messages.operationFailed') + result.error)
+      return
+    }
     window.toast.success(t('apiServer.messages.apiKeyRegenerated'))
   }
 
-  const handlePortChange = (value: string) => {
+  const handlePortChange = async (value: string) => {
     const port = parseInt(value) || API_SERVER_DEFAULTS.PORT
     if (port >= 1000 && port <= 65535) {
       dispatch(setApiServerPort(port))
+      const result = await window.api.apiServer.setConfig({ ...apiServerConfig, port })
+      if (!result.success) {
+        window.toast.error(t('apiServer.messages.operationFailed') + result.error)
+        return
+      }
+      if (apiServerRunning) {
+        const restartResult = await window.api.apiServer.restart()
+        if (!restartResult.success) {
+          window.toast.error(t('apiServer.messages.restartError') + restartResult.error)
+        }
+      }
     }
   }
 
@@ -120,18 +136,14 @@ const ApiServerSettings: FC = () => {
             </Tooltip>
           )}
 
-          {/* Port input when server is stopped */}
-          {!apiServerRunning && (
-            <StyledInputNumber
-              value={apiServerConfig.port}
-              onChange={(value) => handlePortChange(String(value || API_SERVER_DEFAULTS.PORT))}
-              min={1000}
-              max={65535}
-              disabled={apiServerRunning}
-              placeholder={String(API_SERVER_DEFAULTS.PORT)}
-              size="middle"
-            />
-          )}
+          <StyledInputNumber
+            value={apiServerConfig.port}
+            onChange={(value) => void handlePortChange(String(value || API_SERVER_DEFAULTS.PORT))}
+            min={1000}
+            max={65535}
+            placeholder={String(API_SERVER_DEFAULTS.PORT)}
+            size="middle"
+          />
 
           <Tooltip title={apiServerRunning ? t('apiServer.actions.stop') : t('apiServer.actions.start')}>
             {apiServerRunning ? (
@@ -164,7 +176,7 @@ const ApiServerSettings: FC = () => {
           suffix={
             <InputButtonContainer>
               {!apiServerRunning && (
-                <RegenerateButton onClick={regenerateApiKey} disabled={apiServerRunning} type="link">
+                <RegenerateButton onClick={() => void regenerateApiKey()} disabled={apiServerRunning} type="link">
                   {t('apiServer.actions.regenerate')}
                 </RegenerateButton>
               )}

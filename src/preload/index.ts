@@ -49,6 +49,8 @@ import type {
   AgentRuntimeProfile,
   AgentRuntimeSettings,
   ApiClient,
+  ApiServerConfig,
+  ApiServerConfigPatch,
   AssistantMessage,
   FileListResponse,
   FileMetadata,
@@ -67,6 +69,7 @@ import type {
   Provider,
   RestartApiServerStatusResult,
   S3Config,
+  SetApiServerConfigResult,
   Shortcut,
   StartApiServerStatusResult,
   StopApiServerStatusResult,
@@ -893,6 +896,9 @@ const api = {
     ipcRenderer.invoke(IpcChannel.Skill_EmbedTextsBatch, payload),
   apiServer: {
     getStatus: (): Promise<GetApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_GetStatus),
+    getConfig: (): Promise<ApiServerConfig | null> => ipcRenderer.invoke(IpcChannel.ApiServer_GetConfig),
+    setConfig: (patch: ApiServerConfigPatch): Promise<SetApiServerConfigResult> =>
+      ipcRenderer.invoke(IpcChannel.ApiServer_SetConfig, patch),
     start: (): Promise<StartApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_Start),
     restart: (): Promise<RestartApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_Restart),
     stop: (): Promise<StopApiServerStatusResult> => ipcRenderer.invoke(IpcChannel.ApiServer_Stop),

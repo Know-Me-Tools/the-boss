@@ -1,11 +1,29 @@
 import { loggerService } from '@logger'
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setApiServerRunningAction } from '@renderer/store/runtime'
-import { setApiServerEnabled as setApiServerEnabledAction } from '@renderer/store/settings'
+import {
+  setApiServerConfig as setApiServerConfigAction,
+  setApiServerEnabled as setApiServerEnabledAction
+} from '@renderer/store/settings'
+import type { ApiServerConfig } from '@renderer/types'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const logger = loggerService.withContext('useApiServer')
+
+const isApiServerConfigEqual = (left: ApiServerConfig | null | undefined, right: ApiServerConfig): boolean => {
+  return (
+    !!left &&
+    left.enabled === right.enabled &&
+    left.host === right.host &&
+    left.port === right.port &&
+    left.apiKey === right.apiKey
+  )
+}
+
+const isApiServerNetworkConfigEqual = (left: ApiServerConfig | null | undefined, right: ApiServerConfig): boolean => {
+  return !!left && left.host === right.host && left.port === right.port
+}
 
 // Module-level single instance subscription to prevent EventEmitter memory leak
 // Only one IPC listener will be registered regardless of how many components use this hook
@@ -53,13 +71,42 @@ export const useApiServer = () => {
     [dispatch]
   )
 
+  const setApiServerConfig = useCallback(
+    (config: Partial<ApiServerConfig>) => {
+      dispatch(setApiServerConfigAction(config))
+    },
+    [dispatch]
+  )
+
+  const syncMainApiServerConfig = useCallback(async () => {
+    const result = await window.api.apiServer.setConfig(apiServerConfig)
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+    return result.config
+  }, [apiServerConfig])
+
   // API Server functions
   const checkApiServerStatus = useCallback(async () => {
     setApiServerLoading(true)
     try {
       const status = await window.api.apiServer.getStatus()
-      setApiServerRunning(status.running)
-      if (status.running && !apiServerConfig.enabled) {
+      let running = status.running
+      const shouldRestartForNetworkChange = running && !isApiServerNetworkConfigEqual(status.config, apiServerConfig)
+
+      if (!isApiServerConfigEqual(status.config, apiServerConfig)) {
+        await syncMainApiServerConfig()
+        if (shouldRestartForNetworkChange) {
+          const restartResult = await window.api.apiServer.restart()
+          if (!restartResult.success) {
+            throw new Error(restartResult.error)
+          }
+          running = true
+        }
+      }
+
+      setApiServerRunning(running)
+      if (running && !apiServerConfig.enabled) {
         setApiServerEnabled(true)
       }
     } catch (error: any) {
@@ -67,12 +114,13 @@ export const useApiServer = () => {
     } finally {
       setApiServerLoading(false)
     }
-  }, [apiServerConfig.enabled, setApiServerEnabled, setApiServerLoading, setApiServerRunning])
+  }, [apiServerConfig, setApiServerEnabled, setApiServerLoading, setApiServerRunning, syncMainApiServerConfig])
 
   const startApiServer = useCallback(async () => {
     if (apiServerLoading) return
     setApiServerLoading(true)
     try {
+      await syncMainApiServerConfig()
       const result = await window.api.apiServer.start()
       if (result.success) {
         setApiServerRunning(true)
@@ -86,7 +134,7 @@ export const useApiServer = () => {
     } finally {
       setApiServerLoading(false)
     }
-  }, [apiServerLoading, setApiServerEnabled, setApiServerLoading, setApiServerRunning, t])
+  }, [apiServerLoading, setApiServerEnabled, setApiServerLoading, setApiServerRunning, syncMainApiServerConfig, t])
 
   const stopApiServer = useCallback(async () => {
     if (apiServerLoading) return
@@ -111,6 +159,7 @@ export const useApiServer = () => {
     if (apiServerLoading) return
     setApiServerLoading(true)
     try {
+      await syncMainApiServerConfig()
       const result = await window.api.apiServer.restart()
       setApiServerEnabled(result.success)
       if (result.success) {
@@ -124,7 +173,7 @@ export const useApiServer = () => {
     } finally {
       setApiServerLoading(false)
     }
-  }, [apiServerLoading, checkApiServerStatus, setApiServerEnabled, setApiServerLoading, t])
+  }, [apiServerLoading, checkApiServerStatus, setApiServerEnabled, setApiServerLoading, syncMainApiServerConfig, t])
 
   useEffect(() => {
     void checkApiServerStatus()
@@ -161,6 +210,8 @@ export const useApiServer = () => {
     stopApiServer,
     restartApiServer,
     checkApiServerStatus,
-    setApiServerEnabled
+    setApiServerEnabled,
+    setApiServerConfig,
+    syncMainApiServerConfig
   }
 }

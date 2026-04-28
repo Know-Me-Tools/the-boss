@@ -28,8 +28,9 @@ export class ApiServer {
       this.server = null
     }
 
-    // Load config
-    const { port, host } = await config.load()
+    // Use the current config cache. Renderer-originated setting updates patch
+    // this cache before start/restart so the server binds to the user's value.
+    const { port, host } = await config.get()
 
     // Create server with Express app
     this.server = createServer(app)

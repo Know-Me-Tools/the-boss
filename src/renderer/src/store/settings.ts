@@ -908,6 +908,12 @@ const settingsSlice = createSlice({
         apiKey: action.payload
       }
     },
+    setApiServerConfig: (state, action: PayloadAction<Partial<ApiServerConfig>>) => {
+      state.apiServer = {
+        ...state.apiServer,
+        ...action.payload
+      }
+    },
     setShowMessageOutline: (state, action: PayloadAction<boolean>) => {
       state.showMessageOutline = action.payload
     },
@@ -1060,7 +1066,8 @@ export const {
   // API Server actions
   setApiServerEnabled,
   setApiServerPort,
-  setApiServerApiKey
+  setApiServerApiKey,
+  setApiServerConfig
 } = settingsSlice.actions
 
 export default settingsSlice.reducer

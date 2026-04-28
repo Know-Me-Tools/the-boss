@@ -58,6 +58,15 @@ class ConfigManager {
   async reload(): Promise<ApiServerConfig> {
     return await this.load()
   }
+
+  async set(patch: Partial<ApiServerConfig>): Promise<ApiServerConfig> {
+    const current = await this.get()
+    this._config = {
+      ...current,
+      ...patch
+    }
+    return this._config
+  }
 }
 
 export const config = new ConfigManager()

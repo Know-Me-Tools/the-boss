@@ -415,8 +415,8 @@ export enum IpcChannel {
   ApiServer_Restart = 'api-server:restart',
   ApiServer_GetStatus = 'api-server:get-status',
   ApiServer_Ready = 'api-server:ready',
-  // NOTE: This api is not be used.
   ApiServer_GetConfig = 'api-server:get-config',
+  ApiServer_SetConfig = 'api-server:set-config',
 
   // Anthropic OAuth
   Anthropic_StartOAuthFlow = 'anthropic:start-oauth-flow',

@@ -3,6 +3,7 @@ import type {
   ApiServerConfig,
   GetApiServerStatusResult,
   RestartApiServerStatusResult,
+  SetApiServerConfigResult,
   StartApiServerStatusResult,
   StopApiServerStatusResult
 } from '@types'
@@ -56,6 +57,10 @@ export class ApiServerService {
     return config.get()
   }
 
+  async setCurrentConfig(patch: Partial<ApiServerConfig>): Promise<ApiServerConfig> {
+    return config.set(patch)
+  }
+
   registerIpcHandlers(): void {
     // API Server
     ipcMain.handle(IpcChannel.ApiServer_Start, async (): Promise<StartApiServerStatusResult> => {
@@ -107,6 +112,18 @@ export class ApiServerService {
         return null
       }
     })
+
+    ipcMain.handle(
+      IpcChannel.ApiServer_SetConfig,
+      async (_, patch: Partial<ApiServerConfig>): Promise<SetApiServerConfigResult> => {
+        try {
+          const nextConfig = await this.setCurrentConfig(patch)
+          return { success: true, config: nextConfig }
+        } catch (error: any) {
+          return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+        }
+      }
+    )
   }
 }
 

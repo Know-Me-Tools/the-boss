@@ -5,6 +5,8 @@ export type ApiServerConfig = {
   apiKey: string
 }
 
+export type ApiServerConfigPatch = Partial<ApiServerConfig>
+
 export type GetApiServerStatusResult = {
   running: boolean
   config: ApiServerConfig | null
@@ -31,6 +33,16 @@ export type RestartApiServerStatusResult =
 export type StopApiServerStatusResult =
   | {
       success: true
+    }
+  | {
+      success: false
+      error: string
+    }
+
+export type SetApiServerConfigResult =
+  | {
+      success: true
+      config: ApiServerConfig
     }
   | {
       success: false
