@@ -839,7 +839,7 @@ export async function fetchModels(
     logger.error('Failed to fetch models from provider', {
       providerId: provider.id,
       providerName: provider.name,
-      error: error as Error
+      error: error instanceof Error ? error.message : String(error)
     })
     if (options?.throwOnError) {
       throw error

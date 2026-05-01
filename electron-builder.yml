@@ -217,6 +217,11 @@ releaseInfo:
     - [Models] Fix custom parameters not being passed to Gemini API when using NewAPI/AiHubMix providers
     - [Knowledge] Fix Dify knowledge search compatibility with Dify 1.13.3
     - [OpenClaw] Fix language selection not persisting in overview page
+    - [OpenCode] Fix NEWAPI provider model listing and endpoint routing
+    - [Image Generation] Fix gpt-image-2/gpt-image-1.5 editing and generation across multiple providers
+    - [Models] Fix Kimi K2.6 requests rejected because of unsupported temperature settings
+    - [Gateway] Fix Vercel AI Gateway model list fetch with user authentication
+    - [Copilot] Fix GitHub Copilot model synchronization
 
     ⚡ Performance
     - [Electron] Upgrade to Electron 41.2.1 with improved window resize handling on Windows
@@ -277,6 +282,11 @@ releaseInfo:
     - [模型] 修复使用 NewAPI/AiHubMix 服务商时自定义参数未传递给 Gemini API 的问题
     - [知识库] 修复与 Dify 1.13.3 的知识搜索兼容性问题
     - [OpenClaw] 修复概览页面语言选择无法持久化的问题
+    - [OpenCode] 修复 NEWAPI 服务商模型列表显示与端点路由问题
+    - [图像生成] 修复多个服务商的 gpt-image-2/gpt-image-1.5 编辑和生成问题
+    - [模型] 修复 Kimi K2.6 因不支持的温度设置导致请求失败
+    - [网关] 修复 Vercel AI Gateway 模型列表获取缺少用户认证的问题
+    - [Copilot] 修复 GitHub Copilot 模型同步问题
 
     ⚡ 性能优化
     - [Electron] 升级至 Electron 41.2.1，改进 Windows 平台的窗口调整大小体验

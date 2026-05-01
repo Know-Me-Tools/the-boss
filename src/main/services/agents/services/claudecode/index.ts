@@ -603,6 +603,12 @@ class ClaudeCodeService implements AgentServiceInterface {
 
     if (!options.mcpServers) options.mcpServers = {}
 
+    // Inject Exa MCP for structured web search (free tier, no API key required)
+    options.mcpServers.exa = {
+      type: 'http',
+      url: 'https://mcp.exa.ai/mcp'
+    }
+
     // Inject skills MCP for all agents — managing Claude skills (search / install
     // / list / remove / init / register) is a generally useful capability and is
     // not coupled to Soul Mode's autonomous-agent semantics.
