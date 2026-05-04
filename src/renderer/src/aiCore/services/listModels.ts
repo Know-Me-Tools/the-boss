@@ -17,7 +17,7 @@ import store from '@renderer/store'
 import type { EndpointType, Model, Provider } from '@renderer/types'
 import { SystemProviderIds } from '@renderer/types'
 import { formatApiHost, withoutTrailingSlash } from '@renderer/utils'
-import { isAIGatewayProvider, isGeminiProvider, isOllamaProvider, isVertexProvider } from '@renderer/utils/provider'
+import { isGeminiProvider, isOllamaProvider, isVertexProvider } from '@renderer/utils/provider'
 import { defaultAppHeaders } from '@shared/utils'
 import * as z from 'zod'
 
@@ -38,6 +38,7 @@ import {
   OpenAIModelsResponseSchema,
   OVMSConfigResponseSchema,
   TogetherModelsResponseSchema,
+  VercelGatewayModelsResponseSchema,
   VertexPublisherModelsResponseSchema
 } from './schemas'
 
@@ -594,6 +595,28 @@ const anthropicMaxFetcher: ModelFetcher = {
   }
 }
 
+const gatewayFetcher: ModelFetcher = {
+  match: (p) => p.id === SystemProviderIds.gateway,
+  fetch: async (provider, signal) => {
+    const response = await getFromApi({
+      url: `https://ai-gateway.vercel.sh/v3/ai/config`,
+      headers: {
+        ...defaultHeaders(provider),
+        'ai-gateway-protocol-version': '0.0.1'
+      },
+      responseSchema: VercelGatewayModelsResponseSchema,
+      abortSignal: signal
+    })
+    return dedup(response.models, (m) => m.id).map((m) =>
+      toModel(m.id, provider, {
+        name: m.name || m.id,
+        description: m.description,
+        owned_by: m.specification?.provider
+      })
+    )
+  }
+}
+
 /** Default fallback: OpenAI-compatible /models endpoint */
 const openAICompatibleFetcher: ModelFetcher = {
   match: () => true,
@@ -627,6 +650,7 @@ const fetchers: ModelFetcher[] = [
   ppioFetcher,
   openAIOAuthFetcher,
   anthropicMaxFetcher,
+  gatewayFetcher,
   openAICompatibleFetcher // always-match fallback, must be last
 ]
 
@@ -635,7 +659,7 @@ const fetchers: ModelFetcher[] = [
 const UNSUPPORTED_PROVIDERS = new Set<string>([SystemProviderIds['aws-bedrock'], SystemProviderIds.anthropic])
 
 function isUnsupported(provider: Provider): boolean {
-  return isAIGatewayProvider(provider) || UNSUPPORTED_PROVIDERS.has(provider.id) || provider.type === 'vertex-anthropic'
+  return UNSUPPORTED_PROVIDERS.has(provider.id) || provider.type === 'vertex-anthropic'
 }
 
 // === Public API ===
