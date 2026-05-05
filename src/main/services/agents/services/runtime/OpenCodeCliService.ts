@@ -6,11 +6,17 @@ import path from 'node:path'
 
 import { loggerService } from '@logger'
 import { getAvailableProviders } from '@main/apiServer/utils'
-import { toAsarUnpackedPath } from '@main/utils'
 import type * as OpenCodeSdk from '@opencode-ai/sdk'
 import type { AgentRuntimeConfig, Provider } from '@types'
 import { app } from 'electron'
 import { parse as parseJsonc } from 'jsonc-parser'
+
+import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
+import {
+  type RuntimeBinaryDiscoveryService,
+  runtimeBinaryDiscoveryService,
+  type RuntimeBinarySource
+} from './RuntimeBinaryDiscoveryService'
 
 const logger = loggerService.withContext('OpenCodeCliService')
 const SERVER_START_TIMEOUT_MS = 10_000
@@ -22,7 +28,7 @@ type SpawnOpenCodeProcess = (command: string, args: string[], options: Parameter
 
 export interface OpenCodeBinaryResolution {
   path?: string
-  source?: 'configured' | 'packaged' | 'development'
+  source?: RuntimeBinarySource
   state: 'ready' | 'missing-binary' | 'unsupported-platform'
   message: string
 }
@@ -54,38 +60,41 @@ interface OpenCodeConfigFileState {
 
 interface OpenCodeCliServiceDependencies {
   spawnProcess?: SpawnOpenCodeProcess
-  appPath?: () => string
   homedir?: () => string
   developmentBinaryPath?: (platform: NonNullable<ReturnType<typeof getOpenCodePlatform>>) => string | undefined
   loadSdk?: () => Promise<OpenCodeModule>
   getAvailableProviders?: () => Promise<Provider[]>
+  managedRuntimeService?: ManagedRuntimeService
+  runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
 }
 
 export class OpenCodeCliService {
   private readonly spawnProcess: SpawnOpenCodeProcess
-  private readonly appPath: () => string
   private readonly homedir: () => string
   private readonly developmentBinaryPath: (
     platform: NonNullable<ReturnType<typeof getOpenCodePlatform>>
   ) => string | undefined
   private readonly loadSdk: () => Promise<OpenCodeModule>
   private readonly getAvailableProviders: () => Promise<Provider[]>
+  private readonly managedRuntimeService: ManagedRuntimeService
+  private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
   private readonly servers = new Map<string, Promise<ManagedOpenCodeServer>>()
   private modelCache: { key: string; expiresAt: number; models: OpenCodeRuntimeModel[] } | null = null
 
   constructor(dependencies: OpenCodeCliServiceDependencies = {}) {
     this.spawnProcess = dependencies.spawnProcess ?? ((command, args, options) => spawn(command, args, options))
-    this.appPath = dependencies.appPath ?? (() => app.getAppPath())
     this.homedir = dependencies.homedir ?? (() => os.homedir())
     this.developmentBinaryPath = dependencies.developmentBinaryPath ?? resolveDevelopmentOpenCodeBinary
     this.loadSdk = dependencies.loadSdk ?? (() => import('@opencode-ai/sdk'))
     this.getAvailableProviders = dependencies.getAvailableProviders ?? getAvailableProviders
+    this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
+    this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
     app.once('before-quit', () => {
       void this.dispose()
     })
   }
 
-  resolveBinary(runtimeConfig?: AgentRuntimeConfig): OpenCodeBinaryResolution {
+  async resolveBinary(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeBinaryResolution> {
     const platform = getOpenCodePlatform()
     if (!platform) {
       return {
@@ -102,10 +111,39 @@ export class OpenCodeCliService {
       }
     }
 
-    const packagedPath = path.join(this.appPath(), 'resources', 'opencode', platform.resourceDir, platform.binaryName)
-    const packaged = this.validateCandidate(remapAsarResourcePath(packagedPath, this.appPath()), 'packaged')
-    if (packaged) {
-      return packaged
+    const environmentPath = process.env.OPENCODE_CLI_PATH
+    if (environmentPath) {
+      const environment = this.validateCandidate(environmentPath, 'environment')
+      if (environment) {
+        return environment
+      }
+    }
+
+    const detected = await this.runtimeBinaryDiscoveryService.discover('opencode')
+    if (detected.detectedPath) {
+      const pathResolution = this.validateCandidate(detected.detectedPath, 'path')
+      if (pathResolution) {
+        return {
+          ...pathResolution,
+          message: detected.message
+        }
+      }
+    }
+
+    const managed = await this.managedRuntimeService.resolveInstalledBinary('opencode')
+    if (managed.binaryPath) {
+      return {
+        path: managed.binaryPath,
+        source: 'managed',
+        state: 'ready',
+        message: 'OpenCode executable resolved from verified managed binary.'
+      }
+    }
+    if (managed.status.state !== 'missing') {
+      return {
+        state: managed.status.state === 'unsupported-platform' ? 'unsupported-platform' : 'missing-binary',
+        message: managed.status.message
+      }
     }
 
     const developmentPath = this.developmentBinaryPath(platform)
@@ -121,7 +159,7 @@ export class OpenCodeCliService {
       message:
         configuredPath && !fs.existsSync(configuredPath)
           ? `Configured OpenCode executable does not exist: ${configuredPath}`
-          : 'OpenCode executable was not found. Build the embedded OpenCode runtime or ensure resources/opencode is packaged outside app.asar.'
+          : 'OpenCode executable was not found. Install the verified managed OpenCode binary or configure an OpenCode executable path.'
     }
   }
 
@@ -214,7 +252,7 @@ export class OpenCodeCliService {
     config: Record<string, unknown>,
     sdk: OpenCodeModule
   ): Promise<ManagedOpenCodeServer> {
-    const resolution = this.resolveBinary(runtimeConfig)
+    const resolution = await this.resolveBinary(runtimeConfig)
     if (!resolution.path) {
       throw new Error(resolution.message)
     }
@@ -435,20 +473,20 @@ function hasUsableOpenCodeProviderConfig(config: Record<string, unknown> | undef
   })
 }
 
-function getOpenCodePlatform(): { resourceDir: string; buildName: string; binaryName: string } | null {
+function getOpenCodePlatform(): { buildName: string; binaryName: string } | null {
   const arch = process.arch === 'arm64' ? 'arm64' : process.arch === 'x64' ? 'x64' : null
   if (!arch) {
     return null
   }
 
   if (process.platform === 'darwin') {
-    return { resourceDir: `darwin-${arch}`, buildName: `opencode-darwin-${arch}`, binaryName: 'opencode' }
+    return { buildName: `opencode-darwin-${arch}`, binaryName: 'opencode' }
   }
   if (process.platform === 'linux') {
-    return { resourceDir: `linux-${arch}`, buildName: `opencode-linux-${arch}`, binaryName: 'opencode' }
+    return { buildName: `opencode-linux-${arch}`, binaryName: 'opencode' }
   }
   if (process.platform === 'win32') {
-    return { resourceDir: `win32-${arch}`, buildName: `opencode-windows-${arch}`, binaryName: 'opencode.exe' }
+    return { buildName: `opencode-windows-${arch}`, binaryName: 'opencode.exe' }
   }
   return null
 }
@@ -471,13 +509,6 @@ function resolveDevelopmentOpenCodeBinary(
       ? [path.join(binDir, 'opencode.exe'), path.join(binDir, 'opencode')]
       : [path.join(binDir, 'opencode')]
   return candidates.find((candidate) => fs.existsSync(candidate)) ?? candidates[0]
-}
-
-function remapAsarResourcePath(filePath: string, appPath: string): string {
-  if (appPath.endsWith('.asar') && filePath.startsWith(`${appPath}${path.sep}`)) {
-    return path.join(appPath.replace(/\.asar$/, '.asar.unpacked'), path.relative(appPath, filePath))
-  }
-  return toAsarUnpackedPath(filePath)
 }
 
 function readConfiguredOpenCodePath(runtimeConfig?: AgentRuntimeConfig): string | undefined {

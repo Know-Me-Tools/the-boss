@@ -81,7 +81,7 @@ export class CodexRuntimeAdapter implements AgentServiceInterface {
     void (async () => {
       try {
         const { Codex } = await import('@openai/codex-sdk')
-        const binaryResolution = codexCliService.resolveBinary(runtimeConfig)
+        const binaryResolution = await codexCliService.resolveBinary(runtimeConfig)
         if (!binaryResolution.path) {
           stream.emitError(new Error(binaryResolution.message))
           return
@@ -238,10 +238,24 @@ function resolveCodexSandboxMode(value: unknown): CodexSandboxMode {
 }
 
 function resolveCodexApprovalPolicy(value: unknown): CodexApprovalPolicy {
-  if (value === undefined || value === null || value === '') {
+  if (
+    value === undefined ||
+    value === null ||
+    value === '' ||
+    value === 'default' ||
+    value === 'ask' ||
+    value === 'acceptEdits' ||
+    value === 'on-request'
+  ) {
     return 'on-request'
   }
-  if (value === 'untrusted' || value === 'on-failure' || value === 'on-request' || value === 'never') {
+  if (value === 'allow' || value === 'bypassPermissions') {
+    return 'never'
+  }
+  if (value === 'deny' || value === 'plan') {
+    return 'never'
+  }
+  if (value === 'untrusted' || value === 'on-failure' || value === 'never') {
     return value
   }
   throw new Error(`Unsupported Codex approval policy '${String(value)}'`)

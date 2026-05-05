@@ -166,6 +166,8 @@ describe('verify-packaged-runtime-deps', () => {
       '/.refiner/artifacts/change-001/refinement_log.md',
       '/dist/The-Boss-1.9.1-arm64.dmg',
       '/resources/binaries/darwin-arm64/universal-agent-runtime',
+      '/resources/opencode/darwin-arm64/opencode',
+      '/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex',
       '/node_modules/react/package.json'
     ])
 
@@ -185,6 +187,18 @@ describe('verify-packaged-runtime-deps', () => {
       {
         label: 'nested release output',
         path: 'dist/The-Boss-1.9.1-arm64.dmg'
+      },
+      {
+        label: 'packaged UAR runtime binary',
+        path: 'resources/binaries/darwin-arm64/universal-agent-runtime'
+      },
+      {
+        label: 'packaged OpenCode runtime binary',
+        path: 'resources/opencode/darwin-arm64/opencode'
+      },
+      {
+        label: 'packaged Codex runtime vendor binary',
+        path: 'node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex/codex'
       }
     ])
   })

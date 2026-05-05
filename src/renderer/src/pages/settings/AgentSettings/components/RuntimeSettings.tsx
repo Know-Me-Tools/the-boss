@@ -6,6 +6,7 @@ import type {
   UpdateAgentBaseForm
 } from '@renderer/types'
 import { AgentConfigurationSchema } from '@renderer/types'
+import type { DependencyStatus, ManagedDependencyName } from '@shared/config/types'
 import { Alert, Button, Input, Select, Switch, Tag } from 'antd'
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -40,7 +41,20 @@ interface RuntimeHealthResult {
   kind: AgentRuntimeKind
   state: RuntimeHealthState
   endpoint?: string
-  binarySource?: 'configured' | 'environment' | 'managed' | 'bundled'
+  binaryPath?: string
+  binarySource?: RuntimeBinarySource
+  message: string
+}
+
+type RuntimeBinarySource = 'configured' | 'environment' | 'path' | 'managed' | 'development'
+
+interface RuntimeBinaryDiscoveryResult {
+  kind: AgentRuntimeKind
+  command: string
+  detectedPath?: string
+  version?: string
+  source: 'path'
+  available: boolean
   message: string
 }
 
@@ -67,6 +81,10 @@ interface OpenCodeRuntimeModel {
   defaultAgent?: string
 }
 
+type ManagedRuntimeInstallName = 'universal-agent-runtime' | 'codex' | 'opencode'
+
+const RUST_TOOLCHAIN_DEPENDENCIES: ManagedDependencyName[] = ['rustup', 'cargo', 'rustc', 'wasm32-unknown-unknown']
+
 const capabilityLabels: Record<AgentRuntimeKind, string[]> = {
   claude: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume', 'Compaction'],
   codex: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume'],
@@ -81,14 +99,19 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     type: 'info' | 'success' | 'warning' | 'error'
     text: string
   } | null>(null)
-  const [uarBinaryStatus, setUarBinaryStatus] = useState<RuntimeHealthResult | null>(null)
+  const [runtimeBinaryStatus, setRuntimeBinaryStatus] = useState<RuntimeHealthResult | null>(null)
+  const [runtimeBinaryDiscovery, setRuntimeBinaryDiscovery] = useState<RuntimeBinaryDiscoveryResult | null>(null)
+  const [rustToolchainStatus, setRustToolchainStatus] = useState<DependencyStatus[]>([])
   const [codexModels, setCodexModels] = useState<CodexRuntimeModel[]>([])
   const [openCodeModels, setOpenCodeModels] = useState<OpenCodeRuntimeModel[]>([])
   const [isLoadingCodexModels, setIsLoadingCodexModels] = useState(false)
   const [isLoadingOpenCodeModels, setIsLoadingOpenCodeModels] = useState(false)
   const [isTestingHealth, setIsTestingHealth] = useState(false)
-  const [isLoadingUarBinaryStatus, setIsLoadingUarBinaryStatus] = useState(false)
+  const [isLoadingRuntimeBinaryStatus, setIsLoadingRuntimeBinaryStatus] = useState(false)
+  const [isLoadingRuntimeBinaryDiscovery, setIsLoadingRuntimeBinaryDiscovery] = useState(false)
   const [isInstallingManagedBinary, setIsInstallingManagedBinary] = useState(false)
+  const [isLoadingRustToolchainStatus, setIsLoadingRustToolchainStatus] = useState(false)
+  const [isInstallingRustToolchain, setIsInstallingRustToolchain] = useState(false)
   const configuration = useMemo(
     () => AgentConfigurationSchema.parse(agentBase?.configuration ?? defaultConfiguration),
     [agentBase?.configuration]
@@ -151,9 +174,11 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
   )
   const selectedKind = runtime.kind ?? 'claude'
   const selectedMode = runtime.mode ?? runtimeModes[selectedKind][0].value
+  const managedRuntimeName = getManagedRuntimeInstallName(selectedKind, selectedMode)
   const sandbox = runtime.sandbox ?? {}
   const permissions = runtime.permissions ?? {}
   const sidecar = runtime.sidecar ?? {}
+  const sidecarBinaryPath = typeof sidecar.binaryPath === 'string' ? sidecar.binaryPath : undefined
   const skills = runtime.skills ?? {}
 
   useEffect(() => {
@@ -231,32 +256,65 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     [runtime, t]
   )
 
-  const refreshUarBinaryStatus = useCallback(async () => {
-    if (selectedKind !== 'uar' || selectedMode !== 'embedded') {
-      setUarBinaryStatus(null)
+  const refreshRuntimeBinaryStatus = useCallback(async () => {
+    if (!managedRuntimeName) {
+      setRuntimeBinaryStatus(null)
       return
     }
 
-    setIsLoadingUarBinaryStatus(true)
+    setIsLoadingRuntimeBinaryStatus(true)
     try {
-      setUarBinaryStatus(await window.api.agentRuntime.getStatus(runtime))
+      setRuntimeBinaryStatus(await window.api.agentRuntime.getStatus(runtime))
     } catch (error) {
-      setUarBinaryStatus({
-        kind: 'uar',
+      setRuntimeBinaryStatus({
+        kind: selectedKind,
         state: 'unreachable',
         message:
           error instanceof Error
             ? error.message
-            : t('agent.settings.runtime.uar.binaryStatusLoadFailed', 'Failed to load UAR binary status.')
+            : t('agent.settings.runtime.managedBinary.statusLoadFailed', 'Failed to load runtime binary status.')
       })
     } finally {
-      setIsLoadingUarBinaryStatus(false)
+      setIsLoadingRuntimeBinaryStatus(false)
     }
-  }, [runtime, selectedKind, selectedMode, t])
+  }, [managedRuntimeName, runtime, selectedKind, t])
+
+  const refreshRuntimeBinaryDiscovery = useCallback(async () => {
+    if (!managedRuntimeName) {
+      setRuntimeBinaryDiscovery(null)
+      return
+    }
+
+    setIsLoadingRuntimeBinaryDiscovery(true)
+    try {
+      setRuntimeBinaryDiscovery(await window.api.agentRuntime.discoverBinary(selectedKind))
+    } finally {
+      setIsLoadingRuntimeBinaryDiscovery(false)
+    }
+  }, [managedRuntimeName, selectedKind])
 
   useEffect(() => {
-    void refreshUarBinaryStatus()
-  }, [refreshUarBinaryStatus])
+    void refreshRuntimeBinaryStatus()
+  }, [refreshRuntimeBinaryStatus])
+
+  useEffect(() => {
+    void refreshRuntimeBinaryDiscovery()
+  }, [refreshRuntimeBinaryDiscovery])
+
+  const refreshRustToolchainStatus = useCallback(async () => {
+    setIsLoadingRustToolchainStatus(true)
+    try {
+      setRustToolchainStatus(await window.api.dependencies.getStatuses(RUST_TOOLCHAIN_DEPENDENCIES))
+    } catch {
+      setRustToolchainStatus([])
+    } finally {
+      setIsLoadingRustToolchainStatus(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshRustToolchainStatus()
+  }, [refreshRustToolchainStatus])
 
   const updateRuntime = useCallback(
     (patch: Record<string, unknown>) => {
@@ -456,29 +514,108 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     }
   }, [runtime, t])
 
+  const chooseRuntimeBinary = useCallback(async () => {
+    const selected = await window.api.file.select({
+      title: t('agent.settings.runtime.managedBinary.chooseTitle', 'Choose runtime executable'),
+      properties: ['openFile']
+    })
+    const pickedPath = selected?.[0]?.path
+    if (!pickedPath) {
+      return
+    }
+
+    updateRuntimeGroup('sidecar', { binaryPath: pickedPath })
+    setRuntimeBinaryStatus({
+      kind: selectedKind,
+      state: 'ready',
+      binaryPath: pickedPath,
+      binarySource: 'configured',
+      message: t('agent.settings.runtime.managedBinary.configuredPath', 'Runtime executable path configured.')
+    })
+  }, [selectedKind, t, updateRuntimeGroup])
+
+  const clearRuntimeBinary = useCallback(() => {
+    updateRuntimeGroup('sidecar', { binaryPath: undefined })
+    void refreshRuntimeBinaryStatus()
+  }, [refreshRuntimeBinaryStatus, updateRuntimeGroup])
+
+  const applyDetectedRuntimeBinary = useCallback(() => {
+    const detectedPath = runtimeBinaryDiscovery?.detectedPath
+    if (!detectedPath) {
+      return
+    }
+
+    updateRuntimeGroup('sidecar', { binaryPath: detectedPath })
+    setRuntimeBinaryStatus({
+      kind: selectedKind,
+      state: 'ready',
+      binaryPath: detectedPath,
+      binarySource: 'path',
+      message: t(
+        'agent.settings.runtime.managedBinary.detectedPathConfigured',
+        'Detected runtime executable configured.'
+      )
+    })
+  }, [runtimeBinaryDiscovery?.detectedPath, selectedKind, t, updateRuntimeGroup])
+
   const installManagedBinary = useCallback(async () => {
+    if (!managedRuntimeName) {
+      return
+    }
+
     setIsInstallingManagedBinary(true)
-    setUarBinaryStatus({
-      kind: 'uar',
+    setRuntimeBinaryStatus({
+      kind: selectedKind,
       state: 'downloading',
-      message: t('agent.settings.runtime.uar.binaryDownloading', 'Downloading UAR managed binary...')
+      message: t('agent.settings.runtime.managedBinary.downloading', 'Downloading managed runtime binary...')
     })
 
     try {
-      setUarBinaryStatus(await window.api.agentRuntime.installManagedBinary({ name: 'universal-agent-runtime' }))
+      const status = await window.api.agentRuntime.installManagedBinary({ name: managedRuntimeName })
+      if (status.state === 'installed' || status.state === 'ready') {
+        updateRuntimeGroup('sidecar', { binaryPath: undefined })
+      }
+      setRuntimeBinaryStatus(status)
     } catch (error) {
-      setUarBinaryStatus({
-        kind: 'uar',
+      setRuntimeBinaryStatus({
+        kind: selectedKind,
         state: 'download-failed',
         message:
           error instanceof Error
             ? error.message
-            : t('agent.settings.runtime.uar.binaryInstallFailed', 'Failed to install UAR managed binary.')
+            : t('agent.settings.runtime.managedBinary.installFailed', 'Failed to install managed runtime binary.')
       })
     } finally {
       setIsInstallingManagedBinary(false)
     }
-  }, [t])
+  }, [managedRuntimeName, selectedKind, t, updateRuntimeGroup])
+
+  const installRustToolchain = useCallback(async () => {
+    setIsInstallingRustToolchain(true)
+    setHealthMessage({
+      type: 'info',
+      text: t('agent.settings.runtime.rust.installing', 'Installing Rust toolchain...')
+    })
+
+    try {
+      await window.api.installRustToolchain()
+      await refreshRustToolchainStatus()
+      setHealthMessage({
+        type: 'success',
+        text: t('agent.settings.runtime.rust.installed', 'Rust toolchain is ready.')
+      })
+    } catch (error) {
+      setHealthMessage({
+        type: 'error',
+        text:
+          error instanceof Error
+            ? error.message
+            : t('agent.settings.runtime.rust.installFailed', 'Failed to install Rust toolchain.')
+      })
+    } finally {
+      setIsInstallingRustToolchain(false)
+    }
+  }, [refreshRustToolchainStatus, t])
 
   if (!agentBase) return null
 
@@ -656,7 +793,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
             />
             <Select
               aria-label={t('agent.settings.runtime.codex.approvalPolicy', 'Approval policy')}
-              value={(permissions.mode as string) ?? 'on-request'}
+              value={normalizeCodexApprovalPolicyValue(permissions.mode)}
               options={[
                 { value: 'never', label: t('agent.settings.runtime.approvals.never', 'Never') },
                 { value: 'on-request', label: t('agent.settings.runtime.approvals.onRequest', 'On request') },
@@ -759,42 +896,133 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               onChange={(syncEnabled) => updateRuntimeGroup('skills', { syncEnabled })}
             />
           </div>
-          {selectedMode === 'embedded' && (
-            <div className="mt-3 flex flex-col gap-2">
-              <div className="flex flex-wrap gap-2">
-                <Tag>{getRuntimeStateLabel(uarBinaryStatus?.state ?? 'not-ready', t)}</Tag>
-                {uarBinaryStatus?.binarySource && <Tag>{getBinarySourceLabel(uarBinaryStatus.binarySource, t)}</Tag>}
-              </div>
-              <Alert
-                type={getRuntimeHealthAlertType(uarBinaryStatus?.state)}
-                showIcon
-                message={
-                  uarBinaryStatus?.message ??
-                  t('agent.settings.runtime.uar.binaryStatusUnknown', 'UAR binary status has not been checked.')
-                }
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  loading={isLoadingUarBinaryStatus}
-                  onClick={() => {
-                    void refreshUarBinaryStatus()
-                  }}>
-                  {t('agent.settings.runtime.uar.refreshBinaryStatus', 'Refresh status')}
-                </Button>
-                <Button
-                  loading={isInstallingManagedBinary}
-                  disabled={!canInstallManagedBinary(uarBinaryStatus?.state)}
-                  onClick={() => {
-                    void installManagedBinary()
-                  }}>
-                  {t('agent.settings.runtime.uar.installManagedBinary', 'Install/update')}
-                </Button>
-              </div>
-            </div>
-          )}
           <div className="mt-2 text-xs">{t('agent.settings.runtime.uar.skillSync', 'Skill sync')}</div>
         </SettingsItem>
       )}
+      {managedRuntimeName && (
+        <SettingsItem>
+          <SettingsTitle>{t('agent.settings.runtime.managedBinary.title', 'Managed runtime binary')}</SettingsTitle>
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Tag>{getRuntimeStateLabel(runtimeBinaryStatus?.state ?? 'not-ready', t)}</Tag>
+              {runtimeBinaryStatus?.binarySource && (
+                <Tag>{getBinarySourceLabel(runtimeBinaryStatus.binarySource, t)}</Tag>
+              )}
+            </div>
+            <Alert
+              type={getRuntimeHealthAlertType(runtimeBinaryStatus?.state)}
+              showIcon
+              message={
+                runtimeBinaryStatus?.message ??
+                t(
+                  'agent.settings.runtime.managedBinary.statusUnknown',
+                  'Managed runtime binary status has not been checked.'
+                )
+              }
+            />
+            {runtimeBinaryDiscovery?.available &&
+              runtimeBinaryDiscovery.detectedPath &&
+              runtimeBinaryDiscovery.detectedPath !== sidecarBinaryPath && (
+                <Alert
+                  type="info"
+                  showIcon
+                  message={t('agent.settings.runtime.managedBinary.detectedPath', 'Detected on PATH: {{path}}', {
+                    path: runtimeBinaryDiscovery.detectedPath
+                  })}
+                  description={runtimeBinaryDiscovery.version}
+                />
+              )}
+            {(runtimeBinaryStatus?.binaryPath || sidecarBinaryPath) && (
+              <Input
+                readOnly
+                value={runtimeBinaryStatus?.binaryPath ?? sidecarBinaryPath}
+                aria-label={t('agent.settings.runtime.managedBinary.resolvedPath', 'Runtime executable path')}
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                loading={isLoadingRuntimeBinaryStatus || isLoadingRuntimeBinaryDiscovery}
+                onClick={() => {
+                  void refreshRuntimeBinaryStatus()
+                  void refreshRuntimeBinaryDiscovery()
+                }}>
+                {t('agent.settings.runtime.managedBinary.refreshStatus', 'Refresh status')}
+              </Button>
+              {runtimeBinaryDiscovery?.available &&
+                runtimeBinaryDiscovery.detectedPath &&
+                runtimeBinaryDiscovery.detectedPath !== sidecarBinaryPath && (
+                  <Button onClick={applyDetectedRuntimeBinary}>
+                    {t('agent.settings.runtime.managedBinary.useDetected', 'Use detected binary')}
+                  </Button>
+                )}
+              <Button
+                loading={isInstallingManagedBinary}
+                disabled={!canInstallManagedBinary(runtimeBinaryStatus?.state)}
+                onClick={() => {
+                  void installManagedBinary()
+                }}>
+                {t('agent.settings.runtime.managedBinary.installManagedBinary', 'Download verified runtime')}
+              </Button>
+              <Button
+                onClick={() => {
+                  void chooseRuntimeBinary()
+                }}>
+                {t('agent.settings.runtime.managedBinary.chooseLocal', 'Choose local binary')}
+              </Button>
+              {sidecarBinaryPath && (
+                <Button onClick={clearRuntimeBinary}>
+                  {t('agent.settings.runtime.managedBinary.clearLocal', 'Clear local binary')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </SettingsItem>
+      )}
+      <SettingsItem>
+        <SettingsTitle>{t('agent.settings.runtime.rust.title', 'Rust toolchain')}</SettingsTitle>
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            {RUST_TOOLCHAIN_DEPENDENCIES.map((name) => {
+              const status = rustToolchainStatus.find((item) => item.name === name)
+              return (
+                <Tag key={name}>
+                  {getRustDependencyLabel(name, t)}:{' '}
+                  {status?.available ? t('common.ready', 'Ready') : t('common.missing', 'Missing')}
+                </Tag>
+              )
+            })}
+          </div>
+          <Alert
+            type={rustToolchainStatus.every((status) => status.available) ? 'success' : 'warning'}
+            showIcon
+            message={
+              rustToolchainStatus.every((status) => status.available) && rustToolchainStatus.length > 0
+                ? t('agent.settings.runtime.rust.ready', 'Rust and the wasm32 target are ready for skill builds.')
+                : t(
+                    'agent.settings.runtime.rust.missing',
+                    'Rust, Cargo, rustup, and the wasm32 target are required before Rust/WASM skill workflows compile projects.'
+                  )
+            }
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              loading={isLoadingRustToolchainStatus}
+              onClick={() => {
+                void refreshRustToolchainStatus()
+              }}>
+              {t('agent.settings.runtime.rust.refreshStatus', 'Refresh status')}
+            </Button>
+            <Button
+              loading={isInstallingRustToolchain}
+              disabled={rustToolchainStatus.length > 0 && rustToolchainStatus.every((status) => status.available)}
+              onClick={() => {
+                void installRustToolchain()
+              }}>
+              {t('agent.settings.runtime.rust.install', 'Install/update Rust')}
+            </Button>
+          </div>
+        </div>
+      </SettingsItem>
       <SettingsItem>
         <SettingsTitle>{t('agent.settings.runtime.health.title', 'Runtime health')}</SettingsTitle>
         <Button
@@ -854,11 +1082,49 @@ function getRuntimeHealthAlertType(state?: RuntimeHealthState): 'info' | 'succes
 
 function canInstallManagedBinary(state?: RuntimeHealthState): boolean {
   return (
+    state === 'missing-binary' ||
     state === 'not-installed' ||
     state === 'download-failed' ||
     state === 'verification-failed' ||
     state === 'update-available'
   )
+}
+
+function getManagedRuntimeInstallName(
+  kind: AgentRuntimeKind,
+  mode: AgentRuntimeMode
+): ManagedRuntimeInstallName | null {
+  if (kind === 'uar' && mode === 'embedded') {
+    return 'universal-agent-runtime'
+  }
+  if (kind === 'codex') {
+    return 'codex'
+  }
+  if (kind === 'opencode' && mode === 'managed') {
+    return 'opencode'
+  }
+  return null
+}
+
+function normalizeCodexApprovalPolicyValue(value: unknown): string {
+  if (
+    value === undefined ||
+    value === null ||
+    value === '' ||
+    value === 'default' ||
+    value === 'ask' ||
+    value === 'acceptEdits' ||
+    value === 'on-request'
+  ) {
+    return 'on-request'
+  }
+  if (value === 'allow' || value === 'bypassPermissions' || value === 'deny' || value === 'plan') {
+    return 'never'
+  }
+  if (value === 'untrusted' || value === 'on-failure' || value === 'never') {
+    return value
+  }
+  return 'on-request'
 }
 
 function getRuntimeStateLabel(state: RuntimeHealthState, t: ReturnType<typeof useTranslation>['t']): string {
@@ -887,10 +1153,21 @@ function getBinarySourceLabel(
   t: ReturnType<typeof useTranslation>['t']
 ): string {
   const labels: Record<NonNullable<RuntimeHealthResult['binarySource']>, string> = {
-    configured: t('agent.settings.runtime.uar.binarySource.configured', 'Configured path'),
-    environment: t('agent.settings.runtime.uar.binarySource.environment', 'Environment path'),
+    configured: t('agent.settings.runtime.uar.binarySource.configured', 'Selected file'),
+    environment: t('agent.settings.runtime.uar.binarySource.environment', 'Environment variable'),
+    path: t('agent.settings.runtime.uar.binarySource.path', 'PATH'),
     managed: t('agent.settings.runtime.uar.binarySource.managed', 'Managed binary'),
-    bundled: t('agent.settings.runtime.uar.binarySource.bundled', 'Bundled fallback')
+    development: t('agent.settings.runtime.uar.binarySource.development', 'Development checkout')
   }
   return labels[source]
+}
+
+function getRustDependencyLabel(name: ManagedDependencyName, t: ReturnType<typeof useTranslation>['t']): string {
+  const labels: Partial<Record<ManagedDependencyName, string>> = {
+    rustup: t('agent.settings.runtime.rust.rustup', 'rustup'),
+    cargo: t('agent.settings.runtime.rust.cargo', 'Cargo'),
+    rustc: t('agent.settings.runtime.rust.rustc', 'rustc'),
+    'wasm32-unknown-unknown': t('agent.settings.runtime.rust.wasmTarget', 'wasm32 target')
+  }
+  return labels[name] ?? name
 }

@@ -8,7 +8,7 @@ const path = require('node:path')
 const repoRoot = path.resolve(__dirname, '..')
 const sourceDir = path.join(repoRoot, 'vendor', 'universal-agent-runtime')
 const packageManifestPath = path.join(sourceDir, 'Cargo.toml')
-const expectedCommit = 'c7c8416b94d39358ec7cf03691738426c25b2df8'
+const expectedCommit = '0ab6b18c7626fb56da781f13f19c194cfb84b1c1'
 const platformKey = `${process.platform}-${process.arch}`
 const binaryName = process.platform === 'win32' ? 'universal-agent-runtime.exe' : 'universal-agent-runtime'
 const targetBinaryPath = path.join(sourceDir, 'target', 'release', binaryName)

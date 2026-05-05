@@ -5,9 +5,15 @@ import path from 'node:path'
 import readline from 'node:readline'
 
 import { loggerService } from '@logger'
-import { toAsarUnpackedPath } from '@main/utils'
 import type { AgentRuntimeConfig } from '@types'
 import { app } from 'electron'
+
+import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
+import {
+  type RuntimeBinaryDiscoveryService,
+  runtimeBinaryDiscoveryService,
+  type RuntimeBinarySource
+} from './RuntimeBinaryDiscoveryService'
 
 const logger = loggerService.withContext('CodexCliService')
 const require_ = createRequire(import.meta.url)
@@ -17,7 +23,7 @@ const DEFAULT_CODEX_MODEL_ID = 'gpt-5.5'
 
 export interface CodexBinaryResolution {
   path?: string
-  source?: 'configured' | 'packaged' | 'development'
+  source?: RuntimeBinarySource
   state: 'ready' | 'missing-binary' | 'unsupported-platform'
   message: string
 }
@@ -48,25 +54,28 @@ type SpawnCodexProcess = (command: string, args: string[], options: Parameters<t
 
 interface CodexCliServiceDependencies {
   spawnProcess?: SpawnCodexProcess
-  appPath?: () => string
   developmentBinaryPath?: (platform: NonNullable<ReturnType<typeof getCodexPlatform>>) => string | undefined
+  managedRuntimeService?: ManagedRuntimeService
+  runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
 }
 
 export class CodexCliService {
   private readonly spawnProcess: SpawnCodexProcess
-  private readonly appPath: () => string
   private readonly developmentBinaryPath: (
     platform: NonNullable<ReturnType<typeof getCodexPlatform>>
   ) => string | undefined
+  private readonly managedRuntimeService: ManagedRuntimeService
+  private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
   private modelCache: { expiresAt: number; models: CodexRuntimeModel[] } | null = null
 
   constructor(dependencies: CodexCliServiceDependencies = {}) {
     this.spawnProcess = dependencies.spawnProcess ?? ((command, args, options) => spawn(command, args, options))
-    this.appPath = dependencies.appPath ?? (() => app.getAppPath())
     this.developmentBinaryPath = dependencies.developmentBinaryPath ?? resolveDevelopmentCodexBinary
+    this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
+    this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
   }
 
-  resolveBinary(runtimeConfig?: AgentRuntimeConfig): CodexBinaryResolution {
+  async resolveBinary(runtimeConfig?: AgentRuntimeConfig): Promise<CodexBinaryResolution> {
     const platform = getCodexPlatform()
     if (!platform) {
       return {
@@ -83,20 +92,39 @@ export class CodexCliService {
       }
     }
 
-    const packagedPath = toAsarUnpackedPath(
-      path.join(
-        this.appPath(),
-        'node_modules',
-        ...platform.packageName.split('/'),
-        'vendor',
-        platform.triple,
-        'codex',
-        platform.binaryName
-      )
-    )
-    const packaged = this.validateCandidate(packagedPath, 'packaged')
-    if (packaged) {
-      return packaged
+    const environmentPath = process.env.CODEX_CLI_PATH
+    if (environmentPath) {
+      const environment = this.validateCandidate(environmentPath, 'environment')
+      if (environment) {
+        return environment
+      }
+    }
+
+    const detected = await this.runtimeBinaryDiscoveryService.discover('codex')
+    if (detected.detectedPath) {
+      const pathResolution = this.validateCandidate(detected.detectedPath, 'path')
+      if (pathResolution) {
+        return {
+          ...pathResolution,
+          message: detected.message
+        }
+      }
+    }
+
+    const managed = await this.managedRuntimeService.resolveInstalledBinary('codex')
+    if (managed.binaryPath) {
+      return {
+        path: managed.binaryPath,
+        source: 'managed',
+        state: 'ready',
+        message: 'Codex CLI executable resolved from verified managed binary.'
+      }
+    }
+    if (managed.status.state !== 'missing') {
+      return {
+        state: managed.status.state === 'unsupported-platform' ? 'unsupported-platform' : 'missing-binary',
+        message: managed.status.message
+      }
     }
 
     const developmentPath = this.developmentBinaryPath(platform)
@@ -112,7 +140,7 @@ export class CodexCliService {
       message:
         configuredPath && !fs.existsSync(configuredPath)
           ? `Configured Codex executable does not exist: ${configuredPath}`
-          : 'Codex CLI executable was not found. Reinstall dependencies or ensure the Codex binary is packaged outside app.asar.'
+          : 'Codex CLI executable was not found. Install the verified managed Codex binary or configure a Codex executable path.'
     }
   }
 
@@ -121,7 +149,7 @@ export class CodexCliService {
       return this.modelCache.models
     }
 
-    const resolution = this.resolveBinary(runtimeConfig)
+    const resolution = await this.resolveBinary(runtimeConfig)
     if (!resolution.path) {
       throw new Error(resolution.message)
     }

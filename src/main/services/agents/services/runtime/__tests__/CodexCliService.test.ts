@@ -7,10 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { CodexCliService } from '../CodexCliService'
 
-vi.mock('@main/utils', () => ({
-  toAsarUnpackedPath: (filePath: string) => filePath.replace('/app.asar/', '/app.asar.unpacked/')
-}))
-
 describe('CodexCliService', () => {
   const existingFiles = new Set<string>()
 
@@ -25,16 +21,16 @@ describe('CodexCliService', () => {
     )
   })
 
-  it('resolves an explicit configured Codex executable first', () => {
+  it('resolves an explicit configured Codex executable first', async () => {
     const binaryPath = path.join('/tmp/codex-configured', process.platform === 'win32' ? 'codex.exe' : 'codex')
     existingFiles.add(binaryPath)
 
     const service = new CodexCliService({
-      appPath: () => '/tmp/missing-app',
-      developmentBinaryPath: () => undefined
+      developmentBinaryPath: () => undefined,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never
     })
 
-    expect(
+    await expect(
       service.resolveBinary({
         kind: 'codex',
         mode: 'managed',
@@ -42,7 +38,7 @@ describe('CodexCliService', () => {
           binaryPath
         }
       })
-    ).toEqual(
+    ).resolves.toEqual(
       expect.objectContaining({
         path: binaryPath,
         source: 'configured',
@@ -51,42 +47,55 @@ describe('CodexCliService', () => {
     )
   })
 
-  it('resolves packaged Codex binaries from app.asar.unpacked paths', () => {
-    const appPath = '/tmp/the-boss/app.asar'
-    const platform = currentCodexPlatform()
-    const binaryPath = path.join(
-      '/tmp/the-boss',
-      'app.asar.unpacked',
-      'node_modules',
-      ...platform.packageName.split('/'),
-      'vendor',
-      platform.triple,
-      'codex',
-      platform.binaryName
-    )
+  it('resolves verified managed Codex binaries before development checkouts', async () => {
+    const binaryPath = path.join('/tmp/managed-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
     existingFiles.add(binaryPath)
 
     const service = new CodexCliService({
-      appPath: () => appPath,
-      developmentBinaryPath: () => undefined
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(binaryPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never
     })
 
-    expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).toEqual(
+    await expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).resolves.toEqual(
       expect.objectContaining({
         path: binaryPath,
-        source: 'packaged',
+        source: 'managed',
         state: 'ready'
       })
     )
   })
 
-  it('returns a clear missing-binary status when no executable can be found', () => {
+  it('resolves detected PATH Codex binaries before managed binaries', async () => {
+    const detectedPath = path.join('/tmp/path-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    const managedPath = path.join('/tmp/managed-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    existingFiles.add(detectedPath)
+    existingFiles.add(managedPath)
+
     const service = new CodexCliService({
-      appPath: () => '/tmp/missing-app',
-      developmentBinaryPath: () => undefined
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(managedPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never
     })
 
-    expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).toEqual(
+    await expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).resolves.toEqual(
+      expect.objectContaining({
+        path: detectedPath,
+        source: 'path',
+        state: 'ready',
+        message: expect.stringContaining('detected on PATH')
+      })
+    )
+  })
+
+  it('returns a clear missing-binary status when no executable can be found', async () => {
+    const service = new CodexCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never
+    })
+
+    await expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).resolves.toEqual(
       expect.objectContaining({
         state: 'missing-binary',
         message: expect.stringContaining('Codex CLI executable was not found')
@@ -99,8 +108,9 @@ describe('CodexCliService', () => {
     existingFiles.add(binaryPath)
     const spawnProcess = vi.fn(() => createMockAppServerProcess())
     const service = new CodexCliService({
-      appPath: () => '/tmp/missing-app',
       developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       spawnProcess: spawnProcess as never
     })
 
@@ -146,8 +156,9 @@ describe('CodexCliService', () => {
       ])
     )
     const service = new CodexCliService({
-      appPath: () => '/tmp/missing-app',
       developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       spawnProcess: spawnProcess as never
     })
 
@@ -218,25 +229,32 @@ function createMockAppServerProcess(
   return child
 }
 
-function currentCodexPlatform() {
-  const binaryName = process.platform === 'win32' ? 'codex.exe' : 'codex'
-  if (process.platform === 'darwin' && process.arch === 'arm64') {
-    return { triple: 'aarch64-apple-darwin', packageName: '@openai/codex-darwin-arm64', binaryName }
+function createManagedRuntimeService(binaryPath?: string) {
+  return {
+    resolveInstalledBinary: vi.fn(async () => ({
+      binaryPath,
+      status: {
+        name: 'codex',
+        version: '1.0.0',
+        platform: `${process.platform}-${process.arch}`,
+        state: binaryPath ? ('installed' as const) : ('missing' as const),
+        binaryPath,
+        message: binaryPath ? 'installed' : 'missing'
+      }
+    }))
   }
-  if (process.platform === 'darwin' && process.arch === 'x64') {
-    return { triple: 'x86_64-apple-darwin', packageName: '@openai/codex-darwin-x64', binaryName }
+}
+
+function createRuntimeBinaryDiscoveryService(detectedPath?: string) {
+  return {
+    discover: vi.fn(async () => ({
+      kind: 'codex',
+      command: 'codex',
+      detectedPath,
+      version: detectedPath ? 'codex 1.0.0' : undefined,
+      source: 'path' as const,
+      available: Boolean(detectedPath),
+      message: detectedPath ? `codex was detected on PATH at ${detectedPath}.` : 'codex was not found on PATH.'
+    }))
   }
-  if (process.platform === 'linux' && process.arch === 'arm64') {
-    return { triple: 'aarch64-unknown-linux-musl', packageName: '@openai/codex-linux-arm64', binaryName }
-  }
-  if ((process.platform === 'linux' || process.platform === 'android') && process.arch === 'x64') {
-    return { triple: 'x86_64-unknown-linux-musl', packageName: '@openai/codex-linux-x64', binaryName }
-  }
-  if (process.platform === 'win32' && process.arch === 'arm64') {
-    return { triple: 'aarch64-pc-windows-msvc', packageName: '@openai/codex-win32-arm64', binaryName }
-  }
-  if (process.platform === 'win32' && process.arch === 'x64') {
-    return { triple: 'x86_64-pc-windows-msvc', packageName: '@openai/codex-win32-x64', binaryName }
-  }
-  throw new Error(`Unsupported test platform: ${process.platform}/${process.arch}`)
 }

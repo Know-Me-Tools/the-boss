@@ -16,6 +16,7 @@ export interface ErrorClassification {
     | 'knowledge'
     | 'ocr'
     | 'mcp'
+    | 'runtime'
     | 'parse'
     | 'unknown'
   i18nKey: string
@@ -31,6 +32,21 @@ export function classifyError(error?: SerializedError, providerId?: string): Err
   const numStatus = typeof status === 'number' ? status : typeof status === 'string' ? parseInt(status, 10) : undefined
   const msg = ((error.message as string) || '').toLowerCase()
   const providerSuffix = providerId ? `?id=${providerId}` : ''
+
+  if (
+    msg.includes('agent runtime is not ready') ||
+    msg.includes('codex cli executable was not found') ||
+    msg.includes('opencode executable was not found') ||
+    msg.includes('uar embedded sidecar binary')
+  ) {
+    const runtimeMatch = msg.match(/\b(codex|opencode|uar)\b/)
+    const runtimeSuffix = runtimeMatch ? `?runtime=${runtimeMatch[1]}` : ''
+    return {
+      category: 'runtime',
+      i18nKey: 'error.diagnosis.unknown',
+      navTarget: `/settings/agent-runtimes${runtimeSuffix}`
+    }
+  }
 
   // Auth errors (401/403)
   if (

@@ -10,6 +10,7 @@ import {
   CalendarClock,
   Cloud,
   Command,
+  Cpu,
   FileCode,
   HardDrive,
   Info,
@@ -32,6 +33,7 @@ import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import styled from 'styled-components'
 
 import AboutSettings from './AboutSettings'
+import AgentRuntimeSettings from './AgentRuntimeSettings'
 import ChannelsSettings from './ChannelsSettings'
 import ContextManagementSettings from './ContextManagementSettings/ContextManagementSettings'
 import DataSettings from './DataSettings/DataSettings'
@@ -156,6 +158,12 @@ const SettingsPage: FC = () => {
               {t('settings.channels.title')}
             </MenuItem>
           </MenuItemLink>
+          <MenuItemLink to="/settings/agent-runtimes">
+            <MenuItem className={isRoute('/settings/agent-runtimes')}>
+              <Cpu size={18} />
+              {t('settings.agentRuntimes.title', 'Agent Runtimes')}
+            </MenuItem>
+          </MenuItemLink>
           <MenuItemLink to="/settings/scheduled-tasks">
             <MenuItem className={isRoute('/settings/scheduled-tasks')}>
               <CalendarClock size={18} />
@@ -208,6 +216,7 @@ const SettingsPage: FC = () => {
             <Route path="websearch/*" element={<WebSearchSettings />} />
             <Route path="api-server" element={<ApiServerSettings />} />
             <Route path="channels" element={<ChannelsSettings />} />
+            <Route path="agent-runtimes" element={<AgentRuntimeSettings />} />
             <Route path="scheduled-tasks" element={<TasksSettings />} />
             <Route path="docprocess" element={<DocProcessSettings />} />
             <Route path="quickphrase" element={<QuickPhraseSettings />} />

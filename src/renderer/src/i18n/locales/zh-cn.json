@@ -534,6 +534,23 @@
           "info": "[to be translated]:Info",
           "warn": "[to be translated]:Warn"
         },
+        "managedBinary": {
+          "chooseLocal": "[to be translated]:Choose local binary",
+          "chooseTitle": "[to be translated]:Choose runtime executable",
+          "clearLocal": "[to be translated]:Clear local binary",
+          "configuredPath": "[to be translated]:Runtime executable path configured.",
+          "detectedPath": "[to be translated]:Detected on PATH: {{path}}",
+          "detectedPathConfigured": "[to be translated]:Detected runtime executable configured.",
+          "downloading": "[to be translated]:Downloading managed runtime binary...",
+          "installFailed": "[to be translated]:Failed to install managed runtime binary.",
+          "installManagedBinary": "[to be translated]:Install/update",
+          "refreshStatus": "[to be translated]:Refresh status",
+          "resolvedPath": "[to be translated]:Runtime executable path",
+          "statusLoadFailed": "[to be translated]:Failed to load runtime binary status.",
+          "statusUnknown": "[to be translated]:Managed runtime binary status has not been checked.",
+          "title": "[to be translated]:Managed runtime binary",
+          "useDetected": "[to be translated]:Use detected binary"
+        },
         "mode": "[to be translated]:Mode",
         "model": "[to be translated]:Model Override",
         "modes": {
@@ -577,6 +594,20 @@
           "medium": "[to be translated]:Medium",
           "xhigh": "[to be translated]:Extra high"
         },
+        "rust": {
+          "cargo": "[to be translated]:Cargo",
+          "install": "[to be translated]:Install/update Rust",
+          "installFailed": "[to be translated]:Failed to install Rust toolchain.",
+          "installed": "[to be translated]:Rust toolchain is ready.",
+          "installing": "[to be translated]:Installing Rust toolchain...",
+          "missing": "[to be translated]:Rust, Cargo, rustup, and the wasm32 target are required before Rust/WASM skill workflows compile projects.",
+          "ready": "[to be translated]:Rust and the wasm32 target are ready for skill builds.",
+          "refreshStatus": "[to be translated]:Refresh status",
+          "rustc": "[to be translated]:rustc",
+          "rustup": "[to be translated]:rustup",
+          "title": "[to be translated]:Rust toolchain",
+          "wasmTarget": "[to be translated]:wasm32 target"
+        },
         "status": {
           "downloadFailed": "[to be translated]:Download failed",
           "downloading": "[to be translated]:Downloading",
@@ -604,8 +635,10 @@
           "binarySource": {
             "bundled": "[to be translated]:Bundled fallback",
             "configured": "[to be translated]:Configured path",
+            "development": "[to be translated]:Development checkout",
             "environment": "[to be translated]:Environment path",
-            "managed": "[to be translated]:Managed binary"
+            "managed": "[to be translated]:Managed binary",
+            "path": "[to be translated]:PATH"
           },
           "binaryStatusLoadFailed": "[to be translated]:Failed to load UAR binary status.",
           "binaryStatusUnknown": "[to be translated]:UAR binary status has not been checked.",
@@ -1782,6 +1815,7 @@
     "knowledge_base": "知识库",
     "language": "语言",
     "loading": "加载中...",
+    "missing": "[to be translated]:Missing",
     "model": "模型",
     "models": "模型",
     "more": "更多",
@@ -1804,6 +1838,7 @@
     "previous_match": "上一个匹配",
     "prompt": "提示词",
     "provider": "提供商",
+    "ready": "[to be translated]:Ready",
     "reasoning_content": "已深度思考",
     "refresh": "刷新",
     "regenerate": "重新生成",
@@ -4123,6 +4158,38 @@
     "advanced": {
       "auto_switch_to_topics": "自动切换到话题",
       "title": "高级设置"
+    },
+    "agentRuntimes": {
+      "chooseLocal": "[to be translated]:Choose local binary",
+      "chooseTitle": "[to be translated]:Choose runtime executable",
+      "claude": {
+        "description": "[to be translated]:Current working Claude Code implementation. It remains unchanged and is used as the behavior reference.",
+        "title": "[to be translated]:Claude Code"
+      },
+      "clearLocal": "[to be translated]:Clear local binary",
+      "codex": {
+        "description": "[to be translated]:Managed Codex CLI runtime.",
+        "title": "[to be translated]:Codex"
+      },
+      "description": "[to be translated]:Download verified managed runtimes from IPFS or choose local executables for each runtime type.",
+      "detectedPath": "[to be translated]:Detected on PATH: {{path}}",
+      "downloading": "[to be translated]:Downloading managed runtime binary from IPFS...",
+      "install": "[to be translated]:Download/use managed runtime",
+      "opencode": {
+        "description": "[to be translated]:Managed OpenCode server runtime.",
+        "title": "[to be translated]:OpenCode"
+      },
+      "reference": "[to be translated]:Existing implementation",
+      "refresh": "[to be translated]:Refresh",
+      "resolvedPath": "[to be translated]:Runtime executable path",
+      "statusFailed": "[to be translated]:Failed to load runtime status.",
+      "statusUnknown": "[to be translated]:Runtime status has not been checked yet.",
+      "title": "[to be translated]:Agent Runtimes",
+      "uar": {
+        "description": "[to be translated]:Embedded Universal Agent Runtime sidecar.",
+        "title": "[to be translated]:Universal Agent Runtime"
+      },
+      "useDetected": "[to be translated]:Use detected binary"
     },
     "artifacts": {
       "add_service": "[to be translated]:Add Service",

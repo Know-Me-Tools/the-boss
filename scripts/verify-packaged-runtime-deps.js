@@ -23,6 +23,18 @@ const FORBIDDEN_PACKAGED_BUILD_ARTIFACTS = Object.freeze([
     pattern: /^vendor\/universal-agent-runtime\/target(?:\/|$)/
   },
   {
+    label: 'packaged UAR runtime binary',
+    pattern: /^resources\/binaries\/[^/]+\/universal-agent-runtime(?:\.exe)?$/
+  },
+  {
+    label: 'packaged OpenCode runtime binary',
+    pattern: /^resources\/opencode(?:\/|$)/
+  },
+  {
+    label: 'packaged Codex runtime vendor binary',
+    pattern: /^node_modules\/@openai\/codex[^/]*\/vendor(?:\/|$)/
+  },
+  {
     label: 'top-level Rust target output',
     pattern: /^target(?:\/|$)/
   },

@@ -77,7 +77,6 @@ function createDeepseekDsmlParserMiddleware(): LanguageModelMiddleware {
       let activeTextId: string | null = null
       let extractedToolCalls = false
 
-      // eslint-disable-next-line prefer-const
       let drainDsmlBuffer: (
         controller: TransformStreamDefaultController<LanguageModelV3StreamPart>,
         textId: string

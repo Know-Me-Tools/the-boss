@@ -220,6 +220,52 @@ describe('CodexRuntimeAdapter', () => {
     })
   })
 
+  it('normalizes OpenCode-style allow permission to a supported Codex approval policy', async () => {
+    const adapter = new CodexRuntimeAdapter()
+    const stream = await adapter.invoke(
+      'hello',
+      createSession({
+        runtime: {
+          permissions: {
+            mode: 'allow'
+          }
+        }
+      }),
+      new AbortController()
+    )
+
+    await collectEvents(stream)
+
+    expect(codexMock.state.threads[0].options).toEqual(
+      expect.objectContaining({
+        approvalPolicy: 'never'
+      })
+    )
+  })
+
+  it('normalizes OpenCode-style ask permission to Codex on-request approval', async () => {
+    const adapter = new CodexRuntimeAdapter()
+    const stream = await adapter.invoke(
+      'hello',
+      createSession({
+        runtime: {
+          permissions: {
+            mode: 'ask'
+          }
+        }
+      }),
+      new AbortController()
+    )
+
+    await collectEvents(stream)
+
+    expect(codexMock.state.threads[0].options).toEqual(
+      expect.objectContaining({
+        approvalPolicy: 'on-request'
+      })
+    )
+  })
+
   it('accepts Codex-native model slugs without provider validation', async () => {
     const adapter = new CodexRuntimeAdapter()
     const stream = await adapter.invoke(

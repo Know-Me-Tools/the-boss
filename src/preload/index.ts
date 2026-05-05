@@ -112,6 +112,16 @@ interface OpenClawChannelInfo {
   status: 'connected' | 'disconnected' | 'error'
 }
 
+type RuntimeBinaryDiscoveryResult = {
+  kind: AgentRuntimeKind
+  command: string
+  detectedPath?: string
+  version?: string
+  source: 'path'
+  available: boolean
+  message: string
+}
+
 type DirectoryListOptions = {
   recursive?: boolean
   maxDepth?: number
@@ -565,6 +575,7 @@ const api = {
   installUVBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallUvBinary),
   installBunBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallBunBinary),
   installOvmsBinary: () => ipcRenderer.invoke(IpcChannel.App_InstallOvmsBinary),
+  installRustToolchain: () => ipcRenderer.invoke(IpcChannel.App_InstallRustToolchain),
   protocol: {
     onReceiveData: (callback: (data: { url: string; params: any }) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: { url: string; params: any }) => {
@@ -665,7 +676,9 @@ const api = {
     stopSidecar: () => ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSidecar),
     getStatus: (runtimeConfig: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
-    installManagedBinary: (request: { name: 'universal-agent-runtime' }) =>
+    discoverBinary: (kind: AgentRuntimeKind): Promise<RuntimeBinaryDiscoveryResult> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_DiscoverBinary, kind),
+    installManagedBinary: (request: { name: 'universal-agent-runtime' | 'codex' | 'opencode' }) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_InstallManagedBinary, request),
     listCodexModels: (runtimeConfig?: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_ListCodexModels, runtimeConfig),

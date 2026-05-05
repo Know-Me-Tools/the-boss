@@ -3,7 +3,14 @@ import type { AgentRuntimeConfig, AgentRuntimeKind, GetAgentSessionResponse } fr
 import { AgentRuntimeConfigSchema } from '@types'
 
 import { codexCliService, type CodexRuntimeModel } from './CodexCliService'
+import { type ManagedRuntimeName, type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
 import { openCodeCliService, type OpenCodeRuntimeModel } from './OpenCodeCliService'
+import {
+  type RuntimeBinaryDiscoveryResult,
+  type RuntimeBinaryDiscoveryService,
+  runtimeBinaryDiscoveryService,
+  type RuntimeBinarySource
+} from './RuntimeBinaryDiscoveryService'
 import {
   RuntimeProfileRepository,
   type UpsertRuntimeProfileInput,
@@ -36,7 +43,8 @@ export interface RuntimeHealthResult {
   kind: AgentRuntimeKind
   state: RuntimeHealthState
   endpoint?: string
-  binarySource?: UarSidecarStatus['binarySource']
+  binaryPath?: string
+  binarySource?: RuntimeBinarySource
   message: string
 }
 
@@ -53,18 +61,36 @@ type UniversalAgentRuntimeServiceLike = {
 }
 
 type CodexCliServiceLike = {
-  resolveBinary(runtimeConfig?: AgentRuntimeConfig): {
-    state: 'ready' | 'missing-binary' | 'unsupported-platform'
-    message: string
-  }
+  resolveBinary(runtimeConfig?: AgentRuntimeConfig):
+    | {
+        state: 'ready' | 'missing-binary' | 'unsupported-platform'
+        path?: string
+        source?: RuntimeHealthResult['binarySource']
+        message: string
+      }
+    | Promise<{
+        state: 'ready' | 'missing-binary' | 'unsupported-platform'
+        path?: string
+        source?: RuntimeHealthResult['binarySource']
+        message: string
+      }>
   listModels(runtimeConfig?: AgentRuntimeConfig): Promise<CodexRuntimeModel[]>
 }
 
 type OpenCodeCliServiceLike = {
-  resolveBinary(runtimeConfig?: AgentRuntimeConfig): {
-    state: 'ready' | 'missing-binary' | 'unsupported-platform'
-    message: string
-  }
+  resolveBinary(runtimeConfig?: AgentRuntimeConfig):
+    | {
+        state: 'ready' | 'missing-binary' | 'unsupported-platform'
+        path?: string
+        source?: RuntimeHealthResult['binarySource']
+        message: string
+      }
+    | Promise<{
+        state: 'ready' | 'missing-binary' | 'unsupported-platform'
+        path?: string
+        source?: RuntimeHealthResult['binarySource']
+        message: string
+      }>
   listModels(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeRuntimeModel[]>
 }
 
@@ -73,6 +99,8 @@ interface RuntimeControlServiceDependencies {
   universalAgentRuntimeService?: UniversalAgentRuntimeServiceLike
   codexCliService?: CodexCliServiceLike
   openCodeCliService?: OpenCodeCliServiceLike
+  managedRuntimeService?: ManagedRuntimeService
+  runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
 }
 
 export class RuntimeControlService {
@@ -80,12 +108,16 @@ export class RuntimeControlService {
   private readonly uarService: UniversalAgentRuntimeServiceLike
   private readonly codexService: CodexCliServiceLike
   private readonly openCodeService: OpenCodeCliServiceLike
+  private readonly managedRuntimeService: ManagedRuntimeService
+  private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
 
   constructor(dependencies: RuntimeControlServiceDependencies = {}) {
     this.runtimeProfileRepository = dependencies.runtimeProfileRepository ?? RuntimeProfileRepository.getInstance()
     this.uarService = dependencies.universalAgentRuntimeService ?? universalAgentRuntimeService
     this.codexService = dependencies.codexCliService ?? codexCliService
     this.openCodeService = dependencies.openCodeCliService ?? openCodeCliService
+    this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
+    this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
   }
 
   listProfiles(kind?: AgentRuntimeKind) {
@@ -110,6 +142,10 @@ export class RuntimeControlService {
 
   listOpenCodeModels(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeRuntimeModel[]> {
     return this.openCodeService.listModels(runtimeConfig)
+  }
+
+  discoverRuntimeBinary(kind: AgentRuntimeKind): Promise<RuntimeBinaryDiscoveryResult> {
+    return this.runtimeBinaryDiscoveryService.discover(kind)
   }
 
   async resolveEffectiveRuntimeConfig(session: GetAgentSessionResponse): Promise<AgentRuntimeConfig> {
@@ -158,19 +194,23 @@ export class RuntimeControlService {
     }
 
     if (config.kind === 'codex') {
-      const resolution = this.codexService.resolveBinary(config)
+      const resolution = await this.codexService.resolveBinary(config)
       return {
         kind: 'codex',
         state: resolution.state,
+        binaryPath: resolution.path,
+        binarySource: resolution.source,
         message: resolution.message
       }
     }
 
     if (config.kind === 'opencode') {
-      const resolution = this.openCodeService.resolveBinary(config)
+      const resolution = await this.openCodeService.resolveBinary(config)
       return {
         kind: 'opencode',
         state: resolution.state,
+        binaryPath: resolution.path,
+        binarySource: resolution.source,
         message: resolution.message
       }
     }
@@ -211,11 +251,28 @@ export class RuntimeControlService {
       return mapUarStatus(await this.uarService.getStatus(config))
     }
 
+    if ((config.kind === 'opencode' || config.kind === 'codex') && config.mode === 'remote') {
+      return this.testHttpEndpoint(config.kind, config.endpoint)
+    }
+
+    if (config.kind === 'codex') {
+      const resolution = await this.codexService.resolveBinary(config)
+      return {
+        kind: 'codex',
+        state: resolution.state,
+        binaryPath: resolution.path,
+        binarySource: resolution.source,
+        message: resolution.message
+      }
+    }
+
     if (config.kind === 'opencode' && config.mode !== 'remote') {
-      const resolution = this.openCodeService.resolveBinary(config)
+      const resolution = await this.openCodeService.resolveBinary(config)
       return {
         kind: 'opencode',
         state: resolution.state,
+        binaryPath: resolution.path,
+        binarySource: resolution.source,
         message: resolution.message
       }
     }
@@ -228,15 +285,43 @@ export class RuntimeControlService {
   }
 
   async installManagedBinary(request?: { name?: string }): Promise<RuntimeHealthResult> {
-    if (request?.name && request.name !== 'universal-agent-runtime') {
+    const name = request?.name ?? 'universal-agent-runtime'
+    if (!isManagedRuntimeName(name)) {
       return {
         kind: 'uar',
         state: 'unsupported',
-        message: `Managed binary ${request.name} is not supported.`
+        message: `Managed binary ${name} is not supported.`
       }
     }
 
-    return mapUarStatus(await this.uarService.installManagedBinary())
+    if (name === 'universal-agent-runtime') {
+      return mapUarStatus(await this.uarService.installManagedBinary())
+    }
+
+    const status = await this.managedRuntimeService.install(name)
+    return {
+      kind: name === 'codex' ? 'codex' : 'opencode',
+      state: status.state === 'missing' ? 'not-installed' : status.state,
+      binaryPath: status.binaryPath,
+      binarySource: 'managed',
+      message: status.message
+    }
+  }
+
+  async ensureRunnable(runtimeConfig: AgentRuntimeConfig): Promise<void> {
+    const config = AgentRuntimeConfigSchema.parse(runtimeConfig)
+    if (config.kind === 'claude') {
+      return
+    }
+
+    const status = await this.getStatus(config)
+    if (isRunnableRuntimeStatus(status)) {
+      return
+    }
+
+    throw new Error(
+      `Agent runtime is not ready for ${config.kind}. ${status.message} Open Agent Runtime Settings to download a managed runtime from IPFS or choose a local executable.`
+    )
   }
 
   private async testHttpEndpoint(kind: AgentRuntimeKind, endpoint?: string): Promise<RuntimeHealthResult> {
@@ -283,9 +368,18 @@ function mapUarStatus(status: UarSidecarStatus): RuntimeHealthResult {
     kind: status.kind,
     state: status.state,
     endpoint: status.endpoint,
+    binaryPath: status.binaryPath,
     binarySource: status.binarySource,
     message: status.message
   }
+}
+
+function isRunnableRuntimeStatus(status: RuntimeHealthResult): boolean {
+  if (status.kind === 'uar') {
+    return status.state === 'ready' || status.state === 'stopped' || status.state === 'installed'
+  }
+
+  return status.state === 'ready'
 }
 
 function mergeRuntimeConfig(...configs: Array<Partial<AgentRuntimeConfig> | undefined>): Partial<AgentRuntimeConfig> {
@@ -314,3 +408,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 export const runtimeControlService = new RuntimeControlService()
+
+function isManagedRuntimeName(value: string): value is ManagedRuntimeName {
+  return value === 'universal-agent-runtime' || value === 'codex' || value === 'opencode'
+}

@@ -8,6 +8,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import SettingsPage from '../SettingsPage'
 
+vi.mock('../AgentRuntimeSettings', () => ({ default: () => <div>Agent runtimes settings</div> }))
 vi.mock('@renderer/components/app/Navbar', () => ({
   Navbar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   NavbarCenter: ({ children }: { children: ReactNode }) => <div>{children}</div>
@@ -67,6 +68,7 @@ vi.mock('react-i18next', async (importOriginal) => {
           'memory.title': 'Memories',
           'apiServer.title': 'API Server',
           'settings.channels.title': 'Channels',
+          'settings.agentRuntimes.title': 'Agent Runtimes',
           'settings.scheduledTasks.title': 'Scheduled Tasks',
           'settings.tool.preprocess.title': 'Document Processing',
           'settings.quickPhrase.title': 'Quick Phrases',
@@ -132,5 +134,20 @@ describe('SettingsPage', () => {
     )
 
     expect(screen.getByText('Context management page')).toBeInTheDocument()
+  })
+
+  it('renders the standalone Agent Runtimes route', () => {
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/settings/agent-runtimes']}>
+          <Routes>
+            <Route path="/settings/*" element={<SettingsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    )
+
+    expect(screen.getByText('Agent Runtimes')).toBeInTheDocument()
+    expect(screen.getByText('Agent runtimes settings')).toBeInTheDocument()
   })
 })

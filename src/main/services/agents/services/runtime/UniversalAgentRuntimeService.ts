@@ -5,38 +5,19 @@ import net from 'node:net'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
-import { getDataPath, getResourcePath, toAsarUnpackedPath } from '@main/utils'
+import { getDataPath } from '@main/utils'
 import type { AgentRuntimeConfig } from '@types'
 import { app } from 'electron'
 
-import {
-  getManagedBinaryService,
-  type ManagedBinaryManifest,
-  type ManagedBinaryResolution,
-  type ManagedBinaryStatus
-} from './ManagedBinaryService'
+import { type ManagedBinaryResolution, type ManagedBinaryStatus } from './ManagedBinaryService'
+import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
+import { type RuntimeBinaryDiscoveryService, runtimeBinaryDiscoveryService } from './RuntimeBinaryDiscoveryService'
 
 const logger = loggerService.withContext('UniversalAgentRuntimeService')
 
-export const UAR_EXPECTED_COMMIT = 'c7c8416b94d39358ec7cf03691738426c25b2df8'
-const UAR_BINARY_NAME = 'universal-agent-runtime'
+export const UAR_EXPECTED_COMMIT = '0ab6b18c7626fb56da781f13f19c194cfb84b1c1'
 const UAR_READY_TIMEOUT_MS = 30_000
 const UAR_READY_POLL_MS = 500
-
-export const UAR_MANAGED_BINARY_MANIFEST: ManagedBinaryManifest = {
-  name: 'universal-agent-runtime',
-  version: UAR_EXPECTED_COMMIT,
-  sourceCommit: UAR_EXPECTED_COMMIT,
-  supportedPlatforms: ['darwin-arm64'],
-  binaries: [
-    {
-      platform: 'darwin-arm64',
-      binaryName: UAR_BINARY_NAME,
-      size: 126_157_280,
-      sha256: '183ef62349420738b0d3e65fb7b9be308001b626da1542c1d378f8c198ce3d63'
-    }
-  ]
-}
 
 export interface UarProviderRuntimeOptions {
   providerId?: string
@@ -68,7 +49,7 @@ export type UarSidecarState =
   | 'download-failed'
   | 'unsupported-platform'
 
-export type UarBinarySource = 'configured' | 'environment' | 'managed' | 'bundled'
+export type UarBinarySource = 'configured' | 'environment' | 'path' | 'managed'
 
 export interface UarSidecarStatus {
   kind: 'uar'
@@ -87,13 +68,14 @@ interface UarNativeToolsConfig {
 }
 
 type ManagedBinaryServiceLike = {
-  resolveInstalledBinary(manifest: ManagedBinaryManifest): Promise<ManagedBinaryResolution>
-  install?(manifest: ManagedBinaryManifest): Promise<ManagedBinaryStatus>
+  resolveInstalledBinary(name: 'universal-agent-runtime'): Promise<ManagedBinaryResolution>
+  install?(name: 'universal-agent-runtime'): Promise<ManagedBinaryStatus>
 }
 
 interface UniversalAgentRuntimeServiceDependencies {
   managedBinaryService?: ManagedBinaryServiceLike
-  managedBinaryManifest?: ManagedBinaryManifest
+  managedRuntimeService?: ManagedRuntimeService
+  runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
 }
 
 interface UarBinaryResolution {
@@ -106,11 +88,13 @@ export class UniversalAgentRuntimeService {
   private running?: RunningSidecar
   private starting?: Promise<RunningSidecar>
   private readonly managedBinaryService?: ManagedBinaryServiceLike
-  private readonly managedBinaryManifest: ManagedBinaryManifest
+  private readonly managedRuntimeService: ManagedRuntimeService
+  private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
 
   constructor(dependencies: UniversalAgentRuntimeServiceDependencies = {}) {
     this.managedBinaryService = dependencies.managedBinaryService
-    this.managedBinaryManifest = dependencies.managedBinaryManifest ?? UAR_MANAGED_BINARY_MANIFEST
+    this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
+    this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
     app.once('before-quit', () => {
       void this.stop()
     })
@@ -205,7 +189,7 @@ export class UniversalAgentRuntimeService {
   }
 
   async installManagedBinary(): Promise<UarSidecarStatus> {
-    const managedBinaryService = this.managedBinaryService ?? getManagedBinaryService()
+    const managedBinaryService = this.managedBinaryService ?? this.managedRuntimeService
     if (!managedBinaryService.install) {
       return {
         kind: 'uar',
@@ -215,7 +199,7 @@ export class UniversalAgentRuntimeService {
       }
     }
 
-    return mapManagedBinaryStatus(await managedBinaryService.install(this.managedBinaryManifest))
+    return mapManagedBinaryStatus(await managedBinaryService.install('universal-agent-runtime'))
   }
 
   async stop(): Promise<void> {
@@ -318,7 +302,7 @@ export class UniversalAgentRuntimeService {
       configPath,
       process: child,
       binaryPath,
-      binarySource: resolution.binarySource ?? 'bundled'
+      binarySource: resolution.binarySource ?? 'managed'
     }
 
     try {
@@ -343,8 +327,13 @@ export class UniversalAgentRuntimeService {
       return { binaryPath: envPath, binarySource: 'environment' }
     }
 
-    const managedBinaryService = this.managedBinaryService ?? getManagedBinaryService()
-    const managed = await managedBinaryService.resolveInstalledBinary(this.managedBinaryManifest)
+    const detected = await this.runtimeBinaryDiscoveryService.discover('uar')
+    if (detected.detectedPath) {
+      return { binaryPath: detected.detectedPath, binarySource: 'path' }
+    }
+
+    const managedBinaryService = this.managedBinaryService ?? this.managedRuntimeService
+    const managed = await managedBinaryService.resolveInstalledBinary('universal-agent-runtime')
     if (managed.binaryPath) {
       return { binaryPath: managed.binaryPath, binarySource: 'managed' }
     }
@@ -352,13 +341,6 @@ export class UniversalAgentRuntimeService {
       return {
         blockingStatus: mapManagedBinaryStatus(managed.status)
       }
-    }
-
-    const bundledPath = toAsarUnpackedPath(
-      path.join(getResourcePath(), 'binaries', getUarPlatformKey(), getUarBinaryName())
-    )
-    if (fs.existsSync(bundledPath)) {
-      return { binaryPath: bundledPath, binarySource: 'bundled' }
     }
 
     if (managed.status.state !== 'missing') {
@@ -369,7 +351,7 @@ export class UniversalAgentRuntimeService {
       }
     }
 
-    return { binaryPath: bundledPath, binarySource: 'bundled' }
+    return { binaryPath: managed.status.binaryPath, binarySource: 'managed' }
   }
 }
 
@@ -464,14 +446,6 @@ skill_evolution:
 acp:
   enabled: false
 `
-}
-
-function getUarPlatformKey(): string {
-  return `${process.platform}-${process.arch}`
-}
-
-function getUarBinaryName(): string {
-  return process.platform === 'win32' ? `${UAR_BINARY_NAME}.exe` : UAR_BINARY_NAME
 }
 
 function getSidecarConfig(runtimeConfig: AgentRuntimeConfig): Record<string, unknown> {

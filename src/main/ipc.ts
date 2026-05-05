@@ -298,6 +298,9 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRuntime_GetStatus, async (_event, runtimeConfig) =>
     runtimeControlService.getStatus(runtimeConfig)
   )
+  ipcMain.handle(IpcChannel.AgentRuntime_DiscoverBinary, async (_event, kind) =>
+    runtimeControlService.discoverRuntimeBinary(kind)
+  )
   ipcMain.handle(IpcChannel.AgentRuntime_InstallManagedBinary, async (_event, request) =>
     runtimeControlService.installManagedBinary(request)
   )
@@ -937,6 +940,7 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.App_InstallUvBinary, () => runInstallScript('install-uv.js'))
   ipcMain.handle(IpcChannel.App_InstallBunBinary, () => runInstallScript('install-bun.js'))
   ipcMain.handle(IpcChannel.App_InstallOvmsBinary, () => runInstallScript('install-ovms.js'))
+  ipcMain.handle(IpcChannel.App_InstallRustToolchain, () => runInstallScript('install-rust-toolchain.js'))
 
   //copilot
   ipcMain.handle(IpcChannel.Copilot_GetAuthMessage, CopilotService.getAuthMessage.bind(CopilotService))

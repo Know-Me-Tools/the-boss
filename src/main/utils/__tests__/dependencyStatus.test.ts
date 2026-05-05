@@ -83,6 +83,22 @@ describe('dependency status resolver', () => {
     })
   })
 
+  it('resolves an existing Rust toolchain from the default cargo home when PATH misses', async () => {
+    mockFs.existsSync.mockImplementation((filePath) => String(filePath) === '/home/testuser/.cargo/bin/cargo')
+
+    const status = await getDependencyStatus('cargo')
+
+    expect(status).toEqual({
+      name: 'cargo',
+      available: true,
+      source: 'environment',
+      resolvedPath: '/home/testuser/.cargo/bin/cargo',
+      bundledPath: '/home/testuser/.the-boss/bin/cargo',
+      environmentPath: '/home/testuser/.cargo/bin/cargo',
+      installSupported: true
+    })
+  })
+
   it('resolves rtk from the environment and marks install as unsupported', async () => {
     mockFindExecutableInEnv.mockImplementation(async (name: string) =>
       name === 'rtk' ? '/opt/homebrew/bin/rtk' : null

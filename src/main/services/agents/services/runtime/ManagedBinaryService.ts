@@ -35,6 +35,7 @@ export interface ManagedBinaryManifestEntry {
   sha256: string
   httpsUrl?: string
   ipfsCid?: string
+  ipfsPath?: string
   signatures?: ManagedBinarySignatureFields
 }
 
@@ -107,6 +108,10 @@ export class ManagedBinaryService {
   }
 
   async getStatus(manifest: ManagedBinaryManifest): Promise<ManagedBinaryStatus> {
+    if (manifest.binaries.length === 0) {
+      return this.status(manifest, 'missing', `No managed binary manifest entries are configured for ${manifest.name}.`)
+    }
+
     const entry = this.selectEntry(manifest)
     if (!entry) {
       return this.status(manifest, 'unsupported-platform', `No managed binary is available for ${this.platformKey}.`)
@@ -143,6 +148,14 @@ export class ManagedBinaryService {
   }
 
   async install(manifest: ManagedBinaryManifest): Promise<ManagedBinaryStatus> {
+    if (manifest.binaries.length === 0) {
+      return this.status(
+        manifest,
+        'download-failed',
+        `No downloadable managed binary is configured for ${manifest.name}.`
+      )
+    }
+
     const entry = this.selectEntry(manifest)
     if (!entry) {
       return this.status(manifest, 'unsupported-platform', `No managed binary is available for ${this.platformKey}.`)
@@ -223,7 +236,8 @@ export class ManagedBinaryService {
   private resolveDownloadUrls(entry: ManagedBinaryManifestEntry): URL[] {
     const urls: URL[] = []
     if (entry.ipfsCid) {
-      urls.push(new URL(`ipfs://${entry.ipfsCid}/${entry.binaryName}`))
+      const ipfsPath = entry.ipfsPath ? `/${entry.ipfsPath.replace(/^\/+/, '')}` : ''
+      urls.push(new URL(`ipfs://${entry.ipfsCid}${ipfsPath}`))
     }
 
     if (entry.httpsUrl) {
@@ -371,8 +385,12 @@ export class HttpsManagedBinaryTransport implements ManagedBinaryTransport {
 
 export class IpfsGatewayTransport implements ManagedBinaryTransport {
   constructor(
-    private readonly gateways = ['https://ipfs.io/ipfs/', 'https://cloudflare-ipfs.com/ipfs/'],
-    private readonly httpsTransport = new HttpsManagedBinaryTransport()
+    private readonly gateways = [
+      process.env.THE_BOSS_IPFS_GATEWAY_URL ?? 'https://ipfs.prometheusags.ai/ipfs/',
+      'https://ipfs.io/ipfs/',
+      'https://cloudflare-ipfs.com/ipfs/'
+    ],
+    private readonly httpsTransport: ManagedBinaryTransport = new HttpsManagedBinaryTransport()
   ) {}
 
   canDownload(url: URL): boolean {

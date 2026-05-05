@@ -534,6 +534,23 @@
           "info": "Info",
           "warn": "Warn"
         },
+        "managedBinary": {
+          "chooseLocal": "Choose local binary",
+          "chooseTitle": "Choose runtime executable",
+          "clearLocal": "Clear local binary",
+          "configuredPath": "Runtime executable path configured.",
+          "detectedPath": "Detected on PATH: {{path}}",
+          "detectedPathConfigured": "Detected runtime executable configured.",
+          "downloading": "Downloading managed runtime binary...",
+          "installFailed": "Failed to install managed runtime binary.",
+          "installManagedBinary": "Download verified runtime",
+          "refreshStatus": "Refresh status",
+          "resolvedPath": "Runtime executable path",
+          "statusLoadFailed": "Failed to load runtime binary status.",
+          "statusUnknown": "Managed runtime binary status has not been checked.",
+          "title": "Managed runtime binary",
+          "useDetected": "Use detected binary"
+        },
         "mode": "Mode",
         "model": "Model Override",
         "modes": {
@@ -577,6 +594,20 @@
           "medium": "Medium",
           "xhigh": "Extra high"
         },
+        "rust": {
+          "cargo": "Cargo",
+          "install": "Install/update Rust",
+          "installFailed": "Failed to install Rust toolchain.",
+          "installed": "Rust toolchain is ready.",
+          "installing": "Installing Rust toolchain...",
+          "missing": "Rust, Cargo, rustup, and the wasm32 target are required before Rust/WASM skill workflows compile projects.",
+          "ready": "Rust and the wasm32 target are ready for skill builds.",
+          "refreshStatus": "Refresh status",
+          "rustc": "rustc",
+          "rustup": "rustup",
+          "title": "Rust toolchain",
+          "wasmTarget": "wasm32 target"
+        },
         "status": {
           "downloadFailed": "Download failed",
           "downloading": "Downloading",
@@ -603,14 +634,16 @@
           "binaryPath": "Binary path",
           "binarySource": {
             "bundled": "Bundled fallback",
-            "configured": "Configured path",
-            "environment": "Environment path",
-            "managed": "Managed binary"
+            "configured": "Selected file",
+            "development": "Development checkout",
+            "environment": "Environment variable",
+            "managed": "Managed binary",
+            "path": "PATH"
           },
           "binaryStatusLoadFailed": "Failed to load UAR binary status.",
           "binaryStatusUnknown": "UAR binary status has not been checked.",
           "dataDir": "Data directory",
-          "installManagedBinary": "Install/update",
+          "installManagedBinary": "Download verified runtime",
           "logLevel": "Log level",
           "refreshBinaryStatus": "Refresh status",
           "remoteUrl": "Remote URL",
@@ -1782,6 +1815,7 @@
     "knowledge_base": "Knowledge Base",
     "language": "Language",
     "loading": "Loading...",
+    "missing": "Missing",
     "model": "Model",
     "models": "Models",
     "more": "More",
@@ -1804,6 +1838,7 @@
     "previous_match": "Previous match",
     "prompt": "Prompt",
     "provider": "Provider",
+    "ready": "Ready",
     "reasoning_content": "Deep reasoning",
     "refresh": "Refresh",
     "regenerate": "Regenerate",
@@ -4123,6 +4158,38 @@
     "advanced": {
       "auto_switch_to_topics": "Auto switch to topic",
       "title": "Advanced Settings"
+    },
+    "agentRuntimes": {
+      "chooseLocal": "Choose local binary",
+      "chooseTitle": "Choose runtime executable",
+      "claude": {
+        "description": "Current working Claude Code implementation. It remains unchanged and is used as the behavior reference.",
+        "title": "Claude Code"
+      },
+      "clearLocal": "Clear local binary",
+      "codex": {
+        "description": "Managed Codex CLI runtime.",
+        "title": "Codex"
+      },
+      "description": "Download verified managed runtimes from IPFS or choose local executables for each runtime type.",
+      "detectedPath": "Detected on PATH: {{path}}",
+      "downloading": "Downloading managed runtime binary from IPFS...",
+      "install": "Download verified runtime",
+      "opencode": {
+        "description": "Managed OpenCode server runtime.",
+        "title": "OpenCode"
+      },
+      "reference": "Existing implementation",
+      "refresh": "Refresh",
+      "resolvedPath": "Runtime executable path",
+      "statusFailed": "Failed to load runtime status.",
+      "statusUnknown": "Runtime status has not been checked yet.",
+      "title": "Agent Runtimes",
+      "uar": {
+        "description": "Embedded Universal Agent Runtime sidecar.",
+        "title": "Universal Agent Runtime"
+      },
+      "useDetected": "Use detected binary"
     },
     "artifacts": {
       "add_service": "Add Service",

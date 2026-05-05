@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "channel": "bootstrap",
+  "generatedAt": "2026-05-04T21:29:17.788Z",
+  "manifests": [
+    {
+      "name": "codex",
+      "version": "f48b777717e09eb68ef34736d328e96f7a39e9ac",
+      "sourceCommit": "f48b777717e09eb68ef34736d328e96f7a39e9ac",
+      "supportedPlatforms": [
+        "darwin-arm64"
+      ],
+      "binaries": [
+        {
+          "platform": "darwin-arm64",
+          "binaryName": "codex",
+          "size": 186493216,
+          "sha256": "da280692130943001ed4a7b4873070549a8e485dffaf317ad7c1269bdd8b5e49",
+          "ipfsCid": "bafybeihmgcyso4yr4wetvfoooatzesswlpnrjqtihgebyt7cnhg3qjchhu"
+        }
+      ]
+    },
+    {
+      "name": "opencode",
+      "version": "9464066b4a0faf68277c414131ed6770dcf9e383",
+      "sourceCommit": "9464066b4a0faf68277c414131ed6770dcf9e383",
+      "supportedPlatforms": [
+        "darwin-arm64"
+      ],
+      "binaries": [
+        {
+          "platform": "darwin-arm64",
+          "binaryName": "opencode",
+          "size": 86946466,
+          "sha256": "5b59b56d8bbba8299f06ad9c816324a98afd86e45caa888947eff3524ea3f6ac",
+          "ipfsCid": "bafybeifvd6pfcfz2w5mx6gnap5meilhm6k2mae73akw6zapd2wvpieghma"
+        }
+      ]
+    },
+    {
+      "name": "universal-agent-runtime",
+      "version": "0ab6b18c7626fb56da781f13f19c194cfb84b1c1",
+      "sourceCommit": "0ab6b18c7626fb56da781f13f19c194cfb84b1c1",
+      "supportedPlatforms": [
+        "darwin-arm64"
+      ],
+      "binaries": [
+        {
+          "platform": "darwin-arm64",
+          "binaryName": "universal-agent-runtime",
+          "size": 130476208,
+          "sha256": "6fc37ce26e0aa3eff4e6f565a9f026cc31e7cf8ec54bec0a600ce562d849b1ab",
+          "ipfsCid": "bafybeia3nnqgf4i462cdvcf2tea7qys666vs4sod7bvarkuzs54emkuyyi"
+        }
+      ]
+    }
+  ]
+}

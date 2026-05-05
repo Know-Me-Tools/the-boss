@@ -8,8 +8,8 @@ The agent runtime setting selects which execution backend handles an agent sessi
 |---|---|---|---|
 | Claude | `managed` | Native Claude Agent SDK execution | Supports compaction, approvals, tool use, MCP, skills, knowledge, file access, shell access, and session resume. |
 | Codex | `managed` | OpenAI Codex SDK execution | Requires an OpenAI-compatible provider. Supports workspace sandboxing, approvals, tools, MCP, skills, knowledge, file access, shell access, and session resume. Does not support Claude SDK compaction. |
-| OpenCode | `managed`, `remote` | OpenCode server execution | Managed mode starts the pinned embedded `opencode serve` executable and reuses it across turns. Remote mode connects to an existing OpenCode endpoint. Does not support Claude SDK compaction. |
-| UAR | `embedded`, `remote` | Universal Agent Runtime sidecar execution | Embedded mode resolves an explicit path, `UAR_SIDECAR_PATH`, a verified managed binary, then the bundled fallback. Remote mode connects to an existing UAR endpoint. UAR currently reports degraded approval, resume, and compaction support. |
+| OpenCode | `managed`, `remote` | OpenCode server execution | Managed mode starts a verified managed `opencode serve` sidecar and reuses it across turns. Remote mode connects to an existing OpenCode endpoint. Does not support Claude SDK compaction. |
+| UAR | `embedded`, `remote` | Universal Agent Runtime sidecar execution | Embedded mode resolves an explicit path, `UAR_SIDECAR_PATH`, then a verified managed binary. Remote mode connects to an existing UAR endpoint. UAR currently reports degraded approval, resume, and compaction support. |
 
 The compatibility resolver must remain the source of truth for degraded support. Do not document a runtime as lossless if `resolveRuntimeCompatibility` returns warnings.
 
@@ -32,10 +32,11 @@ Common fields:
 
 ### OpenCode
 
-OpenCode is vendored at `vendor/opencode`, but the app intentionally does not package OpenCode as a runtime Node dependency. Managed OpenCode uses a pinned executable resource built from the vendored source and launched as a local server:
+OpenCode is vendored at `vendor/opencode`, but production packages do not embed the OpenCode runtime binary. Release builds create a managed runtime artifact from the vendored source, publish it to IPFS/HTTPS, and ship only its manifest CID and integrity metadata:
 
 ```bash
-pnpm opencode:build:runtime
+pnpm runtimes:build opencode
+pnpm runtimes:publish:ipfs
 ```
 
 The vendored OpenCode build currently requires Bun 1.3.11 or newer.
@@ -46,13 +47,13 @@ The build runs:
 bun run --cwd vendor/opencode/packages/opencode build --single --skip-embed-web-ui
 ```
 
-Then it copies the current-platform binary into:
+The local build output is staged under:
 
 ```text
-resources/opencode/<platform-arch>/opencode
+dist/runtime-artifacts/opencode/<platform-arch>/opencode
 ```
 
-On Windows the executable name is `opencode.exe`. The `resources/**/*` packaging rule includes this artifact, and `resources/**` is unpacked from ASAR so Electron can spawn it. OpenCode CLI packages should not be added to runtime external dependency packaging; the executable is a resource artifact.
+On Windows the executable name is `opencode.exe`. `resources/opencode/**` is excluded from production packaging; the runtime is installed under app data from the managed manifest.
 
 Managed execution starts:
 
@@ -79,57 +80,53 @@ The runtime model picker uses `client.config.get()` and `client.config.providers
 
 UAR is vendored at `vendor/universal-agent-runtime` and pinned by `UniversalAgentRuntimeService.UAR_EXPECTED_COMMIT`.
 
-Build the current platform sidecar before using embedded UAR:
+Build and publish the current platform sidecar before release:
 
 ```bash
-pnpm uar:build:sidecar
+pnpm runtimes:build universal-agent-runtime
+pnpm runtimes:publish:ipfs
 ```
 
-The build writes:
+The local build output is staged under:
 
 ```text
-resources/binaries/<platform-arch>/universal-agent-runtime
-resources/binaries/<platform-arch>/.uar-version
+dist/runtime-artifacts/universal-agent-runtime/<platform-arch>/universal-agent-runtime
 ```
 
 AGPL notice and build details live under `resources/licenses/universal-agent-runtime/`.
 
 ## Managed Binary Updates
 
-The embedded UAR sidecar can be supplied as a managed binary under app data:
+UAR, Codex, and OpenCode are supplied as managed binaries under app data:
 
 ```text
-Data/managed-binaries/universal-agent-runtime/<version>/<platform-arch>/universal-agent-runtime
+Data/managed-binaries/<runtime>/<version>/<platform-arch>/<binary>
 ```
 
 Managed binaries are only used after manifest validation passes. The installer verifies platform support, expected file size, and SHA-256 before renaming the downloaded file into the final executable path. Failed verification leaves the managed binary unavailable and prevents silent execution of a mismatched file.
 
-Each manifest entry may include an optional `ipfsCid`, but IPFS is never the only required transport. The installer attempts IPFS gateway URLs first when a CID is present, keeps HTTPS as fallback, and applies the same max-size and SHA-256 validation regardless of which transport succeeds.
+Each manifest entry includes size and SHA-256 integrity fields, and may include `ipfsCid` and/or `httpsUrl` transports. The installer attempts IPFS gateway URLs first when a CID is present, keeps HTTPS as fallback, and applies the same max-size and SHA-256 validation regardless of which transport succeeds.
 
-Resolution order for embedded UAR is:
+Resolution order for UAR, Codex, and OpenCode is:
 
 ```text
-sidecar.binaryPath -> UAR_SIDECAR_PATH -> verified managed binary -> bundled fallback
+configured path -> environment path -> verified managed binary -> development checkout
 ```
 
-The Runtime Settings panel shows the current source as configured path, environment path, managed binary, or bundled fallback. Missing, unsupported, failed verification, failed download, and update-available states are shown separately from ready/running states. The install/update action calls the managed-binary backend and keeps the bundled fallback in place for offline use during this transition.
+The Runtime Settings panel shows the current source as configured path, environment path, managed binary, or development checkout. Missing, unsupported, failed verification, failed download, and update-available states are shown separately from ready/running states. The install/update action calls the managed-runtime backend.
 
-Do not remove the bundled UAR fallback from production packaging until managed install/update reliability is proven by smoke tests across supported platforms.
-
-Operators can generate manifest entries for UAR, RTK, or future helper binaries with:
+Operators build and publish runtime artifacts with:
 
 ```bash
-node scripts/build-managed-binary-manifest.js \
-  --name universal-agent-runtime \
-  --version c7c8416b94d39358ec7cf03691738426c25b2df8 \
-  --source-commit c7c8416b94d39358ec7cf03691738426c25b2df8 \
-  --binary darwin-arm64=resources/binaries/darwin-arm64/universal-agent-runtime \
-  --https-url darwin-arm64=https://example.com/universal-agent-runtime-darwin-arm64 \
-  --ipfs-cid darwin-arm64=bafy... \
-  --out dist/managed-binaries/universal-agent-runtime.manifest.json
+IPFS_API_URL=https://ipfs.prometheusags.ai pnpm runtimes:build
+IPFS_API_URL=https://ipfs.prometheusags.ai pnpm runtimes:publish:ipfs
 ```
 
-The generated manifest records platform, binary name, size, max size, SHA-256, HTTPS URL, and optional CID fields. Release publishing should upload the binary artifact to HTTPS storage first, optionally pin it to IPFS, then publish the manifest after smoke tests pass.
+The generated bootstrap manifest at `resources/runtime-manifests/bootstrap.json` records platform, binary name, size, SHA-256, and IPFS CID fields. The control-plane runtime manifest endpoint can promote newer `latest` records after release without requiring a desktop rebuild.
+
+## Rust Toolchain
+
+Skill workflows that compile Rust or WASM projects require `rustup`, `cargo`, `rustc`, and the `wasm32-unknown-unknown` target. Runtime Settings surfaces the current toolchain status and provides an explicit install/update action. Installation is prompted by the user; the app never installs Rust silently.
 
 ## Runtime Skill Bridge
 
@@ -154,8 +151,8 @@ Run from the current 1.9.x branch. Do not use `v2`.
 1. Build or verify dependencies:
    ```bash
    pnpm install
-   pnpm opencode:build:runtime
-   pnpm uar:build:sidecar
+   pnpm runtimes:build
+   pnpm runtimes:publish:ipfs
    ```
 2. Run validation gates:
    ```bash
@@ -173,20 +170,20 @@ Run from the current 1.9.x branch. Do not use `v2`.
    - Verify runtime telemetry shows `codex`, sandbox/approval metadata, session id, tool events, and token usage.
 5. OpenCode managed session:
    - Select runtime `opencode`, mode `managed`.
-   - Verify binary resolution points at `resources/opencode/<platform-arch>/opencode` or the ASAR-unpacked equivalent in a packaged build.
+   - Verify binary resolution points at `Data/managed-binaries/opencode/<version>/<platform-arch>/opencode`.
    - Verify `opencode serve` starts and `client.config.providers()` returns providers/models.
    - Verify invalid OpenCode model selections default to the server-reported default or the first visible model.
    - Run two turns in the same session.
    - Verify the managed server is reused, session id persists, and permission events render as approval UI.
    - Verify a permission response is delivered back to the OpenCode server.
-   - In a packaged build, verify the spawned path is under `app.asar.unpacked`, not inside `app.asar`.
+   - In a packaged build, verify the spawned path is under app data and not inside `app.asar` or `app.asar.unpacked`.
 6. OpenCode remote session:
    - Start an OpenCode-compatible endpoint.
    - Select runtime `opencode`, mode `remote`, and set `endpoint`.
    - Verify remote config update succeeds and auth headers are sent when configured.
 7. UAR embedded session:
    - Select runtime `uar`, mode `embedded`.
-   - Verify the sidecar starts from `resources/binaries/<platform-arch>/universal-agent-runtime`.
+   - Verify the sidecar starts from `Data/managed-binaries/universal-agent-runtime/<version>/<platform-arch>/universal-agent-runtime`.
    - Verify `/v1/models` discovery and streamed chat response telemetry render in chat.
 8. UAR remote session:
    - Start a UAR-compatible endpoint.

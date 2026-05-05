@@ -1,3 +1,4 @@
+import type * as ConstantConfig from '@renderer/config/constant'
 import { MessageBlockStatus } from '@renderer/types/newMessage'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -83,11 +84,15 @@ vi.mock('@renderer/components/CodeBlockView', () => ({
   ReactArtifactsCard: mocks.ReactArtifactsCard
 }))
 
-vi.mock('@renderer/config/constant', () => ({
-  get isWin() {
-    return mocks.isWin
+vi.mock('@renderer/config/constant', async (importOriginal) => {
+  const actual = await importOriginal<typeof ConstantConfig>()
+  return {
+    ...actual,
+    get isWin() {
+      return mocks.isWin
+    }
   }
-}))
+})
 
 // Mock ClickableFilePath
 vi.mock('@renderer/pages/home/Messages/Tools/MessageAgentTools/ClickableFilePath', () => ({

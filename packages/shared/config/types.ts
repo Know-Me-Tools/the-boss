@@ -10,7 +10,7 @@ export interface CodeToolsRunResult {
   command: string
 }
 
-export type ManagedDependencyName = 'uv' | 'bun' | 'rtk'
+export type ManagedDependencyName = 'uv' | 'bun' | 'rtk' | 'rustup' | 'cargo' | 'rustc' | 'wasm32-unknown-unknown'
 
 export type DependencyStatusSource = 'environment' | 'bundled' | 'missing'
 

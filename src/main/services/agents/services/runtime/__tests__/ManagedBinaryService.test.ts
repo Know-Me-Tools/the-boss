@@ -6,7 +6,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { type ManagedBinaryManifest, ManagedBinaryService, type ManagedBinaryTransport } from '../ManagedBinaryService'
+import {
+  IpfsGatewayTransport,
+  type ManagedBinaryManifest,
+  ManagedBinaryService,
+  type ManagedBinaryTransport
+} from '../ManagedBinaryService'
 
 let tempDir: string
 
@@ -122,6 +127,39 @@ describe('ManagedBinaryService', () => {
     expect(calls).toEqual(['ipfs', 'file'])
   })
 
+  it('downloads file CIDs from the configured IPFS gateway without appending the binary name', async () => {
+    const downloads: string[] = []
+    const transport = new IpfsGatewayTransport(['https://ipfs.prometheusags.ai/ipfs/'], {
+      canDownload: (url) => url.protocol === 'https:',
+      download: async (url) => {
+        downloads.push(url.toString())
+      }
+    })
+
+    await transport.download(new URL('ipfs://bafy-file-cid'), path.join(tempDir, 'download'))
+
+    expect(downloads).toEqual(['https://ipfs.prometheusags.ai/ipfs/bafy-file-cid'])
+  })
+
+  it('preserves optional IPFS directory paths when a manifest provides one', async () => {
+    const sourcePath = writeSourceBinary('test-binary', 'managed binary content')
+    const urls: string[] = []
+    const service = createService([
+      {
+        canDownload: (url) => url.protocol === 'ipfs:',
+        download: async (url, destinationPath) => {
+          urls.push(url.toString())
+          fs.copyFileSync(sourcePath, destinationPath)
+        }
+      }
+    ])
+
+    const status = await service.install(createManifest(sourcePath, { ipfsCid: 'bafy-dir-cid', ipfsPath: 'opencode' }))
+
+    expect(status.state).toBe('installed')
+    expect(urls).toEqual(['ipfs://bafy-dir-cid/opencode'])
+  })
+
   it('enforces max size before publishing a binary', async () => {
     const sourcePath = writeSourceBinary('too-large-binary', 'managed binary content')
     const service = createService()
@@ -162,6 +200,7 @@ function createManifest(
         sha256: overrides.sha256 ?? sha256(content),
         httpsUrl: overrides.httpsUrl ?? pathToFileURL(sourcePath).toString(),
         ipfsCid: overrides.ipfsCid,
+        ipfsPath: overrides.ipfsPath,
         signatures: {
           certificateSha256: 'signature-placeholder'
         }

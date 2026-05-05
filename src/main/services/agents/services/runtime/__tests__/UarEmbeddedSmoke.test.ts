@@ -16,6 +16,7 @@ vi.mock('node:fs', async (importOriginal) => importOriginal<typeof fs>())
 vi.mock('node:os', async (importOriginal) => importOriginal<typeof os>())
 
 vi.mock('node:child_process', () => ({
+  execFile: vi.fn(),
   spawn: (...args: unknown[]) => spawnMock(...args)
 }))
 
@@ -123,6 +124,7 @@ function createSession(): any {
         kind: 'uar',
         mode: 'embedded',
         sidecar: {
+          binaryPath: path.join(tempDir, 'resources', 'binaries', `${process.platform}-${process.arch}`, binaryName()),
           port: 1906
         }
       }

@@ -40,6 +40,10 @@ export class AgentRuntimeRouter implements AgentServiceInterface {
     images?: Array<{ data: string; media_type: string }>
   ): Promise<AgentStream> {
     const effectiveSession = await this.withEffectiveRuntimeConfig(session)
+    const runtime = effectiveSession.configuration?.runtime
+    if (runtime) {
+      await runtimeControlService.ensureRunnable(runtime)
+    }
     await this.preflightRuntimeSkills(effectiveSession)
     return this.getAdapter(resolveRuntimeKind(effectiveSession)).invoke(
       prompt,

@@ -50,10 +50,12 @@ describe('OpenCodeCliService', () => {
     await writeExecutable(binaryPath)
     const service = new OpenCodeCliService({
       developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       homedir: () => tempDir
     })
 
-    expect(service.resolveBinary()).toEqual(
+    await expect(service.resolveBinary()).resolves.toEqual(
       expect.objectContaining({
         path: binaryPath,
         source: 'development',
@@ -62,63 +64,85 @@ describe('OpenCodeCliService', () => {
     )
   })
 
-  it('resolves a packaged resource binary path', async () => {
-    const appPath = path.join(tempDir, 'app')
-    const binaryPath = path.join(appPath, 'resources', 'opencode', platformResourceDir(), binaryName())
+  it('resolves a verified managed OpenCode binary path', async () => {
+    const binaryPath = path.join(tempDir, 'managed-opencode', binaryName())
     await writeExecutable(binaryPath)
     const service = new OpenCodeCliService({
-      appPath: () => appPath,
       developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(binaryPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       homedir: () => tempDir
     })
 
-    expect(service.resolveBinary()).toEqual(
+    await expect(service.resolveBinary()).resolves.toEqual(
       expect.objectContaining({
         path: binaryPath,
-        source: 'packaged',
+        source: 'managed',
         state: 'ready'
       })
     )
   })
 
-  it('remaps packaged ASAR resource paths to app.asar.unpacked', async () => {
-    ;(app as any).isPackaged = true
-    const asarAppPath = path.join(tempDir, 'TheBoss.app', 'Contents', 'Resources', 'app.asar')
-    const unpackedBinaryPath = path.join(
-      tempDir,
-      'TheBoss.app',
-      'Contents',
-      'Resources',
-      'app.asar.unpacked',
-      'resources',
-      'opencode',
-      platformResourceDir(),
-      binaryName()
-    )
-    await writeExecutable(unpackedBinaryPath)
+  it('prefers configured OpenCode binary paths before managed binaries', async () => {
+    const configuredPath = path.join(tempDir, 'configured-opencode', binaryName())
+    const managedPath = path.join(tempDir, 'managed-opencode', binaryName())
+    await writeExecutable(configuredPath)
+    await writeExecutable(managedPath)
     const service = new OpenCodeCliService({
-      appPath: () => asarAppPath,
       developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(managedPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       homedir: () => tempDir
     })
 
-    expect(service.resolveBinary()).toEqual(
+    await expect(
+      service.resolveBinary({
+        kind: 'opencode',
+        mode: 'managed',
+        sidecar: {
+          binaryPath: configuredPath
+        }
+      } as any)
+    ).resolves.toEqual(
       expect.objectContaining({
-        path: unpackedBinaryPath,
-        source: 'packaged',
+        path: configuredPath,
+        source: 'configured',
         state: 'ready'
       })
     )
   })
 
-  it('returns a useful health error when the embedded executable is missing', () => {
+  it('resolves detected PATH OpenCode binaries before managed binaries', async () => {
+    const detectedPath = path.join(tempDir, 'path-opencode', binaryName())
+    const managedPath = path.join(tempDir, 'managed-opencode', binaryName())
+    await writeExecutable(detectedPath)
+    await writeExecutable(managedPath)
     const service = new OpenCodeCliService({
-      appPath: () => tempDir,
       developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(managedPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never,
       homedir: () => tempDir
     })
 
-    expect(service.resolveBinary()).toEqual(
+    await expect(service.resolveBinary()).resolves.toEqual(
+      expect.objectContaining({
+        path: detectedPath,
+        source: 'path',
+        state: 'ready',
+        message: expect.stringContaining('detected on PATH')
+      })
+    )
+  })
+
+  it('returns a useful health error when the managed executable is missing', async () => {
+    const service = new OpenCodeCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
+      homedir: () => tempDir
+    })
+
+    await expect(service.resolveBinary()).resolves.toEqual(
       expect.objectContaining({
         state: 'missing-binary',
         message: expect.stringContaining('OpenCode executable was not found')
@@ -135,6 +159,8 @@ describe('OpenCodeCliService', () => {
     const createOpencodeClient = vi.fn(() => client)
     const service = new OpenCodeCliService({
       developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       spawnProcess,
       loadSdk: async () => ({ createOpencodeClient }) as any,
       homedir: () => tempDir,
@@ -205,6 +231,8 @@ describe('OpenCodeCliService', () => {
     await writeExecutable(binaryPath)
     const service = new OpenCodeCliService({
       developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
       spawnProcess: vi.fn(() => createMockOpenCodeProcess()),
       loadSdk: async () => ({ createOpencodeClient: vi.fn(() => createMockOpenCodeClient()) }) as any,
       homedir: () => tempDir,
@@ -319,13 +347,36 @@ function createMockOpenCodeClient() {
   }
 }
 
-function platformResourceDir(): string {
-  const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
-  if (process.platform === 'darwin') return `darwin-${arch}`
-  if (process.platform === 'linux') return `linux-${arch}`
-  return `win32-${arch}`
-}
-
 function binaryName(): string {
   return process.platform === 'win32' ? 'opencode.exe' : 'opencode'
+}
+
+function createManagedRuntimeService(binaryPath?: string) {
+  return {
+    resolveInstalledBinary: vi.fn(async () => ({
+      binaryPath,
+      status: {
+        name: 'opencode',
+        version: '1.0.0',
+        platform: `${process.platform}-${process.arch}`,
+        state: binaryPath ? ('installed' as const) : ('missing' as const),
+        binaryPath,
+        message: binaryPath ? 'installed' : 'missing'
+      }
+    }))
+  }
+}
+
+function createRuntimeBinaryDiscoveryService(detectedPath?: string) {
+  return {
+    discover: vi.fn(async () => ({
+      kind: 'opencode',
+      command: 'opencode',
+      detectedPath,
+      version: detectedPath ? 'opencode 1.0.0' : undefined,
+      source: 'path' as const,
+      available: Boolean(detectedPath),
+      message: detectedPath ? `opencode was detected on PATH at ${detectedPath}.` : 'opencode was not found on PATH.'
+    }))
+  }
 }

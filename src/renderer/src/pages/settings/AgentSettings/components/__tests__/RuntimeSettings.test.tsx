@@ -6,7 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import RuntimeSettings from '../RuntimeSettings'
 
-const translate = vi.fn((_key: string, fallback?: string) => fallback ?? _key)
+const translate = vi.fn((_key: string, fallback?: string, options?: Record<string, string>) => {
+  if (!fallback) {
+    return _key
+  }
+  return Object.entries(options ?? {}).reduce((value, [key, replacement]) => {
+    return value.replace(`{{${key}}}`, replacement)
+  }, fallback)
+})
 
 vi.mock('antd', async (importOriginal) => {
   const actual = await importOriginal<typeof Antd>()
@@ -88,8 +95,15 @@ describe('RuntimeSettings', () => {
         getStatus: vi.fn(async () => ({
           kind: 'uar',
           state: 'stopped',
-          binarySource: 'bundled',
+          binarySource: 'managed',
           message: 'UAR embedded sidecar is stopped.'
+        })),
+        discoverBinary: vi.fn(async (kind: string) => ({
+          kind,
+          command: kind === 'uar' ? 'universal-agent-runtime' : kind,
+          source: 'path',
+          available: false,
+          message: `${kind} was not found on PATH.`
         })),
         installManagedBinary: vi.fn(async () => ({
           kind: 'uar',
@@ -105,7 +119,11 @@ describe('RuntimeSettings', () => {
         })),
         listCodexModels: vi.fn(async () => createCodexModels()),
         listOpenCodeModels: vi.fn(async () => createOpenCodeModels())
-      }
+      },
+      dependencies: {
+        getStatuses: vi.fn(async () => createRustStatuses(false))
+      },
+      installRustToolchain: vi.fn(async () => undefined)
     } as never
   })
 
@@ -274,7 +292,7 @@ describe('RuntimeSettings', () => {
     ['downloading', 'managed', 'Downloading UAR managed binary...', 'Downloading'],
     ['verification-failed', 'managed', 'Managed UAR SHA-256 mismatch.', 'Verification failed'],
     ['update-available', 'managed', 'A managed binary update is available.', 'Update available'],
-    ['stopped', 'bundled', 'Bundled UAR fallback is available.', 'Bundled fallback']
+    ['stopped', 'managed', 'Managed UAR binary is available.', 'Managed binary']
   ])('renders UAR managed binary status %s', async (state, binarySource, message, expectedLabel) => {
     vi.mocked(window.api.agentRuntime.getStatus).mockResolvedValueOnce({
       kind: 'uar',
@@ -300,10 +318,71 @@ describe('RuntimeSettings', () => {
     render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
 
     expect(await screen.findByText('A managed binary update is available.')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Install/update'))
+    fireEvent.click(screen.getByText('Download verified runtime'))
 
     expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith({ name: 'universal-agent-runtime' })
     expect(await screen.findByText('Managed UAR binary is installed.')).toBeInTheDocument()
+  })
+
+  it('calls the managed binary install action from Codex settings', async () => {
+    vi.mocked(window.api.agentRuntime.getStatus).mockResolvedValueOnce({
+      kind: 'codex',
+      state: 'missing-binary',
+      message: 'Codex managed binary is missing.'
+    } as never)
+
+    render(<RuntimeSettings agentBase={createAgentBase('codex')} update={vi.fn()} />)
+
+    expect(await screen.findByText('Codex managed binary is missing.')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Download verified runtime'))
+
+    expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith({ name: 'codex' })
+  })
+
+  it('lets users adopt a detected PATH binary for the selected runtime', async () => {
+    vi.mocked(window.api.agentRuntime.getStatus).mockResolvedValueOnce({
+      kind: 'opencode',
+      state: 'missing-binary',
+      message: 'OpenCode executable was not found.'
+    } as never)
+    vi.mocked(window.api.agentRuntime.discoverBinary).mockResolvedValueOnce({
+      kind: 'opencode',
+      command: 'opencode',
+      detectedPath: '/usr/local/bin/opencode',
+      version: 'opencode 1.0.0',
+      source: 'path',
+      available: true,
+      message: 'opencode was detected on PATH at /usr/local/bin/opencode.'
+    } as never)
+    const update = vi.fn()
+
+    render(<RuntimeSettings agentBase={createAgentBase('opencode')} update={update} />)
+
+    expect(await screen.findByText('Detected on PATH: /usr/local/bin/opencode')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Use detected binary'))
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configuration: expect.objectContaining({
+          runtime: expect.objectContaining({
+            kind: 'opencode',
+            sidecar: expect.objectContaining({
+              binaryPath: '/usr/local/bin/opencode'
+            })
+          })
+        })
+      }),
+      { showSuccessToast: false }
+    )
+  })
+
+  it('surfaces Rust toolchain status and runs the prompted installer', async () => {
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    expect(await screen.findByText(/wasm32 target: Missing/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Install/update Rust'))
+
+    expect(window.api.installRustToolchain).toHaveBeenCalled()
   })
 })
 
@@ -412,4 +491,16 @@ function createOpenCodeModels() {
       }
     }
   ]
+}
+
+function createRustStatuses(available: boolean) {
+  return ['rustup', 'cargo', 'rustc', 'wasm32-unknown-unknown'].map((name) => ({
+    name,
+    available,
+    source: available ? 'environment' : 'missing',
+    resolvedPath: available ? `/usr/bin/${name}` : null,
+    bundledPath: null,
+    environmentPath: available ? `/usr/bin/${name}` : null,
+    installSupported: true
+  }))
 }
