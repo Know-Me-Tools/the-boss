@@ -4,7 +4,7 @@
 import type { EventEmitter } from 'node:events'
 
 import type { Options } from '@anthropic-ai/claude-agent-sdk'
-import type { GetAgentSessionResponse } from '@types'
+import type { AgentEffort, GetAgentSessionResponse } from '@types'
 import type { TextStreamPart } from 'ai'
 
 import type { AgentTurnInput } from '../services/runtime/RuntimeContextBundle'
@@ -26,7 +26,7 @@ export interface AgentStream extends EventEmitter {
 }
 
 export interface AgentThinkingOptions {
-  effort?: Options['effort']
+  effort?: AgentEffort
   thinking?: Options['thinking']
 }
 

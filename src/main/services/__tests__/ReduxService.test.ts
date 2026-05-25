@@ -1,25 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockGetMainWindow, mockIpcMainHandle } = vi.hoisted(() => ({
-  mockGetMainWindow: vi.fn(),
-  mockIpcMainHandle: vi.fn()
-}))
-
-vi.mock('@main/services/WindowService', () => ({
-  windowService: {
-    getMainWindow: mockGetMainWindow
-  }
+const { mockCacheRemove, mockExecuteJavaScript, mockGetMainWindow } = vi.hoisted(() => ({
+  mockCacheRemove: vi.fn(),
+  mockExecuteJavaScript: vi.fn().mockResolvedValue(undefined),
+  mockGetMainWindow: vi.fn(() => ({
+    webContents: {
+      executeJavaScript: mockExecuteJavaScript
+    }
+  }))
 }))
 
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: mockIpcMainHandle
+    handle: vi.fn((_channel: string, handler: () => void) => {
+      handler()
+    })
   }
 }))
 
 vi.mock('@logger', () => ({
   loggerService: {
     withContext: () => ({
+      debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn()
@@ -27,11 +29,22 @@ vi.mock('@logger', () => ({
   }
 }))
 
-// Dynamically import after mocks are set up
+vi.mock('../CacheService', () => ({
+  CacheService: {
+    remove: (...args: unknown[]) => mockCacheRemove(...args)
+  }
+}))
+
+vi.mock('../WindowService', () => ({
+  windowService: {
+    getMainWindow: () => mockGetMainWindow()
+  }
+}))
+
+import { invalidateApiServerProvidersCacheForAction, ReduxService, reduxService } from '../ReduxService'
+
 async function makeService() {
-  const { ReduxService } = await import('../ReduxService')
   const svc = new ReduxService() as any
-  // Mark store as ready immediately so select() doesn't time out
   svc.isReady = true
   return svc
 }
@@ -42,8 +55,7 @@ function makeWebContents(state: Record<string, any>) {
   }
 }
 
-describe('ReduxService.validateSelector', async () => {
-  const { ReduxService } = await import('../ReduxService')
+describe('ReduxService.validateSelector', () => {
   const validate = (ReduxService as any).validateSelector.bind(ReduxService)
 
   it('accepts a simple top-level key', () => {
@@ -90,10 +102,9 @@ describe('ReduxService.validateSelector', async () => {
 describe('ReduxService.select', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.resetModules()
   })
 
-  it('resolves a top-level path (no state. prefix)', async () => {
+  it('resolves a top-level path without state prefix', async () => {
     const state = { llm: { settings: { vertexai: { projectId: 'my-project' } } } }
     const wc = makeWebContents(state)
     mockGetMainWindow.mockReturnValue({ webContents: wc })
@@ -103,7 +114,7 @@ describe('ReduxService.select', () => {
     expect(result).toEqual({ projectId: 'my-project' })
   })
 
-  it('resolves a path with state. prefix', async () => {
+  it('resolves a path with state prefix', async () => {
     const state = { settings: { theme: 'dark' } }
     const wc = makeWebContents(state)
     mockGetMainWindow.mockReturnValue({ webContents: wc })
@@ -147,7 +158,30 @@ describe('ReduxService.select', () => {
 
     const svc = await makeService()
     await expect(svc.select('llm[0]')).rejects.toThrow('Invalid selector')
-    // executeJavaScript should not have been called since validation fails first
     expect(wc.executeJavaScript).not.toHaveBeenCalled()
+  })
+})
+
+describe('ReduxService provider cache invalidation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetMainWindow.mockReturnValue({
+      webContents: {
+        executeJavaScript: mockExecuteJavaScript
+      }
+    })
+  })
+
+  it('clears the API server provider cache for provider mutations', async () => {
+    await reduxService.dispatch({ type: 'llm/updateProvider', payload: { id: 'openai', apiKey: 'new-key' } })
+
+    expect(mockExecuteJavaScript).toHaveBeenCalled()
+    expect(mockCacheRemove).toHaveBeenCalledWith('api-server:providers')
+  })
+
+  it('does not clear the API server provider cache for unrelated actions', () => {
+    invalidateApiServerProvidersCacheForAction('llm/setDefaultModel')
+
+    expect(mockCacheRemove).not.toHaveBeenCalled()
   })
 })

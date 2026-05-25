@@ -69,6 +69,7 @@ import {
 } from './streamSafety'
 import { promptForToolApproval } from './tool-permissions'
 import { ClaudeStreamState, transformSDKMessageToStreamParts } from './transform'
+import { with1mContextSuffix } from './utils'
 
 const require_ = createRequire(import.meta.url)
 const logger = loggerService.withContext('ClaudeCodeService')
@@ -82,6 +83,16 @@ const CLAUDE_MAX_SDK_MESSAGES = 20_000
 const CLAUDE_CHILD_KILL_GRACE_MS = 2_000
 const shouldAutoApproveTools = process.env.CHERRY_AUTO_ALLOW_TOOLS === '1'
 const NO_RESUME_COMMANDS = ['/clear']
+
+const getAnthropicCustomHeaders = (headers?: Record<string, string>) => {
+  const lines = Object.entries(headers ?? {}).map(([name, value]) => `${name}: ${value}`)
+  return lines.length > 0 ? lines.join('\n') : undefined
+}
+
+const toClaudeSdkEffort = (effort: AgentThinkingOptions['effort']): Options['effort'] | undefined => {
+  if (effort === 'xhigh') return 'max'
+  return effort
+}
 
 const getLanguageInstruction = () => {
   const lang = configManager.getLanguage()
@@ -206,6 +217,8 @@ class ClaudeCodeService implements AgentServiceInterface {
     const nativeAnthropicCredentials = await resolveClaudeCodeAnthropicCredentials(provider)
     const anthropicApiKey = nativeAnthropicCredentials?.apiKey ?? ''
     const anthropicAuthToken = nativeAnthropicCredentials?.authToken ?? nativeAnthropicCredentials?.apiKey ?? ''
+    const sdkModelId = with1mContextSuffix(modelInfo.modelId, provider.anthropicApiHost)
+    const customHeaders = getAnthropicCustomHeaders(provider.extra_headers)
 
     const env = {
       ...loginShellEnv,
@@ -215,11 +228,12 @@ class ClaudeCodeService implements AgentServiceInterface {
       ANTHROPIC_API_KEY: anthropicApiKey,
       ANTHROPIC_AUTH_TOKEN: anthropicAuthToken,
       ANTHROPIC_BASE_URL: anthropicBaseUrl,
-      ANTHROPIC_MODEL: modelInfo.modelId,
-      ANTHROPIC_DEFAULT_OPUS_MODEL: modelInfo.modelId,
-      ANTHROPIC_DEFAULT_SONNET_MODEL: modelInfo.modelId,
+      ANTHROPIC_CUSTOM_HEADERS: customHeaders,
+      ANTHROPIC_MODEL: sdkModelId,
+      ANTHROPIC_DEFAULT_OPUS_MODEL: sdkModelId,
+      ANTHROPIC_DEFAULT_SONNET_MODEL: sdkModelId,
       // TODO: support set small model in UI
-      ANTHROPIC_DEFAULT_HAIKU_MODEL: modelInfo.modelId,
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: sdkModelId,
       ELECTRON_RUN_AS_NODE: '1',
       ELECTRON_NO_ATTACH_CONSOLE: '1',
       // Set CLAUDE_CONFIG_DIR to app's userData directory to avoid path encoding issues
@@ -577,7 +591,7 @@ class ClaudeCodeService implements AgentServiceInterface {
         // Boss Assistant is a read-only guide; it should not ask users questions via tool
         ...(isAssistant ? ['AskUserQuestion'] : [])
       ],
-      ...(thinkingOptions?.effort ? { effort: thinkingOptions.effort } : {}),
+      ...(thinkingOptions?.effort ? { effort: toClaudeSdkEffort(thinkingOptions.effort) } : {}),
       ...(thinkingOptions?.thinking ? { thinking: thinkingOptions.thinking } : {})
     }
 
@@ -603,7 +617,8 @@ class ClaudeCodeService implements AgentServiceInterface {
 
     if (!options.mcpServers) options.mcpServers = {}
 
-    // Inject Exa MCP for structured web search (free tier, no API key required)
+    // Inject Exa MCP for structured web search (free tier, no API key required).
+    // Replaces the SDK built-in WebSearch/WebFetch tools disabled via GLOBALLY_DISALLOWED_TOOLS.
     options.mcpServers.exa = {
       type: 'http',
       url: 'https://mcp.exa.ai/mcp'

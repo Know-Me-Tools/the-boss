@@ -27,5 +27,6 @@ export interface AiSdkMiddlewareConfig {
   urlContextConfig?: Record<string, any>
   knowledgeRecognition?: 'off' | 'on'
   mcpMode?: string
+  /** Resettable idle timeout handle — reset() on each chunk, cleanup() on stream end */
   idleTimeout?: IdleTimeoutHandle
 }

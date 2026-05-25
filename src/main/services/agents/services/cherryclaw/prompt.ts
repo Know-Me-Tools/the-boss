@@ -79,20 +79,15 @@ Rules:
 - When adding a WeChat channel, the config tool returns a QR code image. Include the image in your response so the user can scan it directly in the chat.
 - Use \`config status\` to check which channels are actually connected. If a channel shows \`connected: false\`, use \`config reconnect_channel\` to trigger a fresh QR scan.`
 
-const WEB_TOOLS_GUIDANCE = `## Web Search & Browser Strategy
+const WEB_TOOLS_GUIDANCE = `## Web Search Strategy
 
-You always have \`mcp__browser__*\` tools for page navigation, screenshots, and interaction. You may also have additional MCP search tools attached to the current agent/session. Only use tools that are actually available in the current tool list.
+You have one web tool: \`mcp__exa__web_search_exa\` for structured search. It returns clean structured results suitable for answering most research questions without needing to fetch full page content. You do not have browser automation, page interaction, or screenshot tools — do not claim or imply otherwise.
 
-**Search-first, browse-second:** If a dedicated search MCP tool is available, use it first to find candidate sources. Use browser tools to open specific pages when you need full content, screenshots, or interaction. If no dedicated search tool is attached, use the browser directly.
+**Always parallelize when possible.** You can call multiple tools simultaneously in a single response. Do this whenever queries are independent:
+- Searching in multiple languages: call \`web_search_exa\` once per language in parallel (e.g., English + Chinese + Japanese queries simultaneously)
+- Researching multiple topics: fire all search queries at once, don't wait for one to finish before starting another
 
-**Always parallelize when possible.** You can call multiple tools simultaneously in a single response when queries are independent:
-- Search in multiple languages or with multiple phrasings in parallel when a search MCP is available
-- Open multiple candidate URLs in parallel with \`mcp__browser__open\`
-- Combine search and browsing when you already know one of the pages you need to inspect
-
-**Use \`mcp__browser__screenshot\`** to visually inspect pages (search results, dashboards, verification). It's far more efficient than fetching full page content.
-**Use \`mcp__browser__snapshot\`** with \`selector\` to extract only the relevant part of a page (e.g., \`selector: "#search"\` for the result area).
-`
+If the user explicitly needs browser automation (filling forms, clicking, navigating live pages), tell them this capability is not currently available rather than attempting a workaround.`
 
 /**
  * Compose the tool-strategy guidance for an agent based on which MCP servers
