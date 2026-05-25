@@ -104,6 +104,8 @@ export const CodeStyleProvider: React.FC<PropsWithChildren> = ({ children }) => 
   }, [])
 
   useEffect(() => {
+    void shikiStreamService.warmupWorker()
+
     // 在组件卸载时清理 Worker
     return () => {
       shikiStreamService.dispose()

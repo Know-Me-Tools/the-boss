@@ -3,6 +3,7 @@ import type { AgentRuntimeConfig, AgentRuntimeKind, GetAgentSessionResponse } fr
 import { AgentRuntimeConfigSchema } from '@types'
 
 import { codexCliService, type CodexRuntimeModel } from './CodexCliService'
+import type { ManagedBinaryInstallOptions, ManagedBinaryProgress } from './ManagedBinaryService'
 import { type ManagedRuntimeName, type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
 import { openCodeCliService, type OpenCodeRuntimeModel } from './OpenCodeCliService'
 import {
@@ -39,6 +40,17 @@ export type RuntimeHealthState =
   | 'unsupported'
   | 'unsupported-platform'
 
+export type RuntimeHealthCode =
+  | 'runtime_not_ready'
+  | 'download_timeout'
+  | 'download_failed'
+  | 'verification_failed'
+  | 'provider_unsupported'
+  | 'auth_timeout'
+  | 'sidecar_start_timeout'
+  | 'operation_cancelled'
+  | 'unsupported_platform'
+
 export interface RuntimeHealthResult {
   kind: AgentRuntimeKind
   state: RuntimeHealthState
@@ -46,6 +58,11 @@ export interface RuntimeHealthResult {
   binaryPath?: string
   binarySource?: RuntimeBinarySource
   message: string
+  code?: RuntimeHealthCode
+}
+
+export interface RuntimeOperationOptions extends ManagedBinaryInstallOptions {
+  onProgress?: (progress: ManagedBinaryProgress) => void
 }
 
 type RuntimeProfileRepositoryLike = Pick<
@@ -56,7 +73,7 @@ type RuntimeProfileRepositoryLike = Pick<
 type UniversalAgentRuntimeServiceLike = {
   ensureRunning(runtimeConfig: AgentRuntimeConfig, providerOptions?: UarProviderRuntimeOptions): Promise<string>
   getStatus(runtimeConfig: AgentRuntimeConfig): Promise<UarSidecarStatus>
-  installManagedBinary(): Promise<UarSidecarStatus>
+  installManagedBinary(options?: ManagedBinaryInstallOptions): Promise<UarSidecarStatus>
   stop(): Promise<void>
 }
 
@@ -179,7 +196,7 @@ export class RuntimeControlService {
     if (config.kind === 'uar') {
       if (config.mode === 'embedded') {
         const before = await this.uarService.getStatus(config)
-        if (before.state === 'missing-binary') {
+        if (before.state === 'missing-binary' || before.state === 'not-installed') {
           return mapUarStatus(before)
         }
 
@@ -284,27 +301,32 @@ export class RuntimeControlService {
     }
   }
 
-  async installManagedBinary(request?: { name?: string }): Promise<RuntimeHealthResult> {
+  async installManagedBinary(
+    request?: { name?: string; operationId?: string; timeoutMs?: number },
+    options: RuntimeOperationOptions = {}
+  ): Promise<RuntimeHealthResult> {
     const name = request?.name ?? 'universal-agent-runtime'
     if (!isManagedRuntimeName(name)) {
       return {
         kind: 'uar',
         state: 'unsupported',
-        message: `Managed binary ${name} is not supported.`
+        message: `Managed binary ${name} is not supported.`,
+        code: 'runtime_not_ready'
       }
     }
 
     if (name === 'universal-agent-runtime') {
-      return mapUarStatus(await this.uarService.installManagedBinary())
+      return mapUarStatus(await this.uarService.installManagedBinary(options))
     }
 
-    const status = await this.managedRuntimeService.install(name)
+    const status = await this.managedRuntimeService.install(name, options)
     return {
       kind: name === 'codex' ? 'codex' : 'opencode',
       state: status.state === 'missing' ? 'not-installed' : status.state,
       binaryPath: status.binaryPath,
       binarySource: 'managed',
-      message: status.message
+      message: status.message,
+      code: mapManagedBinaryCode(status.state, status.message)
     }
   }
 
@@ -329,7 +351,8 @@ export class RuntimeControlService {
       return {
         kind,
         state: 'not-ready',
-        message: `${kind} remote endpoint is not configured.`
+        message: `${kind} remote endpoint is not configured.`,
+        code: 'runtime_not_ready'
       }
     }
 
@@ -345,7 +368,8 @@ export class RuntimeControlService {
         endpoint,
         message: response.ok
           ? `${kind} remote endpoint is ready.`
-          : `${kind} remote endpoint returned status ${response.status}.`
+          : `${kind} remote endpoint returned status ${response.status}.`,
+        code: response.ok ? undefined : 'runtime_not_ready'
       }
     } catch (error) {
       logger.warn('Runtime remote endpoint test failed', {
@@ -357,7 +381,8 @@ export class RuntimeControlService {
         kind,
         state: 'unreachable',
         endpoint,
-        message: `${kind} remote endpoint is unreachable.`
+        message: `${kind} remote endpoint is unreachable.`,
+        code: 'runtime_not_ready'
       }
     }
   }
@@ -370,8 +395,31 @@ function mapUarStatus(status: UarSidecarStatus): RuntimeHealthResult {
     endpoint: status.endpoint,
     binaryPath: status.binaryPath,
     binarySource: status.binarySource,
-    message: status.message
+    message: status.message,
+    code: mapManagedBinaryCode(status.state, status.message)
   }
+}
+
+function mapManagedBinaryCode(state: string, message: string): RuntimeHealthCode | undefined {
+  if (message.toLowerCase().includes('cancel')) {
+    return 'operation_cancelled'
+  }
+  if (message.toLowerCase().includes('timed out') || message.toLowerCase().includes('timeout')) {
+    return 'download_timeout'
+  }
+  if (state === 'verification-failed') {
+    return 'verification_failed'
+  }
+  if (state === 'download-failed') {
+    return 'download_failed'
+  }
+  if (state === 'unsupported' || state === 'unsupported-platform') {
+    return state === 'unsupported-platform' ? 'unsupported_platform' : 'runtime_not_ready'
+  }
+  if (state === 'missing-binary' || state === 'not-installed' || state === 'not-ready' || state === 'unreachable') {
+    return 'runtime_not_ready'
+  }
+  return undefined
 }
 
 function isRunnableRuntimeStatus(status: RuntimeHealthResult): boolean {

@@ -282,7 +282,8 @@ export async function fetchChatCompletion({
     params: aiSdkParams,
     modelId,
     capabilities,
-    webSearchPluginConfig
+    webSearchPluginConfig,
+    idleTimeout
   } = await buildStreamTextParams(messages, assistant, provider, {
     mcpTools: mcpTools,
     allowedTools: effectiveAllowedTools,
@@ -305,6 +306,7 @@ export async function fetchChatCompletion({
     enableWebSearch: capabilities.enableWebSearch,
     enableGenerateImage: capabilities.enableGenerateImage,
     enableUrlContext: capabilities.enableUrlContext,
+    idleTimeout,
     mcpMode,
     mcpTools,
     uiMessages,

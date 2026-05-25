@@ -100,7 +100,8 @@ describe('runtime agent model foundation', () => {
 
     expect(result.kind).toBe('uar')
     expect(result.capabilities.approvals).toBe(false)
-    expect(result.warnings).toEqual(
+    expect(result.compatible).toBe(false)
+    expect(result.blockingIssues).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           code: 'runtime.approvals.unsupported',

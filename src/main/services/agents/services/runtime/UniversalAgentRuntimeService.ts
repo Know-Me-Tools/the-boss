@@ -9,7 +9,11 @@ import { getDataPath } from '@main/utils'
 import type { AgentRuntimeConfig } from '@types'
 import { app } from 'electron'
 
-import { type ManagedBinaryResolution, type ManagedBinaryStatus } from './ManagedBinaryService'
+import {
+  type ManagedBinaryInstallOptions,
+  type ManagedBinaryResolution,
+  type ManagedBinaryStatus
+} from './ManagedBinaryService'
 import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
 import { type RuntimeBinaryDiscoveryService, runtimeBinaryDiscoveryService } from './RuntimeBinaryDiscoveryService'
 
@@ -69,7 +73,7 @@ interface UarNativeToolsConfig {
 
 type ManagedBinaryServiceLike = {
   resolveInstalledBinary(name: 'universal-agent-runtime'): Promise<ManagedBinaryResolution>
-  install?(name: 'universal-agent-runtime'): Promise<ManagedBinaryStatus>
+  install?(name: 'universal-agent-runtime', options?: ManagedBinaryInstallOptions): Promise<ManagedBinaryStatus>
 }
 
 interface UniversalAgentRuntimeServiceDependencies {
@@ -188,7 +192,7 @@ export class UniversalAgentRuntimeService {
     }
   }
 
-  async installManagedBinary(): Promise<UarSidecarStatus> {
+  async installManagedBinary(options?: ManagedBinaryInstallOptions): Promise<UarSidecarStatus> {
     const managedBinaryService = this.managedBinaryService ?? this.managedRuntimeService
     if (!managedBinaryService.install) {
       return {
@@ -199,7 +203,7 @@ export class UniversalAgentRuntimeService {
       }
     }
 
-    return mapManagedBinaryStatus(await managedBinaryService.install('universal-agent-runtime'))
+    return mapManagedBinaryStatus(await managedBinaryService.install('universal-agent-runtime', options))
   }
 
   async stop(): Promise<void> {
@@ -407,7 +411,8 @@ security:
 
 resilience:
   rate_limit_enabled: false
-  timeout_disabled: true
+  request_timeout_ms: 120000
+  idle_timeout_ms: 30000
   requests_per_second: 100.0
   burst_size: 200.0
 
@@ -514,14 +519,15 @@ async function waitForUarReady(endpoint: string, child: ChildProcess): Promise<v
 }
 
 async function isHealthy(endpoint: string, pathName: string): Promise<boolean> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 1000)
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 1000)
     const response = await fetch(new URL(pathName, endpoint), { signal: controller.signal })
-    clearTimeout(timeout)
     return response.ok
   } catch {
     return false
+  } finally {
+    clearTimeout(timeout)
   }
 }
 

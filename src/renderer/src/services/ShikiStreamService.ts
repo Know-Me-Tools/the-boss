@@ -31,7 +31,7 @@ const SERVICE_CONFIG = {
   WORKER: {
     MAX_INIT_RETRY: 2, // 最大初始化重试次数
     REQUEST_TIMEOUT: {
-      INIT: 5000, // 初始化操作超时时间（毫秒）
+      INIT: 30000, // 初始化操作超时时间（毫秒）
       HIGHLIGHT: 30000, // 高亮操作超时时间（毫秒）
       DEFAULT: 10000 // 默认超时时间（毫秒）
     }
@@ -62,6 +62,8 @@ export interface HighlightChunkResult {
  * - 优先使用 Worker 处理高亮请求。
  */
 class ShikiStreamService {
+  public readonly MAX_WORKER_INIT_RETRY = SERVICE_CONFIG.WORKER.MAX_INIT_RETRY
+
   // 主线程 highlighter 和 tokenizers
   private highlighter: HighlighterGeneric<any, any> | null = null
 
@@ -84,7 +86,8 @@ class ShikiStreamService {
 
   // Worker 相关资源
   private worker: Worker | null = null
-  private workerInitPromise: Promise<void> | null = null
+  private workerInitPromise: Promise<boolean> | null = null
+  private workerWarmupPromise: Promise<void> | null = null
   private workerInitRetryCount: number = 0
   private pendingRequests = new Map<
     number,
@@ -122,17 +125,17 @@ class ShikiStreamService {
   /**
    * 初始化 Worker
    */
-  private async initWorker(): Promise<void> {
-    if (typeof Worker === 'undefined') return
+  private async initWorker(): Promise<boolean> {
+    if (typeof Worker === 'undefined') return false
     if (this.workerInitPromise) return this.workerInitPromise
-    if (this.worker) return
+    if (this.worker) return true
 
     if (this.workerInitRetryCount >= SERVICE_CONFIG.WORKER.MAX_INIT_RETRY) {
       logger.debug('ShikiStream worker initialization failed too many times, stop trying')
-      return
+      return false
     }
 
-    this.workerInitPromise = (async () => {
+    this.workerInitPromise = (async (): Promise<boolean> => {
       try {
         // 动态导入 worker
         const WorkerModule = await import('../workers/shiki-stream.worker?worker')
@@ -165,10 +168,12 @@ class ShikiStreamService {
           themes: DEFAULT_THEMES
         })
         this.workerInitRetryCount = 0
+        return true
       } catch (error) {
         this.worker?.terminate()
         this.worker = null
         this.workerInitRetryCount++
+        logger.warn('Failed to initialize worker, using plain code rendering:', error as Error)
         throw error
       } finally {
         this.workerInitPromise = null
@@ -176,6 +181,27 @@ class ShikiStreamService {
     })()
 
     return this.workerInitPromise
+  }
+
+  /**
+   * Eagerly initialize the worker so packaged builds do the expensive Shiki load
+   * before the first streamed assistant response needs syntax highlighting.
+   */
+  public async warmupWorker(): Promise<void> {
+    if (typeof Worker === 'undefined' || this.worker || this.workerInitPromise) return
+    if (this.workerWarmupPromise) return this.workerWarmupPromise
+
+    this.workerWarmupPromise = (async () => {
+      try {
+        await this.initWorker()
+      } catch {
+        // initWorker already logs once per real initialization failure.
+      } finally {
+        this.workerWarmupPromise = null
+      }
+    })()
+
+    return this.workerWarmupPromise
   }
 
   /**
@@ -378,17 +404,23 @@ class ShikiStreamService {
     theme: string,
     callerId: string
   ): Promise<HighlightChunkResult> {
+    const canUseWorker = typeof Worker !== 'undefined'
+
     // 检查callerId是否需要降级处理
     if (this.workerDegradationCache.has(callerId)) {
-      return this.highlightWithMainThread(chunk, language, theme, callerId)
+      return canUseWorker
+        ? this.highlightWithPlainText(chunk)
+        : this.highlightWithMainThread(chunk, language, theme, callerId)
     }
 
     // 初始化 worker
     if (!this.worker) {
       try {
         await this.initWorker()
-      } catch (error) {
-        logger.warn('Failed to initialize worker, falling back to main thread:', error as Error)
+      } catch {
+        if (canUseWorker) {
+          return this.highlightWithPlainText(chunk)
+        }
       }
     }
 
@@ -407,15 +439,34 @@ class ShikiStreamService {
         // Worker 处理失败，记录callerId并永久降级到主线程
         // FIXME: 这种情况如果出现，流式高亮语法状态就会丢失，目前用降级策略来处理
         this.workerDegradationCache.set(callerId, true)
-        logger.error(
-          `Worker highlight failed for callerId ${callerId}, permanently falling back to main thread:`,
-          error as Error
-        )
+        logger.error(`Worker highlight failed for callerId ${callerId}, using plain code rendering:`, error as Error)
+        if (canUseWorker) {
+          return this.highlightWithPlainText(chunk)
+        }
       }
     }
 
-    // 使用主线程处理
+    if (canUseWorker) {
+      return this.highlightWithPlainText(chunk)
+    }
+
+    // Worker 不可用的环境（例如单元测试）仍使用主线程处理
     return this.highlightWithMainThread(chunk, language, theme, callerId)
+  }
+
+  private highlightWithPlainText(chunk: string): HighlightChunkResult {
+    const lines = (chunk || '').split('\n')
+
+    return {
+      lines: lines.map((content) => [
+        {
+          content,
+          offset: 0,
+          htmlStyle: { color: 'inherit' }
+        } as ThemedToken
+      ]),
+      recall: 0
+    }
   }
 
   /**
@@ -542,6 +593,7 @@ class ShikiStreamService {
     // Just clear the reference
     this.highlighter = null
     this.workerInitPromise = null
+    this.workerWarmupPromise = null
     this.workerInitRetryCount = 0
   }
 }

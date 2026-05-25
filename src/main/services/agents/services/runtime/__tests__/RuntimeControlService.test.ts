@@ -168,7 +168,7 @@ describe('RuntimeControlService', () => {
         binarySource: 'managed'
       })
     )
-    expect(installManagedBinary).toHaveBeenCalled()
+    expect(installManagedBinary).toHaveBeenCalledWith({})
   })
 
   it('rejects unsupported managed binary install requests', async () => {
@@ -214,7 +214,7 @@ describe('RuntimeControlService', () => {
         message: 'Managed Codex binary is installed.'
       })
     )
-    expect(install).toHaveBeenCalledWith('codex')
+    expect(install).toHaveBeenCalledWith('codex', {})
   })
 
   it('discovers existing runtime binaries from PATH through the runtime control plane', async () => {

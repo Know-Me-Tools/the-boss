@@ -12,6 +12,29 @@ import { describe, expect, it, vi } from 'vitest'
 import AiSdkToChunkAdapter from '../AiSdkToChunkAdapter'
 
 describe('AiSdkToChunkAdapter data-context-management', () => {
+  it('resets and cleans up the idle timeout while consuming an active stream', async () => {
+    const idleTimeout = {
+      reset: vi.fn(),
+      cleanup: vi.fn(),
+      signal: new AbortController().signal
+    }
+    const adapter = new AiSdkToChunkAdapter(vi.fn(), [], false, false, undefined, undefined, undefined, idleTimeout)
+
+    await adapter.processStream({
+      fullStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'text-delta', text: 'hello' } as any)
+          controller.enqueue({ type: 'text-delta', text: ' world' } as any)
+          controller.close()
+        }
+      }),
+      text: Promise.resolve('hello world')
+    })
+
+    expect(idleTimeout.reset).toHaveBeenCalledTimes(3)
+    expect(idleTimeout.cleanup).toHaveBeenCalledTimes(1)
+  })
+
   it('emits CONTEXT_MANAGEMENT chunk', async () => {
     const onChunk = vi.fn()
     const adapter = new AiSdkToChunkAdapter(onChunk, [], false, false)

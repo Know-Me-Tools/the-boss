@@ -70,6 +70,7 @@ const AgentRuntimeSettings: FC = () => {
   const [loadingRuntime, setLoadingRuntime] = useState<AgentRuntimeKind | null>(null)
   const [loadingDiscovery, setLoadingDiscovery] = useState<AgentRuntimeKind | null>(null)
   const [installingRuntime, setInstallingRuntime] = useState<AgentRuntimeKind | null>(null)
+  const [installOperation, setInstallOperation] = useState<{ kind: AgentRuntimeKind; operationId: string } | null>(null)
   const [rustToolchainStatus, setRustToolchainStatus] = useState<DependencyStatus[]>([])
   const [isLoadingRustToolchainStatus, setIsLoadingRustToolchainStatus] = useState(false)
   const [isInstallingRustToolchain, setIsInstallingRustToolchain] = useState(false)
@@ -249,7 +250,9 @@ const AgentRuntimeSettings: FC = () => {
       if (!row.managedName) {
         return
       }
+      const operationId = globalThis.crypto?.randomUUID?.() ?? `install-${Date.now()}`
       setInstallingRuntime(row.kind)
+      setInstallOperation({ kind: row.kind, operationId })
       setStatuses((current) => ({
         ...current,
         [row.kind]: {
@@ -260,15 +263,43 @@ const AgentRuntimeSettings: FC = () => {
         }
       }))
       try {
-        const status = await window.api.agentRuntime.installManagedBinary({ name: row.managedName })
+        const status = await window.api.agentRuntime.installManagedBinary({ name: row.managedName, operationId })
         setStatuses((current) => ({ ...current, [row.kind]: status }))
         await upsertRuntimeConfig(row, { sidecar: { binaryPath: undefined } })
       } finally {
+        setInstallOperation(null)
         setInstallingRuntime(null)
       }
     },
     [t, upsertRuntimeConfig]
   )
+
+  useEffect(() => {
+    return window.api.agentRuntime.onOperationProgress((progress) => {
+      if (!installOperation || progress.operationId !== installOperation.operationId) {
+        return
+      }
+      setStatuses((current) => ({
+        ...current,
+        [installOperation.kind]: {
+          kind: installOperation.kind,
+          state: progress.phase as RuntimeHealthState,
+          binarySource: current[installOperation.kind]?.binarySource ?? 'managed',
+          binaryPath: current[installOperation.kind]?.binaryPath,
+          message:
+            progress.message ??
+            t('settings.agentRuntimes.downloading', 'Downloading managed runtime binary from IPFS...')
+        }
+      }))
+    })
+  }, [installOperation, t])
+
+  const cancelInstallRuntime = useCallback(async () => {
+    if (!installOperation) {
+      return
+    }
+    await window.api.agentRuntime.cancelOperation(installOperation.operationId)
+  }, [installOperation])
 
   const refreshRustToolchainStatus = useCallback(async () => {
     setIsLoadingRustToolchainStatus(true)
@@ -390,6 +421,14 @@ const AgentRuntimeSettings: FC = () => {
                       }}>
                       {t('settings.agentRuntimes.install', 'Download verified runtime')}
                     </Button>
+                    {installOperation?.kind === row.kind && (
+                      <Button
+                        onClick={() => {
+                          void cancelInstallRuntime()
+                        }}>
+                        {t('settings.agentRuntimes.cancelInstall', 'Cancel')}
+                      </Button>
+                    )}
                     <Button
                       icon={<FolderOpen size={15} />}
                       onClick={() => {

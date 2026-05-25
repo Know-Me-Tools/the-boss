@@ -102,21 +102,27 @@ export function resolveRuntimeCompatibility(session: GetAgentSessionResponse): R
   const kind = resolveRuntimeKind(session)
   const capabilities = RUNTIME_CAPABILITY_MATRIX[kind] ?? DEFAULT_RUNTIME_CAPABILITIES
   const required = getRequiredRuntimeCapabilities(session)
-  const warnings = required
+  const unsupported = required
     .filter((capability) => !capabilities[capability])
     .map((capability) => ({
       code: `runtime.${capability}.unsupported`,
       message: `The selected ${kind} runtime does not natively support ${capability}.`,
       capability
     }))
+  const blockingIssues = unsupported.filter((issue) => isBlockingRuntimeCapability(issue.capability))
+  const warnings = unsupported.filter((issue) => !isBlockingRuntimeCapability(issue.capability))
 
   return {
     kind,
     capabilities,
-    compatible: true,
+    compatible: blockingIssues.length === 0,
     warnings,
-    blockingIssues: []
+    blockingIssues
   }
+}
+
+function isBlockingRuntimeCapability(capability: RuntimeCapabilityKey): boolean {
+  return capability === 'tools' || capability === 'mcp' || capability === 'fileAccess' || capability === 'approvals'
 }
 
 function getRequiredRuntimeCapabilities(session: GetAgentSessionResponse): RuntimeCapabilityKey[] {

@@ -12,7 +12,12 @@ import { OpenCodeRuntimeAdapter } from './OpenCodeRuntimeAdapter'
 import type { AgentTurnInput } from './RuntimeContextBundle'
 import { runtimeControlService } from './RuntimeControlService'
 import { runtimeSkillBridgeService } from './RuntimeSkillBridgeService'
-import { type AgentRuntimeCapabilities, DEFAULT_RUNTIME_CAPABILITIES, resolveRuntimeKind } from './types'
+import {
+  type AgentRuntimeCapabilities,
+  DEFAULT_RUNTIME_CAPABILITIES,
+  resolveRuntimeCompatibility,
+  resolveRuntimeKind
+} from './types'
 import { UarRuntimeAdapter } from './UarRuntimeAdapter'
 
 const logger = loggerService.withContext('AgentRuntimeRouter')
@@ -40,6 +45,12 @@ export class AgentRuntimeRouter implements AgentServiceInterface {
     images?: Array<{ data: string; media_type: string }>
   ): Promise<AgentStream> {
     const effectiveSession = await this.withEffectiveRuntimeConfig(session)
+    const compatibility = resolveRuntimeCompatibility(effectiveSession)
+    if (!compatibility.compatible) {
+      throw new Error(
+        `provider_unsupported: The selected ${compatibility.kind} runtime cannot support this agent configuration: ${compatibility.blockingIssues.map((issue) => issue.message).join(' ')}`
+      )
+    }
     const runtime = effectiveSession.configuration?.runtime
     if (runtime) {
       await runtimeControlService.ensureRunnable(runtime)

@@ -44,6 +44,10 @@ import { getAnthropicInternalHeaders } from './apiServer/middleware/anthropicOAu
 import { agentMessageRepository } from './services/agents/database'
 import { runtimeApprovalService } from './services/agents/services/runtime/RuntimeApprovalService'
 import { runtimeControlService } from './services/agents/services/runtime/RuntimeControlService'
+import {
+  type RuntimeOperationProgress,
+  runtimeOperationRegistry
+} from './services/agents/services/runtime/RuntimeOperationRegistry'
 import { skillScopeService } from './services/agents/skills/SkillScopeService'
 import { skillService } from './services/agents/skills/SkillService'
 import { analyticsService } from './services/AnalyticsService'
@@ -301,8 +305,54 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
   ipcMain.handle(IpcChannel.AgentRuntime_DiscoverBinary, async (_event, kind) =>
     runtimeControlService.discoverRuntimeBinary(kind)
   )
-  ipcMain.handle(IpcChannel.AgentRuntime_InstallManagedBinary, async (_event, request) =>
-    runtimeControlService.installManagedBinary(request)
+  ipcMain.handle(IpcChannel.AgentRuntime_InstallManagedBinary, async (event, request) => {
+    const operation = runtimeOperationRegistry.start(request?.operationId)
+    const sendProgress = (progress: Omit<RuntimeOperationProgress, 'operationId' | 'lastActivityAt'>) => {
+      event.sender.send(IpcChannel.AgentRuntime_OperationProgress, {
+        ...progress,
+        operationId: operation.operationId,
+        lastActivityAt: new Date().toISOString()
+      } satisfies RuntimeOperationProgress)
+    }
+
+    sendProgress({
+      status: 'running',
+      phase: 'starting',
+      message: 'Preparing managed runtime install.'
+    })
+
+    try {
+      const result = await runtimeControlService.installManagedBinary(
+        { ...request, operationId: operation.operationId },
+        {
+          signal: operation.signal,
+          timeoutMs: request?.timeoutMs,
+          onProgress: sendProgress
+        }
+      )
+      sendProgress({
+        status: result.state === 'installed' || result.state === 'ready' ? 'completed' : 'failed',
+        phase: result.state,
+        message: result.message,
+        code: result.code
+      })
+      return result
+    } catch (error) {
+      const cancelled = operation.signal.aborted
+      const message = error instanceof Error ? error.message : String(error)
+      sendProgress({
+        status: cancelled ? 'cancelled' : 'failed',
+        phase: cancelled ? 'cancelled' : 'failed',
+        message,
+        code: cancelled ? 'operation_cancelled' : 'runtime_not_ready'
+      })
+      throw error
+    } finally {
+      runtimeOperationRegistry.finish(operation.operationId)
+    }
+  })
+  ipcMain.handle(IpcChannel.AgentRuntime_CancelOperation, async (_event, operationId: string) =>
+    runtimeOperationRegistry.cancel(operationId)
   )
   ipcMain.handle(IpcChannel.AgentRuntime_ListCodexModels, async (_event, runtimeConfig) =>
     runtimeControlService.listCodexModels(runtimeConfig)

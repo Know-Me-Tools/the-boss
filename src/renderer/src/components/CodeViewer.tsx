@@ -88,7 +88,7 @@ const CodeViewer = ({
   onRequestExpand
 }: CodeViewerProps) => {
   const { codeShowLineNumbers: _lineNumbers, fontSize: _fontSize } = useSettings()
-  const { getShikiPreProperties, isShikiThemeDark } = useCodeStyle()
+  const { isShikiThemeDark } = useCodeStyle()
   const shikiThemeRef = useRef<HTMLDivElement>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const callerId = useRef(`${Date.now()}-${uuid()}`).current
@@ -113,29 +113,6 @@ const CodeViewer = ({
     () => (lineNumbers ? Math.max(rawLines.length.toString().length, 1) : 0),
     [lineNumbers, rawLines.length]
   )
-
-  // 设置 pre 标签属性
-  useLayoutEffect(() => {
-    let mounted = true
-    void getShikiPreProperties(language).then((properties) => {
-      if (!mounted) return
-      const shikiTheme = shikiThemeRef.current
-      if (shikiTheme) {
-        shikiTheme.className = `${properties.class || 'shiki'} code-viewer ${className ?? ''}`
-        // 滚动条适应 shiki 主题变化而非应用主题
-        shikiTheme.classList.add(isShikiThemeDark ? 'shiki-dark' : 'shiki-light')
-
-        if (properties.style) {
-          shikiTheme.style.cssText += `${properties.style}`
-        }
-        // FIXME: 临时解决 SelectionToolbar 无法弹出，走剪贴板回退的问题
-        // shikiTheme.tabIndex = properties.tabindex
-      }
-    })
-    return () => {
-      mounted = false
-    }
-  }, [language, getShikiPreProperties, isShikiThemeDark, className])
 
   // 保存当前选区的逻辑位置
   const saveSelection = useCallback((): SavedSelection | null => {
@@ -428,7 +405,10 @@ const CodeViewer = ({
   }, [rawLines.length, onHeightChange])
 
   return (
-    <div ref={shikiThemeRef} style={expanded ? undefined : { height }}>
+    <div
+      ref={shikiThemeRef}
+      className={`shiki code-viewer ${isShikiThemeDark ? 'shiki-dark' : 'shiki-light'} ${className ?? ''}`}
+      style={expanded ? undefined : { height }}>
       <ScrollContainer
         ref={scrollerRef}
         className="shiki-scroller"

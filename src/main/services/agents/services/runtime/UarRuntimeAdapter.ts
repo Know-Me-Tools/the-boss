@@ -32,6 +32,13 @@ export class UarRuntimeAdapter implements AgentServiceInterface {
       )
     }
     const provider = modelInfo.provider
+    if (provider.type === 'vertexai' || provider.type === 'vertex-anthropic') {
+      return enqueueRuntimeError(
+        new Error(
+          'provider_unsupported: UAR does not support Vertex AI providers yet. Select Claude runtime for Vertex Anthropic models or use a direct OpenAI-compatible provider.'
+        )
+      )
+    }
 
     const stream = new RuntimeAgentStream()
 
@@ -47,37 +54,43 @@ export class UarRuntimeAdapter implements AgentServiceInterface {
           const authHeaders: Record<string, string> = runtimeConfig.authRef
             ? { authorization: `Bearer ${runtimeConfig.authRef}` }
             : {}
+          const watchdog = createUarRequestWatchdog(abortController.signal)
 
-          await emitModelCatalogEvent(stream, endpoint, authHeaders, abortController.signal)
+          try {
+            await emitModelCatalogEvent(stream, endpoint, authHeaders, watchdog.signal)
 
-          const response = await fetch(new URL('/v1/chat/completions', endpoint), {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              ...authHeaders,
-              ...(lastAgentSessionId ? { 'x-uar-session-id': lastAgentSessionId } : {})
-            },
-            body: JSON.stringify({
-              model: modelInfo.modelId,
-              messages: [
-                {
-                  role: 'user',
-                  content: promptText
-                }
-              ],
-              stream: true,
-              stream_mode: 'openai'
-            }),
-            signal: abortController.signal
-          })
+            const response = await fetch(new URL('/v1/chat/completions', endpoint), {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                ...authHeaders,
+                ...(lastAgentSessionId ? { 'x-uar-session-id': lastAgentSessionId } : {})
+              },
+              body: JSON.stringify({
+                model: modelInfo.modelId,
+                messages: [
+                  {
+                    role: 'user',
+                    content: promptText
+                  }
+                ],
+                stream: true,
+                stream_mode: 'openai'
+              }),
+              signal: watchdog.signal
+            })
+            watchdog.markFirstByte()
 
-          if (!response.ok) {
-            throw new Error(`UAR runtime request failed with status ${response.status}`)
+            if (!response.ok) {
+              throw new Error(`UAR runtime request failed with status ${response.status}`)
+            }
+
+            stream.sdkSessionId = response.headers.get('x-uar-session-id') ?? lastAgentSessionId
+            await consumeUarResponse(response, stream, watchdog.resetActivity)
+            stream.emitComplete()
+          } finally {
+            watchdog.dispose()
           }
-
-          stream.sdkSessionId = response.headers.get('x-uar-session-id') ?? lastAgentSessionId
-          await consumeUarResponse(response, stream)
-          stream.emitComplete()
         } catch (error) {
           if (abortController.signal.aborted) {
             stream.emit('data', { type: 'cancelled' })
@@ -138,19 +151,28 @@ async function emitModelCatalogEvent(
   }
 }
 
-async function consumeUarResponse(response: Response, stream: RuntimeAgentStream): Promise<void> {
+async function consumeUarResponse(
+  response: Response,
+  stream: RuntimeAgentStream,
+  resetActivity: () => void
+): Promise<void> {
   const contentType = response.headers.get('content-type') ?? ''
   if (contentType.includes('text/event-stream') && response.body) {
-    await consumeSseResponse(response, stream)
+    await consumeSseResponse(response, stream, resetActivity)
     return
   }
 
+  resetActivity()
   const payload = await response.json()
   emitTextBlock(stream, extractUarText(payload))
   emitUarPayload(stream, payload)
 }
 
-async function consumeSseResponse(response: Response, stream: RuntimeAgentStream): Promise<void> {
+async function consumeSseResponse(
+  response: Response,
+  stream: RuntimeAgentStream,
+  resetActivity: () => void
+): Promise<void> {
   const reader = response.body?.getReader()
   if (!reader) return
 
@@ -161,6 +183,7 @@ async function consumeSseResponse(response: Response, stream: RuntimeAgentStream
     const { done, value } = await reader.read()
     if (done) break
 
+    resetActivity()
     buffer += decoder.decode(value, { stream: true })
     const events = buffer.split(/\r?\n\r?\n/)
     buffer = events.pop() ?? ''
@@ -172,6 +195,79 @@ async function consumeSseResponse(response: Response, stream: RuntimeAgentStream
 
   if (buffer.trim()) {
     processSseEvent(buffer, stream)
+  }
+}
+
+function createUarRequestWatchdog(parentSignal: AbortSignal): {
+  signal: AbortSignal
+  markFirstByte: () => void
+  resetActivity: () => void
+  dispose: () => void
+} {
+  const controller = new AbortController()
+  const timeouts = new Set<NodeJS.Timeout>()
+  let idleTimeout: NodeJS.Timeout | undefined
+  let waitingForFirstByte = true
+  let parentAbortListener: (() => void) | undefined
+
+  const abort = (reason: Error) => {
+    if (!controller.signal.aborted) {
+      controller.abort(reason)
+    }
+  }
+  const setTrackedTimeout = (callback: () => void, ms: number) => {
+    const timeout = setTimeout(() => {
+      timeouts.delete(timeout)
+      callback()
+    }, ms)
+    timeouts.add(timeout)
+    return timeout
+  }
+  const clearTrackedTimeout = (timeout: NodeJS.Timeout | undefined) => {
+    if (!timeout) return
+    clearTimeout(timeout)
+    timeouts.delete(timeout)
+  }
+
+  if (parentSignal.aborted) {
+    abort(parentSignal.reason instanceof Error ? parentSignal.reason : new Error('UAR request cancelled.'))
+  } else {
+    parentAbortListener = () =>
+      abort(parentSignal.reason instanceof Error ? parentSignal.reason : new Error('UAR request cancelled.'))
+    parentSignal.addEventListener('abort', parentAbortListener, { once: true })
+  }
+
+  const firstByteTimeout = setTrackedTimeout(() => {
+    if (waitingForFirstByte) {
+      abort(new Error('first_byte_timeout: UAR did not send response headers within 30 seconds.'))
+    }
+  }, 30_000)
+
+  setTrackedTimeout(() => abort(new Error('request_timeout: UAR request exceeded 10 minutes.')), 10 * 60_000)
+
+  const resetActivity = () => {
+    if (controller.signal.aborted) return
+    clearTrackedTimeout(idleTimeout)
+    idleTimeout = setTrackedTimeout(() => abort(new Error('idle_timeout: UAR stream was idle for 30 seconds.')), 30_000)
+  }
+
+  return {
+    signal: controller.signal,
+    markFirstByte: () => {
+      waitingForFirstByte = false
+      clearTrackedTimeout(firstByteTimeout)
+      resetActivity()
+    },
+    resetActivity,
+    dispose: () => {
+      for (const timeout of timeouts) {
+        clearTimeout(timeout)
+      }
+      timeouts.clear()
+      if (parentAbortListener) {
+        parentSignal.removeEventListener('abort', parentAbortListener)
+      }
+    }
   }
 }
 

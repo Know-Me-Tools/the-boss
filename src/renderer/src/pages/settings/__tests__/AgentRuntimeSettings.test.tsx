@@ -73,7 +73,9 @@ describe('AgentRuntimeSettings', () => {
           available: kind === 'codex',
           message: kind === 'codex' ? 'codex was detected on PATH at /usr/local/bin/codex.' : `${kind} missing`
         })),
-        installManagedBinary: vi.fn()
+        installManagedBinary: vi.fn(),
+        cancelOperation: vi.fn(async () => true),
+        onOperationProgress: vi.fn(() => () => undefined)
       },
       dependencies: {
         getStatuses: vi.fn(async () => [])

@@ -111,6 +111,8 @@ describe('RuntimeSettings', () => {
           binarySource: 'managed',
           message: 'Managed UAR binary is installed.'
         })),
+        cancelOperation: vi.fn(async () => true),
+        onOperationProgress: vi.fn(() => () => undefined),
         testConnection: vi.fn(async () => ({
           kind: 'uar',
           state: 'ready',
@@ -320,7 +322,9 @@ describe('RuntimeSettings', () => {
     expect(await screen.findByText('A managed binary update is available.')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Download verified runtime'))
 
-    expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith({ name: 'universal-agent-runtime' })
+    expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'universal-agent-runtime' })
+    )
     expect(await screen.findByText('Managed UAR binary is installed.')).toBeInTheDocument()
   })
 
@@ -336,7 +340,9 @@ describe('RuntimeSettings', () => {
     expect(await screen.findByText('Codex managed binary is missing.')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Download verified runtime'))
 
-    expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith({ name: 'codex' })
+    expect(window.api.agentRuntime.installManagedBinary).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'codex' })
+    )
   })
 
   it('lets users adopt a detected PATH binary for the selected runtime', async () => {

@@ -678,8 +678,32 @@ const api = {
       ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
     discoverBinary: (kind: AgentRuntimeKind): Promise<RuntimeBinaryDiscoveryResult> =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_DiscoverBinary, kind),
-    installManagedBinary: (request: { name: 'universal-agent-runtime' | 'codex' | 'opencode' }) =>
-      ipcRenderer.invoke(IpcChannel.AgentRuntime_InstallManagedBinary, request),
+    installManagedBinary: (request: {
+      name: 'universal-agent-runtime' | 'codex' | 'opencode'
+      operationId?: string
+      timeoutMs?: number
+    }) => ipcRenderer.invoke(IpcChannel.AgentRuntime_InstallManagedBinary, request),
+    cancelOperation: (operationId: string): Promise<boolean> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_CancelOperation, operationId),
+    onOperationProgress: (
+      callback: (progress: {
+        operationId: string
+        status: 'running' | 'completed' | 'failed' | 'cancelled'
+        phase: string
+        progress?: number
+        receivedBytes?: number
+        totalBytes?: number
+        message?: string
+        code?: string
+        lastActivityAt: string
+      }) => void
+    ): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, progress: Parameters<typeof callback>[0]) => {
+        callback(progress)
+      }
+      ipcRenderer.on(IpcChannel.AgentRuntime_OperationProgress, listener)
+      return () => ipcRenderer.off(IpcChannel.AgentRuntime_OperationProgress, listener)
+    },
     listCodexModels: (runtimeConfig?: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_ListCodexModels, runtimeConfig),
     listOpenCodeModels: (runtimeConfig?: AgentRuntimeConfig) =>

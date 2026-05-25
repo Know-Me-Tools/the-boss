@@ -52,7 +52,7 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
     streamController = createStreamAbortController({
       timeoutMs: MESSAGE_STREAM_TIMEOUT_MS
     })
-    const { abortController, registerAbortHandler, dispose } = streamController
+    const { abortController, registerAbortHandler, resetAbortTimeout, dispose } = streamController
     const { stream, completion } = await sessionMessageService.createSessionMessage(
       session,
       messageData,
@@ -166,6 +166,7 @@ export const createMessage = async (req: Request, res: Response): Promise<void> 
             break
           }
 
+          resetAbortTimeout()
           res.write(`data: ${JSON.stringify(value)}\n\n`)
         }
 

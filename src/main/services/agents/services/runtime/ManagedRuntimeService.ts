@@ -7,6 +7,7 @@ import { CONTROL_PLANE_API_URL } from '@shared/config/branding'
 
 import {
   getManagedBinaryService,
+  type ManagedBinaryInstallOptions,
   type ManagedBinaryManifest,
   type ManagedBinaryResolution,
   type ManagedBinaryService,
@@ -61,8 +62,8 @@ export class ManagedRuntimeService {
     return this.getBinaryService().getStatus(await this.getManifest(name))
   }
 
-  async install(name: ManagedRuntimeName): Promise<ManagedBinaryStatus> {
-    return this.getBinaryService().install(await this.getManifest(name))
+  async install(name: ManagedRuntimeName, options?: ManagedBinaryInstallOptions): Promise<ManagedBinaryStatus> {
+    return this.getBinaryService().install(await this.getManifest(name), options)
   }
 
   async resolveInstalledBinary(name: ManagedRuntimeName): Promise<ManagedBinaryResolution> {

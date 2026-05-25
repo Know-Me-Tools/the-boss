@@ -6,6 +6,11 @@ describe('ShikiStreamService', () => {
   const language = 'typescript'
   const theme = 'one-light'
   const callerId = 'test-caller'
+  const originalWorker = globalThis.Worker
+
+  const getTextLines = (result: { lines: Array<Array<{ content: string }>> }) => {
+    return result.lines.map((line) => line.map((token) => token.content).join(''))
+  }
 
   // 保证每次测试环境干净
   beforeEach(() => {
@@ -13,6 +18,9 @@ describe('ShikiStreamService', () => {
   })
   afterEach(() => {
     shikiStreamService.dispose()
+    vi.useRealTimers()
+    globalThis.Worker = originalWorker
+    vi.restoreAllMocks()
   })
 
   describe('Worker initialization and degradation', () => {
@@ -38,8 +46,7 @@ describe('ShikiStreamService', () => {
       expect(result.recall).toBe(0)
     })
 
-    it('should fallback to main thread if worker initialization fails', async () => {
-      const originalWorker = globalThis.Worker
+    it('should fallback to main thread when worker is not available', async () => {
       // @ts-ignore: 强制删除 Worker 构造函数
       globalThis.Worker = undefined
 
@@ -49,27 +56,134 @@ describe('ShikiStreamService', () => {
       expect(shikiStreamService.hasWorkerHighlighter()).toBe(false)
       expect(result.lines.length).toBeGreaterThan(0)
       expect(result.recall).toBe(0)
+    })
 
-      // @ts-ignore: 恢复 Worker 构造函数
-      globalThis.Worker = originalWorker
+    it('should return plain lines without creating main-thread highlighter when worker init times out', async () => {
+      vi.spyOn(shikiStreamService as any, 'initWorker').mockRejectedValue(new Error('Worker init request timeout'))
+
+      const result = await shikiStreamService.highlightStreamingCode('line one\nline two', language, theme, callerId)
+
+      expect(getTextLines(result)).toEqual(['line one', 'line two'])
+      expect(result.recall).toBe(0)
+      expect(shikiStreamService.hasWorkerHighlighter()).toBe(false)
+      expect(shikiStreamService.hasMainHighlighter()).toBe(false)
+    })
+
+    it('should share one timed-out worker initialization across concurrent callers', async () => {
+      vi.useFakeTimers()
+      let workerCount = 0
+
+      class HangingWorker {
+        onmessage: ((event: MessageEvent) => void) | null = null
+
+        constructor() {
+          workerCount++
+        }
+
+        postMessage() {}
+        terminate() {}
+      }
+
+      globalThis.Worker = HangingWorker as unknown as typeof Worker
+
+      const first = shikiStreamService.highlightCodeChunk('const first = 1', language, theme, 'caller-one')
+      const second = shikiStreamService.highlightCodeChunk('const second = 2', language, theme, 'caller-two')
+
+      await vi.advanceTimersByTimeAsync(30000)
+
+      const [firstResult, secondResult] = await Promise.all([first, second])
+
+      expect(workerCount).toBe(1)
+      expect(getTextLines(firstResult)).toEqual(['const first = 1'])
+      expect(getTextLines(secondResult)).toEqual(['const second = 2'])
+      expect(shikiStreamService.hasMainHighlighter()).toBe(false)
     })
 
     it('should not retry worker after too many init failures', async () => {
-      // 模拟多次初始化失败
-      const spy = vi.spyOn(shikiStreamService as any, 'initWorker').mockImplementation(() => {
-        return Promise.reject(new Error('init failed'))
-      })
+      class ThrowingWorker {
+        constructor() {
+          throw new Error('init failed')
+        }
+      }
 
-      // @ts-ignore: access private
+      globalThis.Worker = ThrowingWorker as unknown as typeof Worker
+
       const maxRetryCount = shikiStreamService.MAX_WORKER_INIT_RETRY
 
-      // 连续多次调用
       for (let i = 1; i < maxRetryCount + 2; i++) {
-        shikiStreamService.highlightCodeChunk('const a = ' + i, language, theme, callerId).catch(() => {})
+        await shikiStreamService.highlightCodeChunk(`const a = ${i}`, language, theme, `${callerId}-${i}`)
         // @ts-ignore: access private
         expect(shikiStreamService.workerInitRetryCount).toBe(Math.min(i, maxRetryCount))
       }
-      spy.mockRestore()
+    })
+
+    it('should preserve streaming append and full-rehighlight output when using plain fallback', async () => {
+      vi.spyOn(shikiStreamService as any, 'initWorker').mockRejectedValue(new Error('Worker init request timeout'))
+
+      const initial = await shikiStreamService.highlightStreamingCode('const a = 1', language, theme, callerId)
+      const appended = await shikiStreamService.highlightStreamingCode(
+        'const a = 1\nconst b = 2',
+        language,
+        theme,
+        callerId
+      )
+      const replaced = await shikiStreamService.highlightStreamingCode('const z = 3', language, theme, callerId)
+
+      expect(getTextLines(initial)).toEqual(['const a = 1'])
+      expect(initial.recall).toBe(0)
+      expect(getTextLines(appended)).toEqual(['', 'const b = 2'])
+      expect(appended.recall).toBe(0)
+      expect(getTextLines(replaced)).toEqual(['const z = 3'])
+      expect(replaced.recall).toBe(-1)
+      expect(shikiStreamService.hasMainHighlighter()).toBe(false)
+    })
+
+    it('should make worker warmup idempotent', async () => {
+      const spy = vi.spyOn(shikiStreamService as any, 'initWorker').mockResolvedValue(true)
+
+      await Promise.all([
+        shikiStreamService.warmupWorker(),
+        shikiStreamService.warmupWorker(),
+        shikiStreamService.warmupWorker()
+      ])
+
+      expect(spy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('worker fallback after initialization', () => {
+    it('should use plain rendering after worker highlight failure', async () => {
+      vi.useFakeTimers()
+
+      class InitializedButSilentWorker {
+        onmessage: ((event: MessageEvent) => void) | null = null
+
+        postMessage(message: { id: number; type: string }) {
+          if (message.type === 'init') {
+            queueMicrotask(() => {
+              this.onmessage?.({
+                data: { id: message.id, type: 'init-result', result: { success: true } }
+              } as MessageEvent)
+            })
+          }
+        }
+
+        terminate() {}
+      }
+
+      globalThis.Worker = InitializedButSilentWorker as unknown as typeof Worker
+
+      const highlight = shikiStreamService.highlightCodeChunk('const x = 1', language, theme, callerId)
+
+      await vi.advanceTimersByTimeAsync(30000)
+
+      const result = await highlight
+
+      expect(getTextLines(result)).toEqual(['const x = 1'])
+      expect(result.recall).toBe(0)
+      expect(shikiStreamService.hasMainHighlighter()).toBe(false)
+      // @ts-ignore: access private
+      expect(shikiStreamService.workerDegradationCache.has(callerId)).toBe(true)
     })
   })
 

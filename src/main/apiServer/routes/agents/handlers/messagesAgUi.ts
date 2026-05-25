@@ -56,7 +56,7 @@ export const createAgUiMessage = async (req: Request, res: Response): Promise<vo
     streamController = createStreamAbortController({
       timeoutMs: MESSAGE_STREAM_TIMEOUT_MS
     })
-    const { abortController, registerAbortHandler, dispose } = streamController
+    const { abortController, registerAbortHandler, resetAbortTimeout, dispose } = streamController
     const { stream, completion } = await sessionMessageService.createSessionMessage(
       session,
       messageData,
@@ -115,6 +115,7 @@ export const createAgUiMessage = async (req: Request, res: Response): Promise<vo
         while (!responseEnded) {
           const { done, value } = await reader.read()
           if (done) break
+          resetAbortTimeout()
           const events = mapTextStreamPartToAgUiEvents(agState, value)
           for (const ev of events) {
             writeAgUi(ev)

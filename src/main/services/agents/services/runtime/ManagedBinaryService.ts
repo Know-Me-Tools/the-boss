@@ -66,8 +66,25 @@ export interface ManagedBinaryTransport {
   download(url: URL, destinationPath: string, options?: ManagedBinaryDownloadOptions): Promise<void>
 }
 
-interface ManagedBinaryDownloadOptions {
+export interface ManagedBinaryProgress {
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  phase: string
+  progress?: number
+  receivedBytes?: number
+  totalBytes?: number
+  message?: string
+  code?: string
+}
+
+export interface ManagedBinaryInstallOptions {
+  signal?: AbortSignal
+  timeoutMs?: number
+  onProgress?: (progress: ManagedBinaryProgress) => void
+}
+
+interface ManagedBinaryDownloadOptions extends ManagedBinaryInstallOptions {
   maxSize?: number
+  totalBytes?: number
 }
 
 interface ManagedBinaryServiceOptions {
@@ -75,6 +92,8 @@ interface ManagedBinaryServiceOptions {
   platformKey?: string
   transports?: ManagedBinaryTransport[]
 }
+
+const DEFAULT_MANAGED_BINARY_DOWNLOAD_TIMEOUT_MS = 10 * 60_000
 
 export class ManagedBinaryService {
   private readonly rootDir: string
@@ -147,7 +166,11 @@ export class ManagedBinaryService {
     }
   }
 
-  async install(manifest: ManagedBinaryManifest): Promise<ManagedBinaryStatus> {
+  async install(
+    manifest: ManagedBinaryManifest,
+    options: ManagedBinaryInstallOptions = {}
+  ): Promise<ManagedBinaryStatus> {
+    throwIfAborted(options.signal)
     if (manifest.binaries.length === 0) {
       return this.status(
         manifest,
@@ -174,8 +197,19 @@ export class ManagedBinaryService {
     try {
       await fsAsync.mkdir(tempDir, { recursive: true })
       await fsAsync.mkdir(installDir, { recursive: true })
-      await this.download(sourceUrls, tempPath, entry)
+      options.onProgress?.({
+        status: 'running',
+        phase: 'downloading',
+        message: `Downloading ${manifest.name} ${manifest.version}.`
+      })
+      await this.download(sourceUrls, tempPath, entry, options)
 
+      throwIfAborted(options.signal)
+      options.onProgress?.({
+        status: 'running',
+        phase: 'verifying',
+        message: `Verifying ${manifest.name} ${manifest.version}.`
+      })
       const verification = await this.verifyFile(tempPath, entry)
       if (!verification.ok) {
         await removeIfExists(tempPath)
@@ -186,30 +220,57 @@ export class ManagedBinaryService {
         await fsAsync.chmod(tempPath, 0o755)
       }
 
+      throwIfAborted(options.signal)
+      options.onProgress?.({
+        status: 'running',
+        phase: 'installing',
+        message: `Installing ${manifest.name} ${manifest.version}.`
+      })
       await removeIfExists(binaryPath)
       await fsAsync.rename(tempPath, binaryPath)
 
+      options.onProgress?.({
+        status: 'completed',
+        phase: 'installed',
+        progress: 1,
+        message: `Installed ${manifest.name} ${manifest.version}.`
+      })
       return this.status(manifest, 'installed', `Managed binary is installed at ${binaryPath}.`, binaryPath)
     } catch (error) {
       await removeIfExists(tempPath)
+      const aborted = isAbortError(error) || options.signal?.aborted
       logger.warn('Managed binary install failed', {
         name: manifest.name,
         version: manifest.version,
         platform: entry.platform,
         error: error instanceof Error ? error.message : String(error)
       })
+      options.onProgress?.({
+        status: aborted ? 'cancelled' : 'failed',
+        phase: aborted ? 'cancelled' : 'download-failed',
+        message: aborted
+          ? 'Managed binary install was cancelled.'
+          : `Managed binary download failed: ${formatError(error)}`,
+        code: aborted ? 'operation_cancelled' : error instanceof TimeoutError ? 'download_timeout' : 'download_failed'
+      })
       return this.status(
         manifest,
         'download-failed',
-        `Managed binary download failed: ${formatError(error)}`,
+        aborted ? 'Managed binary install was cancelled.' : `Managed binary download failed: ${formatError(error)}`,
         binaryPath
       )
     }
   }
 
-  private async download(urls: URL[], destinationPath: string, entry: ManagedBinaryManifestEntry): Promise<void> {
+  private async download(
+    urls: URL[],
+    destinationPath: string,
+    entry: ManagedBinaryManifestEntry,
+    options: ManagedBinaryInstallOptions
+  ): Promise<void> {
     let lastError: unknown
     for (const url of urls) {
+      throwIfAborted(options.signal)
       const transport = this.transports.find((candidate) => candidate.canDownload(url))
       if (!transport) {
         lastError = new Error(`No managed binary transport supports ${url.protocol}`)
@@ -218,7 +279,13 @@ export class ManagedBinaryService {
 
       try {
         await removeIfExists(destinationPath)
-        await transport.download(url, destinationPath, { maxSize: entry.maxSize ?? entry.size })
+        await transport.download(url, destinationPath, {
+          maxSize: entry.maxSize ?? entry.size,
+          totalBytes: entry.size,
+          signal: options.signal,
+          timeoutMs: options.timeoutMs ?? DEFAULT_MANAGED_BINARY_DOWNLOAD_TIMEOUT_MS,
+          onProgress: options.onProgress
+        })
         return
       } catch (error) {
         lastError = error
@@ -335,10 +402,28 @@ export class FileManagedBinaryTransport implements ManagedBinaryTransport {
   }
 
   async download(url: URL, destinationPath: string, options: ManagedBinaryDownloadOptions = {}): Promise<void> {
+    throwIfAborted(options.signal)
     const sourcePath = fileURLToPath(url)
     const stats = await fsAsync.stat(sourcePath)
     assertMaxSize(stats.size, options.maxSize, url.toString())
+    options.onProgress?.({
+      status: 'running',
+      phase: 'downloading',
+      receivedBytes: 0,
+      totalBytes: stats.size,
+      progress: 0,
+      message: `Copying managed binary from ${sourcePath}.`
+    })
     await fsAsync.copyFile(sourcePath, destinationPath)
+    throwIfAborted(options.signal)
+    options.onProgress?.({
+      status: 'running',
+      phase: 'downloading',
+      receivedBytes: stats.size,
+      totalBytes: stats.size,
+      progress: 1,
+      message: `Copied managed binary from ${sourcePath}.`
+    })
   }
 }
 
@@ -365,21 +450,34 @@ export class HttpsManagedBinaryTransport implements ManagedBinaryTransport {
   }
 
   private async downloadOnce(url: URL, destinationPath: string, options: ManagedBinaryDownloadOptions): Promise<void> {
-    const response = await fetch(url)
-    if (!response.ok || !response.body) {
-      throw new Error(`HTTP ${response.status} while downloading managed binary.`)
-    }
+    const { signal, dispose } = createTimeoutSignal(options.signal, options.timeoutMs)
+    try {
+      throwIfAborted(signal)
+      const response = await fetch(url, { signal })
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP ${response.status} while downloading managed binary.`)
+      }
 
-    const contentLength = Number(response.headers.get('content-length'))
-    if (Number.isFinite(contentLength) && contentLength > 0) {
-      assertMaxSize(contentLength, options.maxSize, url.toString())
-    }
+      const contentLength = Number(response.headers.get('content-length'))
+      if (Number.isFinite(contentLength) && contentLength > 0) {
+        assertMaxSize(contentLength, options.maxSize, url.toString())
+      }
 
-    await pipeline(
-      Readable.fromWeb(response.body as any),
-      createMaxSizeTransform(options.maxSize, url.toString()),
-      fs.createWriteStream(destinationPath)
-    )
+      const totalBytes = Number.isFinite(contentLength) && contentLength > 0 ? contentLength : options.totalBytes
+      await pipeline(
+        Readable.fromWeb(response.body as any),
+        createMaxSizeTransform(options.maxSize, url.toString(), totalBytes, options.onProgress),
+        fs.createWriteStream(destinationPath),
+        { signal }
+      )
+    } catch (error) {
+      if (isAbortError(error) && !options.signal?.aborted) {
+        throw new TimeoutError(`Timed out downloading managed binary from ${url.toString()}.`)
+      }
+      throw error
+    } finally {
+      dispose()
+    }
   }
 }
 
@@ -452,13 +550,26 @@ function assertMaxSize(size: number, maxSize: number | undefined, label: string)
   }
 }
 
-function createMaxSizeTransform(maxSize: number | undefined, label: string): Transform {
+function createMaxSizeTransform(
+  maxSize: number | undefined,
+  label: string,
+  totalBytes?: number,
+  onProgress?: ManagedBinaryInstallOptions['onProgress']
+): Transform {
   let bytes = 0
   return new Transform({
     transform(chunk, _encoding, callback) {
       bytes += Buffer.byteLength(chunk)
       try {
         assertMaxSize(bytes, maxSize, label)
+        onProgress?.({
+          status: 'running',
+          phase: 'downloading',
+          receivedBytes: bytes,
+          totalBytes,
+          progress: totalBytes && totalBytes > 0 ? Math.min(bytes / totalBytes, 1) : undefined,
+          message: `Downloading managed binary from ${label}.`
+        })
         callback(null, chunk)
       } catch (error) {
         callback(error as Error)
@@ -475,4 +586,64 @@ function resolveIpfsGatewayUrl(gateway: string, cid: string, pathname: string): 
 
 function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw signal.reason instanceof Error ? signal.reason : new Error('Operation cancelled.')
+  }
+}
+
+class TimeoutError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'TimeoutError'
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted')))
+  )
+}
+
+function createTimeoutSignal(
+  parentSignal?: AbortSignal,
+  timeoutMs?: number
+): { signal: AbortSignal; dispose: () => void } {
+  const controller = new AbortController()
+  let timeout: NodeJS.Timeout | undefined
+  let parentAbortListener: (() => void) | undefined
+
+  const abort = (reason?: unknown) => {
+    if (!controller.signal.aborted) {
+      controller.abort(reason)
+    }
+  }
+
+  if (parentSignal) {
+    if (parentSignal.aborted) {
+      abort(parentSignal.reason)
+    } else {
+      parentAbortListener = () => abort(parentSignal.reason)
+      parentSignal.addEventListener('abort', parentAbortListener, { once: true })
+    }
+  }
+
+  if (timeoutMs && timeoutMs > 0) {
+    timeout = setTimeout(() => abort(new TimeoutError('Managed binary download timed out.')), timeoutMs)
+  }
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      if (parentSignal && parentAbortListener) {
+        parentSignal.removeEventListener('abort', parentAbortListener)
+      }
+    }
+  }
 }
