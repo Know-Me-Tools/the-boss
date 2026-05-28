@@ -66,7 +66,8 @@ export function trackTokenUsage({ usage, model, source = 'chat' }: TokenUsagePar
       provider: getProviderTrackId(model.provider),
       model: model.id,
       input_tokens: inputTokens,
-      output_tokens: outputTokens
+      output_tokens: outputTokens,
+      source
     })
   }
 }
