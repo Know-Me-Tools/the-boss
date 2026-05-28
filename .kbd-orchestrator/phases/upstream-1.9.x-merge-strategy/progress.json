@@ -1,26 +1,40 @@
 {
   "phase": "upstream-1.9.x-merge-strategy",
   "objective": "Merge upstream CherryHQ/cherry-studio 1.9.x (v1.9.7) into the fork without losing fork-only capabilities (control plane, multi-runtime agents, vendored runtimes) or reverting The Boss branding.",
-  "status": "planning_complete",
+  "status": "execution_complete",
   "assessment_complete": true,
   "planning_complete": true,
   "execution_ready": true,
-  "execution_complete": false,
+  "execution_complete": true,
   "last_updated": "2026-05-28",
   "last_updated_by": "claude-code",
   "change_namespace": "merge-",
+  "merge_branch": "merge/upstream-v1.9.7",
+  "merge_commit": "7f222ab69",
+  "postmerge_fix_commit": "5bd0f1694",
+  "checkpoint_commit": "fb88aa4e1",
+  "verification": {
+    "typecheck": "passed (node, web, aiCore)",
+    "tests": "326 files / 4802 passed / 72 skipped / 0 failed",
+    "branding": "appId tools.know-me.the-boss, productName The Boss intact",
+    "version": "1.9.7"
+  },
   "changes": [
-    { "id": "merge-001-commit-inflight-runtime", "status": "PENDING", "depends_on": [] },
-    { "id": "merge-002-create-merge-branch", "status": "PENDING", "depends_on": ["merge-001-commit-inflight-runtime"] },
+    { "id": "merge-001-commit-inflight-runtime", "status": "DONE", "depends_on": [], "commit": "fb88aa4e1" },
+    { "id": "merge-002-create-merge-branch", "status": "DONE", "depends_on": ["merge-001-commit-inflight-runtime"] },
     {
       "id": "merge-003-merge-and-resolve-conflicts",
-      "status": "PENDING",
-      "depends_on": ["merge-002-create-merge-branch"]
+      "status": "DONE",
+      "depends_on": ["merge-002-create-merge-branch"],
+      "commit": "7f222ab69",
+      "conflicts_resolved": ["electron-builder.yml", "src/renderer/src/utils/analytics.ts"]
     },
     {
       "id": "merge-004-verify-build-and-branding",
-      "status": "PENDING",
-      "depends_on": ["merge-003-merge-and-resolve-conflicts"]
+      "status": "DONE",
+      "depends_on": ["merge-003-merge-and-resolve-conflicts"],
+      "commit": "5bd0f1694",
+      "notes": "Fixed analytics source threading; dropped upstream CherryIN endpoints to preserve service-independence guard (user decision). PR not yet opened."
     }
   ],
   "branch_policy": {
@@ -63,5 +77,5 @@
     "plan": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/plan.md",
     "progress": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/progress.json"
   },
-  "nextRecommendedAction": "Execute merge-001 (commit in-flight runtime work to clean the tree), then merge-002..004. User approved: plan-then-merge, commit-first."
+  "nextRecommendedAction": "Open PR from merge/upstream-v1.9.7 -> main via gh-create-pr (user approval to merge required). Then resume suspended phase multi-runtime-agent-parity-assessment at change-022."
 }
