@@ -59,6 +59,8 @@ local
 .trae/*
 .claude-code-router/*
 .codebuddy/*
+.codex/*
+.opencode/*
 .antigravitycli/*
 .zed/*
 !.zed/settings.json.example
