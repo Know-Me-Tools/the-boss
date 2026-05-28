@@ -107,6 +107,8 @@ Managed binaries are only used after manifest validation passes. The installer v
 
 Each manifest entry includes size and SHA-256 integrity fields, and may include `ipfsCid` and/or `httpsUrl` transports. The installer attempts IPFS gateway URLs first when a CID is present, keeps HTTPS as fallback, and applies the same max-size and SHA-256 validation regardless of which transport succeeds.
 
+The desktop app does not download managed runtime binaries during startup. Startup and settings views perform lightweight status checks only. Installs are triggered by the explicit Runtime Settings download action or lazily when a user starts a session that requires a selected managed runtime that is not installed. Concurrent install requests for the same runtime are deduplicated, active installs can be cancelled, and a failed update keeps the previous verified binary available.
+
 Resolution order for UAR, Codex, and OpenCode is:
 
 ```text
@@ -118,11 +120,43 @@ The Runtime Settings panel shows the current source as configured path, environm
 Operators build and publish runtime artifacts with:
 
 ```bash
-IPFS_API_URL=https://ipfs.prometheusags.ai pnpm runtimes:build
-IPFS_API_URL=https://ipfs.prometheusags.ai pnpm runtimes:publish:ipfs
+pnpm runtimes:build
+IPFS_API_URL=https://ipfs.prometheusags.ai \
+RUNTIME_MANIFEST_CHANNEL=stable \
+RUNTIME_MANIFEST_SEQUENCE=$(date +%s) \
+RUNTIME_MANIFEST_KEY_ID=runtime-manifest-ed25519-v1 \
+RUNTIME_MANIFEST_PRIVATE_KEY_PATH=/secure/path/runtime-manifest-ed25519-v1.pem \
+IPNS_KEY=runtime-channel \
+pnpm runtimes:publish:ipfs
 ```
 
-The generated bootstrap manifest at `resources/runtime-manifests/bootstrap.json` records platform, binary name, size, SHA-256, and IPFS CID fields. The control-plane runtime manifest endpoint can promote newer `latest` records after release without requiring a desktop rebuild.
+`pnpm runtimes:publish:ipfs` uploads and pins each runtime binary, writes a signed runtime channel manifest, uploads and pins that signed manifest, optionally publishes the manifest CID to IPNS, and refreshes `resources/runtime-manifests/bootstrap.json`. The bootstrap file records the immutable release manifest CID, optional `/ipns/<name>` pointer, platform, binary name, size, SHA-256, and artifact CID fields.
+
+Production builds should resolve the mutable channel through DNSLink/IPNS first and keep HTTPS as a fallback:
+
+```bash
+THE_BOSS_RUNTIME_MANIFEST_NAME=/ipns/runtimes.prometheusags.ai
+THE_BOSS_RUNTIME_MANIFEST_GATEWAY_URLS=https://ipfs.prometheusags.ai,https://ipfs.io
+THE_BOSS_RUNTIME_MANIFEST_HTTPS_URL=https://prometheusags.ai/runtime-manifests/stable.json
+THE_BOSS_RUNTIME_MANIFEST_PUBLIC_KEYS='[{"keyId":"runtime-manifest-ed25519-v1","publicKey":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n"}]'
+```
+
+Create the DNSLink record on the runtime manifest hostname:
+
+```text
+_dnslink.runtimes.prometheusags.ai TXT "dnslink=/ipns/<runtime-channel-ipns-name>"
+```
+
+Release operator checklist:
+
+1. Build every supported runtime and platform before publishing the channel manifest.
+2. Upload artifacts to the pinned IPFS API and verify the returned CID for each binary.
+3. Sign the channel manifest with the offline Ed25519 release key.
+4. Upload and pin the signed channel manifest; verify that immutable artifact CIDs remain inside the signed payload.
+5. Publish the signed manifest CID with the dedicated `runtime-channel` IPNS key.
+6. Verify DNSLink resolves through `https://ipfs.prometheusags.ai/ipns/runtimes.prometheusags.ai`.
+7. Promote the same signed manifest to the HTTPS fallback URL.
+8. Keep the previous signed manifest CID pinned until the new manifest has been resolved and installed successfully by packaged builds.
 
 ## Rust Toolchain
 

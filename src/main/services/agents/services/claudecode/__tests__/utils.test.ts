@@ -100,6 +100,7 @@ describe('with1mContextSuffix', () => {
   it('does not append [1m] when host is not an official 1M host', () => {
     expect(with1mContextSuffix('deepseek-v4-pro', thirdPartyHost)).toBe('deepseek-v4-pro')
     expect(with1mContextSuffix('deepseek-v4-pro', undefined)).toBe('deepseek-v4-pro')
+    expect(with1mContextSuffix('agent/deepseek-v4-flash', thirdPartyHost)).toBe('agent/deepseek-v4-flash')
     expect(with1mContextSuffix('mimo-v2.5-pro', thirdPartyHost)).toBe('mimo-v2.5-pro')
   })
 

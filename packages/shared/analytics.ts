@@ -3,6 +3,7 @@ export interface TokenUsageData {
   model: string
   input_tokens: number
   output_tokens: number
+  source?: 'chat' | 'agent'
 }
 
 export interface AnalyticsEventPayload {

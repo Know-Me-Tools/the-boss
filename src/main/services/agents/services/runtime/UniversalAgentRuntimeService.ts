@@ -52,6 +52,7 @@ export type UarSidecarState =
   | 'verification-failed'
   | 'download-failed'
   | 'unsupported-platform'
+  | 'previous-version-retained'
 
 export type UarBinarySource = 'configured' | 'environment' | 'path' | 'managed'
 
@@ -368,7 +369,8 @@ function mapManagedBinaryStatus(status: ManagedBinaryStatus): UarSidecarStatus {
     downloading: 'downloading',
     'download-failed': 'download-failed',
     'unsupported-platform': 'unsupported-platform',
-    'update-available': 'update-available'
+    'update-available': 'update-available',
+    'previous-version-retained': 'previous-version-retained'
   }
 
   return {

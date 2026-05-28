@@ -294,6 +294,12 @@ describe('RuntimeSettings', () => {
     ['downloading', 'managed', 'Downloading UAR managed binary...', 'Downloading'],
     ['verification-failed', 'managed', 'Managed UAR SHA-256 mismatch.', 'Verification failed'],
     ['update-available', 'managed', 'A managed binary update is available.', 'Update available'],
+    [
+      'previous-version-retained',
+      'managed',
+      'Update failed. Previous verified managed binary was retained.',
+      'Previous version retained'
+    ],
     ['stopped', 'managed', 'Managed UAR binary is available.', 'Managed binary']
   ])('renders UAR managed binary status %s', async (state, binarySource, message, expectedLabel) => {
     vi.mocked(window.api.agentRuntime.getStatus).mockResolvedValueOnce({

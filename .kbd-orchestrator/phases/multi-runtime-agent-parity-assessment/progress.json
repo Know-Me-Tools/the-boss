@@ -1,12 +1,12 @@
 {
   "phase": "multi-runtime-agent-parity-assessment",
   "objective": "Assess, plan, and execute the implementation needed to configure and run Claude, Codex, OpenCode, and Universal Agent Runtime on the current 1.9.x codebase.",
-  "status": "execution_complete",
+  "status": "execution_in_progress",
   "assessment_complete": true,
   "planning_complete": true,
   "execution_ready": true,
-  "execution_complete": true,
-  "last_updated": "2026-04-18T20:28:00Z",
+  "execution_complete": false,
+  "last_updated": "2026-05-26T12:42:00Z",
   "last_updated_by": "codex",
   "branch_policy": {
     "base": "current-1.9.x",
@@ -28,7 +28,7 @@
   "openSpecDetected": false,
   "selected_backend": "hybrid",
   "canonical_progress_file": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
-  "next_pending_change": null,
+  "next_pending_change": "change-022-managed-binary-resolution-trust-order",
   "changes": [
     {
       "id": "change-001-runtime-agent-model",
@@ -742,6 +742,208 @@
         "status": "skipped",
         "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json or constraints.json exists for change-018; validation was covered by transport tests, release manifest tests, docs review, lint, and full test suite."
       }
+    },
+    {
+      "id": "change-019-signed-runtime-channel-manifest",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-018-ipfs-transport-release-workflow"],
+      "tasks_total": 7,
+      "tasks_done": 7,
+      "started_by": "codex",
+      "started_at": "2026-05-26T11:00:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-05-26T11:08:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-019-signed-runtime-channel-manifest/change.md",
+      "verification": [
+        "manifest verification unit tests",
+        "managed runtime fallback tests",
+        "node typecheck",
+        "git diff --check"
+      ],
+      "blockers": [],
+      "verification_results": [
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts",
+          "status": "passed",
+          "notes": "2 files, 14 tests passed."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm vitest run src/main/services/agents/services/runtime/__tests__/ManagedRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts src/main/services/agents/services/runtime/__tests__/UniversalAgentRuntimeService.test.ts src/main/services/agents/services/runtime/__tests__/UarEmbeddedSmoke.test.ts",
+          "status": "passed",
+          "notes": "4 files, 22 tests passed."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing warnings."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm test",
+          "status": "passed",
+          "notes": "324 files passed; 4780 tests passed; 72 skipped."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json, constraints.json, or .kbd-orchestrator/constraints.md exists for change-019; validation was covered by focused tests, full lint, full tests, and git diff check."
+      }
+    },
+    {
+      "id": "change-020-ipns-dnslink-runtime-manifest-publish",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-019-signed-runtime-channel-manifest"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-05-26T12:14:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-05-26T12:24:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-020-ipns-dnslink-runtime-manifest-publish/change.md",
+      "verification": ["publisher tests", "IPNS/DNSLink resolver tests", "node typecheck", "git diff --check"],
+      "blockers": [],
+      "verification_results": [
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm vitest run scripts/__tests__/publish-runtime-artifacts-ipfs.test.ts scripts/__tests__/build-managed-binary-manifest.test.ts src/main/services/agents/services/runtime/__tests__/ManagedRuntimeService.test.ts",
+          "status": "passed",
+          "notes": "3 files, 13 tests passed."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing unrelated warnings and Biome schema-version info."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm test",
+          "status": "passed",
+          "notes": "325 files passed; 4785 tests passed; 72 skipped."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json, constraints.json, or .kbd-orchestrator/constraints.md exists for change-020; validation was covered by focused tests, node typecheck, full lint, full tests, and git diff check."
+      }
+    },
+    {
+      "id": "change-021-on-demand-runtime-install-policy",
+      "status": "DONE",
+      "assigned_backend": "codex",
+      "depends_on": ["change-019-signed-runtime-channel-manifest"],
+      "tasks_total": 8,
+      "tasks_done": 8,
+      "started_by": "codex",
+      "started_at": "2026-05-26T12:36:00Z",
+      "completed_by": "codex",
+      "completed_at": "2026-05-26T12:42:00Z",
+      "change_file": ".kbd-orchestrator/changes/change-021-on-demand-runtime-install-policy/change.md",
+      "verification": [
+        "runtime control tests",
+        "managed binary install policy tests",
+        "node typecheck",
+        "git diff --check"
+      ],
+      "blockers": [],
+      "verification_results": [
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm vitest run src/main/services/agents/services/runtime/__tests__/RuntimeControlService.test.ts src/main/services/agents/services/runtime/__tests__/ManagedBinaryService.test.ts",
+          "status": "passed",
+          "notes": "2 files, 23 tests passed."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm run typecheck:node",
+          "status": "passed"
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm format",
+          "status": "passed",
+          "notes": "Passed with existing Biome schema-version info."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm lint",
+          "status": "passed",
+          "notes": "Passed with existing unrelated warnings and Biome schema-version info."
+        },
+        {
+          "command": "PATH=/Users/gqadonis/.nvm/versions/node/v24.11.1/bin:$PATH pnpm test",
+          "status": "passed",
+          "notes": "325 files passed; 4791 tests passed; 72 skipped."
+        },
+        {
+          "command": "git diff --check",
+          "status": "passed"
+        }
+      ],
+      "qa": {
+        "status": "skipped",
+        "reason": "artifact-refiner validation is not runnable because no artifact_manifest.json, constraints.json, or .kbd-orchestrator/constraints.md exists for change-021; validation was covered by focused tests, node typecheck, full lint, full tests, and git diff check."
+      }
+    },
+    {
+      "id": "change-022-managed-binary-resolution-trust-order",
+      "status": "TODO",
+      "assigned_backend": "codex",
+      "depends_on": ["change-021-on-demand-runtime-install-policy"],
+      "tasks_total": 6,
+      "tasks_done": 0,
+      "change_file": ".kbd-orchestrator/changes/change-022-managed-binary-resolution-trust-order/change.md",
+      "verification": [
+        "UAR/Codex/OpenCode resolution tests",
+        "renderer source label tests",
+        "node and web typechecks",
+        "git diff --check"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "change-023-sidecar-process-supervisor",
+      "status": "TODO",
+      "assigned_backend": "codex",
+      "depends_on": ["change-022-managed-binary-resolution-trust-order"],
+      "tasks_total": 9,
+      "tasks_done": 0,
+      "change_file": ".kbd-orchestrator/changes/change-023-sidecar-process-supervisor/change.md",
+      "verification": [
+        "sidecar supervisor tests",
+        "UAR/OpenCode integration tests",
+        "renderer status tests",
+        "node and web typechecks",
+        "git diff --check"
+      ],
+      "blockers": []
+    },
+    {
+      "id": "change-024-runtime-release-matrix",
+      "status": "TODO",
+      "assigned_backend": "codex",
+      "depends_on": ["change-020-ipns-dnslink-runtime-manifest-publish", "change-023-sidecar-process-supervisor"],
+      "tasks_total": 9,
+      "tasks_done": 0,
+      "change_file": ".kbd-orchestrator/changes/change-024-runtime-release-matrix/change.md",
+      "verification": ["release script tests", "packaged runtime audit", "mac arm64 build", "git diff --check"],
+      "blockers": []
     }
   ],
   "approval_gates": [
@@ -751,7 +953,9 @@
     "Do not claim lossless runtime parity where compatibility resolver reports degradation.",
     "Do not run downloaded binaries unless manifest and hash verification pass.",
     "Do not make IPFS the only binary transport; HTTPS fallback is mandatory.",
-    "Do not remove bundled UAR fallback until managed install/update reliability is proven by smoke tests."
+    "Do not remove bundled UAR fallback until managed install/update reliability is proven by smoke tests.",
+    "Do not accept unsigned production runtime channel manifests.",
+    "Do not perform large managed-runtime downloads during app startup by default."
   ],
-  "recommended_next_action": "Generate kbd-reflect for the completed multi-runtime-agent-parity-assessment phase. Do not use v2."
+  "recommended_next_action": "Execute change-022-managed-binary-resolution-trust-order on the current 1.9.x codebase. Do not use v2."
 }

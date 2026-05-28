@@ -217,6 +217,80 @@ describe('RuntimeControlService', () => {
     expect(install).toHaveBeenCalledWith('codex', {})
   })
 
+  it('deduplicates concurrent managed runtime installs per runtime', async () => {
+    let resolveInstall!: (value: {
+      name: 'codex'
+      version: string
+      platform: string
+      state: 'installed'
+      binaryPath: string
+      message: string
+    }) => void
+    const install = vi.fn(
+      () =>
+        new Promise<{
+          name: 'codex'
+          version: string
+          platform: string
+          state: 'installed'
+          binaryPath: string
+          message: string
+        }>((resolve) => {
+          resolveInstall = resolve
+        })
+    )
+    const service = new RuntimeControlService({
+      managedRuntimeService: {
+        install
+      } as never
+    })
+
+    const first = service.installManagedBinary({ name: 'codex' })
+    const second = service.installManagedBinary({ name: 'codex' })
+    resolveInstall({
+      name: 'codex',
+      version: '1.0.0',
+      platform: 'linux-x64',
+      state: 'installed',
+      binaryPath: '/tmp/codex',
+      message: 'Managed Codex binary is installed.'
+    })
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ kind: 'codex', state: 'installed' }),
+      expect.objectContaining({ kind: 'codex', state: 'installed' })
+    ])
+    expect(install).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes cancellation signals to managed runtime installs', async () => {
+    const controller = new AbortController()
+    const install = vi.fn(async (_name, options) => {
+      controller.abort(new Error('cancelled by test'))
+      expect(options.signal.aborted).toBe(true)
+      return {
+        name: 'codex',
+        version: '1.0.0',
+        platform: 'linux-x64',
+        state: 'download-failed' as const,
+        message: 'Managed binary install was cancelled.'
+      }
+    })
+    const service = new RuntimeControlService({
+      managedRuntimeService: {
+        install
+      } as never
+    })
+
+    await expect(service.installManagedBinary({ name: 'codex' }, { signal: controller.signal })).resolves.toEqual(
+      expect.objectContaining({
+        kind: 'codex',
+        state: 'download-failed',
+        code: 'operation_cancelled'
+      })
+    )
+  })
+
   it('discovers existing runtime binaries from PATH through the runtime control plane', async () => {
     const discover = vi.fn(async () => ({
       kind: 'opencode',
@@ -312,12 +386,57 @@ describe('RuntimeControlService', () => {
           message: 'Codex CLI executable was not found.'
         })),
         listModels: vi.fn()
-      }
+      },
+      managedRuntimeService: {
+        install: vi.fn(async () => ({
+          name: 'codex',
+          version: '1.0.0',
+          platform: 'linux-x64',
+          state: 'download-failed' as const,
+          message: 'Managed binary download failed: offline.'
+        }))
+      } as never
     })
 
     await expect(service.ensureRunnable({ kind: 'codex', mode: 'managed' })).rejects.toThrow(
       'Agent runtime is not ready for codex'
     )
+  })
+
+  it('lazily installs a selected missing managed runtime before session execution', async () => {
+    const resolveBinary = vi
+      .fn()
+      .mockReturnValueOnce({
+        state: 'missing-binary' as const,
+        message: 'Codex CLI executable was not found.'
+      })
+      .mockReturnValueOnce({
+        state: 'ready' as const,
+        source: 'managed' as const,
+        path: '/tmp/codex',
+        message: 'Codex CLI executable resolved from verified managed binary.'
+      })
+    const install = vi.fn(async () => ({
+      name: 'codex',
+      version: '1.0.0',
+      platform: 'linux-x64',
+      state: 'installed' as const,
+      binaryPath: '/tmp/codex',
+      message: 'Managed Codex binary is installed.'
+    }))
+    const service = new RuntimeControlService({
+      codexCliService: {
+        resolveBinary,
+        listModels: vi.fn()
+      },
+      managedRuntimeService: {
+        install
+      } as never
+    })
+
+    await expect(service.ensureRunnable({ kind: 'codex', mode: 'managed' })).resolves.toBeUndefined()
+    expect(install).toHaveBeenCalledWith('codex', {})
+    expect(resolveBinary).toHaveBeenCalledTimes(2)
   })
 
   it('keeps Claude execution ungated by managed binary readiness checks', async () => {
