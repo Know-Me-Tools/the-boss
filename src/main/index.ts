@@ -21,7 +21,6 @@ import { schedulerService } from './services/agents/services/SchedulerService'
 import { bootstrapBuiltinAgents } from './services/agents/services/builtin/BuiltinAgentBootstrap'
 import { channelManager } from './services/agents/services/channels'
 import { registerSessionStreamIpc } from './services/agents/services/channels/sessionStreamIpc'
-import { managedRuntimeService } from './services/agents/services/runtime/ManagedRuntimeService'
 import { analyticsService } from './services/AnalyticsService'
 import { apiServerService } from './services/ApiServerService'
 import { appMenuService } from './services/AppMenuService'
@@ -179,8 +178,6 @@ if (!app.requestSingleInstanceLock()) {
         error: error instanceof Error ? error.message : String(error)
       })
     })
-
-    managedRuntimeService.reconcile()
 
     app.on('activate', function () {
       const mainWindow = windowService.getMainWindow()

@@ -25,6 +25,7 @@ type RuntimeHealthState =
   | 'unreachable'
   | 'unsupported'
   | 'unsupported-platform'
+  | 'previous-version-retained'
 
 interface RuntimeHealthResult {
   kind: AgentRuntimeKind
@@ -517,6 +518,7 @@ function getRuntimeHealthAlertType(state?: RuntimeHealthState): 'info' | 'succes
     state === 'not-installed' ||
     state === 'verification-failed' ||
     state === 'download-failed' ||
+    state === 'previous-version-retained' ||
     state === 'unreachable' ||
     state === 'unsupported' ||
     state === 'unsupported-platform'
@@ -543,6 +545,10 @@ function getRuntimeStateLabel(state: RuntimeHealthState, t: ReturnType<typeof us
     'update-available': t('agent.settings.runtime.status.updateAvailable', 'Update available'),
     'verification-failed': t('agent.settings.runtime.status.verificationFailed', 'Verification failed'),
     'download-failed': t('agent.settings.runtime.status.downloadFailed', 'Download failed'),
+    'previous-version-retained': t(
+      'agent.settings.runtime.status.previousVersionRetained',
+      'Previous version retained'
+    ),
     unreachable: t('agent.settings.runtime.status.unreachable', 'Unreachable'),
     unsupported: t('agent.settings.runtime.status.unsupported', 'Unsupported'),
     'unsupported-platform': t('agent.settings.runtime.status.unsupportedPlatform', 'Unsupported platform')

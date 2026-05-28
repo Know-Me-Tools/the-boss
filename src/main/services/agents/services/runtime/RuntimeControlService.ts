@@ -39,6 +39,7 @@ export type RuntimeHealthState =
   | 'unreachable'
   | 'unsupported'
   | 'unsupported-platform'
+  | 'previous-version-retained'
 
 export type RuntimeHealthCode =
   | 'runtime_not_ready'
@@ -127,6 +128,7 @@ export class RuntimeControlService {
   private readonly openCodeService: OpenCodeCliServiceLike
   private readonly managedRuntimeService: ManagedRuntimeService
   private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
+  private readonly managedInstallOperations = new Map<ManagedRuntimeName, Promise<RuntimeHealthResult>>()
 
   constructor(dependencies: RuntimeControlServiceDependencies = {}) {
     this.runtimeProfileRepository = dependencies.runtimeProfileRepository ?? RuntimeProfileRepository.getInstance()
@@ -316,18 +318,20 @@ export class RuntimeControlService {
     }
 
     if (name === 'universal-agent-runtime') {
-      return mapUarStatus(await this.uarService.installManagedBinary(options))
+      return this.runManagedInstall(name, async () => mapUarStatus(await this.uarService.installManagedBinary(options)))
     }
 
-    const status = await this.managedRuntimeService.install(name, options)
-    return {
-      kind: name === 'codex' ? 'codex' : 'opencode',
-      state: status.state === 'missing' ? 'not-installed' : status.state,
-      binaryPath: status.binaryPath,
-      binarySource: 'managed',
-      message: status.message,
-      code: mapManagedBinaryCode(status.state, status.message)
-    }
+    return this.runManagedInstall(name, async () => {
+      const status = await this.managedRuntimeService.install(name, options)
+      return {
+        kind: name === 'codex' ? 'codex' : 'opencode',
+        state: status.state === 'missing' ? 'not-installed' : status.state,
+        binaryPath: status.binaryPath,
+        binarySource: 'managed',
+        message: status.message,
+        code: mapManagedBinaryCode(status.state, status.message)
+      }
+    })
   }
 
   async ensureRunnable(runtimeConfig: AgentRuntimeConfig): Promise<void> {
@@ -341,9 +345,38 @@ export class RuntimeControlService {
       return
     }
 
+    const managedRuntimeName = getManagedRuntimeNameForConfig(config)
+    if (managedRuntimeName && shouldLazyInstall(status)) {
+      const installStatus = await this.installManagedBinary({ name: managedRuntimeName })
+      if (isRunnableRuntimeStatus(installStatus)) {
+        return
+      }
+
+      const refreshedStatus = await this.getStatus(config)
+      if (isRunnableRuntimeStatus(refreshedStatus)) {
+        return
+      }
+    }
+
     throw new Error(
       `Agent runtime is not ready for ${config.kind}. ${status.message} Open Agent Runtime Settings to download a managed runtime from IPFS or choose a local executable.`
     )
+  }
+
+  private runManagedInstall(
+    name: ManagedRuntimeName,
+    install: () => Promise<RuntimeHealthResult>
+  ): Promise<RuntimeHealthResult> {
+    const existing = this.managedInstallOperations.get(name)
+    if (existing) {
+      return existing
+    }
+
+    const operation = install().finally(() => {
+      this.managedInstallOperations.delete(name)
+    })
+    this.managedInstallOperations.set(name, operation)
+    return operation
   }
 
   private async testHttpEndpoint(kind: AgentRuntimeKind, endpoint?: string): Promise<RuntimeHealthResult> {
@@ -413,6 +446,9 @@ function mapManagedBinaryCode(state: string, message: string): RuntimeHealthCode
   if (state === 'download-failed') {
     return 'download_failed'
   }
+  if (state === 'previous-version-retained') {
+    return 'download_failed'
+  }
   if (state === 'unsupported' || state === 'unsupported-platform') {
     return state === 'unsupported-platform' ? 'unsupported_platform' : 'runtime_not_ready'
   }
@@ -428,6 +464,29 @@ function isRunnableRuntimeStatus(status: RuntimeHealthResult): boolean {
   }
 
   return status.state === 'ready'
+}
+
+function shouldLazyInstall(status: RuntimeHealthResult): boolean {
+  return (
+    status.state === 'missing-binary' ||
+    status.state === 'not-installed' ||
+    status.state === 'download-failed' ||
+    status.state === 'verification-failed' ||
+    status.state === 'update-available'
+  )
+}
+
+function getManagedRuntimeNameForConfig(config: AgentRuntimeConfig): ManagedRuntimeName | undefined {
+  if (config.kind === 'uar' && config.mode === 'embedded') {
+    return 'universal-agent-runtime'
+  }
+  if (config.kind === 'codex' && config.mode !== 'remote') {
+    return 'codex'
+  }
+  if (config.kind === 'opencode' && config.mode !== 'remote') {
+    return 'opencode'
+  }
+  return undefined
 }
 
 function mergeRuntimeConfig(...configs: Array<Partial<AgentRuntimeConfig> | undefined>): Partial<AgentRuntimeConfig> {

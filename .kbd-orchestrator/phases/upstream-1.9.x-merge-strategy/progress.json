@@ -1,0 +1,67 @@
+{
+  "phase": "upstream-1.9.x-merge-strategy",
+  "objective": "Merge upstream CherryHQ/cherry-studio 1.9.x (v1.9.7) into the fork without losing fork-only capabilities (control plane, multi-runtime agents, vendored runtimes) or reverting The Boss branding.",
+  "status": "planning_complete",
+  "assessment_complete": true,
+  "planning_complete": true,
+  "execution_ready": true,
+  "execution_complete": false,
+  "last_updated": "2026-05-28",
+  "last_updated_by": "claude-code",
+  "change_namespace": "merge-",
+  "changes": [
+    { "id": "merge-001-commit-inflight-runtime", "status": "PENDING", "depends_on": [] },
+    { "id": "merge-002-create-merge-branch", "status": "PENDING", "depends_on": ["merge-001-commit-inflight-runtime"] },
+    {
+      "id": "merge-003-merge-and-resolve-conflicts",
+      "status": "PENDING",
+      "depends_on": ["merge-002-create-merge-branch"]
+    },
+    {
+      "id": "merge-004-verify-build-and-branding",
+      "status": "PENDING",
+      "depends_on": ["merge-003-merge-and-resolve-conflicts"]
+    }
+  ],
+  "branch_policy": {
+    "base": "current-1.9.x",
+    "current_branch": "main",
+    "recommended_merge_branch": "merge/upstream-v1.9.7",
+    "do_not_use": ["v2"],
+    "notes": "Per CLAUDE.md, never merge/rebase/cherry-pick onto v2 for upstream work."
+  },
+  "divergence": {
+    "merge_base": "b1d63a3bb",
+    "fork_head": "2b9fbae0d",
+    "upstream_main": "1c87a5297",
+    "upstream_release": "v1.9.7",
+    "commits_ahead": 126,
+    "commits_behind": 11,
+    "upstream_files_changed": 19,
+    "real_conflicts": 2
+  },
+  "conflicts": [
+    {
+      "file": "electron-builder.yml",
+      "kind": "branding+changelog",
+      "resolution": "keep The Boss appId/productName; combine changelog text"
+    },
+    {
+      "file": "src/renderer/src/utils/analytics.ts",
+      "kind": "feature-overlap",
+      "resolution": "take upstream enableDataCollection guard + source param"
+    }
+  ],
+  "fork_only_at_risk": false,
+  "recommended_strategy": "direct merge (not rebase, not cherry-pick)",
+  "blockers": [
+    "Working tree dirty with in-flight runtime work (change-019..change-024); commit or stash before merge."
+  ],
+  "openSpecDetected": false,
+  "artifacts": {
+    "assessment": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/assessment.md",
+    "plan": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/plan.md",
+    "progress": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/progress.json"
+  },
+  "nextRecommendedAction": "Execute merge-001 (commit in-flight runtime work to clean the tree), then merge-002..004. User approved: plan-then-merge, commit-first."
+}

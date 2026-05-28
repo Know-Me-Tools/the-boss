@@ -101,6 +101,50 @@ describe('ManagedBinaryService', () => {
     expect(status.binaryPath).toBe(path.join(tempDir, 'managed-binaries', 'uar', '1.0.0', 'darwin-arm64', 'uar-test'))
   })
 
+  it('retains a previous installed binary when an update download fails', async () => {
+    const previousPath = path.join(tempDir, 'managed-binaries', 'uar', '0.9.0', 'darwin-arm64', 'uar-test')
+    fs.mkdirSync(path.dirname(previousPath), { recursive: true })
+    fs.writeFileSync(previousPath, 'previous managed binary')
+    const sourcePath = writeSourceBinary('test-binary', 'managed binary content')
+    const service = createService([
+      {
+        canDownload: () => true,
+        download: async () => {
+          throw new Error('gateway unavailable')
+        }
+      }
+    ])
+
+    const status = await service.install(createManifest(sourcePath))
+
+    expect(status.state).toBe('previous-version-retained')
+    expect(status.binaryPath).toBe(previousPath)
+    expect(status.message).toContain('Previous verified managed binary was retained')
+    expect(fs.readFileSync(previousPath, 'utf8')).toBe('previous managed binary')
+  })
+
+  it('cancels active installs before publishing a binary path', async () => {
+    const sourcePath = writeSourceBinary('test-binary', 'managed binary content')
+    const controller = new AbortController()
+    const service = createService([
+      {
+        canDownload: () => true,
+        download: async () => {
+          controller.abort(new Error('cancelled by test'))
+          throw controller.signal.reason
+        }
+      }
+    ])
+
+    const status = await service.install(createManifest(sourcePath), { signal: controller.signal })
+
+    expect(status.state).toBe('download-failed')
+    expect(status.message).toContain('cancelled')
+    expect(fs.existsSync(path.join(tempDir, 'managed-binaries', 'uar', '1.0.0', 'darwin-arm64', 'uar-test'))).toBe(
+      false
+    )
+  })
+
   it('falls back from optional IPFS transport to HTTPS/file transport', async () => {
     const sourcePath = writeSourceBinary('test-binary', 'managed binary content')
     const calls: string[] = []

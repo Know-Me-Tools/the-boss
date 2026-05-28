@@ -1,17 +1,21 @@
 {
   "project": "The Boss / Cherry Studio fork",
-  "phase": "multi-runtime-agent-parity-assessment",
-  "status": "execution_complete",
-  "lastUpdated": "2026-04-18T20:28:00Z",
-  "assessmentPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/assessment.md",
-  "planPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/plan.md",
-  "executionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/execution.md",
-  "reflectionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/reflection.md",
-  "binaryDistributionAssessmentPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-assessment.md",
-  "binaryDistributionPlanPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-plan.md",
-  "progressPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+  "phase": "upstream-1.9.x-merge-strategy",
+  "status": "planning_complete",
+  "lastUpdated": "2026-05-28",
+  "assessmentPath": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/assessment.md",
+  "planPath": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/plan.md",
+  "progressPath": ".kbd-orchestrator/phases/upstream-1.9.x-merge-strategy/progress.json",
   "openSpecDetected": false,
-  "next_pending_change": null,
-  "exact_next_command": "Run kbd-reflect for .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
-  "nextRecommendedAction": "Generate kbd-reflect for the completed multi-runtime-agent-parity-assessment phase. Do not use v2."
+  "change_namespace": "merge-",
+  "next_pending_change": "merge-001-commit-inflight-runtime",
+  "exact_next_command": "git status && git diff --stat",
+  "nextRecommendedAction": "Execute merge-001: commit in-flight runtime work on main (clean the tree). Per CLAUDE.md, never use v2. Then merge-002..004.",
+  "suspended_phase": {
+    "phase": "multi-runtime-agent-parity-assessment",
+    "status": "execution_in_progress",
+    "next_pending_change": "change-022-managed-binary-resolution-trust-order",
+    "progressPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+    "note": "Runtime phase paused to integrate upstream v1.9.7. Resume after the merge lands. The in-flight runtime work (change-019..024) will be committed by merge-001."
+  }
 }

@@ -1,90 +1,95 @@
-EXECUTION: multi-runtime-agent-parity-assessment
+# EXECUTION: multi-runtime-agent-parity-assessment
+
 Project: The Boss / Cherry Studio fork
-Date: 2026-04-18T17:10:00Z
+Date: 2026-05-26T10:48:06Z
 Selected backend: native-tool
 Dispatched to: SELF
-Backend rationale: The follow-up binary-distribution plan is already decomposed into bounded native KBD changes. OpenSpec is not available in this repository, and the current change is a focused packaging/test implementation that Codex can execute directly while maintaining progress.json.
-Backend entrypoint: [$kbd-execute] / active waypoint
+Backend rationale: OpenSpec is not available, and the resilient sidecar distribution plan is decomposed into bounded native KBD changes. Codex can execute the next pending change directly while maintaining `progress.json` as the source of truth.
+Backend entrypoint: `$kbd-execute` / active waypoint
 OpenSpec available: NO
-Source plan: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/binary-distribution-plan.md
+Source plan: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/plan.md`
 
-EXECUTION SCOPE
+## Execution Scope
 
-- change-014-package-scope-size-fix: Exclude build-only vendor/orchestration artifacts from packaged Electron artifacts and add a package-content audit.
-- change-015-managed-binary-core: Add a verified managed-binary installer and resolver.
-- change-016-uar-managed-binary-resolution: Resolve UAR through explicit overrides, verified managed binaries, and bundled fallback.
-- change-017-managed-binary-ui-and-docs: Expose managed-binary status/install/update in UI and docs.
-- change-018-ipfs-transport-release-workflow: Add optional IPFS transport and release workflow after managed binaries are proven.
+- `change-019-signed-runtime-channel-manifest`: Add signed runtime channel manifest trust and rollback protection.
+- `change-020-ipns-dnslink-runtime-manifest-publish`: Publish signed runtime manifests through IPFS/IPNS/DNSLink.
+- `change-021-on-demand-runtime-install-policy`: Stop eager startup downloads and make installs explicit/lazy.
+- `change-022-managed-binary-resolution-trust-order`: Prefer verified managed binaries over PATH discovery.
+- `change-023-sidecar-process-supervisor`: Add sidecar lifecycle/resource supervision.
+- `change-024-runtime-release-matrix`: Build signed archived runtime artifacts for supported platforms.
 
-DISPATCH CONTRACTS
+## Dispatch Contracts
 
-- change-014-package-scope-size-fix -> SELF
-  Entry: Implement .kbd-orchestrator/changes/change-014-package-scope-size-fix/change.md
-  Progress file: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json
+- `change-019-signed-runtime-channel-manifest` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-019-signed-runtime-channel-manifest/change.md`
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
   Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-- change-015-managed-binary-core -> SELF
-  Entry: Implement .kbd-orchestrator/changes/change-015-managed-binary-core/change.md after change-014 is DONE.
-  Progress file: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json
+- `change-020-ipns-dnslink-runtime-manifest-publish` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-020-ipns-dnslink-runtime-manifest-publish/change.md` after change-019 is DONE.
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
   Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-- change-016-uar-managed-binary-resolution -> SELF
-  Entry: Implement .kbd-orchestrator/changes/change-016-uar-managed-binary-resolution/change.md after change-015 is DONE.
-  Progress file: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json
+- `change-021-on-demand-runtime-install-policy` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-021-on-demand-runtime-install-policy/change.md` after change-019 is DONE.
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
   Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-- change-017-managed-binary-ui-and-docs -> SELF
-  Entry: Implement .kbd-orchestrator/changes/change-017-managed-binary-ui-and-docs/change.md after change-016 is DONE.
-  Progress file: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json
+- `change-022-managed-binary-resolution-trust-order` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-022-managed-binary-resolution-trust-order/change.md` after change-021 is DONE.
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
   Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-- change-018-ipfs-transport-release-workflow -> SELF
-  Entry: Implement .kbd-orchestrator/changes/change-018-ipfs-transport-release-workflow/change.md after change-017 is DONE.
-  Progress file: .kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json
+- `change-023-sidecar-process-supervisor` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-023-sidecar-process-supervisor/change.md` after change-022 is DONE.
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
   Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-APPROVAL GATES
+- `change-024-runtime-release-matrix` -> SELF
+  Entry: Implement `.kbd-orchestrator/changes/change-024-runtime-release-matrix/change.md` after change-020 and change-023 are DONE.
+  Progress file: `.kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json`
+  Handoff: Update status/tasks/verification in progress.json and refresh current-waypoint files.
 
-- Do not use v2.
-- Do not add Redux slices or modify IndexedDB schema.
+## Approval Gates
+
+- Do not use `v2`.
+- Do not add Redux slices or modify IndexedDB schema without explicit approval.
 - Do not run downloaded binaries unless manifest and hash verification pass.
 - Do not make IPFS the only binary transport; HTTPS fallback is mandatory.
-- Do not remove bundled UAR fallback until managed install/update reliability is proven by smoke tests.
+- Do not accept unsigned production runtime channel manifests.
+- Do not perform large managed-runtime downloads during app startup by default.
 
-FALLBACK CONDITIONS
+## Verification Requirements
 
-- If native KBD progress cannot stay bounded or inspectable, create an OpenSpec-compatible handoff artifact and stop for explicit direction because no openspec/ directory currently exists.
-- If package-size verification exposes a runtime behavior regression, block change-014 before beginning managed-binary work.
+- `change-019`: manifest verification unit tests, managed runtime fallback tests, `pnpm run typecheck:node`, `git diff --check`.
+- `change-020`: publisher tests, IPNS/DNSLink resolver tests, `pnpm run typecheck:node`, `git diff --check`.
+- `change-021`: runtime control tests, managed binary install policy tests, `pnpm run typecheck:node`, `git diff --check`.
+- `change-022`: UAR/Codex/OpenCode resolution tests, renderer source label tests, node/web typechecks, `git diff --check`.
+- `change-023`: sidecar supervisor tests, UAR/OpenCode integration tests, renderer status tests, node/web typechecks, `git diff --check`.
+- `change-024`: release script tests, packaged runtime audit, `pnpm build:mac:arm64`, `git diff --check`.
 
-VERIFICATION REQUIREMENTS
+## Progress Ledger
 
-- change-014: package audit tests, pnpm build:mac:arm64, app.asar inspection, size comparison, git diff --check.
-- change-015: managed binary service tests, pnpm run typecheck:node, git diff --check.
-- change-016: UAR runtime service tests, UAR embedded smoke test, pnpm run typecheck:node, git diff --check.
-- change-017: renderer Runtime Settings tests, managed binary IPC/preload tests, pnpm i18n:check, pnpm run typecheck:web, git diff --check.
-- change-018: managed binary transport tests, release script tests, docs review, git diff --check.
+- [DONE] `change-019-signed-runtime-channel-manifest` - SELF
+- [DONE] `change-020-ipns-dnslink-runtime-manifest-publish` - SELF
+- [DONE] `change-021-on-demand-runtime-install-policy` - SELF
+- [TODO] `change-022-managed-binary-resolution-trust-order` - SELF
+- [TODO] `change-023-sidecar-process-supervisor` - SELF
+- [TODO] `change-024-runtime-release-matrix` - SELF
 
-PROGRESS LEDGER
+## Outputs
 
-- [DONE] change-014-package-scope-size-fix - SELF
-- [DONE] change-015-managed-binary-core - SELF
-- [DONE] change-016-uar-managed-binary-resolution - SELF
-- [DONE] change-017-managed-binary-ui-and-docs - SELF
-- [DONE] change-018-ipfs-transport-release-workflow - SELF
+- Runtime manifest trust implementation in main runtime services.
+- Focused runtime manifest verification tests.
+- Updated KBD progress and waypoint files.
 
-OUTPUTS
+## Results
 
-- Packaging filters in electron-builder.yml.
-- Package-content audit in scripts/verify-packaged-runtime-deps.js.
-- change-014 package size evidence: app 1.4G, DMG 474M, ZIP 465M.
-- KBD progress and waypoint updates.
+- `change-019-signed-runtime-channel-manifest` completed with signed manifest v2 metadata, Ed25519 manifest signature verification, sequence rollback protection, last-verified manifest cache, and focused tests.
+- QA gate skipped because artifact-refiner input files are absent for this native KBD change.
+- `change-020-ipns-dnslink-runtime-manifest-publish` completed with signed release manifest upload, IPNS publish support, DNSLink/IPNS gateway resolution, HTTPS fallback, operator documentation, and focused tests.
+- QA gate skipped for `change-020` because artifact-refiner input files are absent for this native KBD change.
+- `change-021-on-demand-runtime-install-policy` completed with startup download removal, lazy session install, per-runtime install dedupe, cancellation preservation, previous-version retention, UI status labels, docs, and focused tests.
+- QA gate skipped for `change-021` because artifact-refiner input files are absent for this native KBD change.
 
-BLOCKERS
-
-- Superpowers bootstrap file is absent at /Users/gqadonis/.codex/superpowers/SKILL.md.
-
-REFLECTION HANDOFF
-
-- kbd-reflect should consume package-size before/after measurements, audit evidence, build/test results, and any decision to continue into managed-binary/IPFS changes.
-
-EXECUTION READY
+EXECUTION IN PROGRESS

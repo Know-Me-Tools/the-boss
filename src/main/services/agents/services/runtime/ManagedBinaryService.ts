@@ -20,6 +20,7 @@ export type ManagedBinaryStatusState =
   | 'download-failed'
   | 'unsupported-platform'
   | 'update-available'
+  | 'previous-version-retained'
 
 export interface ManagedBinarySignatureFields {
   minisign?: string
@@ -40,11 +41,26 @@ export interface ManagedBinaryManifestEntry {
 }
 
 export interface ManagedBinaryManifest {
+  schemaVersion?: number
   name: string
   version: string
+  channel?: string
+  sequence?: number
+  publishedAt?: string
+  expiresAt?: string
+  minAppVersion?: string
+  maxAppVersion?: string
   sourceCommit?: string
   supportedPlatforms?: string[]
+  revokedArtifacts?: string[]
+  signature?: ManagedBinaryManifestSignature
   binaries: ManagedBinaryManifestEntry[]
+}
+
+export interface ManagedBinaryManifestSignature {
+  algorithm: 'ed25519'
+  keyId: string
+  value: string
 }
 
 export interface ManagedBinaryStatus {
@@ -171,6 +187,11 @@ export class ManagedBinaryService {
     options: ManagedBinaryInstallOptions = {}
   ): Promise<ManagedBinaryStatus> {
     throwIfAborted(options.signal)
+    const currentStatus = await this.getStatus(manifest)
+    if (currentStatus.state === 'installed') {
+      return currentStatus
+    }
+
     if (manifest.binaries.length === 0) {
       return this.status(
         manifest,
@@ -190,6 +211,12 @@ export class ManagedBinaryService {
     }
 
     const binaryPath = this.getBinaryPath(manifest, entry)
+    const retainedBinaryPath = await this.findAnyInstalledBinaryPath(
+      manifest.name,
+      manifest.version,
+      entry.platform,
+      entry.binaryName
+    )
     const installDir = path.dirname(binaryPath)
     const tempDir = path.join(this.rootDir, '.tmp')
     const tempPath = path.join(tempDir, `${manifest.name}-${manifest.version}-${entry.platform}-${Date.now()}.download`)
@@ -213,6 +240,14 @@ export class ManagedBinaryService {
       const verification = await this.verifyFile(tempPath, entry)
       if (!verification.ok) {
         await removeIfExists(tempPath)
+        if (retainedBinaryPath) {
+          return this.status(
+            manifest,
+            'previous-version-retained',
+            `${verification.message} Previous verified managed binary was retained at ${retainedBinaryPath}.`,
+            retainedBinaryPath
+          )
+        }
         return this.status(manifest, 'verification-failed', verification.message, binaryPath)
       }
 
@@ -253,6 +288,14 @@ export class ManagedBinaryService {
           : `Managed binary download failed: ${formatError(error)}`,
         code: aborted ? 'operation_cancelled' : error instanceof TimeoutError ? 'download_timeout' : 'download_failed'
       })
+      if (!aborted && retainedBinaryPath) {
+        return this.status(
+          manifest,
+          'previous-version-retained',
+          `Managed binary update failed: ${formatError(error)} Previous verified managed binary was retained at ${retainedBinaryPath}.`,
+          retainedBinaryPath
+        )
+      }
       return this.status(
         manifest,
         'download-failed',
@@ -377,6 +420,29 @@ export class ManagedBinaryService {
     }
 
     return false
+  }
+
+  private async findAnyInstalledBinaryPath(
+    name: string,
+    currentVersion: string,
+    platform: string,
+    binaryName: string
+  ): Promise<string | undefined> {
+    const binaryRoot = path.join(this.rootDir, sanitizePathSegment(name))
+    const entries = await fsAsync.readdir(binaryRoot, { withFileTypes: true }).catch(() => [])
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === sanitizePathSegment(currentVersion)) {
+        continue
+      }
+
+      const candidatePath = path.join(binaryRoot, entry.name, platform, binaryName)
+      if (fs.existsSync(candidatePath)) {
+        return candidatePath
+      }
+    }
+
+    return undefined
   }
 
   private status(
