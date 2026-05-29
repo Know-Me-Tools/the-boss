@@ -2,6 +2,7 @@ import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
+import type { SupervisedSidecarStatus } from '@shared/agents/runtime'
 import type { TokenUsageData } from '@shared/analytics'
 import type {
   ArtifactLibraryQuery,
@@ -120,22 +121,6 @@ type RuntimeBinaryDiscoveryResult = {
   source: 'path'
   available: boolean
   message: string
-}
-
-type SupervisedSidecarStatus = {
-  id: string
-  name: string
-  key?: string
-  pid?: number
-  binaryPath: string
-  binaryVersion?: string
-  cwd?: string
-  startedAt: number
-  state: 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'failed'
-  restartCount: number
-  cpuPercent?: number
-  rssBytes?: number
-  recentStderr: string[]
 }
 
 type DirectoryListOptions = {

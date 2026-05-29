@@ -1,8 +1,11 @@
 import type { ChildProcess } from 'node:child_process'
 
 import { loggerService } from '@logger'
+import type { SupervisedSidecarStatus, SupervisedState } from '@shared/agents/runtime'
 import pidusage from 'pidusage'
 import treeKill from 'tree-kill'
+
+export type { SupervisedSidecarStatus, SupervisedState } from '@shared/agents/runtime'
 
 const logger = loggerService.withContext('SidecarProcessSupervisor')
 
@@ -52,8 +55,6 @@ export const RESTART_WINDOW_MS = 60_000
  */
 export const RESTART_BACKOFF_MS = [1000, 2000, 4000]
 
-type SupervisedState = 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'failed'
-
 export interface SupervisedSpawnSpec {
   name: string
   key?: string
@@ -62,22 +63,6 @@ export interface SupervisedSpawnSpec {
   binaryVersion?: string
   cwd?: string
   onExit?: (code: number | null, signal: NodeJS.Signals | null) => void
-}
-
-export interface SupervisedSidecarStatus {
-  id: string
-  name: string
-  key?: string
-  pid?: number
-  binaryPath: string
-  binaryVersion?: string
-  cwd?: string
-  startedAt: number
-  state: SupervisedState
-  restartCount: number
-  cpuPercent?: number
-  rssBytes?: number
-  recentStderr: string[]
 }
 
 export interface SupervisedHandle {
