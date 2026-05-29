@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   CPU_WARN_PERCENT,
+  IDLE_SHUTDOWN_MS,
   KILL_ESCALATION_MS,
   RESOURCE_SAMPLE_MS,
+  RESTART_BACKOFF_MS,
   RSS_WARN_BYTES,
   SidecarProcessSupervisor,
   STDERR_RING_SIZE
@@ -109,18 +111,24 @@ describe('SidecarProcessSupervisor', () => {
     expect(supervisor.get('nope')).toBeUndefined()
   })
 
-  it('marks state stopped and fires onExit when the child exits', async () => {
+  it('marks state stopped and fires onExit on an intentional stop', async () => {
     const child = createChildProcess()
     const onExit = vi.fn()
+    const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill: vi.fn() })
 
-    const handle = supervisor.spawn({
+    const handle = supervisor2.spawn({
       name: 'uar',
       spawn: () => asChildProcess(child),
       binaryPath: '/opt/bin/uar',
       onExit
     })
 
+    // Operator-initiated stop is terminal: onExit fires once and the entry
+    // settles to 'stopped' without being restarted.
+    const stopped = supervisor2.stop(handle.id)
+    await Promise.resolve()
     child.emit('exit', 137, 'SIGKILL')
+    await stopped
 
     expect(onExit).toHaveBeenCalledWith(137, 'SIGKILL')
     expect(handle.status().state).toBe('stopped')
@@ -241,8 +249,11 @@ describe('SidecarProcessSupervisor', () => {
       expect(pidusage).toHaveBeenCalledWith(1234)
       expect(resolvePidusage).toBeDefined()
 
-      // Child exits synchronously while the sample is in flight.
+      // Operator stops the sidecar (terminal) while the sample is in flight.
+      const stopped = sampler.stop(handle.id)
+      await Promise.resolve()
       child.emit('exit', 0, null)
+      await stopped
       expect(handle.status().state).toBe('stopped')
 
       // Now resolve the in-flight sample and flush microtasks.
@@ -265,7 +276,7 @@ describe('SidecarProcessSupervisor', () => {
       const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
       const child = createChildProcess(1234)
 
-      sampler.spawn({
+      const handle = sampler.spawn({
         name: 'uar',
         spawn: () => asChildProcess(child),
         binaryPath: '/opt/bin/uar'
@@ -275,7 +286,12 @@ describe('SidecarProcessSupervisor', () => {
       const callsBeforeExit = pidusage.mock.calls.length
       expect(callsBeforeExit).toBeGreaterThan(0)
 
+      // Terminal (operator-initiated) exit: the sampler must be torn down and
+      // not respawned, so no further pidusage calls occur.
+      const stopped = sampler.stop(handle.id)
+      await Promise.resolve()
       child.emit('exit', 0, null)
+      await stopped
 
       await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS * 3)
       expect(pidusage.mock.calls.length).toBe(callsBeforeExit)
@@ -431,12 +447,186 @@ describe('SidecarProcessSupervisor', () => {
         binaryPath: '/opt/bin/uar'
       })
 
+      // Drive a terminal (operator-initiated) exit: exactly one SIGTERM.
+      const stopped = supervisor2.stop(handle.id)
+      await Promise.resolve()
       child.emit('exit', 0, null)
+      await stopped
       expect(supervisor2.get(handle.id)?.state).toBe('stopped')
 
+      const callsAfterStop = treeKill.mock.calls.length
+      // Subsequent stop/kill are clean no-ops on the terminal entry.
       await supervisor2.stop(handle.id)
       await supervisor2.kill(handle.id)
+      expect(treeKill.mock.calls.length).toBe(callsAfterStop)
+    })
+  })
+
+  describe('idle shutdown', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('stops the sidecar after IDLE_SHUTDOWN_MS once marked idle', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      supervisor2.markIdle(handle.id)
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS)
+
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGTERM')
+    })
+
+    it('markActive cancels a pending idle shutdown', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      supervisor2.markIdle(handle.id)
+      // Becomes active again before the idle window elapses.
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS / 2)
+      supervisor2.markActive(handle.id)
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS)
+
       expect(treeKill).not.toHaveBeenCalled()
+      expect(supervisor2.get(handle.id)?.state).toBe('running')
+    })
+
+    it('markActive then markIdle re-arms a fresh idle timer', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      supervisor2.markIdle(handle.id)
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS / 2)
+      // Reset: active then idle re-arms a fresh full window.
+      supervisor2.markActive(handle.id)
+      supervisor2.markIdle(handle.id)
+      // Advancing the remaining half of the original window must NOT fire.
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS / 2)
+      expect(treeKill).not.toHaveBeenCalled()
+
+      // Advancing the rest of the fresh window fires the shutdown.
+      await vi.advanceTimersByTimeAsync(IDLE_SHUTDOWN_MS / 2)
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGTERM')
+    })
+  })
+
+  describe('restart budget and backoff', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('restarts a sidecar after backoff on an unexpected exit', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const spawnThunk = vi.fn(() => asChildProcess(createChildProcess()))
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      expect(spawnThunk).toHaveBeenCalledTimes(1)
+
+      // Unexpected exit (no stop/kill); supervisor should schedule a restart.
+      handle.process.emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[0])
+
+      expect(spawnThunk).toHaveBeenCalledTimes(2)
+      expect(supervisor2.list()).toHaveLength(1)
+      const status = supervisor2.get(handle.id)
+      expect(status?.restartCount).toBe(1)
+      expect(status?.state).toBe('running')
+    })
+
+    it('marks failed and stops restarting once the budget is exceeded', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const children: FakeChildProcess[] = []
+      const spawnThunk = vi.fn(() => {
+        const c = createChildProcess()
+        children.push(c)
+        return asChildProcess(c)
+      })
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // 4 unexpected exits within the window. The first 3 restart (budget = 3),
+      // the 4th exceeds the budget and must NOT restart.
+      // Crash 1 -> restart 1 (backoff[0])
+      children[0].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[0])
+      expect(spawnThunk).toHaveBeenCalledTimes(2)
+
+      // Crash 2 -> restart 2 (backoff[1])
+      children[1].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[1])
+      expect(spawnThunk).toHaveBeenCalledTimes(3)
+
+      // Crash 3 -> restart 3 (backoff[2])
+      children[2].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[2])
+      expect(spawnThunk).toHaveBeenCalledTimes(4)
+
+      // Crash 4 -> exceeds budget, no further restart.
+      children[3].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[2])
+      expect(spawnThunk).toHaveBeenCalledTimes(4)
+      expect(supervisor2.get(handle.id)?.state).toBe('failed')
+    })
+
+    it('does not restart after an intentional stop()', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const spawnThunk = vi.fn(() => asChildProcess(createChildProcess()))
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      const stopped = supervisor2.stop(handle.id)
+      await Promise.resolve()
+      // Simulate the OS reporting the process exit after SIGTERM.
+      handle.process.emit('exit', 0, 'SIGTERM')
+      await stopped
+
+      // Advance well past every backoff window: nothing should respawn.
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[RESTART_BACKOFF_MS.length - 1] * 4)
+      expect(spawnThunk).toHaveBeenCalledTimes(1)
+      expect(supervisor2.get(handle.id)?.state).toBe('stopped')
     })
   })
 })

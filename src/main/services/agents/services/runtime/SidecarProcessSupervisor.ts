@@ -31,6 +31,27 @@ export const RSS_WARN_BYTES = 2 * 1024 * 1024 * 1024
  */
 export const KILL_ESCALATION_MS = 3000
 
+/**
+ * Idle period (ms) after which an idle-marked sidecar is gracefully stopped.
+ */
+export const IDLE_SHUTDOWN_MS = 15 * 60_000
+
+/**
+ * Maximum number of automatic restarts permitted within {@link RESTART_WINDOW_MS}.
+ */
+export const RESTART_BUDGET = 3
+
+/**
+ * Sliding window (ms) over which restarts are counted against {@link RESTART_BUDGET}.
+ */
+export const RESTART_WINDOW_MS = 60_000
+
+/**
+ * Backoff delays (ms) applied before successive restart attempts. The Nth
+ * restart waits `RESTART_BACKOFF_MS[min(N, len - 1)]`.
+ */
+export const RESTART_BACKOFF_MS = [1000, 2000, 4000]
+
 type SupervisedState = 'starting' | 'running' | 'stopping' | 'stopped' | 'failed'
 
 export interface SupervisedSpawnSpec {
@@ -93,17 +114,27 @@ interface SupervisedEntry {
   name: string
   key?: string
   process: ChildProcess
+  /** Thunk that spawns a fresh child; reused to restart after a crash. */
+  spawn: () => ChildProcess
+  /** Caller-supplied exit observer, invoked on every child exit. */
+  onExit?: (code: number | null, signal: NodeJS.Signals | null) => void
   binaryPath: string
   binaryVersion?: string
   cwd?: string
   startedAt: number
   state: SupervisedState
   restartCount: number
+  /** Epoch timestamps of recent restarts, used for the sliding-window budget. */
+  restartTimestamps: number[]
+  /** True once stop()/kill() initiated termination so exit is not treated as a crash. */
+  intentionalStop: boolean
   cpuPercent?: number
   rssBytes?: number
   recentStderr: string[]
   sampler?: ReturnType<typeof setInterval>
   killTimer?: ReturnType<typeof setTimeout>
+  idleTimer?: ReturnType<typeof setTimeout>
+  restartTimer?: ReturnType<typeof setTimeout>
 }
 
 export class SidecarProcessSupervisor {
@@ -125,30 +156,21 @@ export class SidecarProcessSupervisor {
       name: spec.name,
       key: spec.key,
       process: child,
+      spawn: spec.spawn,
+      onExit: spec.onExit,
       binaryPath: spec.binaryPath,
       binaryVersion: spec.binaryVersion,
       cwd: spec.cwd,
       startedAt: Date.now(),
       state: 'running',
       restartCount: 0,
+      restartTimestamps: [],
+      intentionalStop: false,
       recentStderr: []
     }
 
     this.entries.set(id, entry)
-
-    child.stderr?.on('data', (chunk: Buffer | string) => {
-      this.appendStderr(entry, chunk)
-    })
-
-    child.once('exit', (code, signal) => {
-      entry.state = 'stopped'
-      this.stopSampler(entry)
-      this.clearKillTimer(entry)
-      logger.info(`sidecar exited: ${id}`, { code, signal })
-      spec.onExit?.(code, signal)
-    })
-
-    this.startSampler(entry)
+    this.attachChild(entry, child)
 
     logger.info(`sidecar spawned: ${id}`, { pid: child.pid, binaryPath: spec.binaryPath })
 
@@ -157,6 +179,90 @@ export class SidecarProcessSupervisor {
       process: child,
       status: () => this.snapshot(entry)
     }
+  }
+
+  /**
+   * Wire a freshly-spawned child into an entry: stderr ring buffer, the shared
+   * exit handler, and the resource sampler. Shared by spawn() and restart so
+   * per-child setup stays DRY and identical across the entry's lifetime.
+   */
+  private attachChild(entry: SupervisedEntry, child: ChildProcess): void {
+    child.stderr?.on('data', (chunk: Buffer | string) => {
+      this.appendStderr(entry, chunk)
+    })
+
+    child.once('exit', (code, signal) => {
+      this.handleExit(entry, code, signal)
+    })
+
+    this.startSampler(entry)
+  }
+
+  /**
+   * Shared 'exit' handler for every supervised child. Releases all timers and
+   * the sampler, then either settles the entry (intentional termination) or
+   * attempts an automatic restart subject to the budget (unexpected crash).
+   */
+  private handleExit(entry: SupervisedEntry, code: number | null, signal: NodeJS.Signals | null): void {
+    this.stopSampler(entry)
+    this.clearKillTimer(entry)
+    this.clearIdleTimer(entry)
+    logger.info(`sidecar exited: ${entry.id}`, { code, signal, intentional: entry.intentionalStop })
+    entry.onExit?.(code, signal)
+
+    if (entry.intentionalStop) {
+      // Operator-initiated stop()/kill(): settle as stopped, never restart.
+      entry.state = 'stopped'
+      return
+    }
+
+    this.scheduleRestart(entry)
+  }
+
+  /**
+   * Schedule an automatic restart after a crash, honouring the sliding-window
+   * budget. If the budget is exhausted the entry is moved to 'failed' and left
+   * dead. The new child reuses the same entry/id (no new list() row).
+   */
+  private scheduleRestart(entry: SupervisedEntry): void {
+    const now = Date.now()
+    // Drop restart timestamps that have aged out of the sliding window.
+    entry.restartTimestamps = entry.restartTimestamps.filter((ts) => now - ts < RESTART_WINDOW_MS)
+
+    if (entry.restartTimestamps.length >= RESTART_BUDGET) {
+      entry.state = 'failed'
+      logger.error(`sidecar exceeded restart budget; giving up: ${entry.id}`, {
+        name: entry.name,
+        budget: RESTART_BUDGET,
+        windowMs: RESTART_WINDOW_MS
+      })
+      return
+    }
+
+    const backoffIndex = Math.min(entry.restartCount, RESTART_BACKOFF_MS.length - 1)
+    const delay = RESTART_BACKOFF_MS[backoffIndex]
+    entry.restartTimestamps.push(now)
+
+    const restartTimer = setTimeout(() => {
+      this.restart(entry)
+    }, delay)
+    restartTimer.unref()
+    entry.restartTimer = restartTimer
+  }
+
+  /**
+   * Restart a crashed sidecar in place: spawn a fresh child via the stored
+   * thunk, swap it onto the same entry, and re-run per-child wiring.
+   */
+  private restart(entry: SupervisedEntry): void {
+    entry.restartTimer = undefined
+    const child = entry.spawn()
+    entry.process = child
+    entry.restartCount += 1
+    entry.state = 'running'
+    entry.startedAt = Date.now()
+    this.attachChild(entry, child)
+    logger.info(`sidecar restarted: ${entry.id}`, { pid: child.pid, restartCount: entry.restartCount })
   }
 
   list(): SupervisedSidecarStatus[] {
@@ -181,6 +287,12 @@ export class SidecarProcessSupervisor {
     if (!entry || this.hasExited(entry) || entry.state === 'stopping') {
       return
     }
+
+    // Mark intentional first so a restart is never scheduled for this exit,
+    // and release idle/restart timers that could otherwise act on a dead entry.
+    entry.intentionalStop = true
+    this.clearIdleTimer(entry)
+    this.clearRestartTimer(entry)
 
     entry.state = 'stopping'
     const pid = entry.process.pid
@@ -224,6 +336,12 @@ export class SidecarProcessSupervisor {
       return
     }
 
+    // Mark intentional first so a restart is never scheduled for this exit,
+    // and release idle/restart timers that could otherwise act on a dead entry.
+    entry.intentionalStop = true
+    this.clearIdleTimer(entry)
+    this.clearRestartTimer(entry)
+
     entry.state = 'stopping'
     const pid = entry.process.pid
     if (pid === undefined) {
@@ -237,6 +355,37 @@ export class SidecarProcessSupervisor {
   }
 
   /**
+   * Cancel any pending idle-shutdown timer for an entry: the sidecar is in use
+   * again, so it must not be reaped while active.
+   */
+  markActive(id: string): void {
+    const entry = this.entries.get(id)
+    if (!entry) {
+      return
+    }
+    this.clearIdleTimer(entry)
+  }
+
+  /**
+   * Arm (or re-arm) an idle-shutdown timer for an entry. After
+   * {@link IDLE_SHUTDOWN_MS} of continuous idleness the sidecar is gracefully
+   * stopped. Re-calling resets the timer; markActive cancels it.
+   */
+  markIdle(id: string): void {
+    const entry = this.entries.get(id)
+    if (!entry || this.hasExited(entry)) {
+      return
+    }
+
+    this.clearIdleTimer(entry)
+    const idleTimer = setTimeout(() => {
+      void this.stop(id)
+    }, IDLE_SHUTDOWN_MS)
+    idleTimer.unref()
+    entry.idleTimer = idleTimer
+  }
+
+  /**
    * Transition an entry that has no pid to signal into the terminal 'failed'
    * state, releasing its sampler/kill timer the way the shared 'exit' handler
    * would. Used when stop()/kill() cannot deliver a signal.
@@ -245,6 +394,8 @@ export class SidecarProcessSupervisor {
     entry.state = 'failed'
     this.stopSampler(entry)
     this.clearKillTimer(entry)
+    this.clearIdleTimer(entry)
+    this.clearRestartTimer(entry)
   }
 
   private generateId(name: string, key?: string): string {
@@ -282,6 +433,20 @@ export class SidecarProcessSupervisor {
     if (entry.killTimer) {
       clearTimeout(entry.killTimer)
       entry.killTimer = undefined
+    }
+  }
+
+  private clearIdleTimer(entry: SupervisedEntry): void {
+    if (entry.idleTimer) {
+      clearTimeout(entry.idleTimer)
+      entry.idleTimer = undefined
+    }
+  }
+
+  private clearRestartTimer(entry: SupervisedEntry): void {
+    if (entry.restartTimer) {
+      clearTimeout(entry.restartTimer)
+      entry.restartTimer = undefined
     }
   }
 
