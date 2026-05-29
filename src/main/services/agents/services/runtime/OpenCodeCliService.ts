@@ -8,7 +8,6 @@ import { loggerService } from '@logger'
 import { getAvailableProviders } from '@main/apiServer/utils'
 import type * as OpenCodeSdk from '@opencode-ai/sdk'
 import type { AgentRuntimeConfig, Provider } from '@types'
-import { app } from 'electron'
 import { parse as parseJsonc } from 'jsonc-parser'
 
 import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
@@ -18,6 +17,7 @@ import {
   runtimeBinaryDiscoveryService,
   type RuntimeBinarySource
 } from './RuntimeBinaryDiscoveryService'
+import { type SidecarProcessSupervisor, sidecarProcessSupervisor } from './SidecarProcessSupervisor'
 
 const logger = loggerService.withContext('OpenCodeCliService')
 const SERVER_START_TIMEOUT_MS = 10_000
@@ -49,6 +49,7 @@ export interface OpenCodeRuntimeModel {
 interface ManagedOpenCodeServer {
   key: string
   url: string
+  supervisorId: string
   process: ChildProcess
   client: OpenCodeClient
 }
@@ -67,6 +68,7 @@ interface OpenCodeCliServiceDependencies {
   getAvailableProviders?: () => Promise<Provider[]>
   managedRuntimeService?: ManagedRuntimeService
   runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
+  supervisor?: SidecarProcessSupervisor
 }
 
 export class OpenCodeCliService {
@@ -79,6 +81,7 @@ export class OpenCodeCliService {
   private readonly getAvailableProviders: () => Promise<Provider[]>
   private readonly managedRuntimeService: ManagedRuntimeService
   private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
+  private readonly supervisor: SidecarProcessSupervisor
   private readonly servers = new Map<string, Promise<ManagedOpenCodeServer>>()
   private modelCache: { key: string; expiresAt: number; models: OpenCodeRuntimeModel[] } | null = null
 
@@ -90,9 +93,10 @@ export class OpenCodeCliService {
     this.getAvailableProviders = dependencies.getAvailableProviders ?? getAvailableProviders
     this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
     this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
-    app.once('before-quit', () => {
-      void this.dispose()
-    })
+    this.supervisor = dependencies.supervisor ?? sidecarProcessSupervisor
+    // App-quit cleanup is centralized through the supervisor (shutdownAll), so this
+    // service intentionally does NOT register its own before-quit dispose() here to
+    // avoid double-stopping the same managed server.
   }
 
   async resolveBinary(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeBinaryResolution> {
@@ -225,11 +229,13 @@ export class OpenCodeCliService {
   async dispose(): Promise<void> {
     const entries = await Promise.allSettled(this.servers.values())
     this.servers.clear()
-    for (const entry of entries) {
-      if (entry.status === 'fulfilled') {
-        stopProcess(entry.value.process)
-      }
-    }
+    // The supervisor owns termination: graceful SIGTERM on the process group,
+    // then SIGKILL escalation after its grace period. Delegate via the handle id.
+    await Promise.allSettled(
+      entries.map((entry) =>
+        entry.status === 'fulfilled' ? this.supervisor.stop(entry.value.supervisorId) : Promise.resolve()
+      )
+    )
   }
 
   private validateCandidate(
@@ -264,19 +270,43 @@ export class OpenCodeCliService {
       throw new Error(resolution.message)
     }
 
-    const child = this.spawnProcess(resolution.path, ['serve', '--hostname', '127.0.0.1', '--port', '0'], {
+    const binaryPath = resolution.path
+    const key = `${cwd}:${JSON.stringify(config)}`
+
+    // Spawn through the supervisor so it owns process-group lifecycle: detached
+    // makes the child its own group leader, enabling tree-kill on stop(). The
+    // injectable spawnProcess remains the actual spawn mechanism inside the thunk.
+    const handle = this.supervisor.spawn({
+      name: 'opencode',
+      // Use the per-server map key so distinct cwd/config servers get distinct
+      // supervisor entries (the supervisor's id is derived from name + key).
+      key,
+      binaryPath,
       cwd,
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        OPENCODE_CONFIG_CONTENT: JSON.stringify(config)
-      }
+      // The supervisor invokes onExit on every child exit. Evict the stale map
+      // entry so a crashed/stopped server is not served; a subsequent
+      // resolveClient() then re-creates a fresh managed server on demand.
+      onExit: () => {
+        this.servers.delete(key)
+      },
+      spawn: () =>
+        this.spawnProcess(binaryPath, ['serve', '--hostname', '127.0.0.1', '--port', '0'], {
+          cwd,
+          stdio: 'pipe',
+          detached: true,
+          env: {
+            ...process.env,
+            OPENCODE_CONFIG_CONTENT: JSON.stringify(config)
+          }
+        })
     })
 
+    const child = handle.process
     const url = await waitForOpenCodeServerUrl(child)
     return {
-      key: `${cwd}:${JSON.stringify(config)}`,
+      key,
       url,
+      supervisorId: handle.id,
       process: child,
       client: sdk.createOpencodeClient({ baseUrl: url })
     }
