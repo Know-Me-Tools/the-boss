@@ -52,7 +52,7 @@ export const RESTART_WINDOW_MS = 60_000
  */
 export const RESTART_BACKOFF_MS = [1000, 2000, 4000]
 
-type SupervisedState = 'starting' | 'running' | 'stopping' | 'stopped' | 'failed'
+type SupervisedState = 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'failed'
 
 export interface SupervisedSpawnSpec {
   name: string
@@ -176,7 +176,11 @@ export class SidecarProcessSupervisor {
 
     return {
       id,
-      process: child,
+      // Read the live child: after a restart entry.process is swapped, so a
+      // value-captured reference would dangle on the dead child.
+      get process() {
+        return entry.process
+      },
       status: () => this.snapshot(entry)
     }
   }
@@ -243,6 +247,11 @@ export class SidecarProcessSupervisor {
     const delay = RESTART_BACKOFF_MS[backoffIndex]
     entry.restartTimestamps.push(now)
 
+    // Mark 'restarting' so stop()/kill() during the backoff window can detect a
+    // pending restart and settle terminally instead of treeKill'ing the dead pid
+    // and arming an escalation timer on a child whose 'exit' already fired.
+    entry.state = 'restarting'
+
     const restartTimer = setTimeout(() => {
       this.restart(entry)
     }, delay)
@@ -285,6 +294,16 @@ export class SidecarProcessSupervisor {
     // attach a second 'exit' listener and clobber entry.killTimer, leaking the
     // first timer (which later fires an orphaned SIGKILL at a possibly-recycled pid).
     if (!entry || this.hasExited(entry) || entry.state === 'stopping') {
+      return
+    }
+
+    // Stop requested while a restart is pending: the old child is already dead
+    // and its 'exit' was consumed. treeKill+once('exit') here would strand the
+    // entry forever. Cancel the restart and settle terminally instead.
+    if (entry.state === 'restarting') {
+      entry.intentionalStop = true
+      this.clearRestartTimer(entry)
+      this.settleAsFailed(entry)
       return
     }
 
@@ -333,6 +352,15 @@ export class SidecarProcessSupervisor {
   async kill(id: string): Promise<void> {
     const entry = this.entries.get(id)
     if (!entry || this.hasExited(entry)) {
+      return
+    }
+
+    // Kill requested while a restart is pending: the old child is already dead.
+    // Cancel the restart and settle terminally rather than signalling a dead pid.
+    if (entry.state === 'restarting') {
+      entry.intentionalStop = true
+      this.clearRestartTimer(entry)
+      this.settleAsFailed(entry)
       return
     }
 
@@ -462,10 +490,12 @@ export class SidecarProcessSupervisor {
 
     try {
       const stats = await this._pidusage(pid)
-      // The sample may resolve after the child has already exited (the 'exit'
-      // handler sets state to 'stopped' and clears the sampler). Drop late
-      // samples so we neither overwrite the final values nor warn for a dead pid.
-      if (entry.state === 'stopped') {
+      // The sample may resolve after the child has exited OR after a crash
+      // restart swapped in a fresh child (state never passes through 'stopped'
+      // on that path). Drop the late sample if the entry is terminal or the live
+      // pid no longer matches the one we sampled, so stale data from the old
+      // child neither overwrites cpu/rss nor fires a spurious warn.
+      if (this.hasExited(entry) || entry.process.pid !== pid) {
         return
       }
       entry.cpuPercent = stats.cpu

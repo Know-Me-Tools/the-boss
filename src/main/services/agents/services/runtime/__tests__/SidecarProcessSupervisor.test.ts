@@ -10,6 +10,7 @@ import {
   KILL_ESCALATION_MS,
   RESOURCE_SAMPLE_MS,
   RESTART_BACKOFF_MS,
+  RESTART_WINDOW_MS,
   RSS_WARN_BYTES,
   SidecarProcessSupervisor,
   STDERR_RING_SIZE
@@ -603,6 +604,123 @@ describe('SidecarProcessSupervisor', () => {
       await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[2])
       expect(spawnThunk).toHaveBeenCalledTimes(4)
       expect(supervisor2.get(handle.id)?.state).toBe('failed')
+    })
+
+    it('stop() during the restart-backoff window settles terminally without hanging', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const spawnThunk = vi.fn(() => asChildProcess(createChildProcess(1234)))
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // Crash: the old child's 'exit' is consumed and a restart is pending.
+      handle.process.emit('exit', 1, null)
+      expect(supervisor2.get(handle.id)?.state).toBe('restarting')
+
+      // Stop during the backoff window must resolve promptly (no SIGTERM/once
+      // 'exit' on the dead child, so no 3s escalation hang) and cancel the restart.
+      const p = supervisor2.stop(handle.id)
+      await p
+
+      // No signal was sent to the dead pid on this path.
+      expect(treeKill).not.toHaveBeenCalled()
+
+      // Terminal and stable: the restart never fires.
+      expect(supervisor2.get(handle.id)?.state).toBe('failed')
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[RESTART_BACKOFF_MS.length - 1] * 4)
+      expect(spawnThunk).toHaveBeenCalledTimes(1)
+      expect(supervisor2.get(handle.id)?.state).toBe('failed')
+    })
+
+    it('prunes stale restart timestamps so the budget window slides', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const children: FakeChildProcess[] = []
+      const spawnThunk = vi.fn(() => {
+        const c = createChildProcess()
+        children.push(c)
+        return asChildProcess(c)
+      })
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // Exhaust the full budget (3 restarts) rapidly.
+      children[0].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[0])
+      children[1].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[1])
+      children[2].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[2])
+      expect(spawnThunk).toHaveBeenCalledTimes(4)
+      expect(supervisor2.get(handle.id)?.state).toBe('running')
+
+      // Let the sliding window fully elapse so the prior timestamps age out.
+      await vi.advanceTimersByTimeAsync(RESTART_WINDOW_MS + 1000)
+
+      // A fresh crash must restart (timestamps pruned) rather than fail.
+      children[3].emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[RESTART_BACKOFF_MS.length - 1])
+      expect(spawnThunk).toHaveBeenCalledTimes(5)
+      expect(supervisor2.get(handle.id)?.state).toBe('running')
+    })
+
+    it('drops a stale sample from the old child after a crash restart (no warn, no write)', async () => {
+      vi.useFakeTimers()
+      const warnSpy = vi.spyOn(loggerService, 'warn').mockImplementation(() => undefined)
+      // Manually-resolved pidusage so we can interleave a crash restart between
+      // the sample starting and its promise resolving with stale high values.
+      let resolvePidusage: ((sample: { cpu: number; memory: number }) => void) | undefined
+      const pidusage = vi.fn().mockImplementation(
+        () =>
+          new Promise<{ cpu: number; memory: number }>((resolve) => {
+            resolvePidusage = resolve
+          })
+      )
+      const oldChild = createChildProcess(1111)
+      const newChild = createChildProcess(2222)
+      const children = [oldChild, newChild]
+      let spawnCount = 0
+      const spawnThunk = vi.fn(() => asChildProcess(children[spawnCount++]))
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: spawnThunk,
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // Start a sample against the OLD child (pid 1111); its promise stays pending.
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+      expect(pidusage).toHaveBeenCalledWith(1111)
+      expect(resolvePidusage).toBeDefined()
+
+      // Crash the old child so a restart swaps in the new child (pid 2222).
+      oldChild.emit('exit', 1, null)
+      await vi.advanceTimersByTimeAsync(RESTART_BACKOFF_MS[0])
+      expect(handle.process.pid).toBe(2222)
+      expect(sampler.get(handle.id)?.state).toBe('running')
+
+      // Resolve the stale OLD sample with high cpu/mem; it must be discarded.
+      resolvePidusage?.({ cpu: CPU_WARN_PERCENT, memory: RSS_WARN_BYTES })
+      await vi.runAllTicks()
+      await Promise.resolve()
+
+      const status = sampler.get(handle.id)
+      expect(status?.cpuPercent).toBeUndefined()
+      expect(status?.rssBytes).toBeUndefined()
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
     })
 
     it('does not restart after an intentional stop()', async () => {
