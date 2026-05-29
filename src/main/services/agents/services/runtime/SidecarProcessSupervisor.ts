@@ -26,6 +26,11 @@ export const CPU_WARN_PERCENT = 90
  */
 export const RSS_WARN_BYTES = 2 * 1024 * 1024 * 1024
 
+/**
+ * Grace period (ms) after SIGTERM before escalating a graceful stop to SIGKILL.
+ */
+export const KILL_ESCALATION_MS = 3000
+
 type SupervisedState = 'starting' | 'running' | 'stopping' | 'stopped' | 'failed'
 
 export interface SupervisedSpawnSpec {
@@ -98,6 +103,7 @@ interface SupervisedEntry {
   rssBytes?: number
   recentStderr: string[]
   sampler?: ReturnType<typeof setInterval>
+  killTimer?: ReturnType<typeof setTimeout>
 }
 
 export class SidecarProcessSupervisor {
@@ -108,9 +114,6 @@ export class SidecarProcessSupervisor {
   constructor(deps: SidecarProcessSupervisorDeps = {}) {
     this._pidusage = deps.pidusage ?? pidusage
     this._treeKill = deps.treeKill ?? treeKill
-    // Retained for a later task (tree-kill teardown); referenced here so the
-    // compiler does not flag it as unused under noUnusedLocals.
-    void this._treeKill
   }
 
   spawn(spec: SupervisedSpawnSpec): SupervisedHandle {
@@ -140,6 +143,7 @@ export class SidecarProcessSupervisor {
     child.once('exit', (code, signal) => {
       entry.state = 'stopped'
       this.stopSampler(entry)
+      this.clearKillTimer(entry)
       logger.info(`sidecar exited: ${id}`, { code, signal })
       spec.onExit?.(code, signal)
     })
@@ -162,6 +166,62 @@ export class SidecarProcessSupervisor {
   get(id: string): SupervisedSidecarStatus | undefined {
     const entry = this.entries.get(id)
     return entry ? this.snapshot(entry) : undefined
+  }
+
+  /**
+   * Gracefully terminate a supervised sidecar: SIGTERM the whole process tree,
+   * then escalate to SIGKILL if it does not exit within {@link KILL_ESCALATION_MS}.
+   * Idempotent; resolves once the process has exited or after SIGKILL is issued.
+   */
+  async stop(id: string): Promise<void> {
+    const entry = this.entries.get(id)
+    if (!entry || this.hasExited(entry)) {
+      return
+    }
+
+    entry.state = 'stopping'
+    const pid = entry.process.pid
+    if (pid === undefined) {
+      return
+    }
+
+    this._treeKill(pid, 'SIGTERM')
+
+    await new Promise<void>((resolve) => {
+      const onExit = (): void => {
+        this.clearKillTimer(entry)
+        resolve()
+      }
+      entry.process.once('exit', onExit)
+
+      entry.killTimer = setTimeout(() => {
+        // Process did not exit in time; escalate and stop waiting. The 'exit'
+        // listener stays armed so the shared handler still runs on real exit.
+        entry.process.removeListener('exit', onExit)
+        this._treeKill(pid, 'SIGKILL')
+        resolve()
+      }, KILL_ESCALATION_MS)
+      entry.killTimer.unref?.()
+    })
+  }
+
+  /**
+   * Immediately terminate a supervised sidecar via SIGKILL on the process tree.
+   * Idempotent; no-op for unknown or already-exited entries.
+   */
+  async kill(id: string): Promise<void> {
+    const entry = this.entries.get(id)
+    if (!entry || this.hasExited(entry)) {
+      return
+    }
+
+    entry.state = 'stopping'
+    const pid = entry.process.pid
+    if (pid === undefined) {
+      return
+    }
+
+    this._treeKill(pid, 'SIGKILL')
   }
 
   private generateId(name: string, key?: string): string {
@@ -193,6 +253,17 @@ export class SidecarProcessSupervisor {
       clearInterval(entry.sampler)
       entry.sampler = undefined
     }
+  }
+
+  private clearKillTimer(entry: SupervisedEntry): void {
+    if (entry.killTimer) {
+      clearTimeout(entry.killTimer)
+      entry.killTimer = undefined
+    }
+  }
+
+  private hasExited(entry: SupervisedEntry): boolean {
+    return entry.state === 'stopped' || entry.state === 'failed'
   }
 
   private async sampleResources(entry: SupervisedEntry): Promise<void> {

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   CPU_WARN_PERCENT,
+  KILL_ESCALATION_MS,
   RESOURCE_SAMPLE_MS,
   RSS_WARN_BYTES,
   SidecarProcessSupervisor,
@@ -278,6 +279,107 @@ describe('SidecarProcessSupervisor', () => {
 
       await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS * 3)
       expect(pidusage.mock.calls.length).toBe(callsBeforeExit)
+    })
+  })
+
+  describe('stop and kill', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('stop sends SIGTERM and resolves on exit without escalating to SIGKILL', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      const stopped = supervisor2.stop(handle.id)
+      await Promise.resolve()
+
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGTERM')
+
+      // Child exits before the escalation timeout fires.
+      child.emit('exit', 0, null)
+      await stopped
+
+      expect(treeKill).not.toHaveBeenCalledWith(1234, 'SIGKILL')
+      expect(treeKill).toHaveBeenCalledTimes(1)
+      expect(supervisor2.get(handle.id)?.state).toBe('stopped')
+    })
+
+    it('stop escalates to SIGKILL when the child does not exit in time', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      const stopped = supervisor2.stop(handle.id)
+      await Promise.resolve()
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGTERM')
+
+      // Process never emits 'exit'; advancing past the escalation window escalates.
+      await vi.advanceTimersByTimeAsync(KILL_ESCALATION_MS)
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGKILL')
+
+      await stopped
+    })
+
+    it('kill sends SIGKILL immediately without SIGTERM', async () => {
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await supervisor2.kill(handle.id)
+
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGKILL')
+      expect(treeKill).not.toHaveBeenCalledWith(1234, 'SIGTERM')
+      expect(treeKill).toHaveBeenCalledTimes(1)
+    })
+
+    it('stop and kill are no-ops for unknown ids', async () => {
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+
+      await expect(supervisor2.stop('nope')).resolves.toBeUndefined()
+      await expect(supervisor2.kill('nope')).resolves.toBeUndefined()
+      expect(treeKill).not.toHaveBeenCalled()
+    })
+
+    it('stop and kill are no-ops once the child has already exited', async () => {
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      child.emit('exit', 0, null)
+      expect(supervisor2.get(handle.id)?.state).toBe('stopped')
+
+      await supervisor2.stop(handle.id)
+      await supervisor2.kill(handle.id)
+      expect(treeKill).not.toHaveBeenCalled()
     })
   })
 })
