@@ -122,6 +122,22 @@ type RuntimeBinaryDiscoveryResult = {
   message: string
 }
 
+type SupervisedSidecarStatus = {
+  id: string
+  name: string
+  key?: string
+  pid?: number
+  binaryPath: string
+  binaryVersion?: string
+  cwd?: string
+  startedAt: number
+  state: 'starting' | 'running' | 'restarting' | 'stopping' | 'stopped' | 'failed'
+  restartCount: number
+  cpuPercent?: number
+  rssBytes?: number
+  recentStderr: string[]
+}
+
 type DirectoryListOptions = {
   recursive?: boolean
   maxDepth?: number
@@ -674,6 +690,11 @@ const api = {
     startSidecar: (runtimeConfig: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_StartSidecar, runtimeConfig),
     stopSidecar: () => ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSidecar),
+    getSupervisorStatus: (): Promise<SupervisedSidecarStatus[]> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_GetSupervisorStatus),
+    stopSupervisedSidecar: (id: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSupervisedSidecar, id),
+    killSidecar: (id: string): Promise<void> => ipcRenderer.invoke(IpcChannel.AgentRuntime_KillSidecar, id),
     getStatus: (runtimeConfig: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
     discoverBinary: (kind: AgentRuntimeKind): Promise<RuntimeBinaryDiscoveryResult> =>
