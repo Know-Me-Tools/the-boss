@@ -383,6 +383,24 @@ export class SidecarProcessSupervisor {
   }
 
   /**
+   * Gracefully stop every tracked sidecar that is not already terminal, used on
+   * app quit. Each live entry goes through the standard stop() path (SIGTERM,
+   * then SIGKILL escalation after {@link KILL_ESCALATION_MS}), and all stops are
+   * awaited together with allSettled so one failing stop never blocks the rest.
+   * Terminal entries are left in the map (their final state remains visible via
+   * list()); this method never throws.
+   */
+  async shutdownAll(): Promise<void> {
+    const liveIds = Array.from(this.entries.values())
+      .filter((entry) => !this.hasExited(entry))
+      .map((entry) => entry.id)
+
+    logger.info(`shutting down all sidecars: ${liveIds.length} running`)
+    await Promise.allSettled(liveIds.map((id) => this.stop(id)))
+    logger.info('all sidecars shut down')
+  }
+
+  /**
    * Cancel any pending idle-shutdown timer for an entry: the sidecar is in use
    * again, so it must not be reaped while active.
    */

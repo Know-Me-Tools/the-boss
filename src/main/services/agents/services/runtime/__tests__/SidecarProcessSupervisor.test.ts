@@ -747,4 +747,101 @@ describe('SidecarProcessSupervisor', () => {
       expect(supervisor2.get(handle.id)?.state).toBe('stopped')
     })
   })
+
+  describe('shutdownAll', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('gracefully stops every live entry and resolves once all settle', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const childA = createChildProcess(111)
+      const childB = createChildProcess(222)
+
+      supervisor2.spawn({ name: 'uar', spawn: () => asChildProcess(childA), binaryPath: '/opt/bin/uar' })
+      supervisor2.spawn({ name: 'opencode', spawn: () => asChildProcess(childB), binaryPath: '/opt/bin/opencode' })
+
+      const done = supervisor2.shutdownAll()
+      await Promise.resolve()
+
+      // Each live entry was SIGTERM'd via the graceful stop() path.
+      expect(treeKill).toHaveBeenCalledWith(111, 'SIGTERM')
+      expect(treeKill).toHaveBeenCalledWith(222, 'SIGTERM')
+
+      // Drive both children's exits so the graceful stops resolve.
+      childA.emit('exit', 0, null)
+      childB.emit('exit', 0, null)
+
+      await expect(done).resolves.toBeUndefined()
+
+      const states = supervisor2.list().map((s) => s.state)
+      expect(states).toEqual(['stopped', 'stopped'])
+    })
+
+    it('resolves without throwing when there are zero entries', async () => {
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill: vi.fn() })
+      await expect(supervisor2.shutdownAll()).resolves.toBeUndefined()
+    })
+
+    it('only stops live entries and still resolves with a mix of terminal ones', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const liveChild = createChildProcess(111)
+      const deadChild = createChildProcess(222)
+
+      const liveHandle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(liveChild),
+        binaryPath: '/opt/bin/uar'
+      })
+      const deadHandle = supervisor2.spawn({
+        name: 'opencode',
+        spawn: () => asChildProcess(deadChild),
+        binaryPath: '/opt/bin/opencode'
+      })
+
+      // Pre-stop the second entry so it is already terminal before shutdownAll.
+      const preStopped = supervisor2.stop(deadHandle.id)
+      await Promise.resolve()
+      deadChild.emit('exit', 0, null)
+      await preStopped
+      expect(supervisor2.get(deadHandle.id)?.state).toBe('stopped')
+
+      const sigtermsBefore = treeKill.mock.calls.length
+
+      const done = supervisor2.shutdownAll()
+      await Promise.resolve()
+
+      // Only the live entry receives a fresh SIGTERM; the terminal one is a no-op.
+      expect(treeKill).toHaveBeenCalledWith(111, 'SIGTERM')
+      expect(treeKill.mock.calls.length).toBe(sigtermsBefore + 1)
+
+      liveChild.emit('exit', 0, null)
+      await expect(done).resolves.toBeUndefined()
+      expect(supervisor2.get(liveHandle.id)?.state).toBe('stopped')
+    })
+
+    it('resolves even when an entry must escalate to SIGKILL', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const stubborn = createChildProcess(999)
+
+      supervisor2.spawn({ name: 'uar', spawn: () => asChildProcess(stubborn), binaryPath: '/opt/bin/uar' })
+
+      const done = supervisor2.shutdownAll()
+      await Promise.resolve()
+      expect(treeKill).toHaveBeenCalledWith(999, 'SIGTERM')
+
+      // The child never emits 'exit'; advancing past the escalation window
+      // forces SIGKILL and lets the graceful stop resolve.
+      await vi.advanceTimersByTimeAsync(KILL_ESCALATION_MS)
+      expect(treeKill).toHaveBeenCalledWith(999, 'SIGKILL')
+
+      await expect(done).resolves.toBeUndefined()
+    })
+  })
 })
