@@ -5,6 +5,7 @@ import * as path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { SidecarProcessSupervisor, SupervisedHandle, SupervisedSpawnSpec } from '../SidecarProcessSupervisor'
 import { UniversalAgentRuntimeService } from '../UniversalAgentRuntimeService'
 
 const spawnMock = vi.fn()
@@ -67,8 +68,10 @@ describe('UniversalAgentRuntimeService', () => {
     spawnMock.mockReturnValue(child)
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
+    const fakeSupervisor = createFakeSupervisor()
     const service = new UniversalAgentRuntimeService({
-      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
+      supervisor: fakeSupervisor.supervisor as never
     })
     const endpoint = await service.ensureRunning(
       {
@@ -87,11 +90,23 @@ describe('UniversalAgentRuntimeService', () => {
     )
 
     expect(endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/)
+
+    // Spawning is routed through the supervisor with the UAR sidecar name and a
+    // spawn thunk; the thunk is what records the underlying spawn options.
+    expect(fakeSupervisor.spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'universal-agent-runtime',
+        binaryPath,
+        spawn: expect.any(Function)
+      })
+    )
     expect(spawnMock).toHaveBeenCalledWith(
       binaryPath,
       ['--config', expect.stringContaining('config.generated.yaml')],
       expect.objectContaining({
         cwd: path.join(tempDir, 'Data', 'uar'),
+        // detached lets the supervisor kill the whole process group via tree-kill.
+        detached: true,
         env: expect.objectContaining({
           LLM_API_KEY: 'test-key',
           LLM_MODEL: 'gpt-5.2',
@@ -108,7 +123,9 @@ describe('UniversalAgentRuntimeService', () => {
 
     await service.stop()
 
-    expect(child.kill).toHaveBeenCalled()
+    // stop() delegates termination to the supervisor using the handle id.
+    expect(fakeSupervisor.stop).toHaveBeenCalledWith(fakeSupervisor.lastHandle?.id)
+    expect(fakeSupervisor.lastHandle?.id).toBe('universal-agent-runtime:default')
   })
 
   it('uses a verified managed app-data binary', async () => {
@@ -128,8 +145,10 @@ describe('UniversalAgentRuntimeService', () => {
     spawnMock.mockReturnValue(child)
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
+    const fakeSupervisor = createFakeSupervisor()
     const service = new UniversalAgentRuntimeService({
       runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
+      supervisor: fakeSupervisor.supervisor as never,
       managedBinaryService: {
         resolveInstalledBinary: vi.fn(async () => ({
           binaryPath: managedPath,
@@ -172,8 +191,10 @@ describe('UniversalAgentRuntimeService', () => {
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
     const discovery = createRuntimeBinaryDiscoveryService(detectedPath)
+    const fakeSupervisor = createFakeSupervisor()
     const service = new UniversalAgentRuntimeService({
       runtimeBinaryDiscoveryService: discovery as never,
+      supervisor: fakeSupervisor.supervisor as never,
       managedBinaryService: {
         resolveInstalledBinary: vi.fn(async () => ({
           binaryPath: managedPath,
@@ -206,8 +227,10 @@ describe('UniversalAgentRuntimeService', () => {
     spawnMock.mockReturnValue(child)
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
+    const fakeSupervisor = createFakeSupervisor()
     const service = new UniversalAgentRuntimeService({
       runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never,
+      supervisor: fakeSupervisor.supervisor as never,
       managedBinaryService: {
         resolveInstalledBinary: vi.fn(async () => ({
           status: {
@@ -287,8 +310,10 @@ describe('UniversalAgentRuntimeService', () => {
     spawnMock.mockReturnValue(child)
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
+    const fakeSupervisor = createFakeSupervisor()
     const service = new UniversalAgentRuntimeService({
-      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
+      supervisor: fakeSupervisor.supervisor as never
     })
     const endpoint = await service.ensureRunning({
       kind: 'uar',
@@ -336,6 +361,54 @@ describe('UniversalAgentRuntimeService', () => {
     await service.stop()
   })
 })
+
+interface FakeSupervisor {
+  supervisor: Pick<SidecarProcessSupervisor, 'spawn' | 'stop'>
+  spawn: ReturnType<typeof vi.fn>
+  stop: ReturnType<typeof vi.fn>
+  lastSpec?: SupervisedSpawnSpec
+  lastHandle?: SupervisedHandle
+}
+
+// A lightweight stand-in for SidecarProcessSupervisor: its spawn() actually
+// invokes the spawn thunk (so the real spawnMock records options and
+// waitForUarReady still drives the returned child), and stop() is observable.
+function createFakeSupervisor(): FakeSupervisor {
+  const fake: FakeSupervisor = {
+    spawn: vi.fn(),
+    stop: vi.fn(async () => undefined)
+  } as FakeSupervisor
+
+  fake.spawn.mockImplementation((spec: SupervisedSpawnSpec): SupervisedHandle => {
+    const child = spec.spawn()
+    const handle: SupervisedHandle = {
+      id: `${spec.name}:default`,
+      process: child,
+      status: () => ({
+        id: `${spec.name}:default`,
+        name: spec.name,
+        key: spec.key,
+        pid: child.pid,
+        binaryPath: spec.binaryPath,
+        binaryVersion: spec.binaryVersion,
+        cwd: spec.cwd,
+        startedAt: Date.now(),
+        state: 'running',
+        restartCount: 0,
+        recentStderr: []
+      })
+    }
+    fake.lastSpec = spec
+    fake.lastHandle = handle
+    return handle
+  })
+
+  fake.supervisor = {
+    spawn: fake.spawn as unknown as SidecarProcessSupervisor['spawn'],
+    stop: fake.stop as unknown as SidecarProcessSupervisor['stop']
+  }
+  return fake
+}
 
 function binaryName(): string {
   return process.platform === 'win32' ? 'universal-agent-runtime.exe' : 'universal-agent-runtime'

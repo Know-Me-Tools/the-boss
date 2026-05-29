@@ -7,7 +7,6 @@ import path from 'node:path'
 import { loggerService } from '@logger'
 import { getDataPath } from '@main/utils'
 import type { AgentRuntimeConfig } from '@types'
-import { app } from 'electron'
 
 import {
   type ManagedBinaryInstallOptions,
@@ -20,6 +19,7 @@ import {
   type RuntimeBinaryDiscoveryService,
   runtimeBinaryDiscoveryService
 } from './RuntimeBinaryDiscoveryService'
+import { type SidecarProcessSupervisor, sidecarProcessSupervisor } from './SidecarProcessSupervisor'
 
 const logger = loggerService.withContext('UniversalAgentRuntimeService')
 
@@ -38,6 +38,7 @@ interface RunningSidecar {
   endpoint: string
   configPath: string
   process: ChildProcess
+  supervisorId: string
   binaryPath: string
   binarySource: UarBinarySource
 }
@@ -85,6 +86,7 @@ interface UniversalAgentRuntimeServiceDependencies {
   managedBinaryService?: ManagedBinaryServiceLike
   managedRuntimeService?: ManagedRuntimeService
   runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
+  supervisor?: SidecarProcessSupervisor
 }
 
 interface UarBinaryResolution {
@@ -99,14 +101,16 @@ export class UniversalAgentRuntimeService {
   private readonly managedBinaryService?: ManagedBinaryServiceLike
   private readonly managedRuntimeService: ManagedRuntimeService
   private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
+  private readonly supervisor: SidecarProcessSupervisor
 
   constructor(dependencies: UniversalAgentRuntimeServiceDependencies = {}) {
     this.managedBinaryService = dependencies.managedBinaryService
     this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
     this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
-    app.once('before-quit', () => {
-      void this.stop()
-    })
+    this.supervisor = dependencies.supervisor ?? sidecarProcessSupervisor
+    // App-quit cleanup is centralized through the supervisor (shutdownAll), so
+    // UAR intentionally does NOT register its own before-quit stop() here to
+    // avoid double-stopping the same sidecar.
   }
 
   async ensureRunning(
@@ -219,19 +223,9 @@ export class UniversalAgentRuntimeService {
       return
     }
 
-    await new Promise<void>((resolve) => {
-      const timeout = setTimeout(() => {
-        running.process.kill('SIGKILL')
-        resolve()
-      }, 3000)
-
-      running.process.once('exit', () => {
-        clearTimeout(timeout)
-        resolve()
-      })
-
-      running.process.kill()
-    })
+    // The supervisor owns termination: SIGTERM the process group, then escalate
+    // to SIGKILL after its grace period. Delegate via the stored handle id.
+    await this.supervisor.stop(running.supervisorId)
   }
 
   private async start(
@@ -275,23 +269,35 @@ export class UniversalAgentRuntimeService {
       })
     )
 
-    const child = spawn(binaryPath, ['--config', configPath], {
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      CONFIG_FILE: configPath,
+      LLM_API_KEY: providerOptions.apiKey ?? process.env.LLM_API_KEY ?? '',
+      LLM_MODEL: providerOptions.modelId ?? process.env.LLM_MODEL ?? '',
+      LLM_BASE_URL: providerOptions.apiHost ?? process.env.LLM_BASE_URL ?? '',
+      RUST_LOG: logLevel,
+      UAR_NATIVE_TOOLS__FILE_TOOLS_ENABLED: String(nativeTools.fileToolsEnabled),
+      UAR_NATIVE_TOOLS__WEB_FETCH_ENABLED: String(nativeTools.webFetchEnabled),
+      UAR_NATIVE_TOOLS__TERMINAL_EXEC_ENABLED: String(nativeTools.terminalExecEnabled),
+      UAR_SKILL_EVOLUTION__ENABLED: 'false'
+    }
+
+    // Spawn through the supervisor so it owns process-group lifecycle: detached
+    // makes the child its own group leader, enabling tree-kill on stop().
+    const handle = this.supervisor.spawn({
+      name: 'universal-agent-runtime',
+      binaryPath,
       cwd: dataDir,
-      env: {
-        ...process.env,
-        CONFIG_FILE: configPath,
-        LLM_API_KEY: providerOptions.apiKey ?? process.env.LLM_API_KEY ?? '',
-        LLM_MODEL: providerOptions.modelId ?? process.env.LLM_MODEL ?? '',
-        LLM_BASE_URL: providerOptions.apiHost ?? process.env.LLM_BASE_URL ?? '',
-        RUST_LOG: logLevel,
-        UAR_NATIVE_TOOLS__FILE_TOOLS_ENABLED: String(nativeTools.fileToolsEnabled),
-        UAR_NATIVE_TOOLS__WEB_FETCH_ENABLED: String(nativeTools.webFetchEnabled),
-        UAR_NATIVE_TOOLS__TERMINAL_EXEC_ENABLED: String(nativeTools.terminalExecEnabled),
-        UAR_SKILL_EVOLUTION__ENABLED: 'false'
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true
+      spawn: () =>
+        spawn(binaryPath, ['--config', configPath], {
+          cwd: dataDir,
+          env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          windowsHide: true,
+          detached: true
+        })
     })
+    const child = handle.process
 
     child.stdout?.on('data', (data) => {
       logger.debug('UAR sidecar stdout', { line: redact(String(data)).trim().slice(0, 500) })
@@ -310,6 +316,7 @@ export class UniversalAgentRuntimeService {
       endpoint,
       configPath,
       process: child,
+      supervisorId: handle.id,
       binaryPath,
       binarySource: resolution.binarySource ?? 'managed'
     }
@@ -320,7 +327,9 @@ export class UniversalAgentRuntimeService {
       logger.info('UAR sidecar ready', { endpoint, configPath, binaryPath, binarySource: running.binarySource })
       return running
     } catch (error) {
-      child.kill()
+      // Readiness failed: delegate teardown to the supervisor so the process
+      // group is killed and its restart logic is cancelled (intentional stop).
+      await this.supervisor.stop(handle.id)
       throw error
     }
   }
