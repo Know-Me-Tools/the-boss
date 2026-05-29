@@ -26,6 +26,7 @@ Common fields:
 - `sandbox.networkAccess`: enables network access where the runtime supports it.
 - `permissions.mode`: runtime approval mode. Codex and OpenCode map this to their own approval systems. UAR currently reports approval support as degraded.
 - `sidecar.binaryPath`: optional UAR sidecar binary override. `UAR_SIDECAR_PATH` can also override the embedded binary path.
+- `sidecar.allowPathDiscovery`: opt-in flag (default `false`) that allows resolving a system-installed binary from `PATH` when no managed binary is available. Disabled by default so a stale `PATH` binary cannot override a verified managed binary.
 - `skills.enabled`: enables runtime skill bridge materialization for non-Claude runtimes.
 
 ## Sidecar Setup
@@ -112,10 +113,12 @@ The desktop app does not download managed runtime binaries during startup. Start
 Resolution order for UAR, Codex, and OpenCode is:
 
 ```text
-configured path -> environment path -> verified managed binary -> development checkout
+configured path -> environment path -> verified managed binary -> opt-in PATH discovery -> development checkout
 ```
 
-The Runtime Settings panel shows the current source as configured path, environment path, managed binary, or development checkout. Missing, unsupported, failed verification, failed download, and update-available states are shown separately from ready/running states. The install/update action calls the managed-runtime backend.
+Verified managed binaries take precedence over PATH discovery so a stale binary on `PATH` cannot silently override a trusted managed binary. PATH discovery is opt-in: it only runs when no managed binary is available and `sidecar.allowPathDiscovery` is set to `true`. It is disabled by default. Explicit overrides (configured path and the runtime environment path) always win regardless of this setting. (Codex and OpenCode retain a final development-checkout fallback; UAR does not.)
+
+The Runtime Settings panel shows the current source as configured path, environment path, managed binary, PATH, or development checkout. Missing, unsupported, failed verification, failed download, and update-available states are shown separately from ready/running states. The install/update action calls the managed-runtime backend.
 
 Operators build and publish runtime artifacts with:
 

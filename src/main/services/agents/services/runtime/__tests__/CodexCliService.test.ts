@@ -66,7 +66,7 @@ describe('CodexCliService', () => {
     )
   })
 
-  it('resolves detected PATH Codex binaries before managed binaries', async () => {
+  it('prefers a verified managed Codex binary over a PATH binary by default', async () => {
     const detectedPath = path.join('/tmp/path-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
     const managedPath = path.join('/tmp/managed-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
     existingFiles.add(detectedPath)
@@ -78,12 +78,74 @@ describe('CodexCliService', () => {
       runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never
     })
 
+    // No allowPathDiscovery flag: a stale PATH binary must not override the managed one.
     await expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).resolves.toEqual(
+      expect.objectContaining({
+        path: managedPath,
+        source: 'managed',
+        state: 'ready'
+      })
+    )
+  })
+
+  it('does not use a PATH Codex binary when discovery is disabled and no managed binary exists', async () => {
+    const detectedPath = path.join('/tmp/path-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    existingFiles.add(detectedPath)
+    const discovery = createRuntimeBinaryDiscoveryService(detectedPath)
+
+    const service = new CodexCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: discovery as never
+    })
+
+    await expect(service.resolveBinary({ kind: 'codex', mode: 'managed' })).resolves.toEqual(
+      expect.objectContaining({ state: 'missing-binary' })
+    )
+    expect(discovery.discover).not.toHaveBeenCalled()
+  })
+
+  it('uses a PATH Codex binary when allowPathDiscovery is opted in and no managed binary exists', async () => {
+    const detectedPath = path.join('/tmp/path-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    existingFiles.add(detectedPath)
+
+    const service = new CodexCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never
+    })
+
+    await expect(
+      service.resolveBinary({ kind: 'codex', mode: 'managed', sidecar: { allowPathDiscovery: true } })
+    ).resolves.toEqual(
       expect.objectContaining({
         path: detectedPath,
         source: 'path',
         state: 'ready',
         message: expect.stringContaining('detected on PATH')
+      })
+    )
+  })
+
+  it('still prefers managed over PATH even when allowPathDiscovery is opted in', async () => {
+    const detectedPath = path.join('/tmp/path-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    const managedPath = path.join('/tmp/managed-codex', process.platform === 'win32' ? 'codex.exe' : 'codex')
+    existingFiles.add(detectedPath)
+    existingFiles.add(managedPath)
+
+    const service = new CodexCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService(managedPath) as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never
+    })
+
+    await expect(
+      service.resolveBinary({ kind: 'codex', mode: 'managed', sidecar: { allowPathDiscovery: true } })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        path: managedPath,
+        source: 'managed',
+        state: 'ready'
       })
     )
   })

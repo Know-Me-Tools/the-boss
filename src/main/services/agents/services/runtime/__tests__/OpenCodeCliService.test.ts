@@ -112,7 +112,7 @@ describe('OpenCodeCliService', () => {
     )
   })
 
-  it('resolves detected PATH OpenCode binaries before managed binaries', async () => {
+  it('prefers a verified managed OpenCode binary over a PATH binary by default', async () => {
     const detectedPath = path.join(tempDir, 'path-opencode', binaryName())
     const managedPath = path.join(tempDir, 'managed-opencode', binaryName())
     await writeExecutable(detectedPath)
@@ -124,7 +124,44 @@ describe('OpenCodeCliService', () => {
       homedir: () => tempDir
     })
 
+    // No allowPathDiscovery flag: a stale PATH binary must not override the managed one.
     await expect(service.resolveBinary()).resolves.toEqual(
+      expect.objectContaining({
+        path: managedPath,
+        source: 'managed',
+        state: 'ready'
+      })
+    )
+  })
+
+  it('does not use a PATH OpenCode binary when discovery is disabled and no managed binary exists', async () => {
+    const detectedPath = path.join(tempDir, 'path-opencode', binaryName())
+    await writeExecutable(detectedPath)
+    const discovery = createRuntimeBinaryDiscoveryService(detectedPath)
+    const service = new OpenCodeCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: discovery as never,
+      homedir: () => tempDir
+    })
+
+    await expect(service.resolveBinary()).resolves.toEqual(expect.objectContaining({ state: 'missing-binary' }))
+    expect(discovery.discover).not.toHaveBeenCalled()
+  })
+
+  it('uses a PATH OpenCode binary when allowPathDiscovery is opted in and no managed binary exists', async () => {
+    const detectedPath = path.join(tempDir, 'path-opencode', binaryName())
+    await writeExecutable(detectedPath)
+    const service = new OpenCodeCliService({
+      developmentBinaryPath: () => undefined,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never,
+      homedir: () => tempDir
+    })
+
+    await expect(
+      service.resolveBinary({ kind: 'opencode', mode: 'managed', sidecar: { allowPathDiscovery: true } })
+    ).resolves.toEqual(
       expect.objectContaining({
         path: detectedPath,
         source: 'path',

@@ -6,8 +6,8 @@
   "planning_complete": true,
   "execution_ready": true,
   "execution_complete": false,
-  "last_updated": "2026-05-26T12:42:00Z",
-  "last_updated_by": "codex",
+  "last_updated": "2026-05-29",
+  "last_updated_by": "claude-code",
   "branch_policy": {
     "base": "current-1.9.x",
     "current_branch": "main",
@@ -28,7 +28,7 @@
   "openSpecDetected": false,
   "selected_backend": "hybrid",
   "canonical_progress_file": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
-  "next_pending_change": "change-022-managed-binary-resolution-trust-order",
+  "next_pending_change": "change-023-sidecar-process-supervisor",
   "changes": [
     {
       "id": "change-001-runtime-agent-model",
@@ -903,11 +903,15 @@
     },
     {
       "id": "change-022-managed-binary-resolution-trust-order",
-      "status": "TODO",
-      "assigned_backend": "codex",
+      "status": "DONE",
+      "assigned_backend": "claude-code",
       "depends_on": ["change-021-on-demand-runtime-install-policy"],
       "tasks_total": 6,
-      "tasks_done": 0,
+      "tasks_done": 6,
+      "started_by": "claude-code",
+      "started_at": "2026-05-29",
+      "completed_by": "claude-code",
+      "completed_at": "2026-05-29",
       "change_file": ".kbd-orchestrator/changes/change-022-managed-binary-resolution-trust-order/change.md",
       "verification": [
         "UAR/Codex/OpenCode resolution tests",
@@ -915,6 +919,19 @@
         "node and web typechecks",
         "git diff --check"
       ],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/__tests__/{UniversalAgentRuntimeService,CodexCliService,OpenCodeCliService}.test.ts",
+          "status": "passed (28 tests)"
+        },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/ + settings UI tests",
+          "status": "passed (18 files, 113 tests)"
+        },
+        { "command": "pnpm typecheck (node, web, aiCore)", "status": "passed" },
+        { "command": "git diff --check", "status": "clean" }
+      ],
+      "notes": "Reordered resolution to configured->environment->managed->opt-in PATH->dev across UAR/Codex/OpenCode. Added shared isPathDiscoveryAllowed helper reading sidecar.allowPathDiscovery (default false); no DB schema change. Docs updated.",
       "blockers": []
     },
     {
