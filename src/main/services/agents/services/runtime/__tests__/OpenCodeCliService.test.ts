@@ -279,6 +279,51 @@ describe('OpenCodeCliService', () => {
     expect(supervisor.spawn).toHaveBeenCalledTimes(2)
   })
 
+  it('does not evict a newer managed server when a restarted older child exits (generation guard)', async () => {
+    const binaryPath = path.join(tempDir, 'opencode')
+    await writeExecutable(binaryPath)
+    const spawnProcess = vi.fn(() => createMockOpenCodeProcess())
+    const createOpencodeClient = vi.fn(() => createMockOpenCodeClient())
+    const supervisor = createFakeSupervisor()
+    const service = new OpenCodeCliService({
+      developmentBinaryPath: () => binaryPath,
+      managedRuntimeService: createManagedRuntimeService() as never,
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService() as never,
+      spawnProcess,
+      supervisor: supervisor as never,
+      loadSdk: async () => ({ createOpencodeClient }) as any,
+      homedir: () => tempDir,
+      getAvailableProviders: async () => []
+    })
+
+    // First server is spawned under key `${tempDir}:{}` with handle id `opencode:<key>`.
+    await service.listModels({ kind: 'opencode', mode: 'managed' } as any, tempDir)
+    expect(supervisor.spawn).toHaveBeenCalledTimes(1)
+    const firstOnExit = supervisor.specs[0].onExit
+
+    // The first server exits: its onExit evicts the slot (it is still the owner).
+    firstOnExit?.(0, null)
+
+    // A subsequent resolve creates a SECOND server under the same key. The fake
+    // supervisor allocates a distinct, collision-suffixed id (`opencode:<key>#1`),
+    // matching real supervisor semantics.
+    service.clearModelCache()
+    await service.listModels({ kind: 'opencode', mode: 'managed' } as any, tempDir)
+    expect(supervisor.spawn).toHaveBeenCalledTimes(2)
+    expect(supervisor.handles[1].id).not.toBe(supervisor.handles[0].id)
+
+    // Now simulate the supervisor's restarted-first-child exit firing the FIRST
+    // server's onExit AGAIN. The generation guard must NOT evict the second
+    // server's map entry.
+    firstOnExit?.(0, null)
+
+    // The second server remains resolvable WITHOUT triggering a third spawn —
+    // proving its map slot survived the stale older child's exit.
+    service.clearModelCache()
+    await service.listModels({ kind: 'opencode', mode: 'managed' } as any, tempDir)
+    expect(supervisor.spawn).toHaveBeenCalledTimes(2)
+  })
+
   it('creates global OpenCode config from Cherry providers when no usable config exists', async () => {
     const config = buildOpenCodeGlobalConfigFromCherryProviders([
       {
@@ -444,13 +489,31 @@ interface FakeSupervisor {
 function createFakeSupervisor(): FakeSupervisor {
   const specs: SupervisedSpawnSpec[] = []
   const handles: SupervisedHandle[] = []
+  // Mirror the real supervisor's collision-suffix id semantics (#1, #2, ...) so
+  // a re-spawn under the same key yields a distinct id, exactly as production does.
+  const usedIds = new Set<string>()
+  const allocateId = (name: string, key?: string): string => {
+    const baseId = `${name}:${key ?? 'default'}`
+    if (!usedIds.has(baseId)) {
+      usedIds.add(baseId)
+      return baseId
+    }
+    let counter = 1
+    let candidate = `${baseId}#${counter}`
+    while (usedIds.has(candidate)) {
+      counter += 1
+      candidate = `${baseId}#${counter}`
+    }
+    usedIds.add(candidate)
+    return candidate
+  }
   const fake: FakeSupervisor = {
     specs,
     handles,
     spawn: vi.fn((spec: SupervisedSpawnSpec): SupervisedHandle => {
       specs.push(spec)
       const child = spec.spawn()
-      const id = `${spec.name}:${spec.key ?? 'default'}`
+      const id = allocateId(spec.name, spec.key)
       const handle: SupervisedHandle = {
         id,
         process: child,
