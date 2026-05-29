@@ -363,6 +363,63 @@ describe('SidecarProcessSupervisor', () => {
       expect(treeKill).not.toHaveBeenCalled()
     })
 
+    it('concurrent stop() sends a single SIGTERM and leaks no escalation timer', async () => {
+      vi.useFakeTimers()
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // Two concurrent stop() calls without awaiting between them. The second
+      // must short-circuit on state === 'stopping' so we get exactly one
+      // SIGTERM, one 'exit' listener, and one escalation timer.
+      const p1 = supervisor2.stop(handle.id)
+      const p2 = supervisor2.stop(handle.id)
+      await Promise.resolve()
+
+      expect(treeKill).toHaveBeenCalledWith(1234, 'SIGTERM')
+      expect(treeKill).toHaveBeenCalledTimes(1)
+
+      // Real exit resolves both pending stop() promises.
+      child.emit('exit', 0, null)
+      await Promise.all([p1, p2])
+
+      // No leaked timer: advancing past the escalation window must not SIGKILL.
+      await vi.advanceTimersByTimeAsync(KILL_ESCALATION_MS * 2)
+      expect(treeKill).not.toHaveBeenCalledWith(1234, 'SIGKILL')
+      expect(treeKill).toHaveBeenCalledTimes(1)
+      expect(supervisor2.get(handle.id)?.state).toBe('stopped')
+    })
+
+    it('stop on a pidless entry settles in the terminal failed state', async () => {
+      const treeKill = vi.fn()
+      const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })
+      const child = createChildProcess(1234)
+      // Simulate a child that never received an OS pid.
+      ;(child as { pid: number | undefined }).pid = undefined
+
+      const handle = supervisor2.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await supervisor2.stop(handle.id)
+
+      expect(treeKill).not.toHaveBeenCalled()
+      expect(supervisor2.get(handle.id)?.state).toBe('failed')
+
+      // Subsequent stop/kill are clean no-ops now that the entry is terminal.
+      await supervisor2.stop(handle.id)
+      await supervisor2.kill(handle.id)
+      expect(treeKill).not.toHaveBeenCalled()
+    })
+
     it('stop and kill are no-ops once the child has already exited', async () => {
       const treeKill = vi.fn()
       const supervisor2 = new SidecarProcessSupervisor({ pidusage: vi.fn(), treeKill })

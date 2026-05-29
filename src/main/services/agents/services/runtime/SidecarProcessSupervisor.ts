@@ -175,16 +175,24 @@ export class SidecarProcessSupervisor {
    */
   async stop(id: string): Promise<void> {
     const entry = this.entries.get(id)
-    if (!entry || this.hasExited(entry)) {
+    // Short-circuit a concurrent stop() already in flight: re-entering would
+    // attach a second 'exit' listener and clobber entry.killTimer, leaking the
+    // first timer (which later fires an orphaned SIGKILL at a possibly-recycled pid).
+    if (!entry || this.hasExited(entry) || entry.state === 'stopping') {
       return
     }
 
     entry.state = 'stopping'
     const pid = entry.process.pid
     if (pid === undefined) {
+      // No pid to signal: settle into a terminal state so the entry does not
+      // strand in 'stopping' (which would make hasExited() false forever and
+      // turn every future stop/kill into a silent no-op).
+      this.settleAsFailed(entry)
       return
     }
 
+    logger.info(`sidecar stop requested: ${id}`, { pid })
     this._treeKill(pid, 'SIGTERM')
 
     await new Promise<void>((resolve) => {
@@ -198,10 +206,11 @@ export class SidecarProcessSupervisor {
         // Process did not exit in time; escalate and stop waiting. The 'exit'
         // listener stays armed so the shared handler still runs on real exit.
         entry.process.removeListener('exit', onExit)
+        logger.warn(`sidecar did not exit after SIGTERM; escalating to SIGKILL: ${id}`, { pid })
         this._treeKill(pid, 'SIGKILL')
         resolve()
       }, KILL_ESCALATION_MS)
-      entry.killTimer.unref?.()
+      entry.killTimer.unref()
     })
   }
 
@@ -218,10 +227,24 @@ export class SidecarProcessSupervisor {
     entry.state = 'stopping'
     const pid = entry.process.pid
     if (pid === undefined) {
+      // No pid to signal: settle into a terminal state so the entry does not
+      // strand in 'stopping' and future stop/kill stay clean no-ops.
+      this.settleAsFailed(entry)
       return
     }
 
     this._treeKill(pid, 'SIGKILL')
+  }
+
+  /**
+   * Transition an entry that has no pid to signal into the terminal 'failed'
+   * state, releasing its sampler/kill timer the way the shared 'exit' handler
+   * would. Used when stop()/kill() cannot deliver a signal.
+   */
+  private settleAsFailed(entry: SupervisedEntry): void {
+    entry.state = 'failed'
+    this.stopSampler(entry)
+    this.clearKillTimer(entry)
   }
 
   private generateId(name: string, key?: string): string {
