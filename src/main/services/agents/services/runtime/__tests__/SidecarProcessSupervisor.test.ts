@@ -213,6 +213,51 @@ describe('SidecarProcessSupervisor', () => {
       expect(status?.rssBytes).toBeUndefined()
     })
 
+    it('drops a sample that resolves after the child has exited (no warn, no write)', async () => {
+      vi.useFakeTimers()
+      const warnSpy = vi.spyOn(loggerService, 'warn').mockImplementation(() => undefined)
+      // Manually-resolved pidusage so we can interleave the exit between the
+      // sample starting and its promise resolving. The sample reports high CPU,
+      // so without the post-await stopped guard this would emit a warning.
+      let resolvePidusage: ((sample: { cpu: number; memory: number }) => void) | undefined
+      const pidusage = vi.fn().mockImplementation(
+        () =>
+          new Promise<{ cpu: number; memory: number }>((resolve) => {
+            resolvePidusage = resolve
+          })
+      )
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      // Fire the interval so a sample starts; its promise stays pending.
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+      expect(pidusage).toHaveBeenCalledWith(1234)
+      expect(resolvePidusage).toBeDefined()
+
+      // Child exits synchronously while the sample is in flight.
+      child.emit('exit', 0, null)
+      expect(handle.status().state).toBe('stopped')
+
+      // Now resolve the in-flight sample and flush microtasks.
+      resolvePidusage?.({ cpu: CPU_WARN_PERCENT, memory: RSS_WARN_BYTES })
+      await vi.runAllTicks()
+      await Promise.resolve()
+
+      const status = handle.status()
+      expect(status.state).toBe('stopped')
+      expect(status.cpuPercent).toBeUndefined()
+      expect(status.rssBytes).toBeUndefined()
+      expect(warnSpy).not.toHaveBeenCalled()
+
+      warnSpy.mockRestore()
+    })
+
     it('stops sampling once the child exits', async () => {
       vi.useFakeTimers()
       const pidusage = vi.fn().mockResolvedValue({ cpu: 1, memory: 1000 })

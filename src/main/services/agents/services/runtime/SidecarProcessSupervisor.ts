@@ -184,7 +184,7 @@ export class SidecarProcessSupervisor {
       void this.sampleResources(entry)
     }, RESOURCE_SAMPLE_MS)
     // Allow the process to exit even if a sampler is still scheduled.
-    sampler.unref?.()
+    sampler.unref()
     entry.sampler = sampler
   }
 
@@ -203,6 +203,12 @@ export class SidecarProcessSupervisor {
 
     try {
       const stats = await this._pidusage(pid)
+      // The sample may resolve after the child has already exited (the 'exit'
+      // handler sets state to 'stopped' and clears the sampler). Drop late
+      // samples so we neither overwrite the final values nor warn for a dead pid.
+      if (entry.state === 'stopped') {
+        return
+      }
       entry.cpuPercent = stats.cpu
       entry.rssBytes = stats.memory
 
