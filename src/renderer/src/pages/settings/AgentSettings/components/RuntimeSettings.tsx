@@ -10,7 +10,7 @@ import type { SupervisedSidecarStatus, SupervisedState } from '@shared/agents/ru
 import type { DependencyStatus, ManagedDependencyName } from '@shared/config/types'
 import { Alert, Button, Input, Popconfirm, Select, Switch, Tag } from 'antd'
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -92,6 +92,11 @@ const SUPERVISOR_POLL_INTERVAL_MS = 4000
 
 const TERMINAL_SUPERVISED_STATES: ReadonlySet<SupervisedState> = new Set<SupervisedState>(['stopped', 'failed'])
 
+/** Lightweight cancellation flag threaded through async refresh helpers. */
+interface CancellationSignal {
+  cancelled: boolean
+}
+
 const capabilityLabels: Record<AgentRuntimeKind, string[]> = {
   claude: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume', 'Compaction'],
   codex: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume'],
@@ -122,6 +127,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
   const [isInstallingRustToolchain, setIsInstallingRustToolchain] = useState(false)
   const [supervisedSidecars, setSupervisedSidecars] = useState<SupervisedSidecarStatus[]>([])
   const [supervisorActionId, setSupervisorActionId] = useState<string | null>(null)
+  const mountedRef = useRef(true)
   const configuration = useMemo(
     () => AgentConfigurationSchema.parse(agentBase?.configuration ?? defaultConfiguration),
     [agentBase?.configuration]
@@ -654,20 +660,31 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     }
   }, [refreshRustToolchainStatus, t])
 
-  const refreshSupervisedSidecars = useCallback(async () => {
+  const refreshSupervisedSidecars = useCallback(async (signal?: CancellationSignal) => {
+    const isLive = () => !signal?.cancelled && mountedRef.current
     try {
-      setSupervisedSidecars(await window.api.agentRuntime.getSupervisorStatus())
+      const statuses = await window.api.agentRuntime.getSupervisorStatus()
+      if (isLive()) {
+        setSupervisedSidecars(statuses)
+      }
     } catch {
-      setSupervisedSidecars([])
+      if (isLive()) {
+        setSupervisedSidecars([])
+      }
     }
   }, [])
 
   useEffect(() => {
-    void refreshSupervisedSidecars()
+    const signal: CancellationSignal = { cancelled: false }
+    void refreshSupervisedSidecars(signal)
     const interval = setInterval(() => {
-      void refreshSupervisedSidecars()
+      if (document.visibilityState !== 'visible') {
+        return
+      }
+      void refreshSupervisedSidecars(signal)
     }, SUPERVISOR_POLL_INTERVAL_MS)
     return () => {
+      signal.cancelled = true
       clearInterval(interval)
     }
   }, [refreshSupervisedSidecars])
@@ -679,15 +696,19 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         await window.api.agentRuntime.stopSupervisedSidecar(id)
         await refreshSupervisedSidecars()
       } catch (error) {
-        setHealthMessage({
-          type: 'error',
-          text:
-            error instanceof Error
-              ? error.message
-              : t('agent.settings.runtime.supervisor.stopFailed', 'Failed to stop the sidecar.')
-        })
+        if (mountedRef.current) {
+          setHealthMessage({
+            type: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : t('agent.settings.runtime.supervisor.stopFailed', 'Failed to stop the sidecar.')
+          })
+        }
       } finally {
-        setSupervisorActionId(null)
+        if (mountedRef.current) {
+          setSupervisorActionId(null)
+        }
       }
     },
     [refreshSupervisedSidecars, t]
@@ -700,19 +721,30 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         await window.api.agentRuntime.killSidecar(id)
         await refreshSupervisedSidecars()
       } catch (error) {
-        setHealthMessage({
-          type: 'error',
-          text:
-            error instanceof Error
-              ? error.message
-              : t('agent.settings.runtime.supervisor.killFailed', 'Failed to kill the sidecar.')
-        })
+        if (mountedRef.current) {
+          setHealthMessage({
+            type: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : t('agent.settings.runtime.supervisor.killFailed', 'Failed to kill the sidecar.')
+          })
+        }
       } finally {
-        setSupervisorActionId(null)
+        if (mountedRef.current) {
+          setSupervisorActionId(null)
+        }
       }
     },
     [refreshSupervisedSidecars, t]
   )
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   if (!agentBase) return null
 
