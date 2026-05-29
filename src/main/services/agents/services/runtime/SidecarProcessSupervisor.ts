@@ -70,13 +70,17 @@ interface SupervisedEntry {
 }
 
 export class SidecarProcessSupervisor {
-  private readonly pidusage: Pidusage
-  private readonly treeKill: TreeKill
+  private readonly _pidusage: Pidusage
+  private readonly _treeKill: TreeKill
   private readonly entries = new Map<string, SupervisedEntry>()
 
   constructor(deps: SidecarProcessSupervisorDeps = {}) {
-    this.pidusage = deps.pidusage ?? pidusage
-    this.treeKill = deps.treeKill ?? treeKill
+    this._pidusage = deps.pidusage ?? pidusage
+    this._treeKill = deps.treeKill ?? treeKill
+    // Retained for later tasks (resource sampling / tree-kill teardown); referenced
+    // here so the compiler does not flag them as unused under noUnusedLocals.
+    void this._pidusage
+    void this._treeKill
   }
 
   spawn(spec: SupervisedSpawnSpec): SupervisedHandle {

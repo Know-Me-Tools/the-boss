@@ -1,11 +1,20 @@
+import type { ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SidecarProcessSupervisor, STDERR_RING_SIZE } from '../SidecarProcessSupervisor'
 
-function createChildProcess(pid = 4242): any {
-  const child = new EventEmitter() as any
+interface FakeChildProcess extends EventEmitter {
+  pid: number
+  stdout: EventEmitter
+  stderr: EventEmitter
+  killed: boolean
+  kill: ReturnType<typeof vi.fn>
+}
+
+function createChildProcess(pid = 4242): FakeChildProcess {
+  const child = new EventEmitter() as FakeChildProcess
   child.pid = pid
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
@@ -16,6 +25,10 @@ function createChildProcess(pid = 4242): any {
     return true
   })
   return child
+}
+
+function asChildProcess(child: FakeChildProcess): ChildProcess {
+  return child as unknown as ChildProcess
 }
 
 describe('SidecarProcessSupervisor', () => {
@@ -31,7 +44,7 @@ describe('SidecarProcessSupervisor', () => {
 
     const handle = supervisor.spawn({
       name: 'uar',
-      spawn: () => child,
+      spawn: () => asChildProcess(child),
       binaryPath: '/opt/bin/uar'
     })
 
@@ -56,7 +69,7 @@ describe('SidecarProcessSupervisor', () => {
     const child = createChildProcess()
     const handle = supervisor.spawn({
       name: 'uar',
-      spawn: () => child,
+      spawn: () => asChildProcess(child),
       binaryPath: '/opt/bin/uar'
     })
 
@@ -76,7 +89,7 @@ describe('SidecarProcessSupervisor', () => {
     supervisor.spawn({
       name: 'opencode',
       key: 'session-1',
-      spawn: () => child,
+      spawn: () => asChildProcess(child),
       binaryPath: '/opt/bin/opencode'
     })
 
@@ -94,7 +107,7 @@ describe('SidecarProcessSupervisor', () => {
 
     const handle = supervisor.spawn({
       name: 'uar',
-      spawn: () => child,
+      spawn: () => asChildProcess(child),
       binaryPath: '/opt/bin/uar',
       onExit
     })
