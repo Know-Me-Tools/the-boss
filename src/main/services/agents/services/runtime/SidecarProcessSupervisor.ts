@@ -11,6 +11,21 @@ const logger = loggerService.withContext('SidecarProcessSupervisor')
  */
 export const STDERR_RING_SIZE = 50
 
+/**
+ * Interval (ms) between CPU/RSS resource samples for each supervised sidecar.
+ */
+export const RESOURCE_SAMPLE_MS = 5000
+
+/**
+ * CPU usage percentage at or above which a warning is logged (observe-only).
+ */
+export const CPU_WARN_PERCENT = 90
+
+/**
+ * Resident set size in bytes at or above which a warning is logged (observe-only).
+ */
+export const RSS_WARN_BYTES = 2 * 1024 * 1024 * 1024
+
 type SupervisedState = 'starting' | 'running' | 'stopping' | 'stopped' | 'failed'
 
 export interface SupervisedSpawnSpec {
@@ -45,11 +60,26 @@ export interface SupervisedHandle {
   status(): SupervisedSidecarStatus
 }
 
-type Pidusage = typeof pidusage
+/**
+ * Resource sample returned by pidusage for a single pid. Only the fields the
+ * supervisor consumes are required, so injected fakes stay lightweight.
+ */
+export interface ResourceSample {
+  cpu: number
+  memory: number
+}
+
+/**
+ * Narrow contract for the single-pid pidusage call the supervisor relies on.
+ * Avoids coupling to the full `typeof pidusage` (which carries a `.clear`
+ * namespace member) so tests can inject a plain mock.
+ */
+export type PidusageSampler = (pid: number) => Promise<ResourceSample>
+
 type TreeKill = typeof treeKill
 
 export interface SidecarProcessSupervisorDeps {
-  pidusage?: Pidusage
+  pidusage?: PidusageSampler
   treeKill?: TreeKill
 }
 
@@ -67,19 +97,19 @@ interface SupervisedEntry {
   cpuPercent?: number
   rssBytes?: number
   recentStderr: string[]
+  sampler?: ReturnType<typeof setInterval>
 }
 
 export class SidecarProcessSupervisor {
-  private readonly _pidusage: Pidusage
+  private readonly _pidusage: PidusageSampler
   private readonly _treeKill: TreeKill
   private readonly entries = new Map<string, SupervisedEntry>()
 
   constructor(deps: SidecarProcessSupervisorDeps = {}) {
     this._pidusage = deps.pidusage ?? pidusage
     this._treeKill = deps.treeKill ?? treeKill
-    // Retained for later tasks (resource sampling / tree-kill teardown); referenced
-    // here so the compiler does not flag them as unused under noUnusedLocals.
-    void this._pidusage
+    // Retained for a later task (tree-kill teardown); referenced here so the
+    // compiler does not flag it as unused under noUnusedLocals.
     void this._treeKill
   }
 
@@ -109,9 +139,12 @@ export class SidecarProcessSupervisor {
 
     child.once('exit', (code, signal) => {
       entry.state = 'stopped'
+      this.stopSampler(entry)
       logger.info(`sidecar exited: ${id}`, { code, signal })
       spec.onExit?.(code, signal)
     })
+
+    this.startSampler(entry)
 
     logger.info(`sidecar spawned: ${id}`, { pid: child.pid, binaryPath: spec.binaryPath })
 
@@ -144,6 +177,47 @@ export class SidecarProcessSupervisor {
       candidate = `${baseId}#${counter}`
     }
     return candidate
+  }
+
+  private startSampler(entry: SupervisedEntry): void {
+    const sampler = setInterval(() => {
+      void this.sampleResources(entry)
+    }, RESOURCE_SAMPLE_MS)
+    // Allow the process to exit even if a sampler is still scheduled.
+    sampler.unref?.()
+    entry.sampler = sampler
+  }
+
+  private stopSampler(entry: SupervisedEntry): void {
+    if (entry.sampler) {
+      clearInterval(entry.sampler)
+      entry.sampler = undefined
+    }
+  }
+
+  private async sampleResources(entry: SupervisedEntry): Promise<void> {
+    const pid = entry.process.pid
+    if (pid === undefined) {
+      return
+    }
+
+    try {
+      const stats = await this._pidusage(pid)
+      entry.cpuPercent = stats.cpu
+      entry.rssBytes = stats.memory
+
+      if (stats.cpu >= CPU_WARN_PERCENT || stats.memory >= RSS_WARN_BYTES) {
+        logger.warn(`sidecar resource usage high: ${entry.id}`, {
+          name: entry.name,
+          pid,
+          cpuPercent: stats.cpu,
+          rssBytes: stats.memory
+        })
+      }
+    } catch (error) {
+      // The process may have already exited between samples; observe-only, so swallow.
+      logger.debug(`sidecar resource sample failed: ${entry.id}`, { pid, error })
+    }
   }
 
   private appendStderr(entry: SupervisedEntry, chunk: Buffer | string): void {

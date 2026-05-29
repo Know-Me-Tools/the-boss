@@ -1,9 +1,16 @@
 import type { ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { loggerService } from '@logger'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { SidecarProcessSupervisor, STDERR_RING_SIZE } from '../SidecarProcessSupervisor'
+import {
+  CPU_WARN_PERCENT,
+  RESOURCE_SAMPLE_MS,
+  RSS_WARN_BYTES,
+  SidecarProcessSupervisor,
+  STDERR_RING_SIZE
+} from '../SidecarProcessSupervisor'
 
 interface FakeChildProcess extends EventEmitter {
   pid: number
@@ -116,5 +123,116 @@ describe('SidecarProcessSupervisor', () => {
 
     expect(onExit).toHaveBeenCalledWith(137, 'SIGKILL')
     expect(handle.status().state).toBe('stopped')
+  })
+
+  describe('resource sampling', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('samples cpu/rss on the configured interval and reflects it in status', async () => {
+      vi.useFakeTimers()
+      const pidusage = vi.fn().mockResolvedValue({ cpu: 12, memory: 1000 })
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+
+      expect(pidusage).toHaveBeenCalledWith(1234)
+      const status = sampler.get(handle.id)
+      expect(status?.cpuPercent).toBe(12)
+      expect(status?.rssBytes).toBe(1000)
+      expect(status?.state).toBe('running')
+    })
+
+    it('warns when cpu meets the threshold without changing state', async () => {
+      vi.useFakeTimers()
+      const warnSpy = vi.spyOn(loggerService, 'warn').mockImplementation(() => undefined)
+      const pidusage = vi.fn().mockResolvedValue({ cpu: CPU_WARN_PERCENT, memory: 1000 })
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+
+      expect(warnSpy).toHaveBeenCalled()
+      expect(sampler.get(handle.id)?.state).toBe('running')
+
+      warnSpy.mockRestore()
+    })
+
+    it('warns when rss meets the threshold without changing state', async () => {
+      vi.useFakeTimers()
+      const warnSpy = vi.spyOn(loggerService, 'warn').mockImplementation(() => undefined)
+      const pidusage = vi.fn().mockResolvedValue({ cpu: 1, memory: RSS_WARN_BYTES })
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+
+      expect(warnSpy).toHaveBeenCalled()
+      expect(sampler.get(handle.id)?.state).toBe('running')
+
+      warnSpy.mockRestore()
+    })
+
+    it('swallows pidusage rejections and leaves the entry unchanged', async () => {
+      vi.useFakeTimers()
+      const pidusage = vi.fn().mockRejectedValue(new Error('gone'))
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      const handle = sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await expect(vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)).resolves.not.toThrow()
+
+      const status = sampler.get(handle.id)
+      expect(status?.state).toBe('running')
+      expect(status?.cpuPercent).toBeUndefined()
+      expect(status?.rssBytes).toBeUndefined()
+    })
+
+    it('stops sampling once the child exits', async () => {
+      vi.useFakeTimers()
+      const pidusage = vi.fn().mockResolvedValue({ cpu: 1, memory: 1000 })
+      const sampler = new SidecarProcessSupervisor({ pidusage, treeKill: vi.fn() })
+      const child = createChildProcess(1234)
+
+      sampler.spawn({
+        name: 'uar',
+        spawn: () => asChildProcess(child),
+        binaryPath: '/opt/bin/uar'
+      })
+
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS)
+      const callsBeforeExit = pidusage.mock.calls.length
+      expect(callsBeforeExit).toBeGreaterThan(0)
+
+      child.emit('exit', 0, null)
+
+      await vi.advanceTimersByTimeAsync(RESOURCE_SAMPLE_MS * 3)
+      expect(pidusage.mock.calls.length).toBe(callsBeforeExit)
+    })
   })
 })
