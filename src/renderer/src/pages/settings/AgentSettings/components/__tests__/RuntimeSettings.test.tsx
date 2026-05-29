@@ -1,6 +1,7 @@
 import type { GetAgentSessionResponse, UpdateAgentBaseForm } from '@renderer/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type * as Antd from 'antd'
+import type { ReactNode } from 'react'
 import type * as ReactI18Next from 'react-i18next'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -70,7 +71,16 @@ vi.mock('antd', async (importOriginal) => {
         onChange={(event) => onChange?.(event.target.checked)}
       />
     ),
-    Tag: ({ children }: { children: string }) => <span>{children}</span>
+    Tag: ({ children }: { children: string }) => <span>{children}</span>,
+    Popconfirm: ({ children, onConfirm }: { children: ReactNode; onConfirm?: () => void }) => (
+      <span
+        data-testid="popconfirm"
+        onClick={() => {
+          onConfirm?.()
+        }}>
+        {children}
+      </span>
+    )
   }
 })
 
@@ -120,7 +130,10 @@ describe('RuntimeSettings', () => {
           message: 'UAR sidecar is ready.'
         })),
         listCodexModels: vi.fn(async () => createCodexModels()),
-        listOpenCodeModels: vi.fn(async () => createOpenCodeModels())
+        listOpenCodeModels: vi.fn(async () => createOpenCodeModels()),
+        getSupervisorStatus: vi.fn(async () => []),
+        stopSupervisedSidecar: vi.fn(async () => undefined),
+        killSidecar: vi.fn(async () => undefined)
       },
       dependencies: {
         getStatuses: vi.fn(async () => createRustStatuses(false))
@@ -396,7 +409,68 @@ describe('RuntimeSettings', () => {
 
     expect(window.api.installRustToolchain).toHaveBeenCalled()
   })
+
+  it('shows the empty state when no sidecars are supervised', async () => {
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    expect(window.api.agentRuntime.getSupervisorStatus).toHaveBeenCalled()
+    expect(await screen.findByText('No running sidecars.')).toBeInTheDocument()
+  })
+
+  it('renders a running sidecar with its metrics and stop/kill controls', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    expect(await screen.findByText('universal-agent-runtime')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.getByText('PID: 4321')).toBeInTheDocument()
+    expect(screen.getByText('CPU: 12%')).toBeInTheDocument()
+    expect(screen.getByText('Memory: 128 MB')).toBeInTheDocument()
+    expect(screen.getByText('Restarts: 2')).toBeInTheDocument()
+    expect(screen.getByText('Stop')).toBeInTheDocument()
+    expect(screen.getAllByText('Kill').length).toBeGreaterThan(0)
+  })
+
+  it('stops a supervised sidecar by id when Stop is clicked', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    fireEvent.click(await screen.findByText('Stop'))
+
+    await waitFor(() => expect(window.api.agentRuntime.stopSupervisedSidecar).toHaveBeenCalledWith('uar-embedded'))
+  })
+
+  it('kills a supervised sidecar by id after confirming', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    const killButtons = await screen.findAllByText('Kill')
+    fireEvent.click(killButtons[killButtons.length - 1])
+
+    await waitFor(() => expect(window.api.agentRuntime.killSidecar).toHaveBeenCalledWith('uar-embedded'))
+  })
 })
+
+function createSupervisedSidecar() {
+  return {
+    id: 'uar-embedded',
+    name: 'universal-agent-runtime',
+    key: 'uar',
+    pid: 4321,
+    binaryPath: '/opt/uar/bin/universal-agent-runtime',
+    binaryVersion: '1.9.7',
+    cwd: '/tmp/workspace',
+    startedAt: Date.now() - 90_000,
+    state: 'running' as const,
+    restartCount: 2,
+    cpuPercent: 12.4,
+    rssBytes: 128 * 1024 * 1024,
+    recentStderr: []
+  }
+}
 
 function createAgentBase(
   kind: 'claude' | 'codex' | 'opencode' | 'uar',

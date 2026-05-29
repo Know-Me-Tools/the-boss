@@ -625,6 +625,28 @@
           "verificationFailed": "Verification failed",
           "verifying": "Verifying"
         },
+        "supervisor": {
+          "cpu": "CPU",
+          "empty": "No running sidecars.",
+          "kill": "Kill",
+          "killConfirm": "Force kill this sidecar? In-flight work will be lost.",
+          "killFailed": "Failed to kill the sidecar.",
+          "memory": "Memory",
+          "pid": "PID",
+          "restarts": "Restarts",
+          "state": {
+            "failed": "Failed",
+            "restarting": "Restarting",
+            "running": "Running",
+            "starting": "Starting",
+            "stopped": "Stopped",
+            "stopping": "Stopping"
+          },
+          "stop": "Stop",
+          "stopFailed": "Failed to stop the sidecar.",
+          "title": "Running sidecars",
+          "uptime": "Uptime"
+        },
         "tab": "Runtime",
         "title": "Runtime",
         "uar": {
