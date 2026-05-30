@@ -15,6 +15,12 @@ const platformKey = `${process.platform}-${process.arch}`
 const UNIX_ARCHIVE_FORMAT = 'tar.zst'
 const WIN_ARCHIVE_FORMAT = 'zip'
 
+// Constant timestamp stamped onto staged files before archiving so two
+// byte-identical builds produce the same archive bytes (and therefore the same
+// archiveSha256). Without this, tar/zip embed each file's real mtime and the
+// hash would drift between otherwise-identical runs. Using a fixed epoch.
+const DETERMINISTIC_MTIME = new Date(0)
+
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
     cwd: repoRoot,
@@ -116,10 +122,16 @@ function packageRuntimeArchive({
   const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), `runtime-stage-${runtime}-`))
 
   try {
-    // Executable.
-    stageFile(binaryPath, stagingDir, binaryName)
-    if (process.platform !== 'win32') {
-      fs.chmodSync(path.join(stagingDir, binaryName), 0o755)
+    // Executable. Existence is asserted above, so copy directly (a missing
+    // source is a hard error, not a skip) rather than going through stageFile,
+    // whose null-on-missing return would be silently ignored here.
+    const binaryTarget = path.join(stagingDir, binaryName)
+    fs.copyFileSync(binaryPath, binaryTarget)
+    // Set the exec bit based on the TARGET platform, not the HOST. A unix target
+    // packaged on a win32 host must still carry the exec bit; a win32 target
+    // never gets chmod-ed (and win32 has no POSIX exec bit anyway).
+    if (!platform.startsWith('win32-')) {
+      fs.chmodSync(binaryTarget, 0o755)
     }
 
     // Metadata document.
@@ -148,6 +160,11 @@ function packageRuntimeArchive({
     fs.mkdirSync(outDir, { recursive: true })
     const archivePath = path.join(outDir, archiveName)
 
+    // Stamp a constant mtime on every staged file so the archive bytes (and
+    // thus archiveSha256) are reproducible across identical builds. Both tar
+    // and adm-zip embed file mtimes; without this the hash drifts per run.
+    stampDeterministicMtimes(stagingDir)
+
     if (format === WIN_ARCHIVE_FORMAT) {
       // zip via adm-zip (synchronous, no system `zip` dependency required).
       buildZipSync(stagingDir, archivePath)
@@ -155,9 +172,13 @@ function packageRuntimeArchive({
       // System tar supports zstd compression (bsdtar/GNU tar). The repo already
       // shells out to system tar in download-rtk-binaries.js. Pass explicit
       // top-level members (not '.') so entries are flat names without a './'
-      // prefix, matching the zip layout.
-      const members = fs.readdirSync(stagingDir)
-      execFileSync('tar', ['--zstd', '-cf', archivePath, '-C', stagingDir, ...members], { stdio: 'inherit' })
+      // prefix, matching the zip layout. Sort the members so the archive entry
+      // order is deterministic (readdir order is filesystem-dependent), and
+      // zero out owner/group metadata for reproducible archive bytes.
+      const members = fs.readdirSync(stagingDir).sort()
+      execFileSync('tar', ['--zstd', '--uid', '0', '--gid', '0', '-cf', archivePath, '-C', stagingDir, ...members], {
+        stdio: 'inherit'
+      })
     }
 
     const info = fileInfo(archivePath)
@@ -174,8 +195,29 @@ function packageRuntimeArchive({
 }
 
 /**
+ * Recursively stamps a constant mtime (and atime) on every file and directory
+ * under `dir`. This removes the only build-to-build varying input the archivers
+ * embed, making archive bytes — and the resulting SHA-256 — reproducible.
+ *
+ * @param {string} dir
+ */
+function stampDeterministicMtimes(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      stampDeterministicMtimes(entryPath)
+    }
+    fs.utimesSync(entryPath, DETERMINISTIC_MTIME, DETERMINISTIC_MTIME)
+  }
+  fs.utimesSync(dir, DETERMINISTIC_MTIME, DETERMINISTIC_MTIME)
+}
+
+/**
  * Builds a zip archive synchronously using adm-zip so packageRuntimeArchive can
- * stay a synchronous function (no event-loop reentrancy needed).
+ * stay a synchronous function (no event-loop reentrancy needed). Entries are
+ * added in sorted order with a constant timestamp so the archive bytes are
+ * deterministic across identical builds.
  *
  * @param {string} stagingDir
  * @param {string} archivePath
@@ -185,8 +227,41 @@ function buildZipSync(stagingDir, archivePath) {
 
   const AdmZip = require('adm-zip')
   const zip = new AdmZip()
-  zip.addLocalFolder(stagingDir)
+  // Add files explicitly in sorted order (readdir order is filesystem
+  // dependent) with a fixed timestamp so two identical builds produce the same
+  // archive bytes. addLocalFolder's traversal order is not guaranteed, and the
+  // entry timestamp must be set on the header (the addFile signature does not
+  // accept an mtime), otherwise it defaults to "now" and breaks determinism.
+  for (const entryName of listFilesRecursive(stagingDir).sort()) {
+    const absPath = path.join(stagingDir, entryName)
+    zip.addFile(entryName, fs.readFileSync(absPath))
+    const added = zip.getEntry(entryName)
+    if (added) {
+      added.header.time = DETERMINISTIC_MTIME
+    }
+  }
   zip.writeZip(archivePath)
+}
+
+/**
+ * Returns archive-relative paths (POSIX separators) for every file under `dir`,
+ * recursively. Directories are represented implicitly via their files.
+ *
+ * @param {string} dir
+ * @param {string} [prefix]
+ * @returns {string[]}
+ */
+function listFilesRecursive(dir, prefix = '') {
+  const result = []
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const relName = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) {
+      result.push(...listFilesRecursive(path.join(dir, entry.name), relName))
+    } else {
+      result.push(relName)
+    }
+  }
+  return result
 }
 
 /**
