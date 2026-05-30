@@ -4,7 +4,8 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-const { buildManifest, buildManifestEntry, main, parseArgs, sha256File } = require('../build-managed-binary-manifest')
+const { buildManifest, buildManifestEntry, main, mergeManifests, parseArgs, sha256File } =
+  require('../build-managed-binary-manifest')
 const { validateManifest, validateManifestEntry } = require('../runtime-manifest-schema')
 
 let tempDir: string
@@ -251,6 +252,156 @@ describe('build-managed-binary-manifest', () => {
         })
       ).not.toThrow()
     }
+  })
+})
+
+describe('mergeManifests', () => {
+  const VALID_SHA256 = 'a'.repeat(64)
+
+  const makeManifest = (overrides: Record<string, unknown> = {}) => ({
+    name: 'uar',
+    version: '1.0.0',
+    sourceCommit: 'abc123',
+    supportedPlatforms: ['darwin-arm64'],
+    binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1024, sha256: VALID_SHA256 }],
+    ...overrides
+  })
+
+  it('merges per-platform manifests into one with combined binaries and sorted supportedPlatforms', () => {
+    const darwin = makeManifest()
+    const linux = makeManifest({
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 2048, sha256: 'b'.repeat(64) }]
+    })
+
+    // Pass linux first to confirm the union is sorted, not insertion-ordered.
+    const merged = mergeManifests([linux, darwin])
+
+    expect(merged.name).toBe('uar')
+    expect(merged.version).toBe('1.0.0')
+    expect(merged.sourceCommit).toBe('abc123')
+    expect(merged.supportedPlatforms).toEqual(['darwin-arm64', 'linux-x64'])
+    expect(merged.binaries.map((b: { platform: string }) => b.platform).sort()).toEqual(['darwin-arm64', 'linux-x64'])
+    expect(() => validateManifest(merged)).not.toThrow()
+  })
+
+  it('does not fabricate channel-level signature/sequence fields', () => {
+    // Signing happens at publish time, not at merge time. Even if an input carries
+    // a per-platform signature/sequence, the merged per-runtime manifest must not.
+    const darwin = makeManifest({ signature: { value: 'leaked' }, sequence: 9 })
+    const linux = makeManifest({
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 2048, sha256: 'b'.repeat(64) }]
+    })
+
+    const merged = mergeManifests([darwin, linux])
+
+    expect(merged.signature).toBeUndefined()
+    expect(merged.sequence).toBeUndefined()
+  })
+
+  it('rejects duplicate platforms across inputs', () => {
+    const a = makeManifest()
+    const b = makeManifest()
+
+    expect(() => mergeManifests([a, b])).toThrow(/duplicate|already/i)
+  })
+
+  it('rejects mismatched runtime name', () => {
+    const a = makeManifest()
+    const b = makeManifest({
+      name: 'opencode',
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'oc', size: 1, sha256: 'b'.repeat(64) }]
+    })
+
+    expect(() => mergeManifests([a, b])).toThrow(/name/i)
+  })
+
+  it('rejects mismatched version', () => {
+    const a = makeManifest()
+    const b = makeManifest({
+      version: '2.0.0',
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 1, sha256: 'b'.repeat(64) }]
+    })
+
+    expect(() => mergeManifests([a, b])).toThrow(/version/i)
+  })
+
+  it('rejects mismatched sourceCommit', () => {
+    const a = makeManifest()
+    const b = makeManifest({
+      sourceCommit: 'def456',
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 1, sha256: 'b'.repeat(64) }]
+    })
+
+    expect(() => mergeManifests([a, b])).toThrow(/sourceCommit|commit/i)
+  })
+
+  it('rejects a binary whose platform is not in the runtime matrix', () => {
+    const a = makeManifest({
+      supportedPlatforms: ['darwin-mips'],
+      binaries: [{ platform: 'darwin-mips', binaryName: 'uar', size: 1, sha256: VALID_SHA256 }]
+    })
+
+    expect(() => mergeManifests([a])).toThrow(/unsupported|not supported/i)
+  })
+
+  it('rejects an empty input array', () => {
+    expect(() => mergeManifests([])).toThrow(/at least one|empty/i)
+  })
+})
+
+describe('mergeManifests CLI --merge mode', () => {
+  let cliTempDir: string
+  const VALID_SHA256 = 'a'.repeat(64)
+
+  beforeEach(() => {
+    cliTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'merge-manifest-cli-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(cliTempDir, { force: true, recursive: true })
+  })
+
+  it('reads input manifests, merges, and writes the merged manifest', () => {
+    const darwinPath = path.join(cliTempDir, 'uar.darwin-arm64.manifest.json')
+    const linuxPath = path.join(cliTempDir, 'uar.linux-x64.manifest.json')
+    const outPath = path.join(cliTempDir, 'uar.manifest.json')
+
+    fs.writeFileSync(
+      darwinPath,
+      JSON.stringify({
+        name: 'uar',
+        version: '1.0.0',
+        sourceCommit: 'abc123',
+        supportedPlatforms: ['darwin-arm64'],
+        binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1024, sha256: VALID_SHA256 }]
+      })
+    )
+    fs.writeFileSync(
+      linuxPath,
+      JSON.stringify({
+        name: 'uar',
+        version: '1.0.0',
+        sourceCommit: 'abc123',
+        supportedPlatforms: ['linux-x64'],
+        binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 2048, sha256: 'b'.repeat(64) }]
+      })
+    )
+
+    main(['--merge', '--input', darwinPath, '--input', linuxPath, '--out', outPath])
+
+    const merged = JSON.parse(fs.readFileSync(outPath, 'utf8'))
+    expect(merged).toMatchObject({
+      name: 'uar',
+      version: '1.0.0',
+      sourceCommit: 'abc123',
+      supportedPlatforms: ['darwin-arm64', 'linux-x64']
+    })
+    expect(merged.binaries).toHaveLength(2)
   })
 })
 

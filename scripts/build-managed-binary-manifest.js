@@ -3,6 +3,85 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const { validateManifest } = require('./runtime-manifest-schema')
+const { isPlatformSupported, RUNTIME_KEYS } = require('./runtime-platform-matrix')
+
+/**
+ * Merge N per-platform manifests for the SAME runtime into one per-runtime
+ * manifest. In CI each platform builds independently, emitting e.g.
+ * `uar.darwin-arm64.manifest.json` and `uar.linux-x64.manifest.json`; this
+ * combines them into a single `uar.manifest.json`.
+ *
+ * Channel-level fields (schemaVersion, channel, sequence, publishedAt,
+ * expiresAt, min/maxAppVersion, revokedArtifacts, signature) are intentionally
+ * NOT carried into the merged manifest: those are per-channel and are added by
+ * the separate publish/signing step. Merging only combines the per-platform
+ * facts (name, version, sourceCommit, binaries, supportedPlatforms) so the
+ * merge step can never fabricate a signature.
+ *
+ * @param {ReadonlyArray<Record<string, unknown>>} manifests
+ * @returns {ReturnType<typeof validateManifest>}
+ */
+function mergeManifests(manifests) {
+  if (!Array.isArray(manifests) || manifests.length === 0) {
+    throw new Error('mergeManifests requires at least one input manifest')
+  }
+
+  const [first] = manifests
+  const name = first.name
+  const version = first.version
+  const sourceCommit = first.sourceCommit
+
+  for (const manifest of manifests) {
+    if (manifest.name !== name) {
+      throw new Error(`Cannot merge manifests with mismatched name: "${String(name)}" vs "${String(manifest.name)}"`)
+    }
+    if (manifest.version !== version) {
+      throw new Error(
+        `Cannot merge manifests with mismatched version: "${String(version)}" vs "${String(manifest.version)}"`
+      )
+    }
+    if (manifest.sourceCommit !== sourceCommit) {
+      throw new Error(
+        `Cannot merge manifests with mismatched sourceCommit: "${String(sourceCommit)}" vs "${String(manifest.sourceCommit)}" — all inputs must come from the same release build`
+      )
+    }
+  }
+
+  const binaries = []
+  const seenPlatforms = new Set()
+  // Only validate against the matrix when the manifest name is a known runtime
+  // key (the matrix is keyed by 'uar'/'opencode'/'codex', not by display name).
+  const enforceMatrix = RUNTIME_KEYS.includes(name)
+
+  for (const manifest of manifests) {
+    const entries = Array.isArray(manifest.binaries) ? manifest.binaries : []
+    for (const entry of entries) {
+      const platform = entry.platform
+      if (seenPlatforms.has(platform)) {
+        throw new Error(
+          `Cannot merge manifests: duplicate platform "${String(platform)}" appears in more than one input`
+        )
+      }
+      if (enforceMatrix && !isPlatformSupported(name, platform)) {
+        throw new Error(`Cannot merge manifests: platform "${String(platform)}" is not supported by runtime "${name}"`)
+      }
+      seenPlatforms.add(platform)
+      binaries.push(entry)
+    }
+  }
+
+  const supportedPlatforms = [...seenPlatforms].sort()
+
+  const merged = {
+    name,
+    version,
+    ...(sourceCommit ? { sourceCommit } : {}),
+    supportedPlatforms,
+    binaries
+  }
+
+  return validateManifest(merged)
+}
 
 function buildManifest(options) {
   const binaries = options.binaries.map((binary) => buildManifestEntry(binary))
@@ -40,6 +119,10 @@ function buildManifestEntry(binary) {
 }
 
 function parseArgs(argv) {
+  if (argv.includes('--merge')) {
+    return parseMergeArgs(argv)
+  }
+
   const options = {
     binaries: [],
     httpsUrls: new Map(),
@@ -98,6 +181,36 @@ function parseArgs(argv) {
   }
 }
 
+function parseMergeArgs(argv) {
+  const inputs = []
+  let out
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+    const value = argv[index + 1]
+    if (arg === '--merge') {
+      continue
+    } else if (arg === '--input') {
+      if (!value) {
+        throw new Error('--input expects a manifest file path')
+      }
+      inputs.push(value)
+      index += 1
+    } else if (arg === '--out') {
+      out = value
+      index += 1
+    } else {
+      throw new Error(`Unknown argument: ${arg}`)
+    }
+  }
+
+  if (inputs.length === 0) {
+    throw new Error('Usage: --merge --input <manifest.json> [--input <manifest.json> ...] [--out manifest.json]')
+  }
+
+  return { merge: true, inputs, out }
+}
+
 function parsePlatformValue(value, flag) {
   const separator = value?.indexOf('=')
   if (!value || separator <= 0 || separator === value.length - 1) {
@@ -116,7 +229,9 @@ function sha256File(filePath) {
 
 function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv)
-  const manifest = buildManifest(options)
+  const manifest = options.merge
+    ? mergeManifests(options.inputs.map((input) => JSON.parse(fs.readFileSync(input, 'utf8'))))
+    : buildManifest(options)
   const json = `${JSON.stringify(manifest, null, 2)}\n`
   if (options.out) {
     fs.mkdirSync(path.dirname(options.out), { recursive: true })
@@ -140,6 +255,7 @@ module.exports = {
   buildManifest,
   buildManifestEntry,
   main,
+  mergeManifests,
   parseArgs,
   sha256File
 }
