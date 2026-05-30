@@ -82,25 +82,34 @@ export function initEditorState(init?: Partial<EditorState>): EditorState {
   const source = init?.source ?? ''
   const computedHash = source === '' ? '' : versionHash(source)
 
-  return {
+  const base: EditorState = {
     phase: 'idle',
     source,
     language: 'html',
-    headVersionHash: computedHash,
+    // Caller may supply an explicit headVersionHash (e.g. hydrating from
+    // persisted state where source+hash are already consistent); otherwise it
+    // is computed from source so the invariant headVersionHash = versionHash(source)
+    // always holds.
+    headVersionHash: init?.headVersionHash !== undefined ? init.headVersionHash : computedHash,
     activeTurnId: null,
     streamingText: '',
     lastBuild: null,
     savedRecordId: null,
     error: null,
-    history: [],
-    // Spread overrides AFTER we set computed defaults so callers can still
-    // supply an explicit headVersionHash if they need to (e.g. hydrating from
-    // persisted state where the source+hash are already consistent).
+    history: []
+  }
+
+  if (!init) {
+    return base
+  }
+
+  // Apply caller overrides, then re-pin source + headVersionHash so they cannot
+  // drift apart regardless of what `init` contained.
+  return {
+    ...base,
     ...init,
-    // Re-apply source so headVersionHash is always driven from source if
-    // the caller supplied source but not headVersionHash.
     source,
-    headVersionHash: init?.headVersionHash !== undefined ? init.headVersionHash : computedHash
+    headVersionHash: base.headVersionHash
   }
 }
 
