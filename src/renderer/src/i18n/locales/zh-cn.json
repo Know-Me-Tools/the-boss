@@ -4225,6 +4225,7 @@
       "designer": {
         "cancel": "取消",
         "diagnostics_label": "[to be translated]:Build diagnostics",
+        "edit_with_ai": "[to be translated]:Edit with AI",
         "error_label": "[to be translated]:Error",
         "fix_action": "修复",
         "fix_request": "请修复以下构建错误",

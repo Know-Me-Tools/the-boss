@@ -4225,6 +4225,7 @@
       "designer": {
         "cancel": "Cancel",
         "diagnostics_label": "Build diagnostics",
+        "edit_with_ai": "Edit with AI",
         "error_label": "Error",
         "fix_action": "Fix it",
         "fix_request": "Please fix the build errors listed below",

@@ -10,13 +10,16 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import type { ThemeMode } from '@renderer/types'
 import type { ArtifactOriginRef, ArtifactSourceLanguage, ReactArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
-import { Atom, Copy, DownloadIcon, LinkIcon, Sparkles } from 'lucide-react'
+import { Atom, Copy, DownloadIcon, LinkIcon, Sparkles, Wand2 } from 'lucide-react'
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
 
+import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
+
+import ArtifactDesigner from './ArtifactDesigner'
 import ArtifactPopup from './ArtifactPopup'
 
 const logger = loggerService.withContext('ReactArtifactsCard')
@@ -96,9 +99,11 @@ const ReactArtifactsCard: FC<Props> = ({
   const { t } = useTranslation()
   const title = useMemo(() => getReactArtifactTitle(code), [code])
   const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const [isDesignerOpen, setIsDesignerOpen] = useState(false)
   const [isCompiling, setIsCompiling] = useState(false)
   const [previewDocument, setPreviewDocument] = useState('')
   const { theme } = useTheme()
+  const { saveArtifact: librarySaveArtifact } = useArtifactLibrary()
 
   const sourceCode = code || ''
   const hasContent = sourceCode.trim().length > 0
@@ -169,6 +174,41 @@ const ReactArtifactsCard: FC<Props> = ({
       window.toast.error(t('code_block.copy.failed'))
     }
   }, [sourceCode, t])
+
+  /**
+   * Async preview builder passed to ArtifactDesigner.
+   *
+   * Decision: React artifacts require an async compile step (compileReact IPC).
+   * ArtifactDesigner.buildPreviewDocument now accepts `string | Promise<string>`,
+   * so we pass this async function directly. The designer resolves it via
+   * useEffect and shows the compiled output in the preview pane.
+   *
+   * This is superior to a "loading placeholder" approach because the designer
+   * preview pane actually shows the compiled React artifact after each turn.
+   */
+  const buildDesignerPreviewDocument = useCallback(async (source: string): Promise<string> => {
+    const settings = await loadArtifactSettings()
+    const overrides = parseArtifactDirectiveOverrides('react', source)
+    const themeId = overrides.themeId ?? settings.defaultThemeId
+    const result = await window.api.artifacts.compileReact({
+      source,
+      baseCss: settings.baseCss,
+      themeCss: getThemeCss(themeId),
+      customCss: settings.customCss,
+      title: getReactArtifactTitle(source)
+    })
+
+    if (!result.ok || !result.script) {
+      return buildCompileErrorDocument(getReactArtifactTitle(source), result.diagnostics)
+    }
+
+    return buildReactArtifactPreviewDocument({
+      title: getReactArtifactTitle(source),
+      script: result.script,
+      settings,
+      overrides
+    })
+  }, [])
 
   const loadingDocument = `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.react_compiling')}</body></html>`
 
@@ -241,6 +281,14 @@ const ReactArtifactsCard: FC<Props> = ({
               <Button icon={<DownloadIcon size={14} />} onClick={handleDownload} type="text" disabled={!hasContent}>
                 {t('code_block.download.label')}
               </Button>
+              <Button
+                icon={<Wand2 size={14} />}
+                onClick={() => setIsDesignerOpen(true)}
+                type="text"
+                disabled={!hasContent}
+                aria-label={t('settings.artifacts.designer.edit_with_ai')}>
+                {t('settings.artifacts.designer.edit_with_ai')}
+              </Button>
             </ButtonContainer>
           )}
         </Content>
@@ -274,6 +322,17 @@ const ReactArtifactsCard: FC<Props> = ({
         }}
         onSave={onSave}
         onClose={() => setIsPopupOpen(false)}
+      />
+
+      <ArtifactDesigner
+        open={isDesignerOpen}
+        title={title}
+        initialSource={sourceCode}
+        language={sourceLanguage}
+        typeLabel="React/TSX Artifact"
+        buildPreviewDocument={buildDesignerPreviewDocument}
+        saveArtifact={(draft) => librarySaveArtifact(draft).then((r) => ({ id: r.id }))}
+        onClose={() => setIsDesignerOpen(false)}
       />
     </>
   )

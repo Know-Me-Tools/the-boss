@@ -10,13 +10,16 @@ import type { ThemeMode } from '@renderer/types'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
-import { Code, Copy, DownloadIcon, Globe, LinkIcon, Sparkles } from 'lucide-react'
+import { Code, Copy, DownloadIcon, Globe, LinkIcon, Sparkles, Wand2 } from 'lucide-react'
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
 
+import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
+
+import ArtifactDesigner from './ArtifactDesigner'
 import HtmlArtifactsPopup from './HtmlArtifactsPopup'
 
 const logger = loggerService.withContext('HtmlArtifactsCard')
@@ -51,7 +54,9 @@ const HtmlArtifactsCard: FC<Props> = ({
   const { t } = useTranslation()
   const title = extractHtmlTitle(html) || 'HTML Artifacts'
   const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const [isDesignerOpen, setIsDesignerOpen] = useState(false)
   const { theme } = useTheme()
+  const { saveArtifact: librarySaveArtifact } = useArtifactLibrary()
   const htmlContent = html || ''
   const hasContent = htmlContent.trim().length > 0
   const loadingDocument = useMemo(() => buildLoadingDocument(t('settings.artifacts.library.preview_loading')), [t])
@@ -89,6 +94,29 @@ const HtmlArtifactsCard: FC<Props> = ({
       cancelled = true
     }
   }, [htmlContent, loadingDocument, runtimeProfileId, title])
+
+  /**
+   * Async preview builder passed to ArtifactDesigner.
+   *
+   * Decision: HTML artifacts use buildHtmlArtifactPreviewDocument which is sync
+   * once settings are loaded. We load settings async, then call the sync builder.
+   * ArtifactDesigner accepts `string | Promise<string>` so this async function
+   * is passed directly and resolved by the designer's useEffect.
+   */
+  const buildDesignerPreviewDocument = useCallback(
+    async (source: string): Promise<string> => {
+      const settings = await loadArtifactSettings()
+      const overrides = parseArtifactDirectiveOverrides('html', source)
+      return buildHtmlArtifactPreviewDocument({
+        source,
+        title: extractHtmlTitle(source) || title,
+        runtimeProfileId,
+        settings,
+        overrides
+      })
+    },
+    [runtimeProfileId, title]
+  )
 
   const handleOpenExternal = async () => {
     const path = await window.api.file.createTempFile('artifacts-preview.html')
@@ -177,6 +205,14 @@ const HtmlArtifactsCard: FC<Props> = ({
               <Button icon={<DownloadIcon size={14} />} onClick={handleDownload} type="text" disabled={!hasContent}>
                 {t('code_block.download.label')}
               </Button>
+              <Button
+                icon={<Wand2 size={14} />}
+                onClick={() => setIsDesignerOpen(true)}
+                type="text"
+                disabled={!hasContent}
+                aria-label={t('settings.artifacts.designer.edit_with_ai')}>
+                {t('settings.artifacts.designer.edit_with_ai')}
+              </Button>
             </ButtonContainer>
           )}
         </Content>
@@ -208,6 +244,17 @@ const HtmlArtifactsCard: FC<Props> = ({
         }}
         onSave={onSave}
         onClose={() => setIsPopupOpen(false)}
+      />
+
+      <ArtifactDesigner
+        open={isDesignerOpen}
+        title={title}
+        initialSource={htmlContent}
+        language="html"
+        typeLabel={typeLabel}
+        buildPreviewDocument={buildDesignerPreviewDocument}
+        saveArtifact={(draft) => librarySaveArtifact(draft).then((r) => ({ id: r.id }))}
+        onClose={() => setIsDesignerOpen(false)}
       />
     </>
   )

@@ -41,7 +41,7 @@ import { loggerService } from '@logger'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { Button, Splitter, Tooltip } from 'antd'
 import { SendHorizonal, Save, Wrench, X } from 'lucide-react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -62,8 +62,14 @@ export interface ArtifactDesignerProps {
   initialSource: string
   language: ArtifactSourceLanguage
   typeLabel: string
-  /** Caller maps source → preview iframe document. Injected for testability. */
-  buildPreviewDocument: (source: string) => string
+  /**
+   * Caller maps source → preview iframe document.
+   * Accepts a sync or async mapper; the designer resolves it via useEffect.
+   * Async is needed for React artifacts (compileReact is an async IPC call).
+   * HTML artifacts pass a sync builder; React artifacts pass an async one.
+   * Injected for testability — tests pass a sync vi.fn().
+   */
+  buildPreviewDocument: (source: string) => string | Promise<string>
   /**
    * Testability seam for library persistence. Defaults to undefined (no save).
    * The parent should wire useArtifactLibrary().saveArtifact here.
@@ -168,6 +174,8 @@ const ArtifactDesigner = ({
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Preview document resolved from buildPreviewDocument (sync or async).
+  const [previewDoc, setPreviewDoc] = useState('')
 
   const turnCounterRef = useRef(0)
 
@@ -353,20 +361,38 @@ const ArtifactDesigner = ({
     [handleSend]
   )
 
-  if (!open) {
-    return null
-  }
-
   const isPreview = editorState.phase === 'preview'
   const isRepair = editorState.phase === 'repair'
   const isSaved = editorState.savedRecordId !== null
 
-  // Memoize the preview document to avoid recomputing on unrelated re-renders.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const previewDoc = useMemo(
-    () => (isPreview ? buildPreviewDocument(editorState.source) : ''),
-    [isPreview, buildPreviewDocument, editorState.source]
-  )
+  // Resolve the preview document — buildPreviewDocument may be sync or async.
+  // The useEffect is placed before the early return so hooks are never called
+  // conditionally (rules of hooks). When !isPreview the effect clears the doc.
+  useEffect(() => {
+    if (!isPreview) {
+      setPreviewDoc('')
+      return
+    }
+
+    let cancelled = false
+    const result = buildPreviewDocument(editorState.source)
+
+    if (typeof result === 'string') {
+      setPreviewDoc(result)
+    } else {
+      result.then((doc) => {
+        if (!cancelled) setPreviewDoc(doc)
+      })
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [isPreview, buildPreviewDocument, editorState.source])
+
+  if (!open) {
+    return null
+  }
 
   return (
     <DesignerContainer>

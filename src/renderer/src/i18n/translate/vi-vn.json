@@ -4225,6 +4225,7 @@
       "designer": {
         "cancel": "[to be translated]:Cancel",
         "diagnostics_label": "[to be translated]:Build diagnostics",
+        "edit_with_ai": "[to be translated]:Edit with AI",
         "error_label": "[to be translated]:Error",
         "fix_action": "[to be translated]:Fix it",
         "fix_request": "[to be translated]:Please fix the build errors listed below",

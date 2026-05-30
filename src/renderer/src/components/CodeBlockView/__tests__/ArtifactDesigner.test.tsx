@@ -429,6 +429,40 @@ describe('ArtifactDesigner', () => {
   })
 
   // -------------------------------------------------------------------------
+  // 8b. Async buildPreviewDocument resolves and renders in the iframe
+  // -------------------------------------------------------------------------
+
+  it('resolves an async buildPreviewDocument and renders its output in the preview iframe', async () => {
+    const newSource = '<p>Async preview content</p>'
+    const asyncDoc = `<html><body>${newSource}</body></html>`
+
+    const runTurn: RunTurnMock = vi.fn().mockResolvedValue({
+      events: [],
+      state: makePreviewState(newSource)
+    })
+
+    // Async builder — returns a promise that resolves after a microtask.
+    const buildPreviewDocument = vi.fn((_source: string) => Promise.resolve(asyncDoc))
+
+    render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} buildPreviewDocument={buildPreviewDocument} />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i }), {
+      target: { value: 'Build async' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
+
+    // Wait for the async builder to be called and the iframe to be rendered.
+    await waitFor(() => {
+      expect(buildPreviewDocument).toHaveBeenCalledWith(newSource)
+    })
+
+    await waitFor(() => {
+      const iframe = screen.getByTitle(/settings.artifacts.designer.preview/i)
+      expect(iframe).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
   // 9. Closed designer renders nothing
   // -------------------------------------------------------------------------
 

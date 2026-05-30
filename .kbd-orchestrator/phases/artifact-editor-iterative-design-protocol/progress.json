@@ -3,14 +3,14 @@
   "objective": "Deliver a working LLM-driven iterative artifact editor (React + HTMX) — create → display → edit again via natural language → re-display across turns → save to local library — driven by typed AG-UI-style streaming chunks and an editor state machine.",
   "type": "design-heavy feature build (not a bug patch)",
   "priority": "cornerstone (user-stated)",
-  "status": "execution_in_progress",
+  "status": "execution_complete",
   "assessment_complete": true,
   "planning_complete": true,
   "execution_ready": true,
-  "execution_complete": false,
+  "execution_complete": true,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 6,
+  "changes_completed": 7,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
@@ -18,15 +18,17 @@
     "change-004-artifact-design-orchestrator": "DONE",
     "change-005-artifact-designer-3pane": "DONE",
     "change-006-designer-build-loop-wiring": "DONE",
-    "change-007-create-path-entry-and-docs": "TODO"
+    "change-007-create-path-entry-and-docs": "DONE"
   },
-  "current_change": "change-007-create-path-entry-and-docs",
+  "current_change": null,
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
   "branch_policy": {
     "base": "current-1.9.x",
-    "do_not_use": ["v2"],
+    "do_not_use": [
+      "v2"
+    ],
     "notes": "Per CLAUDE.md, build on the 1.9.x line; never use v2."
   },
   "decisions": {
@@ -55,7 +57,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-007-create-path-entry-and-docs"
+    "next_pending_change": null
   },
   "change_log": [
     {
@@ -139,7 +141,7 @@
   "milestone_status": {
     "M1_spine": "COMPLETE (change-001..004; 189 tests; pure spine, zero UI)",
     "M2_designer": "COMPLETE (change-005 3-pane designer + change-006 build-loop wiring & save)",
-    "M3_entry_docs": "NEXT (change-007 entry from artifact cards + docs)"
+    "M3_entry_docs": "COMPLETE (change-007 entry from cards + docs; designer reachable; full electron-vite build verified)"
   },
   "artifacts": {
     "assessment": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
@@ -149,5 +151,22 @@
     "progress": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json"
   },
   "nextRecommendedAction": "change-001 DONE (27/27 tests, Biome clean, two-stage review applied). Next: change-002-artifact-editor-reducer (pure state machine consuming ArtifactDesignEvent; stale-turn guard via versionHash anchor; repair-loop + error recovery; no React/IPC). Continue M1 spine (002 -> 003 -> 004). TDD + two-stage review per change. Do not use v2.",
-  "session_note": "Resumed session: Node default is v20 (repo requires >=24.11.1). Use `nvm use 24` before running pnpm test/lint. progress.json had been truncated by a hook/rollback and was rebuilt."
+  "session_note": "Resumed session: Node default is v20 (repo requires >=24.11.1). Use `nvm use 24` before running pnpm test/lint. progress.json had been truncated by a hook/rollback and was rebuilt.",
+  "change_log_007": {
+    "id": "change-007-create-path-entry-and-docs",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ReactArtifactsCard.tsx",
+      "src/renderer/src/components/CodeBlockView/HtmlArtifactsCard.tsx",
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactCardsDesigner.test.tsx",
+      "docs/en/guides/artifacts.md",
+      "i18n edit_with_ai"
+    ],
+    "tests": "CodeBlockView 49/49; full artifacts+cards sweep 238/238 (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from changed files; i18n pass + keys resolve; no console.*",
+    "real_app_verification": "electron-vite build SUCCEEDS (BUILD_EXIT=0; renderer+main+preload bundled; ArtifactDesigner/designOrchestrator chunks present in out/renderer)",
+    "decision": "buildPreviewDocument widened to (source)=>string|Promise<string> so React preview compiles via real compileReact",
+    "qa_gate": "reviewed in lieu of refiner; production build + 238 tests + code review"
+  }
 }

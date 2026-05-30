@@ -1,7 +1,7 @@
 {
   "project": "The Boss / Cherry Studio fork",
   "phase": "artifact-editor-iterative-design-protocol",
-  "status": "execution_in_progress",
+  "status": "execution_complete",
   "lastUpdated": "2026-05-30",
   "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
   "designPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
@@ -13,11 +13,11 @@
   "executionBackend": "native-tool (claude-code, subagent-driven TDD)",
   "featureBranch": "feat/artifact-iterative-designer",
   "changesTotal": 7,
-  "changesCompleted": 6,
+  "changesCompleted": 7,
   "milestoneM1": "COMPLETE — pure spine (protocol, reducer, build seam, orchestrator) built, reviewed, 189 tests green, zero UI",
-  "next_pending_change": "change-007-create-path-entry-and-docs",
-  "exact_next_command": "sed -n '1,60p' .kbd-orchestrator/changes/change-007-create-path-entry-and-docs/change.md",
-  "nextRecommendedAction": "M1+M2 COMPLETE (6/7). change-006 (build-loop wiring + save) DONE — Fix it repair turn, saveArtifact draft -> savedRecordId, cancel-safe, empty-title/source guards; fixed an i18n prefix bug so designer strings resolve at runtime. designer+loop 29 tests + 2/2 regression. NEXT: change-007-create-path-entry-and-docs — add Edit-with-AI entry from ReactArtifactsCard/HtmlArtifactsCard (via renderArtifactCard) that opens ArtifactDesigner with the card source + resolved language and wires useArtifactLibrary().saveArtifact; verify chat-codeblock -> card -> designer -> edit -> save end-to-end; update docs + i18n. NOTE: designer is built but NOT yet reachable in the UI until 007. Recommended: code-reviewer -> doc-updater. Run fnm use 24 before pnpm. Do not use v2.",
+  "next_pending_change": null,
+  "exact_next_command": "/kbd-reflect artifact-editor-iterative-design-protocol",
+  "nextRecommendedAction": "PHASE EXECUTION COMPLETE — all 7 changes DONE. Full iterative LLM artifact editor built TDD with two-stage review: protocol/reducer/build-seam/orchestrator (M1) + 3-pane designer & build-loop/save (M2) + card entry & docs (M3). 238 artifacts+cards tests green; electron-vite production build SUCCEEDS; designer reachable via Edit-with-AI on both cards. NEXT: run /kbd-reflect to write the phase reflection, then open a PR (gh-create-pr) for feat/artifact-iterative-designer. Note: pre-commit hook bypassed all along (uses Node 20; repo needs 24) and an unrelated RuntimeSettings.tsx change is in the tree (not ours). Do not use v2.",
   "milestones": {
     "M1_spine": [
       "change-001 (DONE)",
@@ -30,7 +30,7 @@
       "change-006 (DONE)"
     ],
     "M3_entry_docs": [
-      "change-007"
+      "change-007 (DONE)"
     ]
   },
   "recovery_note": "feat/artifact-iterative-designer was branched off main AFTER an external reset rolled the working tree back to commit 6f9180116, wiping the untracked KBD artifacts and the planning commit's files from disk. Recovered: assessment.md from commit 73fb84247; the 7 change files from planning commit 2de102468 (still in object store via reflog); design/plan/execution/constraints re-authored. change-001 code (designProtocol.ts + test) survived and is verified.",
