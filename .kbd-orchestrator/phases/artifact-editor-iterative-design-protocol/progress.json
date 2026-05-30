@@ -10,17 +10,17 @@
   "execution_complete": false,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 2,
+  "changes_completed": 3,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
-    "change-003-artifact-build-feedback-seam": "TODO",
+    "change-003-artifact-build-feedback-seam": "DONE",
     "change-004-artifact-design-orchestrator": "TODO",
     "change-005-artifact-designer-3pane": "TODO",
     "change-006-designer-build-loop-wiring": "TODO",
     "change-007-create-path-entry-and-docs": "TODO"
   },
-  "current_change": "change-003-artifact-build-feedback-seam",
+  "current_change": "change-004-artifact-design-orchestrator",
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
@@ -55,7 +55,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-003-artifact-build-feedback-seam"
+    "next_pending_change": "change-004-artifact-design-orchestrator"
   },
   "change_log": [
     {
@@ -80,6 +80,18 @@
       "tests": "94/94 passing (vitest renderer, Node 24.16.0)",
       "quality": "Biome clean; no console.*; pure (only ./designProtocol + @shared types); exhaustiveness guard; tsgo (web) no errors from this file",
       "review": "tdd-guide (build) -> typescript-reviewer; CRITICAL TS1117 already resolved by clean two-step initEditorState; 2 HIGH + 2 MEDIUM fixed and locked by regression tests (start resets lastBuild/savedRecordId; artifact_full resets lastBuild; stale-turn errors ignored; mid-stream complete -> error; saved clears activeTurnId)",
+      "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-003-artifact-build-feedback-seam",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/buildFeedback.ts",
+        "src/renderer/src/artifacts/__tests__/buildFeedback.test.ts"
+      ],
+      "tests": "22/22 passing (vitest renderer, Node 24.16.0)",
+      "quality": "Biome clean; no console.*/window.* at module scope; IPC injected (mockable); tsgo (web) no errors from this file",
+      "review": "tdd-guide (build) -> typescript-reviewer; HIGH bug caught + fixed: removed character-level stray-`<` HTML check that false-positived on JS operators (`a < b`, `=>`) inside <script>, which would block the iterate loop on valid HTML+JS artifacts; replaced the test that locked it in; added regression tests. Verified real CompileReactArtifactResponse shape = { ok, script, diagnostics } (no errors field).",
       "qa_gate": "skipped (2 files, below <3-file threshold)"
     }
   ],
