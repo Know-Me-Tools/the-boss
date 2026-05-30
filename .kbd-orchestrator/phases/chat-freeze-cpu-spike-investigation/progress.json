@@ -1,0 +1,42 @@
+{
+  "phase": "chat-freeze-cpu-spike-investigation",
+  "objective": "Investigate and fix a bug where the chat for both assistants and agents stops working after some time, CPU spikes, and the app locks up.",
+  "type": "debugging-investigation",
+  "status": "planning_complete",
+  "assessment_complete": true,
+  "planning_complete": true,
+  "execution_ready": true,
+  "execution_complete": false,
+  "last_updated": "2026-05-30",
+  "last_updated_by": "claude-code",
+  "change_namespace": "fix-",
+  "changes": [
+    { "id": "fix-001-smoothstream-raf-leak", "status": "PENDING", "depends_on": [] },
+    { "id": "fix-002-chat-freeze-verification", "status": "PENDING", "depends_on": ["fix-001-smoothstream-raf-leak"] }
+  ],
+  "branch_policy": {
+    "base": "current-1.9.x",
+    "current_branch": "main",
+    "do_not_use": ["v2"],
+    "notes": "Per CLAUDE.md, fix on the 1.9.x line; never use v2."
+  },
+  "primary_hypothesis": {
+    "summary": "Leaked / self-multiplying requestAnimationFrame loop in useSmoothStream, driven by an unstable inline onUpdate callback in Markdown.tsx. Orphaned rAF loops accumulate and busy-spin, saturating CPU and freezing the UI.",
+    "files": ["src/renderer/src/hooks/useSmoothStream.ts", "src/renderer/src/pages/home/Markdown/Markdown.tsx"],
+    "confidence": "high (static analysis); runtime profile pending",
+    "shared_by_both_surfaces": true,
+    "isolation": "Only self-rescheduling rAF loop in the renderer; all other rAF call sites are one-shot."
+  },
+  "secondary_candidates": [
+    "Markdown.tsx effect feedback churn (driver of the primary bug)",
+    "message list / virtualization effects (Messages.tsx, AgentSessionMessages.tsx) — amplifiers to rule out",
+    "RuntimeSettings 4s poll (change-023) — settings-only, low priority"
+  ],
+  "openSpecDetected": false,
+  "artifacts": {
+    "assessment": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/assessment.md",
+    "plan": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/plan.md",
+    "progress": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/progress.json"
+  },
+  "nextRecommendedAction": "Execute fix-001-smoothstream-raf-leak (TDD): single-loop refactor of useSmoothStream + stabilize Markdown.tsx onUpdate + regression test. Then fix-002 verification. Do not use v2."
+}
