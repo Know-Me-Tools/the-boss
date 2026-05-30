@@ -151,7 +151,7 @@ describe('UniversalAgentRuntimeService', () => {
     await service.stop()
   })
 
-  it('uses a detected PATH binary before a verified managed app-data binary', async () => {
+  it('prefers a verified managed app-data binary over a detected PATH binary by default', async () => {
     const detectedPath = path.join(tempDir, 'path-uar', binaryName())
     const managedPath = path.join(
       tempDir,
@@ -171,8 +171,9 @@ describe('UniversalAgentRuntimeService', () => {
     spawnMock.mockReturnValue(child)
     fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
 
+    const discovery = createRuntimeBinaryDiscoveryService(detectedPath)
     const service = new UniversalAgentRuntimeService({
-      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never,
+      runtimeBinaryDiscoveryService: discovery as never,
       managedBinaryService: {
         resolveInstalledBinary: vi.fn(async () => ({
           binaryPath: managedPath,
@@ -188,7 +189,40 @@ describe('UniversalAgentRuntimeService', () => {
       }
     })
 
+    // No allowPathDiscovery flag: a stale PATH binary must not override the managed one.
     await service.ensureRunning({ kind: 'uar', mode: 'embedded' })
+
+    expect(spawnMock).toHaveBeenCalledWith(managedPath, expect.any(Array), expect.any(Object))
+    expect(discovery.discover).not.toHaveBeenCalled()
+    await service.stop()
+  })
+
+  it('uses a detected PATH binary when allowPathDiscovery is opted in and no managed binary exists', async () => {
+    const detectedPath = path.join(tempDir, 'path-uar', binaryName())
+    fs.mkdirSync(path.dirname(detectedPath), { recursive: true })
+    fs.writeFileSync(detectedPath, '')
+
+    const child = createChildProcess()
+    spawnMock.mockReturnValue(child)
+    fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
+
+    const service = new UniversalAgentRuntimeService({
+      runtimeBinaryDiscoveryService: createRuntimeBinaryDiscoveryService(detectedPath) as never,
+      managedBinaryService: {
+        resolveInstalledBinary: vi.fn(async () => ({
+          status: {
+            name: 'universal-agent-runtime',
+            version: '1.0.0',
+            platform: `${process.platform}-${process.arch}`,
+            state: 'missing' as const,
+            binaryPath: path.join(tempDir, 'Data', 'managed-binaries', 'missing'),
+            message: 'missing'
+          }
+        }))
+      }
+    })
+
+    await service.ensureRunning({ kind: 'uar', mode: 'embedded', sidecar: { allowPathDiscovery: true } })
 
     expect(spawnMock).toHaveBeenCalledWith(detectedPath, expect.any(Array), expect.any(Object))
     await service.stop()

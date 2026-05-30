@@ -10,6 +10,7 @@ import { app } from 'electron'
 
 import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
 import {
+  isPathDiscoveryAllowed,
   type RuntimeBinaryDiscoveryService,
   runtimeBinaryDiscoveryService,
   type RuntimeBinarySource
@@ -100,17 +101,8 @@ export class CodexCliService {
       }
     }
 
-    const detected = await this.runtimeBinaryDiscoveryService.discover('codex')
-    if (detected.detectedPath) {
-      const pathResolution = this.validateCandidate(detected.detectedPath, 'path')
-      if (pathResolution) {
-        return {
-          ...pathResolution,
-          message: detected.message
-        }
-      }
-    }
-
+    // Verified app-managed binary is preferred over PATH discovery so a stale
+    // binary on PATH cannot silently override a trusted, managed binary.
     const managed = await this.managedRuntimeService.resolveInstalledBinary('codex')
     if (managed.binaryPath) {
       return {
@@ -124,6 +116,21 @@ export class CodexCliService {
       return {
         state: managed.status.state === 'unsupported-platform' ? 'unsupported-platform' : 'missing-binary',
         message: managed.status.message
+      }
+    }
+
+    // PATH discovery is opt-in: only when no managed binary is available and the
+    // user has explicitly allowed discovering a system-installed binary.
+    if (isPathDiscoveryAllowed(runtimeConfig?.sidecar)) {
+      const detected = await this.runtimeBinaryDiscoveryService.discover('codex')
+      if (detected.detectedPath) {
+        const pathResolution = this.validateCandidate(detected.detectedPath, 'path')
+        if (pathResolution) {
+          return {
+            ...pathResolution,
+            message: detected.message
+          }
+        }
       }
     }
 

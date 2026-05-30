@@ -11,6 +11,21 @@ const VERSION_TIMEOUT_MS = 3000
 export type RuntimeBinarySource = 'configured' | 'environment' | 'path' | 'managed' | 'development'
 export type DiscoverableRuntimeKind = Extract<AgentRuntimeKind, 'codex' | 'opencode' | 'uar'>
 
+/**
+ * Sidecar setting key that controls whether PATH discovery is allowed when no
+ * explicit binary path is configured and no managed binary is available.
+ */
+export const ALLOW_PATH_DISCOVERY_KEY = 'allowPathDiscovery'
+
+/**
+ * PATH discovery is opt-in. It is only allowed when the user explicitly sets
+ * `sidecar.allowPathDiscovery` to `true`; the default (unset/false) keeps a
+ * stale system binary from silently overriding a verified managed binary.
+ */
+export function isPathDiscoveryAllowed(sidecar: Record<string, unknown> | undefined): boolean {
+  return sidecar?.[ALLOW_PATH_DISCOVERY_KEY] === true
+}
+
 export interface RuntimeBinaryDiscoveryResult {
   kind: AgentRuntimeKind
   command: string

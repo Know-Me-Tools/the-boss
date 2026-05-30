@@ -15,7 +15,11 @@ import {
   type ManagedBinaryStatus
 } from './ManagedBinaryService'
 import { type ManagedRuntimeService, managedRuntimeService } from './ManagedRuntimeService'
-import { type RuntimeBinaryDiscoveryService, runtimeBinaryDiscoveryService } from './RuntimeBinaryDiscoveryService'
+import {
+  isPathDiscoveryAllowed,
+  type RuntimeBinaryDiscoveryService,
+  runtimeBinaryDiscoveryService
+} from './RuntimeBinaryDiscoveryService'
 
 const logger = loggerService.withContext('UniversalAgentRuntimeService')
 
@@ -325,6 +329,7 @@ export class UniversalAgentRuntimeService {
     const sidecar = getSidecarConfig(runtimeConfig)
     const configuredPath = typeof sidecar.binaryPath === 'string' ? sidecar.binaryPath : undefined
     const envPath = process.env.UAR_SIDECAR_PATH
+    // Explicit user/environment overrides always win.
     if (configuredPath) {
       return { binaryPath: configuredPath, binarySource: 'configured' }
     }
@@ -332,11 +337,8 @@ export class UniversalAgentRuntimeService {
       return { binaryPath: envPath, binarySource: 'environment' }
     }
 
-    const detected = await this.runtimeBinaryDiscoveryService.discover('uar')
-    if (detected.detectedPath) {
-      return { binaryPath: detected.detectedPath, binarySource: 'path' }
-    }
-
+    // Verified app-managed binary is preferred over PATH discovery so a stale
+    // binary on PATH cannot silently override a trusted, managed binary.
     const managedBinaryService = this.managedBinaryService ?? this.managedRuntimeService
     const managed = await managedBinaryService.resolveInstalledBinary('universal-agent-runtime')
     if (managed.binaryPath) {
@@ -347,12 +349,20 @@ export class UniversalAgentRuntimeService {
         blockingStatus: mapManagedBinaryStatus(managed.status)
       }
     }
-
     if (managed.status.state !== 'missing') {
       return {
         binaryPath: managed.status.binaryPath,
         binarySource: 'managed',
         blockingStatus: mapManagedBinaryStatus(managed.status)
+      }
+    }
+
+    // PATH discovery is opt-in: only when no managed binary is available and the
+    // user has explicitly allowed discovering a system-installed binary.
+    if (isPathDiscoveryAllowed(sidecar)) {
+      const detected = await this.runtimeBinaryDiscoveryService.discover('uar')
+      if (detected.detectedPath) {
+        return { binaryPath: detected.detectedPath, binarySource: 'path' }
       }
     }
 
