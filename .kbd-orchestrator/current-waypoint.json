@@ -13,12 +13,13 @@
   "executionBackend": "native-tool (claude-code, subagent-driven TDD)",
   "featureBranch": "feat/artifact-iterative-designer",
   "changesTotal": 7,
-  "changesCompleted": 3,
-  "next_pending_change": "change-004-artifact-design-orchestrator",
-  "exact_next_command": "sed -n '1,60p' .kbd-orchestrator/changes/change-004-artifact-design-orchestrator/change.md",
-  "nextRecommendedAction": "change-003 (build-feedback seam) DONE — 22/22 tests (Node 24), Biome clean, tsgo clean; two-stage review caught + fixed a HIGH HTML-validator false-positive. M1 spine has ONE change left: change-004-artifact-design-orchestrator (renderer-orchestrated loop: NL request + current source -> chat model via structured output/tool -> translate response into ArtifactDesignEvents driving the reducer; one turn = prompt -> artifact_full -> reducer applies -> buildFeedback -> build_status; mock the model in tests). This is the first change that touches the existing aiCore model plumbing — read packages/aiCore + src/renderer/src/aiCore before building. TDD + two-stage review. Run `fnm use 24` before pnpm test/lint. Do not use v2.",
+  "changesCompleted": 4,
+  "milestoneM1": "COMPLETE — pure spine (protocol, reducer, build seam, orchestrator) built, reviewed, 189 tests green, zero UI",
+  "next_pending_change": "change-005-artifact-designer-3pane",
+  "exact_next_command": "sed -n '1,60p' .kbd-orchestrator/changes/change-005-artifact-designer-3pane/change.md",
+  "nextRecommendedAction": "M1 SPINE COMPLETE (change-001..004 DONE; 189 artifacts tests green; Biome+tsgo clean). Now M2 (UI). Next: change-005-artifact-designer-3pane — extend ArtifactPopup into a 3-pane designer (chat | code | preview) behind a `mode='designer'` prop so existing viewer usage is unchanged. Chat pane submits to the change-004 orchestrator (runDesignTurnDefault); bind editorReducer state to the panes (streaming->code, build ok->preview, build fail->chat). i18n all strings; keyboard + focus + ARIA; keep existing ArtifactPopup.test.tsx green. Recommended agents: tdd-guide -> typescript-reviewer + a11y-architect. This is the first UI change — read ArtifactPopup.tsx (711 lines) + its test first. Run `fnm use 24` before pnpm test/lint. Do not use v2.",
   "milestones": {
-    "M1_spine": ["change-001 (DONE)", "change-002 (DONE)", "change-003 (DONE)", "change-004"],
+    "M1_spine": ["change-001 (DONE)", "change-002 (DONE)", "change-003 (DONE)", "change-004 (DONE)"],
     "M2_designer": ["change-005", "change-006"],
     "M3_entry_docs": ["change-007"]
   },

@@ -10,17 +10,17 @@
   "execution_complete": false,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 3,
+  "changes_completed": 4,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
     "change-003-artifact-build-feedback-seam": "DONE",
-    "change-004-artifact-design-orchestrator": "TODO",
+    "change-004-artifact-design-orchestrator": "DONE",
     "change-005-artifact-designer-3pane": "TODO",
     "change-006-designer-build-loop-wiring": "TODO",
     "change-007-create-path-entry-and-docs": "TODO"
   },
-  "current_change": "change-004-artifact-design-orchestrator",
+  "current_change": "change-005-artifact-designer-3pane",
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
@@ -55,7 +55,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-004-artifact-design-orchestrator"
+    "next_pending_change": "change-005-artifact-designer-3pane"
   },
   "change_log": [
     {
@@ -93,8 +93,26 @@
       "quality": "Biome clean; no console.*/window.* at module scope; IPC injected (mockable); tsgo (web) no errors from this file",
       "review": "tdd-guide (build) -> typescript-reviewer; HIGH bug caught + fixed: removed character-level stray-`<` HTML check that false-positived on JS operators (`a < b`, `=>`) inside <script>, which would block the iterate loop on valid HTML+JS artifacts; replaced the test that locked it in; added regression tests. Verified real CompileReactArtifactResponse shape = { ok, script, diagnostics } (no errors field).",
       "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-004-artifact-design-orchestrator",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/designOrchestrator.ts",
+        "src/renderer/src/artifacts/designOrchestrator.default.ts",
+        "src/renderer/src/artifacts/__tests__/designOrchestrator.test.ts"
+      ],
+      "tests": "46/46 (change-004); 189/189 full artifacts suite (Node 24.16.0)",
+      "quality": "Biome clean; pure core (no window/console/top-level service import); default-wiring isolated with lazy import; tsgo (web) no errors from these files",
+      "review": "tdd-guide (build) -> code-reviewer; HIGH fixed: extractJson regex required newlines, dropping single-line/no-trailing-newline/prose-wrapped JSON -> spurious design_run_error; rewrote regex + brace-slice fallback, added regression tests (all 6 model formats verified). MEDIUM fixed: default generate wrapper throws actionable error on empty fetchGenerate result (missing model/API key).",
+      "qa_gate": "3 files (core+default+test) at threshold; core pure + 46 unit tests + code-review; default.ts is integration-only wiring. Reviewed in lieu of refiner."
     }
   ],
+  "milestone_status": {
+    "M1_spine": "COMPLETE (change-001..004 DONE; 189 tests; the entire pure spine — protocol, reducer, build seam, orchestrator — is built, reviewed, and green with zero UI)",
+    "M2_designer": "NEXT (change-005 3-pane designer, change-006 build-loop wiring)",
+    "M3_entry_docs": "pending (change-007)"
+  },
   "artifacts": {
     "assessment": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
     "design": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
