@@ -4,6 +4,7 @@ const {
   ALL_PLATFORMS,
   MANAGED_RUNTIME_PLATFORM_MATRIX,
   RUNTIME_KEYS,
+  resolveRuntimeKey,
   getSupportedPlatforms,
   isPlatformSupported,
   requiredPlatformsFor
@@ -68,9 +69,35 @@ describe('runtime-platform-matrix', () => {
     })
   })
 
+  describe('resolveRuntimeKey', () => {
+    it('maps the UAR display name to the matrix key', () => {
+      expect(resolveRuntimeKey('universal-agent-runtime')).toBe('uar')
+    })
+
+    it('maps the matrix key to itself', () => {
+      expect(resolveRuntimeKey('uar')).toBe('uar')
+      expect(resolveRuntimeKey('opencode')).toBe('opencode')
+      expect(resolveRuntimeKey('codex')).toBe('codex')
+    })
+
+    it('returns undefined for an unrecognized name', () => {
+      expect(resolveRuntimeKey('nope')).toBeUndefined()
+    })
+
+    it('returns undefined for a non-string input', () => {
+      expect(resolveRuntimeKey(undefined as unknown as string)).toBeUndefined()
+    })
+  })
+
   describe('getSupportedPlatforms', () => {
     it('returns the supported list for a known runtime', () => {
       expect([...getSupportedPlatforms('uar')].sort()).toEqual([...MANAGED_RUNTIME_PLATFORM_MATRIX.uar].sort())
+    })
+
+    it('resolves a display name to the matrix key', () => {
+      expect([...getSupportedPlatforms('universal-agent-runtime')].sort()).toEqual(
+        [...MANAGED_RUNTIME_PLATFORM_MATRIX.uar].sort()
+      )
     })
 
     it('throws a clear error for an unknown runtime key', () => {
@@ -81,6 +108,11 @@ describe('runtime-platform-matrix', () => {
   describe('isPlatformSupported', () => {
     it('returns true for a supported runtime/platform pair', () => {
       expect(isPlatformSupported('codex', 'win32-arm64')).toBe(true)
+    })
+
+    it('resolves a display name when checking platform support', () => {
+      expect(isPlatformSupported('universal-agent-runtime', 'darwin-arm64')).toBe(true)
+      expect(isPlatformSupported('universal-agent-runtime', 'darwin-mips')).toBe(false)
     })
 
     it('returns false for an unsupported platform', () => {

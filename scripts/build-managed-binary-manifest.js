@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const { validateManifest } = require('./runtime-manifest-schema')
-const { isPlatformSupported, RUNTIME_KEYS } = require('./runtime-platform-matrix')
+const { isPlatformSupported, resolveRuntimeKey } = require('./runtime-platform-matrix')
 
 /**
  * Merge N per-platform manifests for the SAME runtime into one per-runtime
@@ -49,20 +49,25 @@ function mergeManifests(manifests) {
 
   const binaries = []
   const seenPlatforms = new Set()
-  // Only validate against the matrix when the manifest name is a known runtime
-  // key (the matrix is keyed by 'uar'/'opencode'/'codex', not by display name).
-  const enforceMatrix = RUNTIME_KEYS.includes(name)
+  // Resolve the manifest name (display name OR matrix key) to a canonical matrix
+  // key. The build pipeline emits display names like 'universal-agent-runtime',
+  // so checking RUNTIME_KEYS.includes(name) would skip validation for the primary
+  // runtime. When the name resolves to a known runtime, enforce the matrix —
+  // including for 'universal-agent-runtime'. Unrecognized names stay lenient so
+  // ad-hoc/test runtimes don't crash the merge.
+  const runtimeKey = resolveRuntimeKey(name)
 
-  for (const manifest of manifests) {
+  for (let index = 0; index < manifests.length; index += 1) {
+    const manifest = manifests[index]
     const entries = Array.isArray(manifest.binaries) ? manifest.binaries : []
     for (const entry of entries) {
       const platform = entry.platform
       if (seenPlatforms.has(platform)) {
         throw new Error(
-          `Cannot merge manifests: duplicate platform "${String(platform)}" appears in more than one input`
+          `Cannot merge manifests: duplicate platform "${String(platform)}" in input #${index + 1} already appears in an earlier input`
         )
       }
-      if (enforceMatrix && !isPlatformSupported(name, platform)) {
+      if (runtimeKey !== undefined && !isPlatformSupported(runtimeKey, platform)) {
         throw new Error(`Cannot merge manifests: platform "${String(platform)}" is not supported by runtime "${name}"`)
       }
       seenPlatforms.add(platform)
@@ -197,6 +202,9 @@ function parseMergeArgs(argv) {
       inputs.push(value)
       index += 1
     } else if (arg === '--out') {
+      if (!value) {
+        throw new Error('--out expects a manifest file path')
+      }
       out = value
       index += 1
     } else {

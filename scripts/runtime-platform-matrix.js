@@ -28,6 +28,46 @@ const ALL_PLATFORMS = Object.freeze([
 const RUNTIME_KEYS = Object.freeze(['uar', 'opencode', 'codex'])
 
 /**
+ * Maps every name a runtime can appear under — both the manifest DISPLAY NAME
+ * emitted by scripts/build-runtime-artifacts.js (e.g. 'universal-agent-runtime')
+ * and the canonical matrix KEY (e.g. 'uar') — to the canonical matrix key.
+ *
+ * This closes the gap where the matrix is keyed by 'uar' but the build pipeline
+ * emits manifests named 'universal-agent-runtime': callers that only check
+ * RUNTIME_KEYS.includes(name) would silently skip matrix validation for the
+ * primary runtime. Resolve through resolveRuntimeKey() instead.
+ *
+ * Reused by later release tooling (gates, signing) so the name↔key mapping lives
+ * in exactly one place.
+ */
+const RUNTIME_NAME_TO_KEY = Object.freeze({
+  'universal-agent-runtime': 'uar',
+  uar: 'uar',
+  opencode: 'opencode',
+  codex: 'codex'
+})
+
+/**
+ * Resolves a manifest name OR a matrix key to the canonical matrix key.
+ *
+ * Accepts either the display name emitted by the build pipeline
+ * ('universal-agent-runtime') or the matrix key ('uar'/'opencode'/'codex').
+ * Returns the canonical key when recognized, or `undefined` for an unrecognized
+ * name so callers can decide how to handle non-matrix runtimes.
+ *
+ * @param {string} nameOrKey
+ * @returns {string | undefined}
+ */
+const resolveRuntimeKey = (nameOrKey) => {
+  if (typeof nameOrKey !== 'string') {
+    return undefined
+  }
+  return Object.prototype.hasOwnProperty.call(RUNTIME_NAME_TO_KEY, nameOrKey)
+    ? RUNTIME_NAME_TO_KEY[nameOrKey]
+    : undefined
+}
+
+/**
  * Per-runtime supported platforms.
  *
  * Each runtime has its own explicit array so per-runtime exceptions are a
@@ -45,22 +85,32 @@ const MANAGED_RUNTIME_PLATFORM_MATRIX = Object.freeze({
   codex: Object.freeze(['darwin-arm64', 'darwin-x64', 'linux-x64', 'linux-arm64', 'win32-x64', 'win32-arm64'])
 })
 
-const assertKnownRuntime = (runtime) => {
-  if (!Object.prototype.hasOwnProperty.call(MANAGED_RUNTIME_PLATFORM_MATRIX, runtime)) {
+/**
+ * Resolves a runtime name/key to a canonical matrix key, throwing for unknown
+ * inputs. Accepts both display names ('universal-agent-runtime') and matrix keys
+ * ('uar') so all matrix lookups work regardless of which form the caller holds.
+ *
+ * @param {string} runtime
+ * @returns {string}
+ */
+const requireRuntimeKey = (runtime) => {
+  const key = resolveRuntimeKey(runtime)
+  if (key === undefined) {
     throw new Error(`Unknown runtime key: ${String(runtime)}. Expected one of: ${RUNTIME_KEYS.join(', ')}`)
   }
+  return key
 }
 
 /**
  * Returns the supported platform triples for a managed runtime.
- * Throws for an unknown runtime key.
+ * Accepts a display name or matrix key. Throws for an unknown runtime.
  *
  * @param {string} runtime
  * @returns {readonly string[]}
  */
 const getSupportedPlatforms = (runtime) => {
-  assertKnownRuntime(runtime)
-  return MANAGED_RUNTIME_PLATFORM_MATRIX[runtime]
+  const key = requireRuntimeKey(runtime)
+  return MANAGED_RUNTIME_PLATFORM_MATRIX[key]
 }
 
 /**
@@ -89,6 +139,8 @@ module.exports = {
   ALL_PLATFORMS,
   MANAGED_RUNTIME_PLATFORM_MATRIX,
   RUNTIME_KEYS,
+  RUNTIME_NAME_TO_KEY,
+  resolveRuntimeKey,
   getSupportedPlatforms,
   isPlatformSupported,
   requiredPlatformsFor

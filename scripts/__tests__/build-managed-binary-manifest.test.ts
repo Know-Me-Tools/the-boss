@@ -349,6 +349,33 @@ describe('mergeManifests', () => {
     expect(() => mergeManifests([a])).toThrow(/unsupported|not supported/i)
   })
 
+  it('matrix-validates the UAR display name and rejects a bogus platform', () => {
+    // The build pipeline emits name: 'universal-agent-runtime', not 'uar'. This
+    // is the case the old RUNTIME_KEYS.includes(name) check silently skipped.
+    const a = makeManifest({
+      name: 'universal-agent-runtime',
+      supportedPlatforms: ['darwin-mips'],
+      binaries: [{ platform: 'darwin-mips', binaryName: 'uar', size: 1, sha256: VALID_SHA256 }]
+    })
+
+    expect(() => mergeManifests([a])).toThrow(/unsupported|not supported/i)
+  })
+
+  it('merges the UAR display name with valid platforms', () => {
+    const darwin = makeManifest({ name: 'universal-agent-runtime' })
+    const linux = makeManifest({
+      name: 'universal-agent-runtime',
+      supportedPlatforms: ['linux-x64'],
+      binaries: [{ platform: 'linux-x64', binaryName: 'uar', size: 2048, sha256: 'b'.repeat(64) }]
+    })
+
+    const merged = mergeManifests([darwin, linux])
+
+    expect(merged.name).toBe('universal-agent-runtime')
+    expect(merged.supportedPlatforms).toEqual(['darwin-arm64', 'linux-x64'])
+    expect(() => validateManifest(merged)).not.toThrow()
+  })
+
   it('rejects an empty input array', () => {
     expect(() => mergeManifests([])).toThrow(/at least one|empty/i)
   })
