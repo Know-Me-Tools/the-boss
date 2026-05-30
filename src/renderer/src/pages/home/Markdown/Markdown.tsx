@@ -60,12 +60,23 @@ const Markdown: FC<Props> = ({ block, postProcess, allowArtifactCards = true }) 
   const prevContentRef = useRef(block.content)
   const prevBlockIdRef = useRef(block.id)
 
+  // Keep postProcess in a ref so the onUpdate callback identity stays stable
+  // across renders. A new onUpdate identity each render would drive
+  // useSmoothStream into recreation (see fix-001).
+  const postProcessRef = useRef(postProcess)
+  useEffect(() => {
+    postProcessRef.current = postProcess
+  }, [postProcess])
+
+  const handleSmoothUpdate = useCallback((rawText: string) => {
+    // 如果提供了后处理函数就调用，否则直接使用原始文本
+    const postProcessFn = postProcessRef.current
+    const finalText = postProcessFn ? postProcessFn(rawText) : rawText
+    setDisplayedContent(finalText)
+  }, [])
+
   const { addChunk, reset } = useSmoothStream({
-    onUpdate: (rawText) => {
-      // 如果提供了后处理函数就调用，否则直接使用原始文本
-      const finalText = postProcess ? postProcess(rawText) : rawText
-      setDisplayedContent(finalText)
-    },
+    onUpdate: handleSmoothUpdate,
     streamDone: isStreamDone,
     initialText: block.content
   })
