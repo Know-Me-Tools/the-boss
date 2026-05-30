@@ -189,13 +189,42 @@ describe('publish-runtime-artifacts-ipfs', () => {
     expect(on.requireMacNotarization).toBe(true)
   })
 
+  it('treats recognized falsy strings as a disabled gate (never accidentally enabled)', () => {
+    // A CI operator opting OUT of the security gate must not have the flag flip
+    // to enabled. Every recognized falsy value keeps the gate disabled.
+    for (const falsy of ['false', '0', 'no', 'off', 'disable', 'disabled', '', 'OFF', '  No  ']) {
+      expect(readConfig({ REQUIRE_ARTIFACT_SIGNATURES: falsy }).requireSignatures).toBe(false)
+      expect(readConfig({ REQUIRE_MAC_NOTARIZATION: falsy }).requireMacNotarization).toBe(false)
+    }
+  })
+
   describe('assertReleaseComplete', () => {
     it('passes a complete fixture covering every required platform', () => {
       expect(() => assertReleaseComplete([buildCompleteManifest('codex')], {})).not.toThrow()
     })
 
+    it('throws on an empty manifests array (cannot publish an empty release)', () => {
+      expect(() => assertReleaseComplete([], {})).toThrowError(/empty release/i)
+    })
+
     it('resolves display names to matrix keys', () => {
       expect(() => assertReleaseComplete([buildCompleteManifest('universal-agent-runtime')], {})).not.toThrow()
+    })
+
+    it('fails the gate when a manifest has an unrecognized runtime name (typo)', () => {
+      // A mis-named manifest must NOT silently skip the platform-completeness
+      // check — it is a hard gate failure naming the unknown runtime.
+      const typoName = 'universal_agent_runtime'
+      const platforms = requiredPlatformsFor('uar')
+      const manifest = {
+        name: typoName,
+        version: 'abc123',
+        supportedPlatforms: [...platforms],
+        binaries: platforms.map((platform: string) => buildEntry(platform))
+      }
+
+      expect(() => assertReleaseComplete([manifest], {})).toThrowError(/unknown runtime name/i)
+      expect(() => assertReleaseComplete([manifest], {})).toThrowError(new RegExp(typoName))
     })
 
     it('fails and names the missing required platform(s)', () => {
@@ -275,6 +304,26 @@ describe('publish-runtime-artifacts-ipfs', () => {
 
       expect(() => assertReleaseComplete([manifest], { requireSignatures: true })).not.toThrow()
     })
+
+    it('with requireSignatures, rejects a signatures ARRAY (must be a non-array object)', () => {
+      // A bare array passes `typeof === 'object'`; the gate must still reject it
+      // so only a `{ minisign: '...' }`-style object satisfies the requirement.
+      const platforms = requiredPlatformsFor('codex')
+      const arrayPerPlatform: Record<string, ManifestEntryOverrides> = {}
+      const objectPerPlatform: Record<string, ManifestEntryOverrides> = {}
+      for (const platform of platforms) {
+        // `signatures` is typed as Record<string, string>; an array still
+        // reaches the runtime check, which is exactly what we are guarding.
+        arrayPerPlatform[platform] = { signatures: ['fakedata'] as unknown as Record<string, string> }
+        objectPerPlatform[platform] = { signatures: { minisign: 'x' } }
+      }
+
+      const arrayManifest = buildCompleteManifest('codex', arrayPerPlatform)
+      expect(() => assertReleaseComplete([arrayManifest], { requireSignatures: true })).toThrowError(/signature/i)
+
+      const objectManifest = buildCompleteManifest('codex', objectPerPlatform)
+      expect(() => assertReleaseComplete([objectManifest], { requireSignatures: true })).not.toThrow()
+    })
   })
 
   describe('dry-run', () => {
@@ -304,6 +353,20 @@ describe('publish-runtime-artifacts-ipfs', () => {
           expect.objectContaining({ name: 'opencode', entryCount: 6 })
         ])
       )
+    })
+
+    it('dry-run fails before any side effect on an empty release', async () => {
+      const fetchImpl = vi.fn(async () => createTextResponse(JSON.stringify({ Hash: 'x' })))
+
+      await expect(
+        publishRuntimeArtifacts({
+          dryRun: true,
+          manifests: [],
+          fetchImpl,
+          config: createSignedConfig()
+        })
+      ).rejects.toThrow(/empty release/i)
+      expect(fetchImpl).not.toHaveBeenCalled()
     })
 
     it('dry-run still fails the gate on an incomplete release', async () => {

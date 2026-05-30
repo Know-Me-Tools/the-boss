@@ -34,8 +34,14 @@ function readConfig(env = process.env) {
 }
 
 /**
- * Treats a string env value as truthy when it is a non-empty, non-"false"/"0"
- * value. Unset (undefined) is falsy.
+ * Treats a string env value as truthy when it is a non-empty value that is not
+ * in the recognized falsy set. Comparison is trimmed and case-insensitive.
+ * Unset (undefined) is falsy.
+ *
+ * Recognized falsy values: '' (empty), 'false', '0', 'no', 'off', 'disable',
+ * 'disabled'. This matters for the security gates: a CI operator setting e.g.
+ * REQUIRE_MAC_NOTARIZATION=off to disable a gate must NOT accidentally enable
+ * it.
  *
  * @param {string | undefined} value
  * @returns {boolean}
@@ -45,8 +51,10 @@ function isTruthy(value) {
     return false
   }
   const normalized = value.trim().toLowerCase()
-  return normalized !== '' && normalized !== 'false' && normalized !== '0' && normalized !== 'no'
+  return !FALSY_ENV_VALUES.has(normalized)
 }
+
+const FALSY_ENV_VALUES = new Set(['', 'false', '0', 'no', 'off', 'disable', 'disabled'])
 
 function readSigningPrivateKey(env) {
   if (env.RUNTIME_MANIFEST_PRIVATE_KEY) {
@@ -199,6 +207,10 @@ function canonicalJson(value) {
  * @returns {{ runtimes: Array<{ name: string, runtimeKey: string | undefined, platforms: string[], entryCount: number }> }}
  */
 function assertReleaseComplete(manifests, options = {}) {
+  if (!Array.isArray(manifests) || manifests.length === 0) {
+    throw new Error('No runtime manifests found; cannot publish an empty release.')
+  }
+
   const requireSignatures = options.requireSignatures === true
   const requireMacNotarization = options.requireMacNotarization === true
 
@@ -211,12 +223,19 @@ function assertReleaseComplete(manifests, options = {}) {
     const binaries = Array.isArray(manifest?.binaries) ? manifest.binaries : []
     const presentPlatforms = new Set(binaries.map((binary) => binary?.platform).filter(Boolean))
 
-    // 1. Required platforms (recognized runtimes only).
+    // 1. Required platforms. An unrecognized runtime name is a GATE FAILURE: we
+    // cannot verify required platforms for a runtime that is not in the matrix,
+    // so a mis-named/typo'd manifest must fail the release rather than silently
+    // skipping the platform-completeness check.
     if (runtimeKey) {
       const missing = requiredPlatformsFor(runtimeKey).filter((platform) => !presentPlatforms.has(platform))
       for (const platform of missing) {
         problems.push(`[${name}] missing required platform: ${platform}`)
       }
+    } else {
+      problems.push(
+        `[${name}] unknown runtime name "${name}" — not in the platform matrix; cannot verify required platforms`
+      )
     }
 
     // 2/3/4. Per-entry checks.
@@ -239,7 +258,11 @@ function assertReleaseComplete(manifests, options = {}) {
 
       if (requireSignatures) {
         const signatures = binary?.signatures
-        const hasSignature = signatures && typeof signatures === 'object' && Object.values(signatures).some(Boolean)
+        const hasSignature =
+          signatures &&
+          typeof signatures === 'object' &&
+          !Array.isArray(signatures) &&
+          Object.values(signatures).some(Boolean)
         if (!hasSignature) {
           problems.push(`${where} missing artifact signature (signatures.* required)`)
         }
