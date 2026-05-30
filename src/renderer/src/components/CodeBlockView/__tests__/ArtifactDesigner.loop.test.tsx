@@ -101,6 +101,15 @@ vi.mock('antd', async (importOriginal) => {
         {children}
       </button>
     ),
+    Modal: ({
+      open,
+      children,
+      onCancel: _onCancel
+    }: {
+      open?: boolean
+      children?: React.ReactNode
+      onCancel?: () => void
+    }) => (open ? <div data-testid="designer-modal">{children}</div> : null),
     Splitter,
     Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>
   }

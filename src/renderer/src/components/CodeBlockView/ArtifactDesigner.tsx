@@ -39,7 +39,7 @@
 
 import { loggerService } from '@logger'
 import CodeEditor from '@renderer/components/CodeEditor'
-import { Button, Splitter, Tooltip } from 'antd'
+import { Button, Modal, Splitter, Tooltip } from 'antd'
 import { SendHorizonal, Save, Wrench, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -395,156 +395,168 @@ const ArtifactDesigner = ({
   }
 
   return (
-    <DesignerContainer>
-      <Splitter>
-        {/* ----------------------------------------------------------------- */}
-        {/* Chat pane                                                          */}
-        {/* ----------------------------------------------------------------- */}
-        <Splitter.Panel>
-          <ChatPane>
-            {/*
-             * Assertive live region for errors — announced immediately by
-             * screen readers, complementing the polite transcript log below.
-             */}
-            <VisuallyHidden role="alert" aria-live="assertive">
-              {editorState.phase === 'error'
-                ? (editorState.error ?? '')
-                : isRepair
-                  ? (editorState.lastBuild?.diagnostics ?? []).join('. ')
-                  : (saveError ?? '')}
-            </VisuallyHidden>
+    <DesignerModal
+      open={open}
+      footer={null}
+      closable={false}
+      width="100vw"
+      style={{ maxWidth: '100vw', height: '100vh', top: 0, paddingBottom: 0 }}
+      styles={{ body: { height: 'calc(100vh - 55px)', padding: 0, overflow: 'hidden' } }}
+      onCancel={onClose}
+      destroyOnHidden>
+      <DesignerContainer>
+        <Splitter>
+          {/* ----------------------------------------------------------------- */}
+          {/* Chat pane                                                          */}
+          {/* ----------------------------------------------------------------- */}
+          <Splitter.Panel>
+            <ChatPane>
+              {/*
+               * Assertive live region for errors — announced immediately by
+               * screen readers, complementing the polite transcript log below.
+               */}
+              <VisuallyHidden role="alert" aria-live="assertive">
+                {editorState.phase === 'error'
+                  ? (editorState.error ?? '')
+                  : isRepair
+                    ? (editorState.lastBuild?.diagnostics ?? []).join('. ')
+                    : (saveError ?? '')}
+              </VisuallyHidden>
 
-            {/* Polite live region for saved confirmation */}
-            <VisuallyHidden aria-live="polite">{isSaved ? t('settings.artifacts.designer.saved') : ''}</VisuallyHidden>
+              {/* Polite live region for saved confirmation */}
+              <VisuallyHidden aria-live="polite">
+                {isSaved ? t('settings.artifacts.designer.saved') : ''}
+              </VisuallyHidden>
 
-            <Transcript
-              role="log"
-              aria-live="polite"
-              aria-busy={inFlight}
-              aria-label={t('settings.artifacts.designer.transcript_label')}>
-              {transcript.map((entry) => (
-                <TranscriptItem key={entry.id} $role={entry.role}>
-                  {entry.text}
-                </TranscriptItem>
-              ))}
-            </Transcript>
+              <Transcript
+                role="log"
+                aria-live="polite"
+                aria-busy={inFlight}
+                aria-label={t('settings.artifacts.designer.transcript_label')}>
+                {transcript.map((entry) => (
+                  <TranscriptItem key={entry.id} $role={entry.role}>
+                    {entry.text}
+                  </TranscriptItem>
+                ))}
+              </Transcript>
 
-            {/* Saved indicator (visible when savedRecordId is set) */}
-            {isSaved && <SavedIndicator role="status">{t('settings.artifacts.designer.saved')}</SavedIndicator>}
+              {/* Saved indicator (visible when savedRecordId is set) */}
+              {isSaved && <SavedIndicator role="status">{t('settings.artifacts.designer.saved')}</SavedIndicator>}
 
-            <PromptArea>
-              <label htmlFor="designer-prompt" className="sr-only">
-                {t('settings.artifacts.designer.prompt_label')}
-              </label>
-              <PromptTextarea
-                id="designer-prompt"
-                aria-label={t('settings.artifacts.designer.prompt_label')}
-                value={promptText}
-                onChange={(e) => setPromptText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={t('settings.artifacts.designer.prompt')}
-                disabled={inFlight}
-                rows={3}
-              />
-              <PromptActions>
-                {/* Cancel / close button — always visible */}
-                <Tooltip title={t('settings.artifacts.designer.cancel')} mouseLeaveDelay={0}>
-                  <Button
-                    icon={<X size={16} />}
-                    aria-label={t('settings.artifacts.designer.cancel')}
-                    onClick={onClose}
-                  />
-                </Tooltip>
-
-                {/* Fix it button — visible when phase is 'repair' */}
-                {isRepair && (
-                  <Tooltip title={t('settings.artifacts.designer.fix_action')} mouseLeaveDelay={0}>
+              <PromptArea>
+                <label htmlFor="designer-prompt" className="sr-only">
+                  {t('settings.artifacts.designer.prompt_label')}
+                </label>
+                <PromptTextarea
+                  id="designer-prompt"
+                  aria-label={t('settings.artifacts.designer.prompt_label')}
+                  value={promptText}
+                  onChange={(e) => setPromptText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t('settings.artifacts.designer.prompt')}
+                  disabled={inFlight}
+                  rows={3}
+                />
+                <PromptActions>
+                  {/* Cancel / close button — always visible */}
+                  <Tooltip title={t('settings.artifacts.designer.cancel')} mouseLeaveDelay={0}>
                     <Button
-                      icon={<Wrench size={16} />}
-                      aria-label={t('settings.artifacts.designer.fix_action')}
-                      loading={inFlight}
-                      disabled={inFlight}
-                      onClick={() => void handleFixIt()}>
-                      {t('settings.artifacts.designer.fix_action')}
-                    </Button>
-                  </Tooltip>
-                )}
-
-                {/* Save button — visible only when phase is 'preview' */}
-                {isPreview && (saveArtifactProp ?? onSaveToLibrary) && (
-                  <Tooltip title={t('settings.artifacts.designer.save')} mouseLeaveDelay={0}>
-                    <Button
-                      icon={<Save size={16} />}
-                      aria-label={t('settings.artifacts.designer.save')}
-                      loading={isSaving}
-                      disabled={isSaving}
-                      onClick={() => void handleSave()}
+                      icon={<X size={16} />}
+                      aria-label={t('settings.artifacts.designer.cancel')}
+                      onClick={onClose}
                     />
                   </Tooltip>
-                )}
 
-                <Tooltip title={t('settings.artifacts.designer.send')} mouseLeaveDelay={0}>
-                  <Button
-                    type="primary"
-                    icon={<SendHorizonal size={16} />}
-                    aria-label={t('settings.artifacts.designer.send')}
-                    disabled={inFlight || !promptText.trim()}
-                    loading={inFlight}
-                    onClick={() => void handleSend()}>
-                    {t('settings.artifacts.designer.send')}
-                  </Button>
-                </Tooltip>
-              </PromptActions>
-            </PromptArea>
-          </ChatPane>
-        </Splitter.Panel>
+                  {/* Fix it button — visible when phase is 'repair' */}
+                  {isRepair && (
+                    <Tooltip title={t('settings.artifacts.designer.fix_action')} mouseLeaveDelay={0}>
+                      <Button
+                        icon={<Wrench size={16} />}
+                        aria-label={t('settings.artifacts.designer.fix_action')}
+                        loading={inFlight}
+                        disabled={inFlight}
+                        onClick={() => void handleFixIt()}>
+                        {t('settings.artifacts.designer.fix_action')}
+                      </Button>
+                    </Tooltip>
+                  )}
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Code pane (v1: read-only; manual editing is future work)           */}
-        {/* ----------------------------------------------------------------- */}
-        <Splitter.Panel>
-          <CodePane>
-            <CodeEditor
-              value={editorState.source}
-              language={editorState.language}
-              editable={false}
-              height="100%"
-              expanded={false}
-              wrapped
-              style={{ minHeight: 0 }}
-              options={{ stream: false, lineNumbers: true, keymap: false }}
-              aria-label="artifact-source"
-            />
-          </CodePane>
-        </Splitter.Panel>
+                  {/* Save button — visible only when phase is 'preview' */}
+                  {isPreview && (saveArtifactProp ?? onSaveToLibrary) && (
+                    <Tooltip title={t('settings.artifacts.designer.save')} mouseLeaveDelay={0}>
+                      <Button
+                        icon={<Save size={16} />}
+                        aria-label={t('settings.artifacts.designer.save')}
+                        loading={isSaving}
+                        disabled={isSaving}
+                        onClick={() => void handleSave()}
+                      />
+                    </Tooltip>
+                  )}
 
-        {/* ----------------------------------------------------------------- */}
-        {/* Preview pane — only shows iframe when phase = preview              */}
-        {/* ----------------------------------------------------------------- */}
-        <Splitter.Panel>
-          <PreviewPane>
-            {isPreview ? (
-              // Security: allow-same-origin is intentionally omitted.
-              // Combining allow-scripts + allow-same-origin permits sandbox
-              // escape for model-generated code (it can reach the parent
-              // frame's origin). There is no postMessage bridge here that
-              // requires same-origin.
-              <PreviewFrame
-                srcDoc={previewDoc}
-                title={t('settings.artifacts.designer.preview_title')}
-                sandbox="allow-scripts allow-forms"
+                  <Tooltip title={t('settings.artifacts.designer.send')} mouseLeaveDelay={0}>
+                    <Button
+                      type="primary"
+                      icon={<SendHorizonal size={16} />}
+                      aria-label={t('settings.artifacts.designer.send')}
+                      disabled={inFlight || !promptText.trim()}
+                      loading={inFlight}
+                      onClick={() => void handleSend()}>
+                      {t('settings.artifacts.designer.send')}
+                    </Button>
+                  </Tooltip>
+                </PromptActions>
+              </PromptArea>
+            </ChatPane>
+          </Splitter.Panel>
+
+          {/* ----------------------------------------------------------------- */}
+          {/* Code pane (v1: read-only; manual editing is future work)           */}
+          {/* ----------------------------------------------------------------- */}
+          <Splitter.Panel>
+            <CodePane>
+              <CodeEditor
+                value={editorState.source}
+                language={editorState.language}
+                editable={false}
+                height="100%"
+                expanded={false}
+                wrapped
+                style={{ minHeight: 0 }}
+                options={{ stream: false, lineNumbers: true, keymap: false }}
+                aria-label="artifact-source"
               />
-            ) : (
-              <PreviewPlaceholder>
-                {editorState.phase === 'error' || isRepair
-                  ? null
-                  : t('html_artifacts.empty_preview', 'No content to preview')}
-              </PreviewPlaceholder>
-            )}
-          </PreviewPane>
-        </Splitter.Panel>
-      </Splitter>
-    </DesignerContainer>
+            </CodePane>
+          </Splitter.Panel>
+
+          {/* ----------------------------------------------------------------- */}
+          {/* Preview pane — only shows iframe when phase = preview              */}
+          {/* ----------------------------------------------------------------- */}
+          <Splitter.Panel>
+            <PreviewPane>
+              {isPreview ? (
+                // Security: allow-same-origin is intentionally omitted.
+                // Combining allow-scripts + allow-same-origin permits sandbox
+                // escape for model-generated code (it can reach the parent
+                // frame's origin). There is no postMessage bridge here that
+                // requires same-origin.
+                <PreviewFrame
+                  srcDoc={previewDoc}
+                  title={t('settings.artifacts.designer.preview_title')}
+                  sandbox="allow-scripts allow-forms"
+                />
+              ) : (
+                <PreviewPlaceholder>
+                  {editorState.phase === 'error' || isRepair
+                    ? null
+                    : t('html_artifacts.empty_preview', 'No content to preview')}
+                </PreviewPlaceholder>
+              )}
+            </PreviewPane>
+          </Splitter.Panel>
+        </Splitter>
+      </DesignerContainer>
+    </DesignerModal>
   )
 }
 
@@ -561,6 +573,41 @@ async function resolveDefaultRunTurn() {
 // ---------------------------------------------------------------------------
 // Styled components
 // ---------------------------------------------------------------------------
+
+const DesignerModal = styled(Modal)`
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 10000 !important;
+
+  .ant-modal-wrap {
+    padding: 0 !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+
+  .ant-modal {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+
+  .ant-modal-content {
+    border-radius: 0;
+    overflow: hidden;
+    height: 100vh;
+    padding: 0 !important;
+  }
+
+  .ant-modal-body {
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: initial !important;
+  }
+`
 
 const DesignerContainer = styled.div`
   display: flex;

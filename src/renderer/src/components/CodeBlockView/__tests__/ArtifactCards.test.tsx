@@ -74,7 +74,35 @@ vi.mock('react-i18next', () => ({
 
       return key
     }
+  }),
+  initReactI18next: {
+    type: '3rdParty',
+    init: vi.fn()
+  }
+}))
+
+vi.mock('@renderer/hooks/useArtifactLibrary', () => ({
+  useArtifactLibrary: () => ({
+    artifacts: [],
+    allArtifacts: [],
+    loading: false,
+    search: '',
+    setSearch: vi.fn(),
+    kind: 'all',
+    setKind: vi.fn(),
+    reload: vi.fn().mockResolvedValue(undefined),
+    saveArtifact: vi.fn().mockResolvedValue({ id: 'mock-art-001' }),
+    updateMetadata: vi.fn(),
+    forkArtifact: vi.fn(),
+    deleteArtifact: vi.fn()
   })
+}))
+
+vi.mock('../ArtifactDesigner', () => ({
+  default: (props: { open: boolean }) => {
+    if (!props.open) return null
+    return <div data-testid="artifact-designer-in-cards-test" />
+  }
 }))
 
 vi.mock('../HtmlArtifactsPopup', () => ({
@@ -109,7 +137,9 @@ describe('artifact cards', () => {
             ok: true,
             script: 'compiledReactArtifact()',
             diagnostics: []
-          })
+          }),
+          list: vi.fn().mockResolvedValue([]),
+          save: vi.fn().mockResolvedValue({ id: 'mock-art-001' })
         },
         file: {
           createTempFile: vi.fn().mockResolvedValue('/tmp/artifact-preview.html'),

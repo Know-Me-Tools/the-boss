@@ -54,7 +54,19 @@ types are supported.
   chunks and the `edit_with_ai` i18n string — the entire feature compiles, type-checks,
   and bundles into the shipping app, and the lazy `@renderer/services/ApiService` wiring
   resolves at bundle time. This is the integration signal mock tests cannot give.
-- Two-stage review: tdd-guide (build) → code-reviewer (dispatched).
+- Two-stage review (tdd-guide → code-reviewer). Fixes applied:
+  - **HIGH (overlay)**: ArtifactDesigner rendered inline (bare DesignerContainer, no
+    positioning) — would collapse/reflow the chat column. Wrapped the render in a styled
+    AntD `Modal` (footer=null, maskClosable→onClose, 90vw/85vh) mirroring ArtifactPopup so
+    it overlays full-screen. antd Modal added to the test mocks.
+  - **HIGH (rules-of-hooks)**: `useState`/`useEffect` for the async preview were placed
+    AFTER `if (!open) return null` — toggling open false→true would crash ("more hooks
+    than previous render"). Moved both hooks above the early return; effect now guards on
+    `!open || !isPreview`.
+  - **MEDIUM**: the async `buildPreviewDocument` rejection was silently swallowed — now
+    logged via `loggerService`.
+  Re-verified after fixes: CodeBlockView 49/49, Biome clean, tsgo clean, electron-vite
+  build succeeds.
 - QA gate (artifact-refiner): reviewed in lieu of refiner; the production build + 238
   tests + code review cover this final integration change.
 
