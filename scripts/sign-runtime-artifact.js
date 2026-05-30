@@ -28,7 +28,12 @@ const { execFileSync } = require('node:child_process')
  * Default codesign implementation. Shells out to `codesign` with hardened
  * runtime + secure timestamp. Tests inject a mock instead of calling this.
  *
- * @param {{ binaryPath: string, identity: string, teamId: string }} params
+ * NOTE: `teamId` is accepted (the caller passes the full object and records it
+ * in the manifest metadata) but is intentionally NOT a `codesign` argument:
+ * Developer ID signing derives the team from the signing `identity`, which
+ * already encodes the team. So this default ignores `teamId` by design.
+ *
+ * @param {{ binaryPath: string, identity: string, teamId?: string }} params
  * @returns {{ success: boolean }}
  */
 function defaultSigner({ binaryPath, identity }) {
@@ -113,6 +118,11 @@ async function signAndNotarizeMacArtifact({
   const teamId = env.APPLE_TEAM_ID
 
   const signOutcome = signer({ binaryPath, identity, teamId })
+  // Two distinct failure modes: the DEFAULT signer THROWS on codesign failure
+  // (execFileSync throws on a non-zero exit), which propagates up so CI crashes
+  // loudly. The 'codesign-failed' reason below is only reached when an INJECTED
+  // signer chooses to RETURN { success: false } to surface the failure
+  // gracefully instead of throwing (e.g. in tests).
   if (!signOutcome || signOutcome.success !== true) {
     logger.error(`  • codesign failed for ${binaryPath}`)
     return { signed: false, notarized: false, reason: 'codesign-failed' }
