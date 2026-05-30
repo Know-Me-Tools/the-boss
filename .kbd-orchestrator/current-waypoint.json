@@ -1,14 +1,33 @@
 {
   "project": "The Boss / Cherry Studio fork",
   "phase": "artifact-editor-iterative-design-protocol",
-  "status": "assessment_complete",
+  "status": "planning_complete",
   "lastUpdated": "2026-05-30",
   "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+  "designPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
+  "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
   "progressPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json",
   "openSpecDetected": false,
-  "next_pending_change": null,
-  "exact_next_command": "sed -n '1,80p' .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
-  "nextRecommendedAction": "Cornerstone design-heavy feature. Begin Plan with brainstorming/design: 2 foundational decisions are locked (full-file-rewrite-per-turn; chat-model structured-output, renderer-orchestrated loop, typed AG-UI-style events on top). Resolve the 3 remaining design questions, write a design doc, then the ordered change list. Build on the existing AG-UI substrate (apiServer/protocols/canonicalEvents.ts) + ArtifactService preview/build + useArtifactLibrary. RECOMMENDED: do this in a fresh session (this one is degraded). Do not use v2.",
+  "changeBackend": "native-kbd",
+  "evolverBridge": null,
+  "changeCount": 7,
+  "next_pending_change": "change-001-artifact-design-protocol-types",
+  "exact_next_command": "sed -n '1,120p' .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
+  "nextRecommendedAction": "Planning complete. 3 open design questions resolved (single-file artifacts; extend ArtifactPopup into a 3-pane designer; renderer-local typed event channel mirroring CanonicalAgentEvent). Design doc + ordered 7-change native-KBD list written. Begin execution with /kbd-execute starting at change-001-artifact-design-protocol-types. Build protocol-first/bottom-up: M1 spine (001-004, unit-tested, zero UI) -> M2 designer (005-006) -> M3 entry+docs (007). Feature branch off main; TDD + two-stage review per change. Do not use v2.",
+  "change_order": [
+    "change-001-artifact-design-protocol-types",
+    "change-002-artifact-editor-reducer",
+    "change-003-artifact-build-feedback-seam",
+    "change-004-artifact-design-orchestrator",
+    "change-005-artifact-designer-3pane",
+    "change-006-designer-build-loop-wiring",
+    "change-007-create-path-entry-and-docs"
+  ],
+  "milestones": {
+    "M1_spine": ["change-001", "change-002", "change-003", "change-004"],
+    "M2_designer": ["change-005", "change-006"],
+    "M3_entry_docs": ["change-007"]
+  },
   "parked_phase": {
     "phase": "chat-freeze-cpu-spike-investigation",
     "status": "planning_complete (BLOCKED on Phase A runtime profile)",

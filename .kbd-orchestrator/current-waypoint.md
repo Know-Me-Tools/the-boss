@@ -1,37 +1,32 @@
-# Current KBD Waypoint
+# KBD Waypoint
 
-Project: The Boss / Cherry Studio fork
-Phase: upstream-1.9.x-merge-strategy
-Date: 2026-05-28
-Status: planning_complete
+**Project:** The Boss / Cherry Studio fork
+**Active phase:** artifact-editor-iterative-design-protocol
+**Status:** planning_complete
+**Last updated:** 2026-05-30
 
-## Objective
+## Exact next step
 
-Integrate upstream CherryHQ/cherry-studio **v1.9.7** into the fork via a **direct
-merge**, preserving fork-only capabilities (control plane, multi-runtime agents,
-vendored runtimes) and **The Boss** branding.
+```
+sed -n '1,120p' .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md
+```
 
-## Divergence (from assessment)
+Then begin execution: `/kbd-execute artifact-editor-iterative-design-protocol`
+starting with `change-001-artifact-design-protocol-types`.
 
-- Merge-base `b1d63a3bb`; fork +126 commits, upstream +11 (the v1.9.7 release).
-- 19 upstream files changed; **2 real conflicts** in a trial merge.
-- Fork-only surface and branding are untouched by upstream — zero risk.
+## Why
 
-## Ordered Changes
+Plan phase complete. All 3 open design questions resolved (single-file artifacts;
+extend `ArtifactPopup` into a 3-pane designer; renderer-local typed event channel that
+mirrors `CanonicalAgentEvent` naming). Design doc written ([design.md]) and an ordered
+7-change list emitted as native KBD change files (`change-001`…`change-007`).
 
-1. `merge-001-commit-inflight-runtime` — commit dirty runtime work (clean tree)
-2. `merge-002-create-merge-branch` — branch `merge/upstream-v1.9.7` off `main`
-3. `merge-003-merge-and-resolve-conflicts` — merge + resolve 2 conflicts
-   (`electron-builder.yml` branding, `analytics.ts` enableDataCollection)
-4. `merge-004-verify-build-and-branding` — `pnpm build:check`, confirm branding, open PR
+Backend: native KBD (OpenSpec scaffolding present but empty/inactive; openSpecDetected=false).
+No evolver cycle → no bridge.
 
-## Next Step
+Build order is protocol-first / bottom-up:
+M1 spine (001 types → 002 reducer → 003 build seam → 004 orchestrator, all unit-tested,
+zero UI) → M2 designer (005 3-pane + 006 closed build loop + save) → M3 entry+docs (007).
 
-Execute **merge-001**: `git status && git diff --stat`, then commit the in-flight
-runtime work on `main`. Per CLAUDE.md, never use `v2`.
-
-## Suspended Phase
-
-`multi-runtime-agent-parity-assessment` (execution_in_progress, next change
-`change-022`) is paused until this merge lands. Its in-flight work is committed by
-merge-001; resume afterward.
+Constraints: 1.9.x base, never v2; feature branch off main; loggerService not console;
+i18n all strings; no new Redux/Dexie schema; TDD + two-stage review per change.
