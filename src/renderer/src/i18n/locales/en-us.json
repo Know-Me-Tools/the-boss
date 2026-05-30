@@ -4223,12 +4223,20 @@
       "default_theme": "Default Theme",
       "description": "Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
       "designer": {
+        "cancel": "Cancel",
         "diagnostics_label": "Build diagnostics",
         "error_label": "Error",
+        "fix_action": "Fix it",
+        "fix_request": "Please fix the build errors listed below",
+        "preview_placeholder": "Run a design request to see a preview",
         "preview_title": "Artifact preview",
         "prompt": "Describe what you want to build or change",
         "prompt_label": "Design prompt",
         "save": "Save to Library",
+        "save_action": "Save to Library",
+        "save_error": "Save failed — please try again",
+        "save_error_empty_source": "Cannot save: the artifact source is empty.",
+        "saved": "Saved to library",
         "send": "Send",
         "status": {
           "building": "Building...",
@@ -4238,7 +4246,8 @@
           "saving": "Saving...",
           "streaming": "Generating..."
         },
-        "transcript_label": "Design conversation"
+        "transcript_label": "Design conversation",
+        "untitled": "Untitled artifact"
       },
       "internet_default": "Internet Enabled By Default",
       "library": {

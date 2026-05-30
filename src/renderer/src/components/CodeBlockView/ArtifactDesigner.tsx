@@ -1,5 +1,5 @@
 /**
- * ArtifactDesigner.tsx — 3-pane iterative artifact designer (change-005).
+ * ArtifactDesigner.tsx — 3-pane iterative artifact designer (change-005/006).
  *
  * Architecture decision: This is a NEW sibling component, not a mode-branch
  * inside ArtifactPopup.tsx. ArtifactPopup is entirely unchanged, preserving
@@ -12,23 +12,40 @@
  * is deferred to a future change; the CodeEditor is rendered with
  * editable=false in v1. This is documented here as the code-edit boundary.
  *
- * Save boundary: The save button calls onSaveToLibrary?(state.source) when
- * present. Deeper wiring of artifact_saved into the reducer (change-006) is
- * intentionally left to the next iteration; the button is wired and visible
- * in v1 whenever phase === 'preview'.
+ * Save boundary (change-006):
+ * The save button is enabled only when phase === 'preview'. It calls the
+ * injected saveArtifact seam with an ArtifactRecordDraft constructed from the
+ * current editorState. On success, savedRecordId is updated directly via
+ * setEditorState — NOT via the reducer's artifact_saved event.
+ *
+ * Decision record — why NOT artifact_saved:
+ * The reducer's handleArtifactSaved guard checks event.turnId !== activeTurnId
+ * and silently drops mismatched events. After design_run_complete, activeTurnId
+ * is null. Any artifact_saved event dispatched at that point would fail the
+ * guard (turnId !== null) and be dropped. Library persistence is a post-turn,
+ * component-level concern; the component sets savedRecordId directly.
+ *
+ * Repair loop (change-006):
+ * When phase === 'repair', a "Fix it" button triggers a second orchestrator turn
+ * whose request is an auto-composed repair instruction. The normal prompt box
+ * also remains active during repair for manual guidance.
  *
  * runTurn seam: Defaults to runDesignTurnDefault in production. Tests inject
  * a mock so no real model or IPC call is ever triggered in unit tests.
+ *
+ * saveArtifact seam: Injected as a prop. Default is undefined (no-op guard).
+ * The parent wires useArtifactLibrary().saveArtifact. Tests inject a mock.
  */
 
 import { loggerService } from '@logger'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { Button, Splitter, Tooltip } from 'antd'
-import { SendHorizonal, Save } from 'lucide-react'
+import { SendHorizonal, Save, Wrench, X } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
+import type { ArtifactRecordDraft } from '@shared/artifacts'
 import type { ArtifactDesignEvent, ArtifactSourceLanguage } from '../../artifacts/designProtocol'
 import type { EditorState } from '../../artifacts/editorReducer'
 import { initEditorState } from '../../artifacts/editorReducer'
@@ -47,6 +64,16 @@ export interface ArtifactDesignerProps {
   typeLabel: string
   /** Caller maps source → preview iframe document. Injected for testability. */
   buildPreviewDocument: (source: string) => string
+  /**
+   * Testability seam for library persistence. Defaults to undefined (no save).
+   * The parent should wire useArtifactLibrary().saveArtifact here.
+   * Tests inject a mock returning { id: string }.
+   */
+  saveArtifact?: (draft: ArtifactRecordDraft) => Promise<{ id: string }>
+  /**
+   * Legacy compat — if provided and saveArtifact is not, falls back to this.
+   * Prefer saveArtifact for change-006+ wiring.
+   */
   onSaveToLibrary?: (source: string) => Promise<void>
   onClose: () => void
   /**
@@ -78,23 +105,35 @@ interface TranscriptEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Language → ArtifactRecordDraft field mappings
+// ---------------------------------------------------------------------------
+
+function languageToKind(lang: ArtifactSourceLanguage): ArtifactRecordDraft['kind'] {
+  return lang === 'html' ? 'html' : 'react'
+}
+
+function languageToRuntimeProfileId(lang: ArtifactSourceLanguage): ArtifactRecordDraft['runtimeProfileId'] {
+  return lang === 'html' ? 'html' : 'react-default'
+}
+
+// ---------------------------------------------------------------------------
 // Status text helper
 // ---------------------------------------------------------------------------
 
 function phaseStatusKey(phase: EditorState['phase']): string {
   switch (phase) {
     case 'streaming':
-      return 'artifacts.designer.status.streaming'
+      return 'settings.artifacts.designer.status.streaming'
     case 'building':
-      return 'artifacts.designer.status.building'
+      return 'settings.artifacts.designer.status.building'
     case 'repair':
-      return 'artifacts.designer.status.repair'
+      return 'settings.artifacts.designer.status.repair'
     case 'error':
-      return 'artifacts.designer.status.error'
+      return 'settings.artifacts.designer.status.error'
     case 'preview':
-      return 'artifacts.designer.status.preview'
+      return 'settings.artifacts.designer.status.preview'
     case 'saving':
-      return 'artifacts.designer.status.saving'
+      return 'settings.artifacts.designer.status.saving'
     default:
       return ''
   }
@@ -111,17 +150,15 @@ const ArtifactDesigner = ({
   language,
   typeLabel: _typeLabel,
   buildPreviewDocument,
+  saveArtifact: saveArtifactProp,
   onSaveToLibrary,
-  onClose: _onClose,
+  onClose,
   runTurn: runTurnProp,
   generateTurnId
 }: ArtifactDesignerProps) => {
   const { t } = useTranslation()
 
   // EditorState via useState — replaced wholesale with the runTurn result.
-  // (Using useReducer would require threading every ArtifactDesignEvent through
-  // individually; since runTurn already applies the reducer sequence and returns
-  // the final state, useState + direct replacement is simpler and correct.)
   const [editorState, setEditorState] = useState<EditorState>(() =>
     initEditorState({ source: initialSource, language })
   )
@@ -130,10 +167,11 @@ const ArtifactDesigner = ({
   const [promptText, setPromptText] = useState('')
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const turnCounterRef = useRef(0)
 
-  // Per-instance turn ID generator — avoids sharing state across mounted instances.
+  // Per-instance turn ID generator.
   const defaultGen = useCallback(() => {
     turnCounterRef.current += 1
     return `designer-turn-${turnCounterRef.current}`
@@ -147,79 +185,160 @@ const ArtifactDesigner = ({
   }, [])
 
   // ---------------------------------------------------------------------------
-  // Send handler
+  // Core turn executor — shared by handleSend and handleFixIt.
+  // ---------------------------------------------------------------------------
+
+  const executeTurn = useCallback(
+    async (request: string) => {
+      if (inFlight) return
+
+      setInFlight(true)
+      setSaveError(null)
+
+      const resolvedRunTurn = runTurnProp ?? (await resolveDefaultRunTurn())
+      const turnId = resolvedGenerateTurnId()
+
+      appendTranscript({ role: 'user', text: request })
+
+      try {
+        const result = await resolvedRunTurn({
+          state: editorState,
+          request,
+          language,
+          turnId,
+          title
+        })
+
+        setEditorState(result.state)
+
+        const statusKey = phaseStatusKey(result.state.phase)
+        if (statusKey) {
+          appendTranscript({ role: 'status', text: t(statusKey) })
+        }
+
+        // Surface build diagnostics in the transcript when build failed.
+        if (result.state.phase === 'repair' && result.state.lastBuild) {
+          for (const diag of result.state.lastBuild.diagnostics) {
+            appendTranscript({ role: 'status', text: diag })
+          }
+        }
+
+        // Surface error message.
+        if (result.state.phase === 'error' && result.state.error) {
+          appendTranscript({ role: 'status', text: result.state.error })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        logger.error('Design turn failed', error instanceof Error ? error : new Error(message))
+        appendTranscript({ role: 'status', text: message })
+        setEditorState((prev) => ({ ...prev, phase: 'error', error: message, activeTurnId: null }))
+      } finally {
+        setInFlight(false)
+      }
+    },
+    [appendTranscript, editorState, resolvedGenerateTurnId, inFlight, language, runTurnProp, t, title]
+  )
+
+  // ---------------------------------------------------------------------------
+  // Send handler — submits the prompt text.
   // ---------------------------------------------------------------------------
 
   const handleSend = useCallback(async () => {
     const request = promptText.trim()
-    if (!request || inFlight) {
-      return
-    }
+    if (!request || inFlight) return
 
-    // Set inFlight BEFORE the async resolution to prevent double-submit races.
-    setInFlight(true)
-
-    const resolvedRunTurn = runTurnProp ?? (await resolveDefaultRunTurn())
-    const turnId = resolvedGenerateTurnId()
-
-    appendTranscript({ role: 'user', text: request })
     setPromptText('')
-
-    try {
-      const result = await resolvedRunTurn({
-        state: editorState,
-        request,
-        language,
-        turnId,
-        title
-      })
-
-      setEditorState(result.state)
-
-      const statusKey = phaseStatusKey(result.state.phase)
-      if (statusKey) {
-        appendTranscript({ role: 'status', text: t(statusKey) })
-      }
-
-      // Surface build diagnostics in the transcript when build failed.
-      if (result.state.phase === 'repair' && result.state.lastBuild) {
-        for (const diag of result.state.lastBuild.diagnostics) {
-          appendTranscript({ role: 'status', text: diag })
-        }
-      }
-
-      // Surface error message.
-      if (result.state.phase === 'error' && result.state.error) {
-        appendTranscript({ role: 'status', text: result.state.error })
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      logger.error('Design turn failed', error instanceof Error ? error : new Error(message))
-      appendTranscript({ role: 'status', text: message })
-      setEditorState((prev) => ({ ...prev, phase: 'error', error: message, activeTurnId: null }))
-    } finally {
-      setInFlight(false)
-    }
-  }, [appendTranscript, editorState, resolvedGenerateTurnId, inFlight, language, promptText, runTurnProp, t, title])
+    await executeTurn(request)
+  }, [executeTurn, inFlight, promptText])
 
   // ---------------------------------------------------------------------------
-  // Save handler
+  // Fix it handler — auto-composes a repair request from diagnostics.
+  // ---------------------------------------------------------------------------
+
+  const handleFixIt = useCallback(async () => {
+    if (inFlight || editorState.phase !== 'repair') return
+
+    const diagnostics = editorState.lastBuild?.diagnostics ?? []
+    const diagText = diagnostics.join('\n')
+    const request =
+      diagText.length > 0
+        ? `${t('settings.artifacts.designer.fix_request')}\n\n${diagText}`
+        : t('settings.artifacts.designer.fix_request')
+
+    await executeTurn(request)
+  }, [editorState.lastBuild?.diagnostics, editorState.phase, executeTurn, inFlight, t])
+
+  // ---------------------------------------------------------------------------
+  // Save handler — builds a draft and persists via the saveArtifact seam.
+  //
+  // Decision: savedRecordId is set directly on editorState after resolve.
+  // See module-level doc comment for the full rationale (artifact_saved would
+  // be dropped by the reducer's turn-scoped guard when activeTurnId is null).
   // ---------------------------------------------------------------------------
 
   const handleSave = useCallback(async () => {
-    if (!onSaveToLibrary || isSaving) {
+    if (isSaving || editorState.phase !== 'preview') return
+
+    // Empty-source guard — cannot save a blank artifact.
+    if (!editorState.source.trim()) {
+      const errText = t('settings.artifacts.designer.save_error_empty_source')
+      setSaveError(errText)
+      appendTranscript({ role: 'status', text: errText })
+      return
+    }
+
+    // No saveArtifact seam → fall back to legacy onSaveToLibrary if provided.
+    if (!saveArtifactProp) {
+      if (onSaveToLibrary) {
+        setIsSaving(true)
+        try {
+          await onSaveToLibrary(editorState.source)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          logger.error('Save to library failed (legacy)', error instanceof Error ? error : new Error(message))
+          setSaveError(t('settings.artifacts.designer.save_error'))
+          appendTranscript({ role: 'status', text: t('settings.artifacts.designer.save_error') })
+        } finally {
+          setIsSaving(false)
+        }
+      }
       return
     }
 
     setIsSaving(true)
+    setSaveError(null)
+
+    // Empty-title fallback — use untitled placeholder rather than an empty string.
+    const resolvedTitle = title.trim() || t('settings.artifacts.designer.untitled')
+
+    const draft: ArtifactRecordDraft = {
+      title: resolvedTitle,
+      kind: languageToKind(editorState.language),
+      runtimeProfileId: languageToRuntimeProfileId(editorState.language),
+      sourceLanguage: editorState.language,
+      source: editorState.source,
+      themeId: 'boss-light',
+      accessPolicy: {
+        internetEnabled: true,
+        serviceIds: [],
+        serviceToolIds: []
+      }
+    }
+
     try {
-      await onSaveToLibrary(editorState.source)
+      const { id } = await saveArtifactProp(draft)
+      // Direct state update — post-turn library save is a component concern.
+      setEditorState((prev) => ({ ...prev, savedRecordId: id, phase: 'idle' }))
     } catch (error) {
-      logger.error('Save to library failed', error instanceof Error ? error : new Error(String(error)))
+      const message = error instanceof Error ? error.message : String(error)
+      logger.error('Save to library failed', error instanceof Error ? error : new Error(message))
+      const errText = t('settings.artifacts.designer.save_error')
+      setSaveError(errText)
+      appendTranscript({ role: 'status', text: errText })
     } finally {
       setIsSaving(false)
     }
-  }, [editorState.source, isSaving, onSaveToLibrary])
+  }, [appendTranscript, editorState, isSaving, onSaveToLibrary, saveArtifactProp, t, title])
 
   // ---------------------------------------------------------------------------
   // Keyboard: submit on Ctrl+Enter / Cmd+Enter
@@ -239,6 +358,8 @@ const ArtifactDesigner = ({
   }
 
   const isPreview = editorState.phase === 'preview'
+  const isRepair = editorState.phase === 'repair'
+  const isSaved = editorState.savedRecordId !== null
 
   // Memoize the preview document to avoid recomputing on unrelated re-renders.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -256,22 +377,25 @@ const ArtifactDesigner = ({
         <Splitter.Panel>
           <ChatPane>
             {/*
-             * Assertive live region for errors — announced immediately by screen
-             * readers, complementing the polite transcript log below.
+             * Assertive live region for errors — announced immediately by
+             * screen readers, complementing the polite transcript log below.
              */}
             <VisuallyHidden role="alert" aria-live="assertive">
               {editorState.phase === 'error'
                 ? (editorState.error ?? '')
-                : editorState.phase === 'repair'
+                : isRepair
                   ? (editorState.lastBuild?.diagnostics ?? []).join('. ')
-                  : ''}
+                  : (saveError ?? '')}
             </VisuallyHidden>
+
+            {/* Polite live region for saved confirmation */}
+            <VisuallyHidden aria-live="polite">{isSaved ? t('settings.artifacts.designer.saved') : ''}</VisuallyHidden>
 
             <Transcript
               role="log"
               aria-live="polite"
               aria-busy={inFlight}
-              aria-label={t('artifacts.designer.transcript_label')}>
+              aria-label={t('settings.artifacts.designer.transcript_label')}>
               {transcript.map((entry) => (
                 <TranscriptItem key={entry.id} $role={entry.role}>
                   {entry.text}
@@ -279,41 +403,69 @@ const ArtifactDesigner = ({
               ))}
             </Transcript>
 
+            {/* Saved indicator (visible when savedRecordId is set) */}
+            {isSaved && <SavedIndicator role="status">{t('settings.artifacts.designer.saved')}</SavedIndicator>}
+
             <PromptArea>
               <label htmlFor="designer-prompt" className="sr-only">
-                {t('artifacts.designer.prompt_label')}
+                {t('settings.artifacts.designer.prompt_label')}
               </label>
               <PromptTextarea
                 id="designer-prompt"
-                aria-label={t('artifacts.designer.prompt_label')}
+                aria-label={t('settings.artifacts.designer.prompt_label')}
                 value={promptText}
                 onChange={(e) => setPromptText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={t('artifacts.designer.prompt')}
+                placeholder={t('settings.artifacts.designer.prompt')}
                 disabled={inFlight}
                 rows={3}
               />
               <PromptActions>
-                {onSaveToLibrary && isPreview && (
-                  <Tooltip title={t('artifacts.designer.save')} mouseLeaveDelay={0}>
+                {/* Cancel / close button — always visible */}
+                <Tooltip title={t('settings.artifacts.designer.cancel')} mouseLeaveDelay={0}>
+                  <Button
+                    icon={<X size={16} />}
+                    aria-label={t('settings.artifacts.designer.cancel')}
+                    onClick={onClose}
+                  />
+                </Tooltip>
+
+                {/* Fix it button — visible when phase is 'repair' */}
+                {isRepair && (
+                  <Tooltip title={t('settings.artifacts.designer.fix_action')} mouseLeaveDelay={0}>
+                    <Button
+                      icon={<Wrench size={16} />}
+                      aria-label={t('settings.artifacts.designer.fix_action')}
+                      loading={inFlight}
+                      disabled={inFlight}
+                      onClick={() => void handleFixIt()}>
+                      {t('settings.artifacts.designer.fix_action')}
+                    </Button>
+                  </Tooltip>
+                )}
+
+                {/* Save button — visible only when phase is 'preview' */}
+                {isPreview && (saveArtifactProp ?? onSaveToLibrary) && (
+                  <Tooltip title={t('settings.artifacts.designer.save')} mouseLeaveDelay={0}>
                     <Button
                       icon={<Save size={16} />}
-                      aria-label={t('artifacts.designer.save')}
+                      aria-label={t('settings.artifacts.designer.save')}
                       loading={isSaving}
                       disabled={isSaving}
                       onClick={() => void handleSave()}
                     />
                   </Tooltip>
                 )}
-                <Tooltip title={t('artifacts.designer.send')} mouseLeaveDelay={0}>
+
+                <Tooltip title={t('settings.artifacts.designer.send')} mouseLeaveDelay={0}>
                   <Button
                     type="primary"
                     icon={<SendHorizonal size={16} />}
-                    aria-label={t('artifacts.designer.send')}
+                    aria-label={t('settings.artifacts.designer.send')}
                     disabled={inFlight || !promptText.trim()}
                     loading={inFlight}
                     onClick={() => void handleSend()}>
-                    {t('artifacts.designer.send')}
+                    {t('settings.artifacts.designer.send')}
                   </Button>
                 </Tooltip>
               </PromptActions>
@@ -322,7 +474,7 @@ const ArtifactDesigner = ({
         </Splitter.Panel>
 
         {/* ----------------------------------------------------------------- */}
-        {/* Code pane (v1: read-only; manual editing is change-006+)           */}
+        {/* Code pane (v1: read-only; manual editing is future work)           */}
         {/* ----------------------------------------------------------------- */}
         <Splitter.Panel>
           <CodePane>
@@ -347,17 +499,18 @@ const ArtifactDesigner = ({
           <PreviewPane>
             {isPreview ? (
               // Security: allow-same-origin is intentionally omitted.
-              // Combining allow-scripts + allow-same-origin permits sandbox escape
-              // for model-generated code (it can reach the parent frame's origin).
-              // There is no postMessage bridge here that requires same-origin.
+              // Combining allow-scripts + allow-same-origin permits sandbox
+              // escape for model-generated code (it can reach the parent
+              // frame's origin). There is no postMessage bridge here that
+              // requires same-origin.
               <PreviewFrame
                 srcDoc={previewDoc}
-                title={t('artifacts.designer.preview_title')}
+                title={t('settings.artifacts.designer.preview_title')}
                 sandbox="allow-scripts allow-forms"
               />
             ) : (
               <PreviewPlaceholder>
-                {editorState.phase === 'error' || editorState.phase === 'repair'
+                {editorState.phase === 'error' || isRepair
                   ? null
                   : t('html_artifacts.empty_preview', 'No content to preview')}
               </PreviewPlaceholder>
@@ -371,8 +524,7 @@ const ArtifactDesigner = ({
 
 // ---------------------------------------------------------------------------
 // Lazy default runTurn resolver — imported only at call time so module-scope
-// is kept free of real service imports (matching the pattern from
-// designOrchestrator.default.ts).
+// is kept free of real service imports.
 // ---------------------------------------------------------------------------
 
 async function resolveDefaultRunTurn() {
@@ -445,6 +597,14 @@ const TranscriptItem = styled.div<{ $role: 'user' | 'status' }>`
     max-width: 100%;
     border: 1px solid var(--color-border);
   `}
+`
+
+const SavedIndicator = styled.div`
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--color-success, #22c55e);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
 `
 
 const PromptArea = styled.div`

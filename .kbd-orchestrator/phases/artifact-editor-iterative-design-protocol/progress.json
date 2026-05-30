@@ -10,17 +10,17 @@
   "execution_complete": false,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 5,
+  "changes_completed": 6,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
     "change-003-artifact-build-feedback-seam": "DONE",
     "change-004-artifact-design-orchestrator": "DONE",
     "change-005-artifact-designer-3pane": "DONE",
-    "change-006-designer-build-loop-wiring": "TODO",
+    "change-006-designer-build-loop-wiring": "DONE",
     "change-007-create-path-entry-and-docs": "TODO"
   },
-  "current_change": "change-006-designer-build-loop-wiring",
+  "current_change": "change-007-create-path-entry-and-docs",
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
@@ -55,7 +55,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-006-designer-build-loop-wiring"
+    "next_pending_change": "change-007-create-path-entry-and-docs"
   },
   "change_log": [
     {
@@ -122,10 +122,24 @@
     "decision": "new sibling ArtifactDesigner component; ArtifactPopup untouched. Code pane read-only + artifact_saved wiring deferred to change-006.",
     "qa_gate": "reviewed in lieu of refiner (2 files + i18n; TS + a11y two-stage review)"
   },
+  "change_log_006": {
+    "id": "change-006-designer-build-loop-wiring",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx (extended)",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactDesigner.loop.test.tsx (new)",
+      "src/renderer/src/i18n/locales/*.json (+ translate/*.json synced)"
+    ],
+    "tests": "designer+loop 29/29; ArtifactPopup 2/2 (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from these files; i18n:check pass + all 20 designer keys resolve; no console.*",
+    "review": "tdd-guide -> code-reviewer; found+fixed i18n prefix bug (artifacts.designer.* -> settings.artifacts.designer.*, strings would not resolve at runtime) + missing keys; empty-title fallback + empty-source guard (avoid schema min(1) IPC rejection); regression tests added",
+    "decision": "post-turn save sets savedRecordId via direct setEditorState (reducer artifact_saved is turn-scoped, would be dropped); code pane still read-only",
+    "qa_gate": "reviewed in lieu of refiner (1 component + test + i18n; two-stage review + independent i18n resolution check)"
+  },
   "milestone_status": {
-    "M1_spine": "COMPLETE (change-001..004 DONE; 189 tests; pure spine built, reviewed, zero UI)",
-    "M2_designer": "IN PROGRESS (change-005 3-pane designer DONE; change-006 build-loop wiring NEXT)",
-    "M3_entry_docs": "pending (change-007)"
+    "M1_spine": "COMPLETE (change-001..004; 189 tests; pure spine, zero UI)",
+    "M2_designer": "COMPLETE (change-005 3-pane designer + change-006 build-loop wiring & save)",
+    "M3_entry_docs": "NEXT (change-007 entry from artifact cards + docs)"
   },
   "artifacts": {
     "assessment": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",

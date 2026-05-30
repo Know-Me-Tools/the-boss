@@ -4223,12 +4223,20 @@
       "default_theme": "[to be translated]:Default Theme",
       "description": "[to be translated]:Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
       "designer": {
+        "cancel": "取消",
         "diagnostics_label": "[to be translated]:Build diagnostics",
         "error_label": "[to be translated]:Error",
+        "fix_action": "修复",
+        "fix_request": "请修复以下构建错误",
+        "preview_placeholder": "[to be translated]:Run a design request to see a preview",
         "preview_title": "[to be translated]:Artifact preview",
         "prompt": "[to be translated]:Describe what you want to build or change",
         "prompt_label": "[to be translated]:Design prompt",
         "save": "[to be translated]:Save to Library",
+        "save_action": "保存到库",
+        "save_error": "保存失败，请重试",
+        "save_error_empty_source": "[to be translated]:Cannot save: the artifact source is empty.",
+        "saved": "已保存到库",
         "send": "[to be translated]:Send",
         "status": {
           "building": "[to be translated]:Building...",
@@ -4238,7 +4246,8 @@
           "saving": "[to be translated]:Saving...",
           "streaming": "[to be translated]:Generating..."
         },
-        "transcript_label": "[to be translated]:Design conversation"
+        "transcript_label": "[to be translated]:Design conversation",
+        "untitled": "[to be translated]:Untitled artifact"
       },
       "internet_default": "[to be translated]:Internet Enabled By Default",
       "library": {
