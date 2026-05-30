@@ -106,6 +106,41 @@ describe('useSmoothStream', () => {
       // Keep feeding so the loop never drains to idle during the churn.
       act(() => result.current.addChunk('b'.repeat(50)))
     }
+
+    // Regression guard (independent of the no-idle-spin test):
+    // Drain the queue to empty while keeping streamDone=false, then force more
+    // re-renders (changing onUpdate identity) AND advance several idle frames.
+    //
+    // On the FIXED hook the idle loop stops scheduling: cumulative schedules add
+    // ZERO per idle frame, and re-renders never recreate the single-owner loop
+    // (props are read via refs), so the counter stays flat.
+    //
+    // On the BUGGY original this WOULD FAIL: the idle path rescheduled every
+    // frame (`requestAnimationFrame(renderLoop)` on empty queue + !streamDone),
+    // and the `[renderLoop]` startup effect re-scheduled on every render with a
+    // new onUpdate identity — so the cumulative counter would climb on every
+    // idle advance and every re-render.
+    for (let i = 0; i < 30 && fakeRaf.liveCount() > 0; i++) {
+      advance()
+    }
+    expect(fakeRaf.liveCount()).toBe(0)
+
+    const totalAfterDrain = fakeRaf.scheduledTotal()
+
+    // Idle frames must not schedule anything new (buggy idle-spin would climb +1/frame).
+    for (let i = 0; i < 10; i++) {
+      advance()
+      expect(fakeRaf.liveCount()).toBe(0)
+    }
+    expect(fakeRaf.scheduledTotal()).toBe(totalAfterDrain)
+
+    // Re-renders with fresh onUpdate identity must not recreate the loop while
+    // idle (buggy `[renderLoop]` effect would schedule a frame on each render).
+    for (let i = 0; i < 10; i++) {
+      rerender({ done: false })
+      expect(fakeRaf.liveCount()).toBe(0)
+    }
+    expect(fakeRaf.scheduledTotal()).toBe(totalAfterDrain)
   })
 
   it('does not busy-spin when idle and resumes when a chunk arrives', () => {
