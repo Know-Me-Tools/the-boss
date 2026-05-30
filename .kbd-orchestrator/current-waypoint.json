@@ -13,12 +13,12 @@
   "executionBackend": "native-tool (claude-code, subagent-driven TDD)",
   "featureBranch": "feat/artifact-iterative-designer",
   "changesTotal": 7,
-  "changesCompleted": 1,
-  "next_pending_change": "change-002-artifact-editor-reducer",
-  "exact_next_command": "sed -n '1,60p' .kbd-orchestrator/changes/change-002-artifact-editor-reducer/change.md",
-  "nextRecommendedAction": "change-001 (protocol types) DONE — 27/27 tests (Node 24), Biome clean, tsgo clean, two-stage review applied. Next: change-002-artifact-editor-reducer (pure state machine consuming ArtifactDesignEvent; stale-turn guard via versionHash anchor; repair-loop + error recovery; no React/IPC). Continue M1 spine (002 -> 003 -> 004). TDD + two-stage review per change. Run `nvm use 24` before pnpm test/lint. Do not use v2.",
+  "changesCompleted": 2,
+  "next_pending_change": "change-003-artifact-build-feedback-seam",
+  "exact_next_command": "sed -n '1,60p' .kbd-orchestrator/changes/change-003-artifact-build-feedback-seam/change.md",
+  "nextRecommendedAction": "change-002 (editor reducer) DONE — 94/94 tests (Node 24), Biome clean, tsgo clean, two-stage review applied (2 HIGH + 2 MEDIUM fixed, locked by regression tests). Next: change-003-artifact-build-feedback-seam (renderer module: React -> compileReactArtifact mapping {diagnostics,errors}; HTML -> light validation; emits build_status; IPC injected/mockable; no UI). Continue M1 spine (003 -> 004). TDD + two-stage review per change. Run `fnm use 24` (or nvm) before pnpm test/lint. Do not use v2.",
   "milestones": {
-    "M1_spine": ["change-001 (DONE)", "change-002", "change-003", "change-004"],
+    "M1_spine": ["change-001 (DONE)", "change-002 (DONE)", "change-003", "change-004"],
     "M2_designer": ["change-005", "change-006"],
     "M3_entry_docs": ["change-007"]
   },

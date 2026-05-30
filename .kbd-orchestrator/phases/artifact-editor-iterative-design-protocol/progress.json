@@ -10,17 +10,17 @@
   "execution_complete": false,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 1,
+  "changes_completed": 2,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
-    "change-002-artifact-editor-reducer": "TODO",
+    "change-002-artifact-editor-reducer": "DONE",
     "change-003-artifact-build-feedback-seam": "TODO",
     "change-004-artifact-design-orchestrator": "TODO",
     "change-005-artifact-designer-3pane": "TODO",
     "change-006-designer-build-loop-wiring": "TODO",
     "change-007-create-path-entry-and-docs": "TODO"
   },
-  "current_change": "change-002-artifact-editor-reducer",
+  "current_change": "change-003-artifact-build-feedback-seam",
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
@@ -55,7 +55,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-002-artifact-editor-reducer"
+    "next_pending_change": "change-003-artifact-build-feedback-seam"
   },
   "change_log": [
     {
@@ -68,6 +68,18 @@
       "tests": "27/27 passing (vitest renderer, Node 24.11.1)",
       "quality": "Biome clean; no console.*; tsgo (web) no errors from these files",
       "review": "tdd-guide (build) -> typescript-reviewer; HIGH readonly fix + LOW named-type + LOW pinned-hash + MEDIUM doc notes applied",
+      "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-002-artifact-editor-reducer",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/editorReducer.ts",
+        "src/renderer/src/artifacts/__tests__/editorReducer.test.ts"
+      ],
+      "tests": "94/94 passing (vitest renderer, Node 24.16.0)",
+      "quality": "Biome clean; no console.*; pure (only ./designProtocol + @shared types); exhaustiveness guard; tsgo (web) no errors from this file",
+      "review": "tdd-guide (build) -> typescript-reviewer; CRITICAL TS1117 already resolved by clean two-step initEditorState; 2 HIGH + 2 MEDIUM fixed and locked by regression tests (start resets lastBuild/savedRecordId; artifact_full resets lastBuild; stale-turn errors ignored; mid-stream complete -> error; saved clears activeTurnId)",
       "qa_gate": "skipped (2 files, below <3-file threshold)"
     }
   ],

@@ -2,28 +2,32 @@
 
 **Project:** The Boss / Cherry Studio fork
 **Active phase:** artifact-editor-iterative-design-protocol
-**Status:** execution_in_progress (1 / 7 changes DONE)
+**Status:** execution_in_progress (2 / 7 changes DONE)
 **Branch:** feat/artifact-iterative-designer (off main; never v2)
 **Last updated:** 2026-05-30
 
 ## Exact next step
 
 ```
-sed -n '1,60p' .kbd-orchestrator/changes/change-002-artifact-editor-reducer/change.md
+sed -n '1,60p' .kbd-orchestrator/changes/change-003-artifact-build-feedback-seam/change.md
 ```
 
-Then implement **change-002-artifact-editor-reducer** (TDD + two-stage review).
-Run `nvm use 24` (repo requires Node >=24.11.1) before `pnpm test`/`lint`.
+Then implement **change-003-artifact-build-feedback-seam** (TDD + two-stage review).
+Run `fnm use 24` (or nvm; repo requires Node >=24.11.1) before `pnpm test`/`lint`.
 
 ## Progress
 
 - ✅ **change-001 — protocol types** (DONE): `ArtifactDesignEvent` union (readonly
   `build_status`), `ArtifactDesignTurnPayloadSchema`, `versionHash` (FNV-1a). 27/27
-  tests (Node 24), Biome clean, tsgo clean, no `console.*`. Two-stage review applied.
-- ▶ **change-002 — editor reducer** (NEXT): pure state machine consuming the events;
-  records `versionHash` per mutation; stale-turn guard (baseVersionHash ≠ head →
-  reject); repair-loop re-entry; error recovery. No React/IPC.
-- change-003 build-feedback seam → change-004 orchestrator (rest of M1 spine).
+  tests, Biome clean, tsgo clean. Two-stage review applied.
+- ✅ **change-002 — editor reducer** (DONE): pure state machine
+  (`idle→streaming→building→preview|repair→saving→idle`+`error`); stale-turn guard;
+  repair loop; error recovery; resets stale build/save state on new turn. 94/94 tests,
+  Biome clean, tsgo clean. Two-stage review: 2 HIGH + 2 MEDIUM fixed, locked by tests.
+- ▶ **change-003 — build-feedback seam** (NEXT): React → `compileReactArtifact`
+  mapping `{diagnostics,errors}`; HTML → light validation; emits `build_status`; IPC
+  injected/mockable; no UI.
+- change-004 orchestrator (rest of M1 spine).
 - M2: 005 3-pane designer, 006 build-loop wiring. M3: 007 entry + docs.
 
 ## Backend
