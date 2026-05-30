@@ -1,37 +1,40 @@
-# Current KBD Waypoint
+# KBD Waypoint
 
-Project: The Boss / Cherry Studio fork
-Phase: upstream-1.9.x-merge-strategy
-Date: 2026-05-28
-Status: planning_complete
+**Project:** The Boss / Cherry Studio fork
+**Active phase:** artifact-editor-iterative-design-protocol
+**Status:** execution_in_progress (1 / 7 changes DONE)
+**Branch:** feat/artifact-iterative-designer (off main; never v2)
+**Last updated:** 2026-05-30
 
-## Objective
+## Exact next step
 
-Integrate upstream CherryHQ/cherry-studio **v1.9.7** into the fork via a **direct
-merge**, preserving fork-only capabilities (control plane, multi-runtime agents,
-vendored runtimes) and **The Boss** branding.
+```
+sed -n '1,60p' .kbd-orchestrator/changes/change-002-artifact-editor-reducer/change.md
+```
 
-## Divergence (from assessment)
+Then implement **change-002-artifact-editor-reducer** (TDD + two-stage review).
+Run `nvm use 24` (repo requires Node >=24.11.1) before `pnpm test`/`lint`.
 
-- Merge-base `b1d63a3bb`; fork +126 commits, upstream +11 (the v1.9.7 release).
-- 19 upstream files changed; **2 real conflicts** in a trial merge.
-- Fork-only surface and branding are untouched by upstream — zero risk.
+## Progress
 
-## Ordered Changes
+- ✅ **change-001 — protocol types** (DONE): `ArtifactDesignEvent` union (readonly
+  `build_status`), `ArtifactDesignTurnPayloadSchema`, `versionHash` (FNV-1a). 27/27
+  tests (Node 24), Biome clean, tsgo clean, no `console.*`. Two-stage review applied.
+- ▶ **change-002 — editor reducer** (NEXT): pure state machine consuming the events;
+  records `versionHash` per mutation; stale-turn guard (baseVersionHash ≠ head →
+  reject); repair-loop re-entry; error recovery. No React/IPC.
+- change-003 build-feedback seam → change-004 orchestrator (rest of M1 spine).
+- M2: 005 3-pane designer, 006 build-loop wiring. M3: 007 entry + docs.
 
-1. `merge-001-commit-inflight-runtime` — commit dirty runtime work (clean tree)
-2. `merge-002-create-merge-branch` — branch `merge/upstream-v1.9.7` off `main`
-3. `merge-003-merge-and-resolve-conflicts` — merge + resolve 2 conflicts
-   (`electron-builder.yml` branding, `analytics.ts` enableDataCollection)
-4. `merge-004-verify-build-and-branding` — `pnpm build:check`, confirm branding, open PR
+## Backend
 
-## Next Step
+Native KBD (`openspec/` empty scaffolding). Execution backend: native-tool
+(claude-code, subagent-driven TDD). Per-change gate: `pnpm lint && pnpm test`.
+QA gate (artifact-refiner) when ≥3 files; skipped for change-001 (2 files).
 
-Execute **merge-001**: `git status && git diff --stat`, then commit the in-flight
-runtime work on `main`. Per CLAUDE.md, never use `v2`.
+## Recovery note
 
-## Suspended Phase
-
-`multi-runtime-agent-parity-assessment` (execution_in_progress, next change
-`change-022`) is paused until this merge lands. Its in-flight work is committed by
-merge-001; resume afterward.
+This branch was created off `main` after an external reset wiped the untracked KBD
+artifacts. Recovered assessment.md (from commit 73fb84247) and the 7 change files
+(from planning commit 2de102468, still in the object store); design/plan/execution/
+constraints re-authored. change-001 code survived intact and is re-verified.
