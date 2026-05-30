@@ -205,11 +205,11 @@ describe('ArtifactDesigner', () => {
     expect(screen.getByRole('log')).toBeInTheDocument()
 
     // Prompt input accessible by label
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     expect(promptInput).toBeInTheDocument()
 
     // Send button accessible by name
-    const sendButton = screen.getByRole('button', { name: /artifacts.designer.send/i })
+    const sendButton = screen.getByRole('button', { name: /settings.artifacts.designer.send/i })
     expect(sendButton).toBeInTheDocument()
   })
 
@@ -237,8 +237,8 @@ describe('ArtifactDesigner', () => {
       />
     )
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
-    const sendButton = screen.getByRole('button', { name: /artifacts.designer.send/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
+    const sendButton = screen.getByRole('button', { name: /settings.artifacts.designer.send/i })
 
     fireEvent.change(promptInput, { target: { value: 'Make it blue' } })
     fireEvent.click(sendButton)
@@ -260,7 +260,7 @@ describe('ArtifactDesigner', () => {
 
     // Preview iframe should be rendered (phase = preview)
     await waitFor(() => {
-      const iframe = screen.getByTitle(/artifacts.designer.preview.title/i)
+      const iframe = screen.getByTitle(/settings.artifacts.designer.preview/i)
       expect(iframe).toBeInTheDocument()
     })
   })
@@ -277,9 +277,9 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     fireEvent.change(promptInput, { target: { value: 'Fix the types' } })
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.send/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
 
     await waitFor(() => {
       // Text appears in the transcript AND the assertive alert region — use getAllByText.
@@ -287,7 +287,7 @@ describe('ArtifactDesigner', () => {
     })
 
     // No preview iframe should be visible
-    expect(screen.queryByTitle(/artifacts.designer.preview.title/i)).not.toBeInTheDocument()
+    expect(screen.queryByTitle(/settings.artifacts.designer.preview/i)).not.toBeInTheDocument()
   })
 
   // -------------------------------------------------------------------------
@@ -302,9 +302,9 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     fireEvent.change(promptInput, { target: { value: 'Do something' } })
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.send/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
 
     await waitFor(() => {
       // Text appears in both the transcript and the assertive alert region.
@@ -326,8 +326,8 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
-    const sendButton = screen.getByRole('button', { name: /artifacts.designer.send/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
+    const sendButton = screen.getByRole('button', { name: /settings.artifacts.designer.send/i })
 
     fireEvent.change(promptInput, { target: { value: 'Do something' } })
     fireEvent.click(sendButton)
@@ -363,7 +363,7 @@ describe('ArtifactDesigner', () => {
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
     // Prompt input reachable by accessible name
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     expect(promptInput).toBeInTheDocument()
 
     // Transcript region with role="log" and aria-live
@@ -387,16 +387,16 @@ describe('ArtifactDesigner', () => {
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} onSaveToLibrary={onSaveToLibrary} />)
 
     // Send a request to get to preview state
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     fireEvent.change(promptInput, { target: { value: 'Make something' } })
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.send/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
 
     await waitFor(() => {
-      const saveButton = screen.getByRole('button', { name: /artifacts.designer.save/i })
+      const saveButton = screen.getByRole('button', { name: /settings.artifacts.designer.save/i })
       expect(saveButton).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.save/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.save/i }))
 
     await waitFor(() => {
       expect(onSaveToLibrary).toHaveBeenCalledWith(newSource)
@@ -416,13 +416,13 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    fireEvent.change(screen.getByRole('textbox', { name: /artifacts.designer.prompt/i }), {
+    fireEvent.change(screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i }), {
       target: { value: 'Build it' }
     })
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.send/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
 
     await waitFor(() => {
-      const iframe = screen.getByTitle(/artifacts.designer.preview.title/i)
+      const iframe = screen.getByTitle(/settings.artifacts.designer.preview/i)
       expect(iframe).toHaveAttribute('title')
       expect(iframe.tagName).toBe('IFRAME')
     })
@@ -451,7 +451,7 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     fireEvent.change(promptInput, { target: { value: 'Build via keyboard' } })
 
     // Simulate Ctrl+Enter
@@ -476,8 +476,8 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
-    const sendButton = screen.getByRole('button', { name: /artifacts.designer.send/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
+    const sendButton = screen.getByRole('button', { name: /settings.artifacts.designer.send/i })
 
     fireEvent.change(promptInput, { target: { value: 'First request' } })
     fireEvent.click(sendButton)
@@ -508,9 +508,9 @@ describe('ArtifactDesigner', () => {
 
     render(<ArtifactDesigner {...defaultProps} runTurn={runTurn} />)
 
-    const promptInput = screen.getByRole('textbox', { name: /artifacts.designer.prompt/i })
+    const promptInput = screen.getByRole('textbox', { name: /settings.artifacts.designer.prompt/i })
     fireEvent.change(promptInput, { target: { value: 'Trigger error' } })
-    fireEvent.click(screen.getByRole('button', { name: /artifacts.designer.send/i }))
+    fireEvent.click(screen.getByRole('button', { name: /settings.artifacts.designer.send/i }))
 
     // The assertive alert region (role="alert") should contain the error text.
     await waitFor(() => {
