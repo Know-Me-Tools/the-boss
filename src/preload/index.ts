@@ -2,6 +2,7 @@ import type { PermissionUpdate } from '@anthropic-ai/claude-agent-sdk'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { SpanEntity, TokenUsage } from '@mcp-trace/trace-core'
 import type { SpanContext } from '@opentelemetry/api'
+import type { SupervisedSidecarStatus } from '@shared/agents/runtime'
 import type { TokenUsageData } from '@shared/analytics'
 import type {
   ArtifactLibraryQuery,
@@ -674,6 +675,11 @@ const api = {
     startSidecar: (runtimeConfig: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_StartSidecar, runtimeConfig),
     stopSidecar: () => ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSidecar),
+    getSupervisorStatus: (): Promise<SupervisedSidecarStatus[]> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_GetSupervisorStatus),
+    stopSupervisedSidecar: (id: string): Promise<void> =>
+      ipcRenderer.invoke(IpcChannel.AgentRuntime_StopSupervisedSidecar, id),
+    killSidecar: (id: string): Promise<void> => ipcRenderer.invoke(IpcChannel.AgentRuntime_KillSidecar, id),
     getStatus: (runtimeConfig: AgentRuntimeConfig) =>
       ipcRenderer.invoke(IpcChannel.AgentRuntime_GetStatus, runtimeConfig),
     discoverBinary: (kind: AgentRuntimeKind): Promise<RuntimeBinaryDiscoveryResult> =>

@@ -6,10 +6,11 @@ import type {
   UpdateAgentBaseForm
 } from '@renderer/types'
 import { AgentConfigurationSchema } from '@renderer/types'
+import type { SupervisedSidecarStatus, SupervisedState } from '@shared/agents/runtime'
 import type { DependencyStatus, ManagedDependencyName } from '@shared/config/types'
-import { Alert, Button, Input, Select, Switch, Tag } from 'antd'
+import { Alert, Button, Input, Popconfirm, Select, Switch, Tag } from 'antd'
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -86,6 +87,16 @@ type ManagedRuntimeInstallName = 'universal-agent-runtime' | 'codex' | 'opencode
 
 const RUST_TOOLCHAIN_DEPENDENCIES: ManagedDependencyName[] = ['rustup', 'cargo', 'rustc', 'wasm32-unknown-unknown']
 
+/** Light polling cadence for the running sidecars panel while it is mounted. */
+const SUPERVISOR_POLL_INTERVAL_MS = 4000
+
+const TERMINAL_SUPERVISED_STATES: ReadonlySet<SupervisedState> = new Set<SupervisedState>(['stopped', 'failed'])
+
+/** Lightweight cancellation flag threaded through async refresh helpers. */
+interface CancellationSignal {
+  cancelled: boolean
+}
+
 const capabilityLabels: Record<AgentRuntimeKind, string[]> = {
   claude: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume', 'Compaction'],
   codex: ['Tools', 'MCP', 'Skills', 'Knowledge', 'Files', 'Shell', 'Approvals', 'Resume'],
@@ -114,6 +125,9 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
   const [managedBinaryOperationId, setManagedBinaryOperationId] = useState<string | null>(null)
   const [isLoadingRustToolchainStatus, setIsLoadingRustToolchainStatus] = useState(false)
   const [isInstallingRustToolchain, setIsInstallingRustToolchain] = useState(false)
+  const [supervisedSidecars, setSupervisedSidecars] = useState<SupervisedSidecarStatus[]>([])
+  const [supervisorActionId, setSupervisorActionId] = useState<string | null>(null)
+  const mountedRef = useRef(true)
   const configuration = useMemo(
     () => AgentConfigurationSchema.parse(agentBase?.configuration ?? defaultConfiguration),
     [agentBase?.configuration]
@@ -646,6 +660,92 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
     }
   }, [refreshRustToolchainStatus, t])
 
+  const refreshSupervisedSidecars = useCallback(async (signal?: CancellationSignal) => {
+    const isLive = () => !signal?.cancelled && mountedRef.current
+    try {
+      const statuses = await window.api.agentRuntime.getSupervisorStatus()
+      if (isLive()) {
+        setSupervisedSidecars(statuses)
+      }
+    } catch {
+      if (isLive()) {
+        setSupervisedSidecars([])
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const signal: CancellationSignal = { cancelled: false }
+    void refreshSupervisedSidecars(signal)
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') {
+        return
+      }
+      void refreshSupervisedSidecars(signal)
+    }, SUPERVISOR_POLL_INTERVAL_MS)
+    return () => {
+      signal.cancelled = true
+      clearInterval(interval)
+    }
+  }, [refreshSupervisedSidecars])
+
+  const stopSupervisedSidecar = useCallback(
+    async (id: string) => {
+      setSupervisorActionId(id)
+      try {
+        await window.api.agentRuntime.stopSupervisedSidecar(id)
+        await refreshSupervisedSidecars()
+      } catch (error) {
+        if (mountedRef.current) {
+          setHealthMessage({
+            type: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : t('agent.settings.runtime.supervisor.stopFailed', 'Failed to stop the sidecar.')
+          })
+        }
+      } finally {
+        if (mountedRef.current) {
+          setSupervisorActionId(null)
+        }
+      }
+    },
+    [refreshSupervisedSidecars, t]
+  )
+
+  const killSupervisedSidecar = useCallback(
+    async (id: string) => {
+      setSupervisorActionId(id)
+      try {
+        await window.api.agentRuntime.killSidecar(id)
+        await refreshSupervisedSidecars()
+      } catch (error) {
+        if (mountedRef.current) {
+          setHealthMessage({
+            type: 'error',
+            text:
+              error instanceof Error
+                ? error.message
+                : t('agent.settings.runtime.supervisor.killFailed', 'Failed to kill the sidecar.')
+          })
+        }
+      } finally {
+        if (mountedRef.current) {
+          setSupervisorActionId(null)
+        }
+      }
+    },
+    [refreshSupervisedSidecars, t]
+  )
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
   if (!agentBase) return null
 
   return (
@@ -1061,6 +1161,79 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
         </div>
       </SettingsItem>
       <SettingsItem>
+        <SettingsTitle>{t('agent.settings.runtime.supervisor.title', 'Running sidecars')}</SettingsTitle>
+        <div className="mt-2 flex flex-col gap-3">
+          {supervisedSidecars.length === 0 ? (
+            <span className="text-foreground-500 text-xs">
+              {t('agent.settings.runtime.supervisor.empty', 'No running sidecars.')}
+            </span>
+          ) : (
+            supervisedSidecars.map((sidecar) => {
+              const isTerminal = TERMINAL_SUPERVISED_STATES.has(sidecar.state)
+              const isBusy = supervisorActionId === sidecar.id
+              return (
+                <div
+                  key={sidecar.id}
+                  className="border-foreground-200 flex flex-col gap-2 rounded-md border p-3"
+                  data-testid={`supervised-sidecar-${sidecar.id}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{sidecar.name}</span>
+                      <Tag color={getSupervisedStateColor(sidecar.state)}>
+                        {getSupervisedStateLabel(sidecar.state, t)}
+                      </Tag>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="small"
+                        disabled={isTerminal || isBusy}
+                        loading={isBusy}
+                        onClick={() => {
+                          void stopSupervisedSidecar(sidecar.id)
+                        }}>
+                        {t('agent.settings.runtime.supervisor.stop', 'Stop')}
+                      </Button>
+                      <Popconfirm
+                        title={t(
+                          'agent.settings.runtime.supervisor.killConfirm',
+                          'Force kill this sidecar? In-flight work will be lost.'
+                        )}
+                        okText={t('agent.settings.runtime.supervisor.kill', 'Kill')}
+                        cancelText={t('common.cancel', 'Cancel')}
+                        disabled={isTerminal || isBusy}
+                        onConfirm={() => {
+                          void killSupervisedSidecar(sidecar.id)
+                        }}>
+                        <Button size="small" danger disabled={isTerminal || isBusy} loading={isBusy}>
+                          {t('agent.settings.runtime.supervisor.kill', 'Kill')}
+                        </Button>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                  <div className="text-foreground-500 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                    <span>
+                      {t('agent.settings.runtime.supervisor.pid', 'PID')}: {formatPid(sidecar.pid)}
+                    </span>
+                    <span>
+                      {t('agent.settings.runtime.supervisor.cpu', 'CPU')}: {formatCpuPercent(sidecar.cpuPercent)}
+                    </span>
+                    <span>
+                      {t('agent.settings.runtime.supervisor.memory', 'Memory')}: {formatBytes(sidecar.rssBytes)}
+                    </span>
+                    <span>
+                      {t('agent.settings.runtime.supervisor.restarts', 'Restarts')}: {sidecar.restartCount}
+                    </span>
+                    <span>
+                      {t('agent.settings.runtime.supervisor.uptime', 'Uptime')}: {formatUptime(sidecar.startedAt)}
+                    </span>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </SettingsItem>
+      <SettingsItem>
         <SettingsTitle>{t('agent.settings.runtime.health.title', 'Runtime health')}</SettingsTitle>
         <Button
           loading={isTestingHealth}
@@ -1203,6 +1376,85 @@ function getBinarySourceLabel(
     development: t('agent.settings.runtime.uar.binarySource.development', 'Development checkout')
   }
   return labels[source]
+}
+
+function getSupervisedStateColor(state: SupervisedState): string {
+  switch (state) {
+    case 'running':
+      return 'green'
+    case 'starting':
+    case 'restarting':
+      return 'processing'
+    case 'stopping':
+      return 'orange'
+    case 'failed':
+      return 'red'
+    case 'stopped':
+    default:
+      return 'default'
+  }
+}
+
+function getSupervisedStateLabel(state: SupervisedState, t: ReturnType<typeof useTranslation>['t']): string {
+  const labels: Record<SupervisedState, string> = {
+    starting: t('agent.settings.runtime.supervisor.state.starting', 'Starting'),
+    running: t('agent.settings.runtime.supervisor.state.running', 'Running'),
+    restarting: t('agent.settings.runtime.supervisor.state.restarting', 'Restarting'),
+    stopping: t('agent.settings.runtime.supervisor.state.stopping', 'Stopping'),
+    stopped: t('agent.settings.runtime.supervisor.state.stopped', 'Stopped'),
+    failed: t('agent.settings.runtime.supervisor.state.failed', 'Failed')
+  }
+  return labels[state]
+}
+
+const PLACEHOLDER_VALUE = '—'
+
+function formatPid(pid?: number): string {
+  return typeof pid === 'number' ? String(pid) : PLACEHOLDER_VALUE
+}
+
+function formatCpuPercent(cpuPercent?: number): string {
+  if (typeof cpuPercent !== 'number' || Number.isNaN(cpuPercent)) {
+    return PLACEHOLDER_VALUE
+  }
+  return `${Math.round(cpuPercent)}%`
+}
+
+function formatBytes(bytes?: number): string {
+  if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes < 0) {
+    return PLACEHOLDER_VALUE
+  }
+  if (bytes < 1024) {
+    return `${bytes} B`
+  }
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let value = bytes / 1024
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10
+  return `${rounded} ${units[unitIndex]}`
+}
+
+function formatUptime(startedAt: number, now: number = Date.now()): string {
+  const totalSeconds = Math.max(0, Math.floor((now - startedAt) / 1000))
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`
+  }
+  return `${seconds}s`
 }
 
 function getRustDependencyLabel(name: ManagedDependencyName, t: ReturnType<typeof useTranslation>['t']): string {

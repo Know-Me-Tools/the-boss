@@ -28,7 +28,7 @@
   "openSpecDetected": false,
   "selected_backend": "hybrid",
   "canonical_progress_file": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
-  "next_pending_change": "change-023-sidecar-process-supervisor",
+  "next_pending_change": "change-024-runtime-release-matrix",
   "changes": [
     {
       "id": "change-001-runtime-agent-model",
@@ -936,11 +936,15 @@
     },
     {
       "id": "change-023-sidecar-process-supervisor",
-      "status": "TODO",
-      "assigned_backend": "codex",
+      "status": "DONE",
+      "assigned_backend": "claude-code",
       "depends_on": ["change-022-managed-binary-resolution-trust-order"],
       "tasks_total": 9,
-      "tasks_done": 0,
+      "tasks_done": 9,
+      "started_by": "claude-code",
+      "started_at": "2026-05-29",
+      "completed_by": "claude-code",
+      "completed_at": "2026-05-29",
       "change_file": ".kbd-orchestrator/changes/change-023-sidecar-process-supervisor/change.md",
       "verification": [
         "sidecar supervisor tests",
@@ -949,6 +953,21 @@
         "node and web typechecks",
         "git diff --check"
       ],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run UAR/OpenCode/RuntimeControlService/SidecarProcessSupervisor",
+          "status": "passed (70 tests)"
+        },
+        { "command": "pnpm vitest run --project renderer RuntimeSettings.test.tsx", "status": "passed (25 tests)" },
+        {
+          "command": "pnpm vitest run src/main/services/agents/services/runtime/",
+          "status": "passed (17 files, 130 tests)"
+        },
+        { "command": "pnpm typecheck (node, web, aiCore)", "status": "passed" },
+        { "command": "pnpm i18n:check", "status": "passed" },
+        { "command": "git diff --check", "status": "clean" }
+      ],
+      "notes": "Built subagent-driven TDD (implementer + spec review + code-quality review + fix per task). Added pidusage/tree-kill deps; SupervisedSidecarStatus in @shared/agents/runtime; supervisor IPC + Running-sidecars UI. Reviews caught ~10 real async/integration bugs before merge.",
       "blockers": []
     },
     {
@@ -974,5 +993,5 @@
     "Do not accept unsigned production runtime channel manifests.",
     "Do not perform large managed-runtime downloads during app startup by default."
   ],
-  "recommended_next_action": "Execute change-022-managed-binary-resolution-trust-order on the current 1.9.x codebase. Do not use v2."
+  "recommended_next_action": "Execute change-024-runtime-release-matrix on the current 1.9.x codebase (last change in this phase). Do not use v2."
 }

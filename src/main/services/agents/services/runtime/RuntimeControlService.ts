@@ -17,6 +17,11 @@ import {
   type UpsertRuntimeProfileInput,
   type UpsertRuntimeSettingsInput
 } from './RuntimeProfileRepository'
+import {
+  type SidecarProcessSupervisor,
+  sidecarProcessSupervisor,
+  type SupervisedSidecarStatus
+} from './SidecarProcessSupervisor'
 import { resolveRuntimeConfig } from './types'
 import type { UarProviderRuntimeOptions, UarSidecarStatus } from './UniversalAgentRuntimeService'
 import { universalAgentRuntimeService } from './UniversalAgentRuntimeService'
@@ -112,6 +117,8 @@ type OpenCodeCliServiceLike = {
   listModels(runtimeConfig?: AgentRuntimeConfig): Promise<OpenCodeRuntimeModel[]>
 }
 
+type SidecarProcessSupervisorLike = Pick<SidecarProcessSupervisor, 'list' | 'stop' | 'kill'>
+
 interface RuntimeControlServiceDependencies {
   runtimeProfileRepository?: RuntimeProfileRepositoryLike
   universalAgentRuntimeService?: UniversalAgentRuntimeServiceLike
@@ -119,6 +126,7 @@ interface RuntimeControlServiceDependencies {
   openCodeCliService?: OpenCodeCliServiceLike
   managedRuntimeService?: ManagedRuntimeService
   runtimeBinaryDiscoveryService?: RuntimeBinaryDiscoveryService
+  supervisor?: SidecarProcessSupervisorLike
 }
 
 export class RuntimeControlService {
@@ -128,6 +136,7 @@ export class RuntimeControlService {
   private readonly openCodeService: OpenCodeCliServiceLike
   private readonly managedRuntimeService: ManagedRuntimeService
   private readonly runtimeBinaryDiscoveryService: RuntimeBinaryDiscoveryService
+  private readonly supervisor: SidecarProcessSupervisorLike
   private readonly managedInstallOperations = new Map<ManagedRuntimeName, Promise<RuntimeHealthResult>>()
 
   constructor(dependencies: RuntimeControlServiceDependencies = {}) {
@@ -137,6 +146,7 @@ export class RuntimeControlService {
     this.openCodeService = dependencies.openCodeCliService ?? openCodeCliService
     this.managedRuntimeService = dependencies.managedRuntimeService ?? managedRuntimeService
     this.runtimeBinaryDiscoveryService = dependencies.runtimeBinaryDiscoveryService ?? runtimeBinaryDiscoveryService
+    this.supervisor = dependencies.supervisor ?? sidecarProcessSupervisor
   }
 
   listProfiles(kind?: AgentRuntimeKind) {
@@ -262,6 +272,18 @@ export class RuntimeControlService {
       state: 'stopped',
       message: 'UAR embedded sidecar is stopped.'
     }
+  }
+
+  getSupervisorStatus(): SupervisedSidecarStatus[] {
+    return this.supervisor.list()
+  }
+
+  stopSupervisedSidecar(id: string): Promise<void> {
+    return this.supervisor.stop(id)
+  }
+
+  killSidecar(id: string): Promise<void> {
+    return this.supervisor.kill(id)
   }
 
   async getStatus(runtimeConfig: AgentRuntimeConfig): Promise<RuntimeHealthResult> {
