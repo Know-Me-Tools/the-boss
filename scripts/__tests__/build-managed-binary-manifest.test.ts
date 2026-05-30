@@ -4,9 +4,12 @@ import path from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-const { buildManifest, main, parseArgs, sha256File } = require('../build-managed-binary-manifest')
+const { buildManifest, buildManifestEntry, main, parseArgs, sha256File } = require('../build-managed-binary-manifest')
+const { validateManifest, validateManifestEntry } = require('../runtime-manifest-schema')
 
 let tempDir: string
+
+const VALID_SHA256 = 'a'.repeat(64)
 
 describe('build-managed-binary-manifest', () => {
   beforeEach(() => {
@@ -94,6 +97,125 @@ describe('build-managed-binary-manifest', () => {
       version: '1.0.0',
       supportedPlatforms: ['darwin-arm64']
     })
+  })
+
+  it('round-trips archive, signing, and notarization fields through buildManifestEntry and validates', () => {
+    const binaryPath = writeBinary('uar-darwin-arm64', 'managed binary content')
+
+    const entry = buildManifestEntry({
+      platform: 'darwin-arm64',
+      filePath: binaryPath,
+      archiveName: 'universal-agent-runtime-darwin-arm64.tar.zst',
+      archiveSha256: VALID_SHA256,
+      archiveSize: 4096,
+      archiveFormat: 'tar.zst',
+      signingIdentity: 'Developer ID Application: Example (TEAM123)',
+      teamId: 'TEAM123',
+      notarization: { notarized: true, ticketId: 'ticket-abc' },
+      signatures: { minisign: 'RW...', certificateSha256: 'b'.repeat(64) }
+    })
+
+    expect(entry).toMatchObject({
+      platform: 'darwin-arm64',
+      binaryName: 'uar-darwin-arm64',
+      archiveName: 'universal-agent-runtime-darwin-arm64.tar.zst',
+      archiveSha256: VALID_SHA256,
+      archiveSize: 4096,
+      archiveFormat: 'tar.zst',
+      signingIdentity: 'Developer ID Application: Example (TEAM123)',
+      teamId: 'TEAM123',
+      notarization: { notarized: true, ticketId: 'ticket-abc' },
+      signatures: { minisign: 'RW...', certificateSha256: 'b'.repeat(64) }
+    })
+
+    expect(() => validateManifestEntry(entry)).not.toThrow()
+  })
+
+  it('accepts a minimal valid manifest with only the pre-existing field set', () => {
+    const manifest = {
+      name: 'universal-agent-runtime',
+      version: 'abc123',
+      supportedPlatforms: ['darwin-arm64'],
+      binaries: [
+        {
+          platform: 'darwin-arm64',
+          binaryName: 'uar-darwin-arm64',
+          size: 1024,
+          sha256: VALID_SHA256
+        }
+      ]
+    }
+
+    expect(() => validateManifest(manifest)).not.toThrow()
+  })
+
+  it('rejects a manifest with a malformed sha256', () => {
+    expect(() =>
+      validateManifest({
+        name: 'uar',
+        version: '1.0.0',
+        supportedPlatforms: ['darwin-arm64'],
+        binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1, sha256: 'too-short' }]
+      })
+    ).toThrow()
+  })
+
+  it('rejects a manifest with a missing required field', () => {
+    expect(() =>
+      validateManifest({
+        version: '1.0.0',
+        supportedPlatforms: ['darwin-arm64'],
+        binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1, sha256: VALID_SHA256 }]
+      })
+    ).toThrow()
+  })
+
+  it('rejects a manifest with a non-positive size', () => {
+    expect(() =>
+      validateManifest({
+        name: 'uar',
+        version: '1.0.0',
+        supportedPlatforms: ['darwin-arm64'],
+        binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: -1, sha256: VALID_SHA256 }]
+      })
+    ).toThrow()
+  })
+
+  it('rejects a manifest with empty binaries', () => {
+    expect(() =>
+      validateManifest({
+        name: 'uar',
+        version: '1.0.0',
+        supportedPlatforms: [],
+        binaries: []
+      })
+    ).toThrow()
+  })
+
+  it('rejects an unknown archiveFormat', () => {
+    expect(() =>
+      validateManifestEntry({
+        platform: 'darwin-arm64',
+        binaryName: 'uar',
+        size: 1,
+        sha256: VALID_SHA256,
+        archiveFormat: 'rar'
+      })
+    ).toThrow()
+  })
+
+  it('accepts tar.zst and zip archive formats', () => {
+    for (const archiveFormat of ['tar.zst', 'zip']) {
+      expect(() =>
+        validateManifestEntry({
+          platform: 'darwin-arm64',
+          binaryName: 'uar',
+          size: 1,
+          sha256: VALID_SHA256,
+          archiveFormat
+        })
+      ).not.toThrow()
+    }
   })
 })
 

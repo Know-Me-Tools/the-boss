@@ -2,15 +2,20 @@ const { createHash } = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { validateManifest } = require('./runtime-manifest-schema')
+
 function buildManifest(options) {
   const binaries = options.binaries.map((binary) => buildManifestEntry(binary))
-  return {
+  const manifest = {
     name: options.name,
     version: options.version,
     ...(options.sourceCommit ? { sourceCommit: options.sourceCommit } : {}),
     supportedPlatforms: binaries.map((binary) => binary.platform),
     binaries
   }
+  // Fail fast at build time if the assembled manifest is malformed.
+  validateManifest(manifest)
+  return manifest
 }
 
 function buildManifestEntry(binary) {
@@ -23,6 +28,13 @@ function buildManifestEntry(binary) {
     sha256: sha256File(binary.filePath),
     ...(binary.httpsUrl ? { httpsUrl: binary.httpsUrl } : {}),
     ...(binary.ipfsCid ? { ipfsCid: binary.ipfsCid } : {}),
+    ...(binary.archiveName ? { archiveName: binary.archiveName } : {}),
+    ...(binary.archiveSha256 ? { archiveSha256: binary.archiveSha256 } : {}),
+    ...(binary.archiveSize != null ? { archiveSize: binary.archiveSize } : {}),
+    ...(binary.archiveFormat ? { archiveFormat: binary.archiveFormat } : {}),
+    ...(binary.signingIdentity ? { signingIdentity: binary.signingIdentity } : {}),
+    ...(binary.teamId ? { teamId: binary.teamId } : {}),
+    ...(binary.notarization ? { notarization: binary.notarization } : {}),
     ...(binary.signatures ? { signatures: binary.signatures } : {})
   }
 }
