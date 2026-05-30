@@ -10,17 +10,17 @@
   "execution_complete": false,
   "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
   "changes_total": 7,
-  "changes_completed": 4,
+  "changes_completed": 5,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
     "change-003-artifact-build-feedback-seam": "DONE",
     "change-004-artifact-design-orchestrator": "DONE",
-    "change-005-artifact-designer-3pane": "TODO",
+    "change-005-artifact-designer-3pane": "DONE",
     "change-006-designer-build-loop-wiring": "TODO",
     "change-007-create-path-entry-and-docs": "TODO"
   },
-  "current_change": "change-005-artifact-designer-3pane",
+  "current_change": "change-006-designer-build-loop-wiring",
   "feature_branch": "feat/artifact-iterative-designer",
   "last_updated": "2026-05-30",
   "last_updated_by": "claude-code",
@@ -55,7 +55,7 @@
       "change-006-designer-build-loop-wiring",
       "change-007-create-path-entry-and-docs"
     ],
-    "next_pending_change": "change-005-artifact-designer-3pane"
+    "next_pending_change": "change-006-designer-build-loop-wiring"
   },
   "change_log": [
     {
@@ -108,9 +108,23 @@
       "qa_gate": "3 files (core+default+test) at threshold; core pure + 46 unit tests + code-review; default.ts is integration-only wiring. Reviewed in lieu of refiner."
     }
   ],
+  "change_log_005": {
+    "id": "change-005-artifact-designer-3pane",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactDesigner.test.tsx",
+      "src/renderer/src/i18n/locales/*.json (+ translate/*.json synced)"
+    ],
+    "tests": "ArtifactDesigner 12/12; ArtifactPopup 2/2 regression (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from these files; i18n:check pass; no console.*",
+    "review": "tdd-guide -> typescript-reviewer + a11y-architect; HIGH iframe sandbox (removed allow-same-origin) + HIGH assertive a11y alert region + MEDIUM double-submit/useMemo/aria-busy/per-instance-counter + 7 test tsgo fixes applied",
+    "decision": "new sibling ArtifactDesigner component; ArtifactPopup untouched. Code pane read-only + artifact_saved wiring deferred to change-006.",
+    "qa_gate": "reviewed in lieu of refiner (2 files + i18n; TS + a11y two-stage review)"
+  },
   "milestone_status": {
-    "M1_spine": "COMPLETE (change-001..004 DONE; 189 tests; the entire pure spine — protocol, reducer, build seam, orchestrator — is built, reviewed, and green with zero UI)",
-    "M2_designer": "NEXT (change-005 3-pane designer, change-006 build-loop wiring)",
+    "M1_spine": "COMPLETE (change-001..004 DONE; 189 tests; pure spine built, reviewed, zero UI)",
+    "M2_designer": "IN PROGRESS (change-005 3-pane designer DONE; change-006 build-loop wiring NEXT)",
     "M3_entry_docs": "pending (change-007)"
   },
   "artifacts": {

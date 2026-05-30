@@ -4222,6 +4222,24 @@
       "default_react_runtime": "Default React/TSX Runtime",
       "default_theme": "Default Theme",
       "description": "Configure the additive artifact runtimes for HTML, htmx, Alpine, and React/TSX previews.",
+      "designer": {
+        "diagnostics_label": "Build diagnostics",
+        "error_label": "Error",
+        "preview_title": "Artifact preview",
+        "prompt": "Describe what you want to build or change",
+        "prompt_label": "Design prompt",
+        "save": "Save to Library",
+        "send": "Send",
+        "status": {
+          "building": "Building...",
+          "error": "Error",
+          "preview": "Preview ready",
+          "repair": "Build failed — describe the fix",
+          "saving": "Saving...",
+          "streaming": "Generating..."
+        },
+        "transcript_label": "Design conversation"
+      },
       "internet_default": "Internet Enabled By Default",
       "library": {
         "delete_success": "Artifact deleted",
