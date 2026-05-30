@@ -5,12 +5,28 @@
 **Author:** Claude Code (kbd-assess)
 **Type:** Debugging investigation (root-cause hunt), not a feature build.
 
+> ⚠️ **CORRECTION (2026-05-30, later):** The "HIGH confidence" single hypothesis
+> below was over-stated — it was derived from **static analysis only, with no
+> runtime reproduction or profile.** A broader investigation found a **second,
+> independent rAF + throttle layer** on the shared streamed-block-update path
+> (`src/renderer/src/store/thunk/messageThunk.ts:504-551`: an `LRUCache` of lodash
+> throttlers, each scheduling a `requestAnimationFrame`) that was not examined and is
+> at least as strong a "both surfaces / grows over time / CPU climbs" candidate.
+> The `useSmoothStream` leak is real but is **one of (at least) two** rAF layers and
+> is NOT confirmed to be the freeze cause.
+>
+> **The authoritative, corrected plan is** `~/.claude/plans/do-you-need-to-elegant-boole.md`:
+> reproduce + profile FIRST (Phase A, blocking), investigate BOTH rAF/throttle layers,
+> fix what the profile indicts, then re-profile. Do not treat the section below as the
+> answer — treat it as one candidate among several. No code fix should be declared
+> without a before/after runtime profile.
+
 ## Symptom (reported)
 
 The chat for **both** assistants (home chat) and agents stops working after some
 time; CPU utilization climbs and the application locks up.
 
-## Primary Root-Cause Hypothesis (HIGH confidence)
+## Candidate Hypothesis #1 (renderer rAF hook — UNCONFIRMED, static analysis only)
 
 **A leaked / self-multiplying `requestAnimationFrame` loop in
 `src/renderer/src/hooks/useSmoothStream.ts`, driven by an unstable `onUpdate`

@@ -20,13 +20,25 @@
     "do_not_use": ["v2"],
     "notes": "Per CLAUDE.md, fix on the 1.9.x line; never use v2."
   },
-  "primary_hypothesis": {
-    "summary": "Leaked / self-multiplying requestAnimationFrame loop in useSmoothStream, driven by an unstable inline onUpdate callback in Markdown.tsx. Orphaned rAF loops accumulate and busy-spin, saturating CPU and freezing the UI.",
-    "files": ["src/renderer/src/hooks/useSmoothStream.ts", "src/renderer/src/pages/home/Markdown/Markdown.tsx"],
-    "confidence": "high (static analysis); runtime profile pending",
-    "shared_by_both_surfaces": true,
-    "isolation": "Only self-rescheduling rAF loop in the renderer; all other rAF call sites are one-shot."
-  },
+  "correction_note": "The earlier single 'high confidence' hypothesis was over-stated (static analysis only, no runtime reproduction). Corrected plan is ~/.claude/plans/do-you-need-to-elegant-boole.md: reproduce+profile FIRST, investigate BOTH rAF/throttle layers, fix per evidence, re-profile. Do NOT declare a fix without a before/after runtime profile.",
+  "candidate_hypotheses": [
+    {
+      "id": "candidate-1-useSmoothStream-raf",
+      "summary": "rAF leak in useSmoothStream (renderer hook), driven by unstable onUpdate in Markdown.tsx.",
+      "files": ["src/renderer/src/hooks/useSmoothStream.ts", "src/renderer/src/pages/home/Markdown/Markdown.tsx"],
+      "status": "real leak; fix exists on branch fix/001-smoothstream-raf-leak (f5ee91af5) with tests; NOT confirmed to be THE freeze cause",
+      "confidence": "static analysis only; runtime profile pending"
+    },
+    {
+      "id": "candidate-2-messageThunk-throttler-raf",
+      "summary": "LRUCache of lodash throttlers, each scheduling a requestAnimationFrame, on the shared streamed-block-update path used by BOTH assistants and agents. Eviction/stream-end/in-flight interaction unverified.",
+      "files": ["src/renderer/src/store/thunk/messageThunk.ts (~504-551)"],
+      "status": "PRIMARY un-investigated suspect; at least as strong as candidate-1",
+      "confidence": "newly identified; not yet analyzed in depth or profiled"
+    }
+  ],
+  "blocking_next_step": "Phase A: reproduce the freeze + capture which process spikes (main vs renderer) and a renderer perf/flame profile. No code fix before this.",
+  "recommended_execution": "Fresh session (optionally a worktree off main), carrying ~/.claude/plans/do-you-need-to-elegant-boole.md, due to current-session size degrading subagent dispatch + multi-turn reliability.",
   "secondary_candidates": [
     "Markdown.tsx effect feedback churn (driver of the primary bug)",
     "message list / virtualization effects (Messages.tsx, AgentSessionMessages.tsx) — amplifiers to rule out",
@@ -38,5 +50,5 @@
     "plan": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/plan.md",
     "progress": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/progress.json"
   },
-  "nextRecommendedAction": "Execute fix-001-smoothstream-raf-leak (TDD): single-loop refactor of useSmoothStream + stabilize Markdown.tsx onUpdate + regression test. Then fix-002 verification. Do not use v2."
+  "nextRecommendedAction": "BLOCKED on Phase A (reproduce + profile). Start a fresh session with ~/.claude/plans/do-you-need-to-elegant-boole.md. Do NOT resume fix-001 as 'the fix' until a runtime profile confirms the cause across both rAF/throttle layers. Do not use v2."
 }
