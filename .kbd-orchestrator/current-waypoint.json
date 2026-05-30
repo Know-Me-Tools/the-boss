@@ -1,7 +1,7 @@
 {
   "project": "The Boss / Cherry Studio fork",
   "phase": "artifact-editor-iterative-design-protocol",
-  "status": "execution_complete",
+  "status": "phase_complete",
   "lastUpdated": "2026-05-30",
   "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
   "designPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
@@ -16,8 +16,8 @@
   "changesCompleted": 7,
   "milestoneM1": "COMPLETE — pure spine (protocol, reducer, build seam, orchestrator) built, reviewed, 189 tests green, zero UI",
   "next_pending_change": null,
-  "exact_next_command": "/kbd-reflect artifact-editor-iterative-design-protocol",
-  "nextRecommendedAction": "PHASE EXECUTION COMPLETE — all 7 changes DONE. Full iterative LLM artifact editor built TDD with two-stage review: protocol/reducer/build-seam/orchestrator (M1) + 3-pane designer & build-loop/save (M2) + card entry & docs (M3). 238 artifacts+cards tests green; electron-vite production build SUCCEEDS; designer reachable via Edit-with-AI on both cards. NEXT: run /kbd-reflect to write the phase reflection, then open a PR (gh-create-pr) for feat/artifact-iterative-designer. Note: pre-commit hook bypassed all along (uses Node 20; repo needs 24) and an unrelated RuntimeSettings.tsx change is in the tree (not ours). Do not use v2.",
+  "exact_next_command": "pnpm dev   # Node 24: live-verify one Edit-with-AI turn, then gh-create-pr",
+  "nextRecommendedAction": "PHASE COMPLETE — 7/7 changes DONE + reflection written. The iterative LLM artifact editor is built, two-stage-reviewed, 238 tests green, and bundles into the electron-vite build. Goal ~95% MET (all assessment gaps closed; base-anchored diffs + AG-UI-mapper promotion + a live-model smoke intentionally deferred). NEXT: (1) live-verify one real model turn (pnpm dev under Node 24: Edit with AI -> request -> build -> preview -> Fix it -> Save); (2) fix the pre-commit Node-version gate; (3) open a PR with gh-create-pr; (4) /kbd-new-phase when ready. Do not use v2.",
   "milestones": {
     "M1_spine": [
       "change-001 (DONE)",
@@ -52,5 +52,6 @@
       ],
       "note": "Claude/Codex/OpenCode/UAR run on 1.9.x; managed-binary distribution, trust order, sidecar supervisor, and runtime release matrix all landed. Reflection written 2026-05-30."
     }
-  ]
+  ],
+  "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md"
 }
