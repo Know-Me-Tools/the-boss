@@ -157,7 +157,7 @@ describe('build-managed-binary-manifest', () => {
         supportedPlatforms: ['darwin-arm64'],
         binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1, sha256: 'too-short' }]
       })
-    ).toThrow()
+    ).toThrow(/sha256/i)
   })
 
   it('rejects a manifest with a missing required field', () => {
@@ -167,7 +167,7 @@ describe('build-managed-binary-manifest', () => {
         supportedPlatforms: ['darwin-arm64'],
         binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1, sha256: VALID_SHA256 }]
       })
-    ).toThrow()
+    ).toThrow(/name/i)
   })
 
   it('rejects a manifest with a non-positive size', () => {
@@ -178,7 +178,7 @@ describe('build-managed-binary-manifest', () => {
         supportedPlatforms: ['darwin-arm64'],
         binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: -1, sha256: VALID_SHA256 }]
       })
-    ).toThrow()
+    ).toThrow(/size/i)
   })
 
   it('rejects a manifest with empty binaries', () => {
@@ -189,7 +189,7 @@ describe('build-managed-binary-manifest', () => {
         supportedPlatforms: [],
         binaries: []
       })
-    ).toThrow()
+    ).toThrow(/binaries/i)
   })
 
   it('rejects an unknown archiveFormat', () => {
@@ -201,7 +201,42 @@ describe('build-managed-binary-manifest', () => {
         sha256: VALID_SHA256,
         archiveFormat: 'rar'
       })
-    ).toThrow()
+    ).toThrow(/archiveFormat|tar\.zst|zip/i)
+  })
+
+  it('preserves channel-level fields (sequence, signature, expiresAt, revokedArtifacts) through validateManifest', () => {
+    const manifest = {
+      schemaVersion: 1,
+      channel: 'stable',
+      sequence: 7,
+      publishedAt: '2026-01-01T00:00:00Z',
+      expiresAt: '2027-01-01T00:00:00Z',
+      minAppVersion: '1.9.0',
+      maxAppVersion: '2.0.0',
+      revokedArtifacts: ['c'.repeat(64), 'bafy-revoked-cid'],
+      signature: { algorithm: 'ed25519', keyId: 'key-1', value: 'sig-value' },
+      name: 'universal-agent-runtime',
+      version: 'abc123',
+      sourceCommit: 'abc123',
+      supportedPlatforms: ['darwin-arm64'],
+      binaries: [{ platform: 'darwin-arm64', binaryName: 'uar', size: 1024, sha256: VALID_SHA256 }]
+    }
+
+    const validated = validateManifest(manifest)
+
+    // These channel-level fields are read by assertRuntimeManifestTrusted; if the
+    // schema stripped them a signed manifest would be treated as unsigned.
+    expect(validated).toMatchObject({
+      schemaVersion: 1,
+      channel: 'stable',
+      sequence: 7,
+      publishedAt: '2026-01-01T00:00:00Z',
+      expiresAt: '2027-01-01T00:00:00Z',
+      minAppVersion: '1.9.0',
+      maxAppVersion: '2.0.0',
+      revokedArtifacts: ['c'.repeat(64), 'bafy-revoked-cid'],
+      signature: { algorithm: 'ed25519', keyId: 'key-1', value: 'sig-value' }
+    })
   })
 
   it('accepts tar.zst and zip archive formats', () => {

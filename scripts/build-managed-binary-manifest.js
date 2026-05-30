@@ -13,9 +13,9 @@ function buildManifest(options) {
     supportedPlatforms: binaries.map((binary) => binary.platform),
     binaries
   }
-  // Fail fast at build time if the assembled manifest is malformed.
-  validateManifest(manifest)
-  return manifest
+  // Fail fast at build time if the assembled manifest is malformed, and return
+  // the validated/normalized object so the written manifest matches the schema.
+  return validateManifest(manifest)
 }
 
 function buildManifestEntry(binary) {

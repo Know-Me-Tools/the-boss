@@ -29,6 +29,19 @@ const notarizationSchema = z.object({
   ticketId: z.string().optional()
 })
 
+// Mirrors ManagedBinaryManifestSignature (the channel-level manifest signature
+// the consumer reads in assertRuntimeManifestTrusted). Known fields are modeled
+// explicitly; passthrough keeps forward-compatibility with additional signature
+// material the consumer may not yet model. All optional because the builder does
+// not emit a signature — the separate publish/signing step does.
+const manifestSignatureSchema = z
+  .object({
+    algorithm: z.literal('ed25519').optional(),
+    keyId: z.string().optional(),
+    value: z.string().optional()
+  })
+  .passthrough()
+
 /**
  * Per-platform binary entry. Required fields match the consumer's minimum
  * (platform, binaryName, size, sha256); everything else is optional.
@@ -57,6 +70,20 @@ const manifestEntrySchema = z.object({
  * the builder always emits it; binaries must contain at least one entry.
  */
 const manifestSchema = z.object({
+  // Channel-level fields the consumer (ManagedBinaryManifest) reads in
+  // assertRuntimeManifestTrusted for rollback/expiry/revocation/signature
+  // checks. All optional: the builder emits the base set below; the publish
+  // step adds the signing/channel metadata. Enumerating them (instead of using
+  // .passthrough()) keeps real validation and documents the consumer contract.
+  schemaVersion: z.number().optional(),
+  channel: z.string().optional(),
+  sequence: z.number().int().optional(),
+  publishedAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+  minAppVersion: z.string().optional(),
+  maxAppVersion: z.string().optional(),
+  revokedArtifacts: z.array(z.string()).optional(),
+  signature: manifestSignatureSchema.optional(),
   name: z.string().min(1),
   version: z.string().min(1),
   sourceCommit: z.string().optional(),
