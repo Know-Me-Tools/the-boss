@@ -21,6 +21,7 @@ import { schedulerService } from './services/agents/services/SchedulerService'
 import { bootstrapBuiltinAgents } from './services/agents/services/builtin/BuiltinAgentBootstrap'
 import { channelManager } from './services/agents/services/channels'
 import { registerSessionStreamIpc } from './services/agents/services/channels/sessionStreamIpc'
+import { sidecarProcessSupervisor } from './services/agents/services/runtime/SidecarProcessSupervisor'
 import { analyticsService } from './services/AnalyticsService'
 import { apiServerService } from './services/ApiServerService'
 import { appMenuService } from './services/AppMenuService'
@@ -309,6 +310,10 @@ if (!app.requestSingleInstanceLock()) {
       await openClawService.stopGateway()
       await mcpService.cleanup()
       await apiServerService.stop()
+      // Terminate all runtime sidecars (UAR, OpenCode) and their process groups
+      // so none are left orphaned after quit. Centralized here instead of each
+      // runtime service self-registering its own before-quit handler.
+      await sidecarProcessSupervisor.shutdownAll()
     } catch (error) {
       logger.warn('Error cleaning up services:', error as Error)
     }

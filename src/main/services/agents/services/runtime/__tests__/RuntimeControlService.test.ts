@@ -79,6 +79,7 @@ vi.mock('@main/utils', () => ({
 }))
 
 import { RuntimeControlService } from '../RuntimeControlService'
+import type { SupervisedSidecarStatus } from '../SidecarProcessSupervisor'
 
 describe('RuntimeControlService', () => {
   it('merges global settings, selected profile, and session runtime overrides into the effective config', async () => {
@@ -444,7 +445,59 @@ describe('RuntimeControlService', () => {
 
     await expect(service.ensureRunnable({ kind: 'claude', mode: 'managed' })).resolves.toBeUndefined()
   })
+
+  it('reports supervised sidecar status from the process supervisor', () => {
+    const statusFixture = createSupervisedStatus()
+    const supervisor = {
+      list: vi.fn(() => [statusFixture]),
+      stop: vi.fn(async () => {}),
+      kill: vi.fn(async () => {})
+    }
+    const service = new RuntimeControlService({ supervisor: supervisor as never })
+
+    expect(service.getSupervisorStatus()).toEqual([statusFixture])
+    expect(supervisor.list).toHaveBeenCalledTimes(1)
+  })
+
+  it('gracefully stops a supervised sidecar by id through the supervisor', async () => {
+    const supervisor = {
+      list: vi.fn(() => []),
+      stop: vi.fn(async () => {}),
+      kill: vi.fn(async () => {})
+    }
+    const service = new RuntimeControlService({ supervisor: supervisor as never })
+
+    await expect(service.stopSupervisedSidecar('sidecar-1')).resolves.toBeUndefined()
+    expect(supervisor.stop).toHaveBeenCalledWith('sidecar-1')
+    expect(supervisor.kill).not.toHaveBeenCalled()
+  })
+
+  it('kills a supervised sidecar by id through the supervisor', async () => {
+    const supervisor = {
+      list: vi.fn(() => []),
+      stop: vi.fn(async () => {}),
+      kill: vi.fn(async () => {})
+    }
+    const service = new RuntimeControlService({ supervisor: supervisor as never })
+
+    await expect(service.killSidecar('sidecar-1')).resolves.toBeUndefined()
+    expect(supervisor.kill).toHaveBeenCalledWith('sidecar-1')
+    expect(supervisor.stop).not.toHaveBeenCalled()
+  })
 })
+
+function createSupervisedStatus(): SupervisedSidecarStatus {
+  return {
+    id: 'sidecar-1',
+    name: 'universal-agent-runtime',
+    pid: 4242,
+    binaryPath: '/tmp/uar/bin/universal-agent-runtime',
+    startedAt: 1_700_000_000_000,
+    state: 'running',
+    restartCount: 0,
+    recentStderr: []
+  }
+}
 
 function createSettings(): AgentRuntimeSettings {
   return {

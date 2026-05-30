@@ -1,8 +1,9 @@
 import type { GetAgentSessionResponse, UpdateAgentBaseForm } from '@renderer/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type * as Antd from 'antd'
+import type { ReactNode } from 'react'
 import type * as ReactI18Next from 'react-i18next'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import RuntimeSettings from '../RuntimeSettings'
 
@@ -70,7 +71,16 @@ vi.mock('antd', async (importOriginal) => {
         onChange={(event) => onChange?.(event.target.checked)}
       />
     ),
-    Tag: ({ children }: { children: string }) => <span>{children}</span>
+    Tag: ({ children }: { children: string }) => <span>{children}</span>,
+    Popconfirm: ({ children, onConfirm }: { children: ReactNode; onConfirm?: () => void }) => (
+      <span
+        data-testid="popconfirm"
+        onClick={() => {
+          onConfirm?.()
+        }}>
+        {children}
+      </span>
+    )
   }
 })
 
@@ -120,7 +130,10 @@ describe('RuntimeSettings', () => {
           message: 'UAR sidecar is ready.'
         })),
         listCodexModels: vi.fn(async () => createCodexModels()),
-        listOpenCodeModels: vi.fn(async () => createOpenCodeModels())
+        listOpenCodeModels: vi.fn(async () => createOpenCodeModels()),
+        getSupervisorStatus: vi.fn(async () => []),
+        stopSupervisedSidecar: vi.fn(async () => undefined),
+        killSidecar: vi.fn(async () => undefined)
       },
       dependencies: {
         getStatuses: vi.fn(async () => createRustStatuses(false))
@@ -397,6 +410,150 @@ describe('RuntimeSettings', () => {
     expect(window.api.installRustToolchain).toHaveBeenCalled()
   })
 })
+
+describe('RuntimeSettings supervised sidecars', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.restoreAllMocks()
+    translate.mockClear()
+    window.api = {
+      getAppInfo: vi.fn(async () => ({ notesPath: '/tmp/notes' })),
+      agentRuntime: {
+        listProfiles: vi.fn(async () => []),
+        getStatus: vi.fn(async () => ({
+          kind: 'uar',
+          state: 'stopped',
+          binarySource: 'managed',
+          message: 'UAR embedded sidecar is stopped.'
+        })),
+        discoverBinary: vi.fn(async (kind: string) => ({
+          kind,
+          command: kind === 'uar' ? 'universal-agent-runtime' : kind,
+          source: 'path',
+          available: false,
+          message: `${kind} was not found on PATH.`
+        })),
+        installManagedBinary: vi.fn(async () => ({
+          kind: 'uar',
+          state: 'installed',
+          binarySource: 'managed',
+          message: 'Managed UAR binary is installed.'
+        })),
+        cancelOperation: vi.fn(async () => true),
+        onOperationProgress: vi.fn(() => () => undefined),
+        testConnection: vi.fn(async () => ({
+          kind: 'uar',
+          state: 'ready',
+          endpoint: 'http://127.0.0.1:1906',
+          message: 'UAR sidecar is ready.'
+        })),
+        listCodexModels: vi.fn(async () => createCodexModels()),
+        listOpenCodeModels: vi.fn(async () => createOpenCodeModels()),
+        getSupervisorStatus: vi.fn(async () => []),
+        stopSupervisedSidecar: vi.fn(async () => undefined),
+        killSidecar: vi.fn(async () => undefined)
+      },
+      dependencies: {
+        getStatuses: vi.fn(async () => createRustStatuses(false))
+      },
+      installRustToolchain: vi.fn(async () => undefined)
+    } as never
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  // Fake timers freeze the @testing-library async helpers (findBy/waitFor poll
+  // on real timers), so we flush pending IPC microtasks explicitly instead.
+  const flushPendingEffects = () => act(async () => undefined)
+
+  it('shows the empty state when no sidecars are supervised', async () => {
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    await flushPendingEffects()
+
+    expect(window.api.agentRuntime.getSupervisorStatus).toHaveBeenCalled()
+    expect(screen.getByText('No running sidecars.')).toBeInTheDocument()
+  })
+
+  it('renders a running sidecar with its metrics and stop/kill controls', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    await flushPendingEffects()
+
+    expect(screen.getByText('universal-agent-runtime')).toBeInTheDocument()
+    expect(screen.getByText('Running')).toBeInTheDocument()
+    expect(screen.getByText('PID: 4321')).toBeInTheDocument()
+    expect(screen.getByText('CPU: 12%')).toBeInTheDocument()
+    expect(screen.getByText('Memory: 128 MB')).toBeInTheDocument()
+    expect(screen.getByText('Restarts: 2')).toBeInTheDocument()
+    expect(screen.getByText('Stop')).toBeInTheDocument()
+    expect(screen.getAllByText('Kill').length).toBeGreaterThan(0)
+  })
+
+  it('stops a supervised sidecar by id when Stop is clicked', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    await flushPendingEffects()
+    fireEvent.click(screen.getByText('Stop'))
+    await flushPendingEffects()
+
+    expect(window.api.agentRuntime.stopSupervisedSidecar).toHaveBeenCalledWith('uar-embedded')
+  })
+
+  it('kills a supervised sidecar by id after confirming', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([createSupervisedSidecar()])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    await flushPendingEffects()
+    const killButtons = screen.getAllByText('Kill')
+    fireEvent.click(killButtons[killButtons.length - 1])
+    await flushPendingEffects()
+
+    expect(window.api.agentRuntime.killSidecar).toHaveBeenCalledWith('uar-embedded')
+  })
+
+  it('re-polls the supervisor status when the poll interval elapses', async () => {
+    vi.mocked(window.api.agentRuntime.getSupervisorStatus).mockResolvedValue([])
+
+    render(<RuntimeSettings agentBase={createAgentBase('uar')} update={vi.fn()} />)
+
+    await flushPendingEffects()
+    expect(window.api.agentRuntime.getSupervisorStatus).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(SUPERVISOR_POLL_INTERVAL_MS)
+    })
+
+    expect(window.api.agentRuntime.getSupervisorStatus).toHaveBeenCalledTimes(2)
+  })
+})
+
+const SUPERVISOR_POLL_INTERVAL_MS = 4000
+
+function createSupervisedSidecar() {
+  return {
+    id: 'uar-embedded',
+    name: 'universal-agent-runtime',
+    key: 'uar',
+    pid: 4321,
+    binaryPath: '/opt/uar/bin/universal-agent-runtime',
+    binaryVersion: '1.9.7',
+    cwd: '/tmp/workspace',
+    startedAt: Date.now() - 90_000,
+    state: 'running' as const,
+    restartCount: 2,
+    cpuPercent: 12.4,
+    rssBytes: 128 * 1024 * 1024,
+    recentStderr: []
+  }
+}
 
 function createAgentBase(
   kind: 'claude' | 'codex' | 'opencode' | 'uar',

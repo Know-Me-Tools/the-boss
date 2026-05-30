@@ -10,6 +10,11 @@ import type { AgentStream, AgentStreamEvent } from '../../../interfaces/AgentStr
 const spawnMock = vi.fn()
 const fetchMock = vi.fn()
 let tempDir: string
+/** The mock child returned by the most recent spawn, captured so the mocked tree-kill can resolve the supervisor's stop() by emitting its 'exit'. */
+let lastChild: EventEmitter | undefined
+
+/** Numeric pid handed to the mock child so the supervisor takes its real signalling path (not the pidless settle path) and calls the injected tree-kill. */
+const MOCK_CHILD_PID = 4242
 
 vi.mock('node:fs', async (importOriginal) => importOriginal<typeof fs>())
 
@@ -19,6 +24,23 @@ vi.mock('node:child_process', () => ({
   execFile: vi.fn(),
   spawn: (...args: unknown[]) => spawnMock(...args)
 }))
+
+// Mock the OS-killing primitive the real supervisor singleton uses. The smoke
+// test exercises the real universalAgentRuntimeService -> real sidecarProcessSupervisor
+// path, so without this mock the supervisor's stop() would call the real tree-kill
+// against MOCK_CHILD_PID on the host machine. The mock instead emits the mock
+// child's 'exit' (which is how a real SIGTERM would terminate the process) so
+// stop() resolves, and records the call for assertion. Referenced through a
+// wrapper (like spawnMock above) so the hoisted vi.mock factory reads it lazily
+// at call time rather than at hoist time.
+const treeKillMock = vi.fn((_pid: number, _signal?: string) => {
+  queueMicrotask(() => lastChild?.emit('exit', 0, null))
+})
+vi.mock('tree-kill', () => ({ default: (...args: [number, string?]) => treeKillMock(...args) }))
+
+// Mock the resource sampler the supervisor schedules on an interval so it never
+// calls the real pidusage against MOCK_CHILD_PID.
+vi.mock('pidusage', () => ({ default: vi.fn().mockResolvedValue({ cpu: 0, memory: 0 }) }))
 
 vi.mock('electron', () => ({
   app: {
@@ -108,7 +130,8 @@ describe('embedded UAR smoke path', () => {
     ).toBe(true)
 
     await universalAgentRuntimeService.stop()
-    expect(spawnMock.mock.results[0].value.kill).toHaveBeenCalled()
+    // Termination now flows through the supervisor's tree-kill, not child.kill().
+    expect(treeKillMock).toHaveBeenCalledWith(MOCK_CHILD_PID, 'SIGTERM')
   })
 })
 
@@ -186,10 +209,14 @@ function createChildProcess(): any {
   child.stdout = new EventEmitter()
   child.stderr = new EventEmitter()
   child.killed = false
+  // A numeric pid is required so the supervisor's stop() issues a tree-kill
+  // (mocked) rather than taking the pidless settle path.
+  child.pid = MOCK_CHILD_PID
   child.kill = vi.fn(() => {
     child.killed = true
     queueMicrotask(() => child.emit('exit', 0, null))
     return true
   })
+  lastChild = child
   return child
 }

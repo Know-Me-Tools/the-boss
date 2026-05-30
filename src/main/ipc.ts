@@ -299,6 +299,15 @@ export async function registerIpc(mainWindow: BrowserWindow, app: Electron.App) 
     runtimeControlService.startSidecar(runtimeConfig)
   )
   ipcMain.handle(IpcChannel.AgentRuntime_StopSidecar, async () => runtimeControlService.stopSidecar())
+  ipcMain.handle(IpcChannel.AgentRuntime_GetSupervisorStatus, async () => runtimeControlService.getSupervisorStatus())
+  ipcMain.handle(IpcChannel.AgentRuntime_StopSupervisedSidecar, async (_event, id: unknown) => {
+    if (typeof id !== 'string') return
+    return runtimeControlService.stopSupervisedSidecar(id)
+  })
+  ipcMain.handle(IpcChannel.AgentRuntime_KillSidecar, async (_event, id: unknown) => {
+    if (typeof id !== 'string') return
+    return runtimeControlService.killSidecar(id)
+  })
   ipcMain.handle(IpcChannel.AgentRuntime_GetStatus, async (_event, runtimeConfig) =>
     runtimeControlService.getStatus(runtimeConfig)
   )
