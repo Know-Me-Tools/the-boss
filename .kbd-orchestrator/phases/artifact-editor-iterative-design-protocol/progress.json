@@ -1,0 +1,51 @@
+{
+  "phase": "artifact-editor-iterative-design-protocol",
+  "objective": "Deliver a working LLM-driven iterative artifact editor (React + HTMX) — create → display → edit again via natural language → re-display across turns → save to local library — driven by typed AG-UI-style streaming chunks and an editor state machine.",
+  "type": "design-heavy feature build (not a bug patch)",
+  "priority": "cornerstone (user-stated)",
+  "status": "assessment_complete",
+  "assessment_complete": true,
+  "planning_complete": false,
+  "execution_ready": false,
+  "execution_complete": false,
+  "last_updated": "2026-05-30",
+  "last_updated_by": "claude-code",
+  "branch_policy": {
+    "base": "current-1.9.x",
+    "current_branch": "main",
+    "do_not_use": ["v2"],
+    "notes": "Per CLAUDE.md, build on the 1.9.x line; never use v2."
+  },
+  "core_finding": {
+    "summary": "The iterative LLM artifact editor does not exist yet. Current artifacts feature = create-via-chat + display/preview + MANUAL code edit + library CRUD. There is no artifact code-patch protocol, no editor state machine, and no typed artifact stream events. The 'broken patch protocol' is really an absent feature to be designed on top of solid existing primitives.",
+    "exists": [
+      "preview builders (config.ts) + ArtifactService bundling/preview",
+      "display cards/popups (CodeBlockView/*) incl. ArtifactPopup manual editor",
+      "library CRUD (window.api.artifacts.{list,save,updateMetadata,fork,delete})",
+      "typed AG-UI substrate (apiServer/protocols/canonicalEvents.ts, agUiMapper.ts, RuntimeAgentStream, AgentStreamInterface) — reusable spine"
+    ],
+    "missing": [
+      "LLM-driven editor/designer component (no ArtifactEditor/iterateArtifact/artifactPatch)",
+      "artifact CODE patch protocol (only ArtifactMetadataPatch = metadata)",
+      "editor state machine for the multi-turn create->edit->preview loop",
+      "build/validate-in-the-loop feedback to the next LLM turn",
+      "artifact-specific typed stream event kinds on CanonicalAgentEvent"
+    ]
+  },
+  "decisions": {
+    "edit_transport": "full-file rewrite per turn first; base-anchored diffs are a later optimization",
+    "edit_engine_and_loop": "chat model via structured output/tool, renderer-orchestrated loop; typed AG-UI-style events modeled on top (NOT a dedicated agent-runtime session for v1)"
+  },
+  "open_questions": [
+    "Single-file vs small project tree (esp. React) — sets content payload shape + preview/build",
+    "Designer surface: extend ArtifactPopup into 3-pane (chat|code|preview) vs dedicated window",
+    "Typed-event shape: artifact CanonicalAgentEvent kinds via real AG-UI mapper vs a lighter renderer-local typed channel (loop is renderer-orchestrated, so renderer-local may suffice)"
+  ],
+  "openSpecDetected": false,
+  "artifacts": {
+    "assessment": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+    "progress": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json"
+  },
+  "nextRecommendedAction": "This is a design-heavy feature, not a bug fix. Begin the Plan phase with brainstorming/design to resolve the 5 open questions and choose the protocol shape (recommend: extend CanonicalAgentEvent with artifact event kinds + a renderer editor reducer + full-file-rewrite-first patch strategy + build-in-the-loop), THEN produce the ordered change list. Verify the current create-artifact path (renderArtifactCard.tsx, MainTextBlock) first. Do not use v2.",
+  "session_note": "Current session is large/degraded (subagent dispatch hitting context limits; Bash safety classifier intermittently unavailable). A fresh session is recommended before heavy execution."
+}

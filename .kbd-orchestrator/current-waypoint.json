@@ -1,17 +1,22 @@
 {
   "project": "The Boss / Cherry Studio fork",
-  "phase": "multi-runtime-agent-parity-assessment",
-  "status": "phase_complete",
+  "phase": "artifact-editor-iterative-design-protocol",
+  "status": "assessment_complete",
   "lastUpdated": "2026-05-30",
-  "assessmentPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/assessment.md",
-  "planPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/plan.md",
-  "executionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/execution.md",
-  "reflectionPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/reflection.md",
-  "progressPath": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
+  "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+  "progressPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json",
   "openSpecDetected": false,
   "next_pending_change": null,
-  "exact_next_command": "git log --oneline -1 origin/main",
-  "nextRecommendedAction": "Phase complete (24/24 changes DONE, reflection written, all PRs merged to main). Start a new phase with /kbd-new-phase when ready. Do not use v2.",
+  "exact_next_command": "sed -n '1,80p' .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+  "nextRecommendedAction": "Cornerstone design-heavy feature. Begin Plan with brainstorming/design: 2 foundational decisions are locked (full-file-rewrite-per-turn; chat-model structured-output, renderer-orchestrated loop, typed AG-UI-style events on top). Resolve the 3 remaining design questions, write a design doc, then the ordered change list. Build on the existing AG-UI substrate (apiServer/protocols/canonicalEvents.ts) + ArtifactService preview/build + useArtifactLibrary. RECOMMENDED: do this in a fresh session (this one is degraded). Do not use v2.",
+  "parked_phase": {
+    "phase": "chat-freeze-cpu-spike-investigation",
+    "status": "planning_complete (BLOCKED on Phase A runtime profile)",
+    "planPath": ".kbd-orchestrator/phases/chat-freeze-cpu-spike-investigation/plan.md",
+    "externalPlan": "~/.claude/plans/do-you-need-to-elegant-boole.md",
+    "branch": "fix/001-smoothstream-raf-leak",
+    "note": "Deferred by user. Parked clean: fix-001 (useSmoothStream rAF leak) committed on branch with tests but NOT proven to be the freeze cause; messageThunk throttler layer statically cleared. Resume at Phase A = reproduce + profile before any further fix."
+  },
   "completed_phases": [
     {
       "phase": "upstream-1.9.x-merge-strategy",
