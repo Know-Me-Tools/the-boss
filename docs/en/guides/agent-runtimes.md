@@ -161,6 +161,64 @@ Release operator checklist:
 7. Promote the same signed manifest to the HTTPS fallback URL.
 8. Keep the previous signed manifest CID pinned until the new manifest has been resolved and installed successfully by packaged builds.
 
+## Release Matrix
+
+Managed runtime artifacts are published as a supported-platform matrix. The authoritative matrix lives in `scripts/runtime-platform-matrix.js`.
+
+### Supported platforms
+
+| Runtime | darwin-arm64 | darwin-x64 | linux-x64 | linux-arm64 | win32-x64 | win32-arm64 |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| Universal Agent Runtime (`uar`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| OpenCode (`opencode`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Codex (`codex`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+The build pipeline emits display names (`universal-agent-runtime`, `opencode`, `codex`); `resolveRuntimeKey()` maps them to the matrix keys (`uar`, `opencode`, `codex`). The release gate matrix-validates every runtime, including UAR.
+
+#### Platform support exceptions
+
+To drop a platform for a runtime in a given release, edit that runtime's array in `MANAGED_RUNTIME_PLATFORM_MATRIX` (each runtime has its own array, so the change is one line). The release gate then no longer requires the dropped platform for that runtime, and a manifest that still ships it remains valid. Record the exception and the reason in the release notes.
+
+### Archives
+
+Each artifact is packaged as an archive (`tar.zst` on unix targets, `zip` on win32) containing the executable, a `metadata.json`, the license/notice from `resources/licenses/<runtime>/`, and an optional SBOM and detached signature. Archives are byte-reproducible: staged files are stamped with a constant mtime, members are sorted, and tar zeroes uid/gid, so identical inputs produce an identical `archiveSha256`.
+
+The signed manifest records, per platform: binary `sha256` + `size` + `maxSize`, `archiveSha256` + `archiveSize` + `archiveFormat`, optional `signingIdentity` / `teamId` / `notarization`, and the transport `ipfsCid` / `httpsUrl`. The manifest is validated against the Zod schema in `scripts/runtime-manifest-schema.js` at build time; channel-level trust fields (`sequence`, `expiresAt`, `revokedArtifacts`, `signature`) are preserved through validation.
+
+### macOS signing & notarization
+
+Runtime macOS binaries are signed and notarized separately from the Electron app bundle, via `scripts/sign-runtime-artifact.js`, which is env-gated:
+
+- Signing requires `APPLE_SIGNING_IDENTITY` and `APPLE_TEAM_ID`.
+- Notarization additionally requires `APPLE_ID` and `APPLE_APP_SPECIFIC_PASSWORD`.
+- When credentials are absent the helper is a no-op (local/dev builds are not broken). When present it `codesign`s the binary and records `signingIdentity` / `teamId` / `notarization` into the manifest entry.
+
+Apple notarization submits an archive, not a bare binary; CI wraps the signed binary before submitting via `notarytool`.
+
+### Dry run
+
+Validate a release without uploading or publishing:
+
+```bash
+pnpm runtimes:publish:ipfs --dry-run
+```
+
+Dry run runs the completeness gate and prints what would publish (runtimes, platforms, entry counts) but performs no uploads, no signing, no manifest/bootstrap writes, and no IPNS publish. It exits non-zero if the gate fails.
+
+### Release gate
+
+Before signing and uploading the channel manifest, `assertReleaseComplete()` fails the release (aggregating every problem into one error) when:
+
+- A required platform is missing for a runtime, or a manifest carries an unknown runtime name.
+- Any entry is missing its binary `sha256`/`size` or `archiveSha256`/`archiveSize`.
+- `REQUIRE_ARTIFACT_SIGNATURES=true` and an entry has no signature.
+- `REQUIRE_MAC_NOTARIZATION=true` and a `darwin-*` entry is not notarized.
+- The manifest set is empty.
+
+Both gate flags default off so local/dev publishing works; CI opts in by setting them. Recognized falsy values for these flags are `false`, `0`, `no`, `off`, `disable`, `disabled` (case-insensitive).
+
+> The full per-platform cross-compile and the macOS sign/notarize steps run in CI on native runners. `pnpm build:mac:arm64` (a full electron-builder mac build) is a CI/release-machine step, not a local dev command.
+
 ## Rust Toolchain
 
 Skill workflows that compile Rust or WASM projects require `rustup`, `cargo`, `rustc`, and the `wasm32-unknown-unknown` target. Runtime Settings surfaces the current toolchain status and provides an explicit install/update action. Installation is prompted by the user; the app never installs Rust silently.

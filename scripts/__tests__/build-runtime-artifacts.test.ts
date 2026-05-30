@@ -1,0 +1,391 @@
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+import AdmZip from 'adm-zip'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+const { packageRuntimeArchive, enrichManifestEntryWithArchive } = require('../build-runtime-artifacts')
+
+const HEX64 = /^[0-9a-f]{64}$/
+
+let workDir: string
+
+function makeFixture(name: string, contents: string): string {
+  const filePath = path.join(workDir, name)
+  fs.mkdirSync(path.dirname(filePath), { recursive: true })
+  fs.writeFileSync(filePath, contents)
+  return filePath
+}
+
+function baseMetadata() {
+  return {
+    name: 'universal-agent-runtime',
+    version: 'abc123',
+    platform: 'darwin-arm64',
+    binaryName: 'universal-agent-runtime',
+    sha256: 'deadbeef',
+    size: 4,
+    sourceCommit: 'abc123',
+    builtAt: '2026-05-30T00:00:00.000Z'
+  }
+}
+
+/**
+ * Lists the entry paths inside a produced archive so tests can assert
+ * membership without depending on extraction order.
+ */
+function listArchiveEntries(archivePath: string, format: string): string[] {
+  if (format === 'zip') {
+    return new AdmZip(archivePath).getEntries().map((entry) => entry.entryName)
+  }
+  const output = execFileSync('tar', ['--zstd', '-tf', archivePath], { encoding: 'utf8' })
+  return output.split('\n').filter(Boolean)
+}
+
+/**
+ * Returns the POSIX permission string (e.g. 'rwxr-xr-x') for a named member of
+ * a tar.zst archive by parsing tar's verbose listing. Used to assert the exec
+ * bit was (or was not) applied based on the TARGET platform.
+ */
+function tarMemberMode(archivePath: string, memberName: string): string | undefined {
+  const output = execFileSync('tar', ['--zstd', '-tvf', archivePath], { encoding: 'utf8' })
+  for (const line of output.split('\n')) {
+    // Verbose lines look like: "-rwxr-xr-x  0 root wheel 3 Dec 31 1969 uar"
+    const match = line.match(/^[-d](\S{9})\s.*\s(\S+)$/)
+    if (match && match[2] === memberName) {
+      return match[1]
+    }
+  }
+  return undefined
+}
+
+describe('build-runtime-artifacts', () => {
+  beforeEach(() => {
+    workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-archive-'))
+  })
+
+  afterEach(() => {
+    fs.rmSync(workDir, { recursive: true, force: true })
+  })
+
+  describe('packageRuntimeArchive', () => {
+    it('produces a tar.zst archive on unix with hash, size and format', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'ELF\x00fake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'linux-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        outDir
+      })
+
+      expect(result.format).toBe('tar.zst')
+      expect(result.archiveName).toBe('universal-agent-runtime-linux-x64.tar.zst')
+      expect(fs.existsSync(result.archivePath)).toBe(true)
+      expect(result.archiveSha256).toMatch(HEX64)
+      expect(result.archiveSize).toBeGreaterThan(0)
+    })
+
+    it('produces a zip archive when the platform is win32', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime.exe', 'MZfake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime.exe',
+        metadata: baseMetadata(),
+        outDir
+      })
+
+      expect(result.format).toBe('zip')
+      expect(result.archiveName).toBe('universal-agent-runtime-win32-x64.zip')
+      expect(fs.existsSync(result.archivePath)).toBe(true)
+      expect(result.archiveSha256).toMatch(HEX64)
+      expect(result.archiveSize).toBeGreaterThan(0)
+    })
+
+    it('includes the executable and metadata.json in the archive', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'linux-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        outDir
+      })
+
+      const entries = listArchiveEntries(result.archivePath, result.format)
+      expect(entries).toContain('universal-agent-runtime')
+      expect(entries).toContain('metadata.json')
+    })
+
+    it('serializes the passed metadata into metadata.json', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        outDir
+      })
+
+      const zip = new AdmZip(result.archivePath)
+      const raw = zip.readAsText('metadata.json')
+      const parsed = JSON.parse(raw)
+      expect(parsed.name).toBe('universal-agent-runtime')
+      expect(parsed.sha256).toBe('deadbeef')
+      expect(parsed.builtAt).toBe('2026-05-30T00:00:00.000Z')
+    })
+
+    it('includes license/notice files when licenseDir has files', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const licenseDir = path.join(workDir, 'licenses')
+      fs.mkdirSync(licenseDir, { recursive: true })
+      fs.writeFileSync(path.join(licenseDir, 'LICENSE'), 'MIT')
+      fs.writeFileSync(path.join(licenseDir, 'NOTICE.md'), 'notice')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        licenseDir,
+        outDir
+      })
+
+      const entries = listArchiveEntries(result.archivePath, result.format)
+      expect(entries).toContain('licenses/LICENSE')
+      expect(entries).toContain('licenses/NOTICE.md')
+    })
+
+    it('skips licenses gracefully when licenseDir is absent', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      expect(() =>
+        packageRuntimeArchive({
+          runtime: 'universal-agent-runtime',
+          platform: 'win32-x64',
+          binaryPath,
+          binaryName: 'universal-agent-runtime',
+          metadata: baseMetadata(),
+          licenseDir: path.join(workDir, 'does-not-exist'),
+          outDir
+        })
+      ).not.toThrow()
+    })
+
+    it('includes the SBOM only when sbomPath is provided and exists', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const sbomPath = makeFixture('sbom.spdx.json', '{"sbom":true}')
+      const outDir = path.join(workDir, 'out')
+
+      const withSbom = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        sbomPath,
+        outDir
+      })
+      expect(listArchiveEntries(withSbom.archivePath, withSbom.format)).toContain('sbom.spdx.json')
+
+      const withoutSbom = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-arm64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        sbomPath: path.join(workDir, 'missing-sbom.json'),
+        outDir
+      })
+      expect(listArchiveEntries(withoutSbom.archivePath, withoutSbom.format)).not.toContain('sbom.spdx.json')
+    })
+
+    it('includes a detached signature only when one already exists (no signing here)', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'fake-binary')
+      const signaturePath = makeFixture('runtime.sig', 'detached-signature-bytes')
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        signaturePath,
+        outDir
+      })
+
+      expect(listArchiveEntries(result.archivePath, result.format)).toContain('runtime.sig')
+    })
+
+    it('sets the exec bit on the binary for a unix TARGET (regardless of host)', () => {
+      // Source has no exec bit; a unix target must stage it executable so the
+      // archived binary is runnable. This is gated on the TARGET platform, not
+      // the host, for cross-compile correctness.
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'ELF fake-binary')
+      fs.chmodSync(binaryPath, 0o644)
+      const outDir = path.join(workDir, 'out')
+
+      const result = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'linux-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        outDir
+      })
+
+      const mode = tarMemberMode(result.archivePath, 'universal-agent-runtime')
+      expect(mode).toBeDefined()
+      // Owner exec bit (and group/other exec) present => 0o755-style perms.
+      expect(mode?.[2]).toBe('x')
+    })
+
+    it('does not chmod for a win32 TARGET (no POSIX exec bit applies)', () => {
+      // The win32 path must never call chmod; it goes through adm-zip and there
+      // is no POSIX exec bit. Packaging must succeed without touching mode.
+      const binaryPath = makeFixture('bin/universal-agent-runtime.exe', 'MZfake-binary')
+      const outDir = path.join(workDir, 'out')
+
+      expect(() =>
+        packageRuntimeArchive({
+          runtime: 'universal-agent-runtime',
+          platform: 'win32-x64',
+          binaryPath,
+          binaryName: 'universal-agent-runtime.exe',
+          metadata: baseMetadata(),
+          outDir
+        })
+      ).not.toThrow()
+    })
+
+    it('produces the same archiveSha256 for identical inputs (tar.zst determinism)', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime', 'ELF fake-binary')
+      const licenseDir = path.join(workDir, 'licenses')
+      fs.mkdirSync(licenseDir, { recursive: true })
+      fs.writeFileSync(path.join(licenseDir, 'LICENSE'), 'MIT')
+
+      const first = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'linux-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        licenseDir,
+        outDir: path.join(workDir, 'out-a')
+      })
+      const second = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'linux-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime',
+        metadata: baseMetadata(),
+        licenseDir,
+        outDir: path.join(workDir, 'out-b')
+      })
+
+      expect(first.archiveSha256).toMatch(HEX64)
+      expect(second.archiveSha256).toBe(first.archiveSha256)
+    })
+
+    it('produces the same archiveSha256 for identical inputs (zip determinism)', () => {
+      const binaryPath = makeFixture('bin/universal-agent-runtime.exe', 'MZfake-binary')
+      const licenseDir = path.join(workDir, 'licenses')
+      fs.mkdirSync(licenseDir, { recursive: true })
+      fs.writeFileSync(path.join(licenseDir, 'LICENSE'), 'MIT')
+
+      const first = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime.exe',
+        metadata: baseMetadata(),
+        licenseDir,
+        outDir: path.join(workDir, 'out-a')
+      })
+      const second = packageRuntimeArchive({
+        runtime: 'universal-agent-runtime',
+        platform: 'win32-x64',
+        binaryPath,
+        binaryName: 'universal-agent-runtime.exe',
+        metadata: baseMetadata(),
+        licenseDir,
+        outDir: path.join(workDir, 'out-b')
+      })
+
+      expect(first.archiveSha256).toMatch(HEX64)
+      expect(second.archiveSha256).toBe(first.archiveSha256)
+    })
+  })
+
+  describe('enrichManifestEntryWithArchive', () => {
+    it('adds archive fields alongside the existing binary fields', () => {
+      const entry = {
+        platform: 'linux-x64',
+        binaryName: 'universal-agent-runtime',
+        size: 4,
+        sha256: 'deadbeef',
+        filePath: '/dist/bin'
+      }
+      const archive = {
+        archiveName: 'universal-agent-runtime-linux-x64.tar.zst',
+        archiveSha256: 'a'.repeat(64),
+        archiveSize: 123,
+        format: 'tar.zst',
+        archivePath: '/dist/archive.tar.zst'
+      }
+
+      const enriched = enrichManifestEntryWithArchive(entry, archive)
+
+      expect(enriched.size).toBe(4)
+      expect(enriched.sha256).toBe('deadbeef')
+      expect(enriched.archiveName).toBe('universal-agent-runtime-linux-x64.tar.zst')
+      expect(enriched.archiveSha256).toBe('a'.repeat(64))
+      expect(enriched.archiveSize).toBe(123)
+      expect(enriched.archiveFormat).toBe('tar.zst')
+      expect(enriched.maxSize).toBe(4)
+    })
+
+    it('does not mutate the input entry (immutable update)', () => {
+      const entry = { platform: 'linux-x64', binaryName: 'b', size: 4, sha256: 'x', filePath: '/p' }
+      const archive = {
+        archiveName: 'b-linux-x64.tar.zst',
+        archiveSha256: 'b'.repeat(64),
+        archiveSize: 9,
+        format: 'tar.zst'
+      }
+
+      enrichManifestEntryWithArchive(entry, archive)
+
+      expect(entry).not.toHaveProperty('archiveName')
+      expect(entry).not.toHaveProperty('maxSize')
+    })
+
+    it('preserves an existing maxSize instead of defaulting to binary size', () => {
+      const entry = { platform: 'linux-x64', binaryName: 'b', size: 4, sha256: 'x', filePath: '/p', maxSize: 99 }
+      const archive = { archiveName: 'b.tar.zst', archiveSha256: 'c'.repeat(64), archiveSize: 9, format: 'tar.zst' }
+
+      const enriched = enrichManifestEntryWithArchive(entry, archive)
+
+      expect(enriched.maxSize).toBe(99)
+    })
+  })
+})

@@ -1,11 +1,11 @@
 {
   "phase": "multi-runtime-agent-parity-assessment",
   "objective": "Assess, plan, and execute the implementation needed to configure and run Claude, Codex, OpenCode, and Universal Agent Runtime on the current 1.9.x codebase.",
-  "status": "execution_in_progress",
+  "status": "execution_complete",
   "assessment_complete": true,
   "planning_complete": true,
   "execution_ready": true,
-  "execution_complete": false,
+  "execution_complete": true,
   "last_updated": "2026-05-29",
   "last_updated_by": "claude-code",
   "branch_policy": {
@@ -28,7 +28,7 @@
   "openSpecDetected": false,
   "selected_backend": "hybrid",
   "canonical_progress_file": ".kbd-orchestrator/phases/multi-runtime-agent-parity-assessment/progress.json",
-  "next_pending_change": "change-024-runtime-release-matrix",
+  "next_pending_change": null,
   "changes": [
     {
       "id": "change-001-runtime-agent-model",
@@ -972,13 +972,31 @@
     },
     {
       "id": "change-024-runtime-release-matrix",
-      "status": "TODO",
-      "assigned_backend": "codex",
+      "status": "DONE",
+      "assigned_backend": "claude-code",
       "depends_on": ["change-020-ipns-dnslink-runtime-manifest-publish", "change-023-sidecar-process-supervisor"],
       "tasks_total": 9,
-      "tasks_done": 0,
+      "tasks_done": 9,
+      "started_by": "claude-code",
+      "started_at": "2026-05-30",
+      "completed_by": "claude-code",
+      "completed_at": "2026-05-30",
       "change_file": ".kbd-orchestrator/changes/change-024-runtime-release-matrix/change.md",
       "verification": ["release script tests", "packaged runtime audit", "mac arm64 build", "git diff --check"],
+      "verification_results": [
+        {
+          "command": "pnpm vitest run scripts/__tests__/ (build-managed-binary-manifest, verify-packaged-runtime-deps, runtime-platform-matrix, build-runtime-artifacts, publish-runtime-artifacts-ipfs, sign-runtime-artifact)",
+          "status": "passed (9 files, 151 tests)"
+        },
+        { "command": "pnpm typecheck (node, web, aiCore)", "status": "passed" },
+        { "command": "git diff --check", "status": "clean" },
+        {
+          "command": "pnpm build:mac:arm64",
+          "status": "deferred-to-CI",
+          "reason": "Full electron-builder mac build runs on native CI runners; not executed in dev. Cross-compile + real Apple sign/notarize are env-gated and fixture-tested."
+        }
+      ],
+      "notes": "Subagent-driven TDD. Platform matrix + resolveRuntimeKey, byte-reproducible archives, Zod manifest schema, per-platform merge, release-completeness gate + dry-run (closed unknown-name/array-sig/empty-release bypasses), env-gated macOS sign/notarize, docs. Reviews caught a manifest-schema trust-field strip, a UAR matrix-validation dead-letter, and 3 release-gate bypasses before merge.",
       "blockers": []
     }
   ],
@@ -993,5 +1011,5 @@
     "Do not accept unsigned production runtime channel manifests.",
     "Do not perform large managed-runtime downloads during app startup by default."
   ],
-  "recommended_next_action": "Execute change-024-runtime-release-matrix on the current 1.9.x codebase (last change in this phase). Do not use v2."
+  "recommended_next_action": "All 24 changes DONE. Phase execution complete. Run /kbd-reflect to generate the phase reflection report. Open the change-024 PR -> main (gh-create-pr). Do not use v2."
 }
