@@ -1,138 +1,160 @@
-# REFLECTION: multi-runtime-agent-parity-assessment
+# Reflection — multi-runtime-agent-parity-assessment
 
-Project: The Boss / Cherry Studio fork
-Date: 2026-04-18T14:19:38Z
-Status: completed
-Branch policy: current 1.9.x codebase only; `v2` was not used.
+**Phase:** multi-runtime-agent-parity-assessment
+**Status:** execution_complete (24/24 changes DONE)
+**Date:** 2026-05-30
+**Author:** Claude Code (kbd-reflect)
+
+> Final phase reflection covering all 24 changes. The earlier mid-phase
+> reflection (changes through ~021) is preserved as
+> `reflection-2026-04-18-midphase.md`.
+
+## Objective
+
+Assess, plan, and execute the implementation needed to configure and run Claude,
+Codex, OpenCode, and Universal Agent Runtime (UAR) on the current 1.9.x codebase.
 
 ## Goal Achievement
 
-The phase goal was achieved: the current 1.9.x codebase now has the implementation needed to configure and run Claude, Codex, OpenCode, and Universal Agent Runtime through a shared runtime-aware agent model.
+| Goal | Status |
+|---|---|
+| Run all four runtimes (Claude, Codex, OpenCode, UAR) on 1.9.x | ✅ MET — runtime model, settings UI, execution settings, context pipeline, per-runtime parity (changes 001–008). |
+| Skill + knowledge bridge for non-Claude runtimes | ✅ MET — change-005. |
+| Runtime control plane, session bindings, approval flow | ✅ MET — changes 010–012. |
+| Validation hardening + Electron smoke | ✅ MET — changes 009, 013. |
+| Managed binary distribution (core, resolution, UI, IPFS/IPNS/DNSLink) | ✅ MET — changes 014–021. |
+| Managed-binary trust order (verified-before-PATH) | ✅ MET — change-022. |
+| Sidecar process supervision (observability, idle/restart limits, cleanup) | ✅ MET — change-023. |
+| Runtime release matrix (archives, signed manifest, gates) | ✅ MET — change-024. |
 
-Delivered outcomes:
+**Overall: 24/24 changes DONE. All phase goals MET.**
 
-- Runtime-agnostic agent modeling with runtime profiles, runtime settings, session bindings, skill sync records, and compatibility resolution.
-- Runtime-specific settings UI and i18n coverage for Claude, Codex, OpenCode, and UAR.
-- Embedded and remote UAR configuration, deterministic sidecar config generation, health checks, and sidecar packaging verification.
-- Structured runtime turn context that carries prompt text, runtime binding, skills, knowledge, workspace paths, attachments, and compatibility results.
-- Runtime-native skill bridge generation for Claude, Codex, OpenCode, and UAR while keeping the app skill registry as the source of truth.
-- Codex and OpenCode runtime adapter parity for config mapping, session reuse, permissions/approval contracts, and normalized runtime events.
-- Renderer runtime telemetry chunks, runtime message blocks, readable runtime status/error display, and approval plumbing.
-- Product runtime control plane for runtime profile/settings CRUD, deterministic effective config resolution, backend health checks, preload/IPC access, and Runtime Settings profile selection/test behavior.
-- Runtime-kind session binding persistence so backend session ids are not reused across incompatible runtimes.
-- Runtime approval response flow with OpenCode permission replies and explicit unsupported responses for runtimes without verified response protocols.
-- Embedded UAR smoke coverage through the Electron main-process sidecar path: binary resolution, spawn, `/healthz`, `/readyz`, chat, telemetry, assistant text, and cleanup.
-- Runtime setup documentation and smoke checklist in `docs/en/guides/agent-runtimes.md`.
+## Delivered Changes
 
-## Change Results
+All 24 changes reached `DONE` in `progress.json`:
 
-All planned KBD changes completed:
+- **001–008** runtime model, settings UI, UAR execution settings, context pipeline,
+  skill/knowledge bridge, Codex parity, OpenCode parity, chat telemetry.
+- **009–013** validation hardening, control plane, session bindings, approval flow,
+  UAR electron smoke.
+- **014–021** package scope/size fix, managed-binary core, UAR managed-binary
+  resolution, managed-binary UI/docs, IPFS transport release workflow, signed
+  runtime channel manifest, IPNS/DNSLink publish, on-demand install policy.
+- **022** managed-binary resolution trust order (verified managed binary before
+  opt-in PATH discovery; PATH discovery default-off).
+- **023** sidecar process supervisor (detached process groups, pidusage sampling,
+  idle shutdown, restart budget/backoff, SIGTERM→SIGKILL via tree-kill,
+  shutdownAll on app-quit; UAR + OpenCode routed through it; status IPC + UI).
+- **024** runtime release matrix (platform matrix, byte-reproducible tar.zst/zip
+  archives, Zod manifest schema, per-platform merge, release-completeness gate +
+  dry-run, env-gated macOS sign/notarize, docs).
 
-- `change-001-runtime-agent-model`: DONE
-- `change-002-runtime-settings-ui`: DONE
-- `change-003-uar-execution-settings`: DONE
-- `change-004-runtime-context-pipeline`: DONE
-- `change-005-runtime-skill-knowledge-bridge`: DONE
-- `change-006-codex-runtime-parity`: DONE
-- `change-007-opencode-runtime-parity`: DONE
-- `change-008-runtime-chat-telemetry`: DONE
-- `change-009-runtime-validation-hardening`: DONE
-- `change-010-runtime-control-plane`: DONE
-- `change-011-runtime-session-bindings`: DONE
-- `change-012-runtime-approval-response-flow`: DONE
-- `change-013-uar-electron-smoke`: DONE
+### Landed to `main` this session (PRs)
 
-OpenSpec was not available, so execution used native KBD change files and the phase progress ledger as the source of truth.
+| PR | Content | State |
+|---|---|---|
+| #13 | Upstream Cherry Studio v1.9.7 merge | merged |
+| #14 | change-022 managed-binary trust order | merged |
+| #15 → #16 | change-023 sidecar supervisor (recovered via #16 after a stacked-PR mishap stranded it off `main`) | merged |
+| #17 | change-024 runtime release matrix | merged |
 
-## Verification Summary
+## Artifact Quality Summary
 
-Required gates passed:
+| Metric | Value |
+|---|---|
+| Changes DONE | 24/24 |
+| Changes with artifact-refiner QA log | 1 (change-001) |
+| Changes with `qa.status: passed` (refiner) | 6 (001, 009–013) |
+| Changes with `qa.status: skipped` | 15 |
+| Changes 022–024 QA method | subagent-driven two-stage review (spec + code-quality) per task |
 
-- `pnpm format`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm uar:build:sidecar`
-- `git diff --check`
-- KBD JSON validation
+**Note on QA tooling:** the formal artifact-refiner gate is wired only for
+change-001 (`.refiner/artifacts/change-001-runtime-agent-model/`); there is no
+`.kbd-orchestrator/constraints.md` and no `/refine-validate` command in this repo,
+so most earlier changes recorded `qa: skipped`. Changes 022–024 substituted a
+**subagent-driven TDD review loop** (implementer → spec-compliance review →
+code-quality review → fix, per task) that exceeded a skipped refiner gate and
+caught real defects (see Lessons).
 
-Focused runtime validation passed:
+### Recurring constraint violations
 
-- Runtime model/profile tests.
-- Runtime settings UI tests.
-- UAR service and adapter tests.
-- Runtime skill bridge tests.
-- Codex and OpenCode adapter tests.
-- Skill plus knowledge prompt composition tests.
-- Runtime stream chunk, callback, and renderer block tests.
-- Runtime control service and Runtime Settings backend API tests.
-- Runtime session binding repository and runtime-specific resume tests.
-- Runtime approval service and RuntimeBlock approval action tests.
-- Embedded UAR main-process sidecar smoke test.
+Not measurable via artifact-refiner (only change-001 has a log). From the 022–024
+review loop, the recurring *defect classes* were async-lifecycle races and
+release-gate completeness holes (see Lessons), not style/lint constraints.
 
-Final full test result recorded by change 013:
+## Technical Debt Introduced
 
-- 294 test files passed.
-- 4,437 tests passed.
-- 72 tests skipped.
+- **artifact-refiner not wired**: 15 changes recorded `qa: skipped`. A future phase
+  should either wire `constraints.md` + `/refine-validate` or formally adopt the
+  subagent two-stage review as the QA gate of record.
+- **Native KBD changes not archived**: the 24 change files remain under
+  `.kbd-orchestrator/changes/` rather than `.kbd-orchestrator/changes/archive/<date>-<id>/`.
+- **CI-bound paths env-gated, not exercised here**: change-024's 6-platform
+  cross-compile and real macOS sign/notarize run only on native CI runners; they
+  are fixture-tested but have not run end-to-end against real Apple creds / all
+  targets. The first real CI release run is the validation.
+- **OpenCode/UAR auto-restart semantics**: both opt into supervisor auto-restart;
+  OpenCode's on-demand keyed-server model needed a generation-guard to avoid
+  eviction races. Worth revisiting whether on-demand servers should opt out of
+  auto-restart entirely (a per-spawn `autoRestart` flag).
+- **`pnpm build:mac:arm64` verification deferred**: documented as CI-only; not run.
 
-The final lint gate passed with non-fatal warnings that were not introduced as hard blockers:
+## Lessons Captured
 
-- One oxlint warning remains under `resources/skills/prometheus-skill-system/scripts/build-marketplace.js`.
-- React hooks exhaustive-deps warnings remain in `src/renderer/src/hooks/useSkills.ts` and `src/renderer/src/pages/settings/AgentSettings/components/RuntimeSettings.tsx`.
+1. **The two-stage review loop earns its cost on integration + async code.** Across
+   022–024 it caught ~14 real bugs that passing tests alone would not: post-exit
+   sampling races, a concurrent-stop timer leak (orphaned SIGKILL to a recycled
+   pid), pidless-entry state stranding, stop-during-restart corruption, UAR
+   stale-status/double-spawn races, an OpenCode restart-eviction race, React unmount
+   races, a manifest schema silently stripping security-critical trust fields, a UAR
+   matrix-validation dead-letter (display-name vs key), and three release-gate
+   bypasses (unknown name / array signature / empty release).
 
-## QA Notes
+2. **Display-name vs key mismatches are a recurring hazard.** The build pipeline
+   emits `universal-agent-runtime` while the matrix keys on `uar`; this silently
+   disabled UAR validation until caught. Centralizing `resolveRuntimeKey` in the
+   matrix module fixed it once for all consumers (gates, merge, signing).
 
-Artifact-refiner QA was available for `change-001-runtime-agent-model` and passed.
+3. **Security/release gates must fail loudly on the unexpected.** Default-lenient
+   gates (skip unknown names, accept any object as a signature, pass on empty input)
+   are bypasses triggerable by CI misconfiguration, not just attackers. "Fail on
+   anything unexpected" is the correct posture for a release control.
 
-For changes 002 through 009, artifact-refiner manifests were not available in this repository. Each skipped QA entry is recorded in `progress.json` with the focused verification commands used instead.
+4. **Stacked PRs need merge-order discipline.** change-023 (#15) merged into the
+   change-022 branch, but that branch was never re-merged to `main` after #14, so 23
+   commits were stranded. Always verify the target branch actually contains the
+   work (`git cat-file -e origin/main:<sentinel>`) before building dependent work.
 
-For changes 010 through 013, QA is recorded as passed in `progress.json` based on focused tests plus the final `pnpm format`, `pnpm lint`, `pnpm test`, `pnpm uar:build:sidecar`, and `git diff --check` gates.
+5. **Reproducible artifacts matter for a checksum-publishing pipeline.** Sorting
+   archive members, stamping a constant mtime, and zeroing uid/gid made
+   `archiveSha256` deterministic — without it, identical builds on different hosts
+   would publish different hashes.
 
-Native KBD change files remain in `.kbd-orchestrator/changes/` for inspectability. They were not archived during this reflection step because the existing project workflow has not defined an archive destination for completed native KBD changes.
+6. **Run the broad test sweep, not just the touched file.** A supervisor change
+   passed its own tests but broke a sibling smoke test that transitively used the
+   real singleton; only a full runtime-dir run caught it.
 
-## Resolved Blockers
+7. **Watch for raw control bytes in source.** A test fixture embedded a literal NUL
+   byte, making the `.ts` file binary to git/tooling. Use escape sequences (`\x00`)
+   so source stays plain text.
 
-The original embedded UAR blocker was resolved. `pnpm uar:build:sidecar` now succeeds, copies the darwin-arm64 sidecar binary into `resources/binaries/darwin-arm64/universal-agent-runtime`, and writes `.uar-version` metadata.
+## Recommended Focus for Next Phase
 
-The follow-up functionality blockers are resolved:
+1. **Validate the release matrix in real CI** — run the 6-platform cross-compile and
+   macOS sign/notarize on native runners; confirm the signed channel manifest and
+   the release gate behave end-to-end with real Apple credentials.
+2. **Wire a real QA gate** — adopt artifact-refiner (`constraints.md` +
+   `/refine-validate`) or codify the subagent two-stage review as the standard.
+3. **Archive completed changes** — move the 24 change files to
+   `.kbd-orchestrator/changes/archive/`.
+4. **Revisit on-demand auto-restart** — consider per-spawn `autoRestart: false` for
+   OpenCode's keyed on-demand servers instead of the generation-guard.
+5. **End-to-end runtime smoke on a packaged build** — managed-binary install →
+   supervisor lifecycle → release-manifest verification in a real DMG.
 
-- Runtime health/test actions are routed through real IPC/preload/backend services.
-- Runtime profiles and global settings are applied through an effective config resolver.
-- Runtime session ids are persisted per runtime kind.
-- Runtime approval buttons call backend response APIs instead of remaining display-only.
-- Embedded UAR has automated main-process sidecar smoke coverage.
+## Branch Policy Compliance
 
-The repo-wide `pnpm test` gate initially failed under Vitest 4 because several constructor-style mocks used arrow functions. Those mocks were hardened, stale expectations were aligned with current service behavior, and the full test gate now passes.
-
-## Known Limitations
-
-This phase does not claim lossless native parity across all runtimes. The compatibility matrix and resolver are the intended contract for unsupported or degraded features.
-
-Known runtime caveats:
-
-- Runtime-native capabilities still differ between Claude, Codex, OpenCode, and UAR.
-- Provider support is runtime-dependent; Codex provider assumptions are guarded rather than silently degraded.
-- Knowledge remains app-side and prompt-injected for predictable cross-runtime behavior.
-- Runtime skill copies are generated artifacts, not the source of truth.
-- Manual smoke testing is still recommended for real external binaries and remote endpoints in each developer environment.
-
-## Lessons
-
-The correct model is a canonical agent definition plus runtime binding, not one persisted agent type per runtime.
-
-The prompt pipeline needed a structured context bundle before adapter parity could be made reliable. Runtime-specific transformations are now localized to adapters instead of being implicit in a string-only handoff.
-
-Runtime telemetry is part of parity. Without typed chunks and message blocks, users cannot diagnose which runtime handled a turn, whether skills synced, or why an adapter failed.
-
-Vitest 4 compatibility surfaced repo-wide test fragility unrelated to the runtime work. Fixing those mocks was necessary to preserve the project gate rather than documenting a false external blocker.
-
-## Next Focus
-
-Recommended next steps:
-
-1. Review the broad phase diff before staging, since the work spans schema, services, runtime adapters, UI, tests, docs, vendored UAR files, and lint config.
-2. Run manual smoke tests against real Claude, Codex, OpenCode, and UAR environments using `docs/en/guides/agent-runtimes.md`.
-3. Decide whether completed native KBD change files should be archived or kept as part of this branch's audit trail.
-4. Address the remaining non-fatal lint warnings in a separate cleanup if desired.
-
-REFLECTION COMPLETE
+All work stayed on the 1.9.x `main` line per CLAUDE.md. No `v2` checkout, merge,
+rebase, or cherry-pick occurred. The Boss branding
+(`appId: tools.know-me.the-boss`, `productName: The Boss`) was preserved through the
+upstream v1.9.7 merge.
