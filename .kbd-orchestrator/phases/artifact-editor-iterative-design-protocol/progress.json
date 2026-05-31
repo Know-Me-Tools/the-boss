@@ -1,0 +1,176 @@
+{
+  "phase": "artifact-editor-iterative-design-protocol",
+  "objective": "Deliver a working LLM-driven iterative artifact editor (React + HTMX) — create → display → edit again via natural language → re-display across turns → save to local library — driven by typed AG-UI-style streaming chunks and an editor state machine.",
+  "type": "design-heavy feature build (not a bug patch)",
+  "priority": "cornerstone (user-stated)",
+  "status": "phase_complete",
+  "assessment_complete": true,
+  "planning_complete": true,
+  "execution_ready": true,
+  "execution_complete": true,
+  "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
+  "changes_total": 7,
+  "changes_completed": 7,
+  "changes": {
+    "change-001-artifact-design-protocol-types": "DONE",
+    "change-002-artifact-editor-reducer": "DONE",
+    "change-003-artifact-build-feedback-seam": "DONE",
+    "change-004-artifact-design-orchestrator": "DONE",
+    "change-005-artifact-designer-3pane": "DONE",
+    "change-006-designer-build-loop-wiring": "DONE",
+    "change-007-create-path-entry-and-docs": "DONE"
+  },
+  "current_change": null,
+  "feature_branch": "feat/artifact-iterative-designer",
+  "last_updated": "2026-05-30",
+  "last_updated_by": "claude-code",
+  "branch_policy": {
+    "base": "current-1.9.x",
+    "do_not_use": [
+      "v2"
+    ],
+    "notes": "Per CLAUDE.md, build on the 1.9.x line; never use v2."
+  },
+  "decisions": {
+    "edit_transport": "full-file rewrite per turn first; base-anchored diffs are a later optimization",
+    "edit_engine_and_loop": "chat model via structured output/tool, renderer-orchestrated loop; typed AG-UI-style events modeled on top (NOT a dedicated agent-runtime session for v1)"
+  },
+  "open_questions_resolved": {
+    "artifact_shape": "single-file (tsx/jsx for React, one .html for HTMX); multi-file project tree deferred",
+    "designer_surface": "extend ArtifactPopup into a 3-pane designer (chat|code|preview) behind mode='designer'; no new window in v1",
+    "event_channel": "renderer-local typed channel + reducer; kinds mirror CanonicalAgentEvent so later AG-UI promotion is mechanical; no main-process changes in v1"
+  },
+  "decided_by": "user (2026-05-30)",
+  "openSpecDetected": false,
+  "change_backend": "native-kbd",
+  "plan": {
+    "designPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
+    "executionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/execution.md",
+    "change_count": 7,
+    "change_order": [
+      "change-001-artifact-design-protocol-types",
+      "change-002-artifact-editor-reducer",
+      "change-003-artifact-build-feedback-seam",
+      "change-004-artifact-design-orchestrator",
+      "change-005-artifact-designer-3pane",
+      "change-006-designer-build-loop-wiring",
+      "change-007-create-path-entry-and-docs"
+    ],
+    "next_pending_change": null
+  },
+  "change_log": [
+    {
+      "id": "change-001-artifact-design-protocol-types",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/designProtocol.ts",
+        "src/renderer/src/artifacts/__tests__/designProtocol.test.ts"
+      ],
+      "tests": "27/27 passing (vitest renderer, Node 24.11.1)",
+      "quality": "Biome clean; no console.*; tsgo (web) no errors from these files",
+      "review": "tdd-guide (build) -> typescript-reviewer; HIGH readonly fix + LOW named-type + LOW pinned-hash + MEDIUM doc notes applied",
+      "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-002-artifact-editor-reducer",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/editorReducer.ts",
+        "src/renderer/src/artifacts/__tests__/editorReducer.test.ts"
+      ],
+      "tests": "94/94 passing (vitest renderer, Node 24.16.0)",
+      "quality": "Biome clean; no console.*; pure (only ./designProtocol + @shared types); exhaustiveness guard; tsgo (web) no errors from this file",
+      "review": "tdd-guide (build) -> typescript-reviewer; CRITICAL TS1117 already resolved by clean two-step initEditorState; 2 HIGH + 2 MEDIUM fixed and locked by regression tests (start resets lastBuild/savedRecordId; artifact_full resets lastBuild; stale-turn errors ignored; mid-stream complete -> error; saved clears activeTurnId)",
+      "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-003-artifact-build-feedback-seam",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/buildFeedback.ts",
+        "src/renderer/src/artifacts/__tests__/buildFeedback.test.ts"
+      ],
+      "tests": "22/22 passing (vitest renderer, Node 24.16.0)",
+      "quality": "Biome clean; no console.*/window.* at module scope; IPC injected (mockable); tsgo (web) no errors from this file",
+      "review": "tdd-guide (build) -> typescript-reviewer; HIGH bug caught + fixed: removed character-level stray-`<` HTML check that false-positived on JS operators (`a < b`, `=>`) inside <script>, which would block the iterate loop on valid HTML+JS artifacts; replaced the test that locked it in; added regression tests. Verified real CompileReactArtifactResponse shape = { ok, script, diagnostics } (no errors field).",
+      "qa_gate": "skipped (2 files, below <3-file threshold)"
+    },
+    {
+      "id": "change-004-artifact-design-orchestrator",
+      "status": "DONE",
+      "files": [
+        "src/renderer/src/artifacts/designOrchestrator.ts",
+        "src/renderer/src/artifacts/designOrchestrator.default.ts",
+        "src/renderer/src/artifacts/__tests__/designOrchestrator.test.ts"
+      ],
+      "tests": "46/46 (change-004); 189/189 full artifacts suite (Node 24.16.0)",
+      "quality": "Biome clean; pure core (no window/console/top-level service import); default-wiring isolated with lazy import; tsgo (web) no errors from these files",
+      "review": "tdd-guide (build) -> code-reviewer; HIGH fixed: extractJson regex required newlines, dropping single-line/no-trailing-newline/prose-wrapped JSON -> spurious design_run_error; rewrote regex + brace-slice fallback, added regression tests (all 6 model formats verified). MEDIUM fixed: default generate wrapper throws actionable error on empty fetchGenerate result (missing model/API key).",
+      "qa_gate": "3 files (core+default+test) at threshold; core pure + 46 unit tests + code-review; default.ts is integration-only wiring. Reviewed in lieu of refiner."
+    }
+  ],
+  "change_log_005": {
+    "id": "change-005-artifact-designer-3pane",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactDesigner.test.tsx",
+      "src/renderer/src/i18n/locales/*.json (+ translate/*.json synced)"
+    ],
+    "tests": "ArtifactDesigner 12/12; ArtifactPopup 2/2 regression (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from these files; i18n:check pass; no console.*",
+    "review": "tdd-guide -> typescript-reviewer + a11y-architect; HIGH iframe sandbox (removed allow-same-origin) + HIGH assertive a11y alert region + MEDIUM double-submit/useMemo/aria-busy/per-instance-counter + 7 test tsgo fixes applied",
+    "decision": "new sibling ArtifactDesigner component; ArtifactPopup untouched. Code pane read-only + artifact_saved wiring deferred to change-006.",
+    "qa_gate": "reviewed in lieu of refiner (2 files + i18n; TS + a11y two-stage review)"
+  },
+  "change_log_006": {
+    "id": "change-006-designer-build-loop-wiring",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx (extended)",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactDesigner.loop.test.tsx (new)",
+      "src/renderer/src/i18n/locales/*.json (+ translate/*.json synced)"
+    ],
+    "tests": "designer+loop 29/29; ArtifactPopup 2/2 (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from these files; i18n:check pass + all 20 designer keys resolve; no console.*",
+    "review": "tdd-guide -> code-reviewer; found+fixed i18n prefix bug (artifacts.designer.* -> settings.artifacts.designer.*, strings would not resolve at runtime) + missing keys; empty-title fallback + empty-source guard (avoid schema min(1) IPC rejection); regression tests added",
+    "decision": "post-turn save sets savedRecordId via direct setEditorState (reducer artifact_saved is turn-scoped, would be dropped); code pane still read-only",
+    "qa_gate": "reviewed in lieu of refiner (1 component + test + i18n; two-stage review + independent i18n resolution check)"
+  },
+  "milestone_status": {
+    "M1_spine": "COMPLETE (change-001..004; 189 tests; pure spine, zero UI)",
+    "M2_designer": "COMPLETE (change-005 3-pane designer + change-006 build-loop wiring & save)",
+    "M3_entry_docs": "COMPLETE (change-007 entry from cards + docs; designer reachable; full electron-vite build verified)"
+  },
+  "artifacts": {
+    "assessment": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+    "design": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
+    "plan": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
+    "execution": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/execution.md",
+    "progress": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json",
+    "reflection": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md"
+  },
+  "nextRecommendedAction": "Phase complete (7/7, reflection written). Live-verify one real model turn (pnpm dev, Node 24), then open a PR via gh-create-pr for feat/artifact-iterative-designer. Start the next phase with /kbd-new-phase. Do not use v2.",
+  "session_note": "Resumed session: Node default is v20 (repo requires >=24.11.1). Use `nvm use 24` before running pnpm test/lint. progress.json had been truncated by a hook/rollback and was rebuilt.",
+  "change_log_007": {
+    "id": "change-007-create-path-entry-and-docs",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/components/CodeBlockView/ReactArtifactsCard.tsx",
+      "src/renderer/src/components/CodeBlockView/HtmlArtifactsCard.tsx",
+      "src/renderer/src/components/CodeBlockView/ArtifactDesigner.tsx",
+      "src/renderer/src/components/CodeBlockView/__tests__/ArtifactCardsDesigner.test.tsx",
+      "docs/en/guides/artifacts.md",
+      "i18n edit_with_ai"
+    ],
+    "tests": "CodeBlockView 49/49; full artifacts+cards sweep 238/238 (Node 24.16.0)",
+    "quality": "Biome clean; tsgo 0 from changed files; i18n pass + keys resolve; no console.*",
+    "real_app_verification": "electron-vite build SUCCEEDS (BUILD_EXIT=0; renderer+main+preload bundled; ArtifactDesigner/designOrchestrator chunks present in out/renderer)",
+    "decision": "buildPreviewDocument widened to (source)=>string|Promise<string> so React preview compiles via real compileReact",
+    "qa_gate": "reviewed in lieu of refiner; production build + 238 tests + code review"
+  },
+  "reflection_complete": true,
+  "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md",
+  "goal_achievement": "~95% — v1 goal MET; all assessment gaps closed; base-anchored diffs + real AG-UI mapper + live-model smoke intentionally deferred"
+}
