@@ -32,6 +32,10 @@ export class UarRuntimeAdapter implements AgentServiceInterface {
       )
     }
     const provider = modelInfo.provider
+    // The selected model's endpoint type (e.g. 'openai-response') refines the UAR
+    // transport protocol; validateModelId only returns the provider + model id, so
+    // resolve the full model from the provider's catalog to read endpoint_type.
+    const selectedModel = provider.models?.find((m) => m.id === modelInfo.modelId)
     if (provider.type === 'vertexai' || provider.type === 'vertex-anthropic') {
       return enqueueRuntimeError(
         new Error(
@@ -49,7 +53,10 @@ export class UarRuntimeAdapter implements AgentServiceInterface {
             providerId: provider.id,
             apiKey: provider.apiKey,
             apiHost: provider.apiHost,
-            modelId: modelInfo.modelId
+            modelId: modelInfo.modelId,
+            // Drives UAR's liter-llm transport protocol (chat vs responses). When
+            // the model declares no endpoint type, the runtime infers it from providerId.
+            endpointType: selectedModel?.endpoint_type
           })
           const authHeaders: Record<string, string> = runtimeConfig.authRef
             ? { authorization: `Bearer ${runtimeConfig.authRef}` }
@@ -112,6 +119,7 @@ async function resolveUarEndpoint(
     apiKey?: string
     apiHost?: string
     modelId?: string
+    endpointType?: string
   }
 ): Promise<string> {
   if (runtimeConfig.mode === 'remote' || runtimeConfig.endpoint) {
