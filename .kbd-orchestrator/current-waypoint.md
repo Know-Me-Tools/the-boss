@@ -1,37 +1,42 @@
 # Current KBD Waypoint
 
-Project: The Boss / Cherry Studio fork
-Phase: upstream-1.9.x-merge-strategy
-Date: 2026-05-28
-Status: planning_complete
+**Project:** The Boss / Cherry Studio fork
+**Active phase:** `minimax-agent-protocol`
+**Status:** planned (change-001 already green)
+**Branch:** `fix/minimax-agent-protocol-chat` · **Fix commit:** `f1b024974`
+**Backend:** native KBD · **Date:** 2026-05-31
 
-## Objective
+> Backend note: `openspec/` exists at root but is **dormant** (`changes/` holds
+> only `archive`, `specs/` empty, no `project.json` change_backend). All prior
+> phases used native KBD changes, so this phase continues with native KBD.
 
-Integrate upstream CherryHQ/cherry-studio **v1.9.7** into the fork via a **direct
-merge**, preserving fork-only capabilities (control plane, multi-runtime agents,
-vendored runtimes) and **The Boss** branding.
+## What this phase fixes
 
-## Divergence (from assessment)
-
-- Merge-base `b1d63a3bb`; fork +126 commits, upstream +11 (the v1.9.7 release).
-- 19 upstream files changed; **2 real conflicts** in a trial merge.
-- Fork-only surface and branding are untouched by upstream — zero risk.
+MiniMax **Agent** conversations 404-looped on `wss://api.minimax.io/v1/responses`.
+Root cause: the UAR config generator hard-coded liter-llm `protocol: "auto"`,
+which auto-selects the OpenAI **Responses API** for the `/v1` host; MiniMax is
+chat-completions-only. Fixed by `resolveLiterLlmProtocol` (defaults chat-only
+providers to `chat`; `responses` only for openai/xai; model `endpoint_type`
+precedence). **No upstream MiniMax change** — confirmed via firecrawl (docs are
+chat-completions only) + HTTP probes (`/v1/responses` 404, `/v1/chat/completions`
+401). The failing install was a stale **1.9.4** build.
 
 ## Ordered Changes
 
-1. `merge-001-commit-inflight-runtime` — commit dirty runtime work (clean tree)
-2. `merge-002-create-merge-branch` — branch `merge/upstream-v1.9.7` off `main`
-3. `merge-003-merge-and-resolve-conflicts` — merge + resolve 2 conflicts
-   (`electron-builder.yml` branding, `analytics.ts` enableDataCollection)
-4. `merge-004-verify-build-and-branding` — `pnpm build:check`, confirm branding, open PR
+1. ✅ `minimax-001-verify-fix-in-source` — tests 137/137, tsgo/biome clean (DONE)
+2. ⏳ `minimax-002-install-1.9.7-build` — install `dist/The-Boss-1.9.7-arm64.dmg`, confirm 1.9.7
+3. ⏳ `minimax-003-live-smoke-minimax-agent` — MiniMax agent convo streams; no `/v1/responses`
+4. ⏳ `minimax-004-regression-responses-providers` — openai/xai still `responses`; normal chat OK
+5. ⏳ `minimax-005-push-and-open-draft-pr` — push + draft PR (gh-create-pr → fork `main`, **not v2**)
 
-## Next Step
+## Exact next command
 
-Execute **merge-001**: `git status && git diff --stat`, then commit the in-flight
-runtime work on `main`. Per CLAUDE.md, never use `v2`.
+```
+open dist/The-Boss-1.9.7-arm64.dmg   # install, confirm 1.9.7, then live smoke test the MiniMax agent
+```
 
-## Suspended Phase
+## Next recommended action
 
-`multi-runtime-agent-parity-assessment` (execution_in_progress, next change
-`change-022`) is paused until this merge lands. Its in-flight work is committed by
-merge-001; resume afterward.
+Execute **change-002** (install 1.9.7) → **change-003** (live smoke test the
+standard MiniMax provider in an Agent conversation). On green → **change-005**
+push + draft PR via `gh-create-pr`. Per CLAUDE.md, never use `v2`.

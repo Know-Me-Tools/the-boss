@@ -1,0 +1,47 @@
+{
+  "phase": "minimax-agent-protocol",
+  "status": "execution_in_progress",
+  "assessment_complete": true,
+  "planning_complete": true,
+  "execution_complete": false,
+  "last_updated": "2026-05-31",
+  "last_updated_by": "claude-code",
+  "change_backend": "native-kbd",
+  "execution_backend": "hybrid",
+  "branch": "fix/minimax-agent-protocol-chat",
+  "fix_commit": "f1b024974",
+  "changes_total": 5,
+  "changes_completed": 1,
+  "changes": [
+    {
+      "id": "minimax-001-verify-fix-in-source",
+      "status": "done",
+      "evidence": "runtime 137/137; tsgo clean; biome clean; only negative auto assertion remains"
+    },
+    {
+      "id": "minimax-002-install-1.9.7-build",
+      "status": "pending",
+      "owner": "user"
+    },
+    {
+      "id": "minimax-003-live-smoke-minimax-agent",
+      "status": "pending",
+      "owner": "user"
+    },
+    {
+      "id": "minimax-004-regression-responses-providers",
+      "status": "pending",
+      "owner": "user"
+    },
+    {
+      "id": "minimax-005-push-and-open-draft-pr",
+      "status": "held",
+      "owner": "claude",
+      "gate": "change-003 pass"
+    }
+  ],
+  "next_pending_change": "minimax-002-install-1.9.7-build",
+  "summary": "change-001 re-verified green. Manual changes 002-004 await live test on the 1.9.7 build with a real MiniMax key. change-005 (push + draft PR) HELD pending change-003 pass (or user go-ahead).",
+  "interim_reflection": true,
+  "reflection_status": "interim (phase open; 002-005 pending)"
+}
