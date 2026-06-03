@@ -58,7 +58,7 @@ type OllamaProviderOptions = {
 }
 
 type ReasoningEffortOptionalParams = {
-  thinking?: { type: 'disabled' | 'enabled' | 'auto'; budget_tokens?: number }
+  thinking?: { type: 'disabled' | 'enabled' | 'auto' | 'adaptive'; budget_tokens?: number }
   reasoning?: { max_tokens?: number; exclude?: boolean; effort?: string; enabled?: boolean } | OpenAI.Reasoning
   reasoningEffort?: OpenAIReasoningEffort
   // WARN: This field will be overwrite to undefined by aisdk if the provider is openai-compatible. Use reasoningEffort instead.
@@ -81,13 +81,24 @@ type ReasoningEffortOptionalParams = {
       }
     }
     thinking?: {
-      type: 'enabled' | 'disabled'
+      type: 'enabled' | 'disabled' | 'adaptive'
     }
     thinking_budget?: number
     reasoning_effort?: OpenAIReasoningEffort
   }
   disable_reasoning?: boolean
+  reasoning_split?: boolean
   // Add any other potential reasoning-related keys here if they exist
+}
+
+function isMiniMaxM3OnOfficialProvider(model: Model): boolean {
+  const provider = getProviderByModel(model)
+  const modelId = getLowerBaseModelName(model.id, '/')
+
+  return (
+    modelId === 'minimax-m3' &&
+    (provider.id === SystemProviderIds.minimax || provider.id === SystemProviderIds['minimax-global'])
+  )
 }
 
 // The function is only for generic provider. May extract some logics to independent provider
@@ -100,6 +111,17 @@ export function getReasoningEffort(assistant: Assistant, model: Model): Reasonin
 
   if (!isReasoningModel(model)) {
     return {}
+  }
+
+  if (isMiniMaxM3OnOfficialProvider(model)) {
+    const reasoningEffort = assistant?.settings?.reasoning_effort
+
+    return {
+      reasoning_split: true,
+      thinking: {
+        type: reasoningEffort === 'none' ? 'disabled' : 'adaptive'
+      }
+    }
   }
 
   if (isOpenAIDeepResearchModel(model)) {

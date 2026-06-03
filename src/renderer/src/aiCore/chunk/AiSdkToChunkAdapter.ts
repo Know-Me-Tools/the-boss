@@ -90,6 +90,7 @@ export class AiSdkToChunkAdapter {
   private getSessionWasCleared?: () => boolean
   private providerId?: string
   private idleTimeout?: IdleTimeoutHandle
+  private cumulativeReasoning?: boolean
 
   constructor(
     private onChunk: (chunk: Chunk) => void,
@@ -99,7 +100,8 @@ export class AiSdkToChunkAdapter {
     onSessionUpdate?: (sessionId: string) => void,
     getSessionWasCleared?: () => boolean,
     providerId?: string,
-    idleTimeout?: IdleTimeoutHandle
+    idleTimeout?: IdleTimeoutHandle,
+    cumulativeReasoning?: boolean
   ) {
     this.toolCallHandler = new ToolCallChunkHandler(onChunk, mcpTools)
     this.accumulate = accumulate
@@ -108,6 +110,7 @@ export class AiSdkToChunkAdapter {
     this.getSessionWasCleared = getSessionWasCleared
     this.providerId = providerId
     this.idleTimeout = idleTimeout
+    this.cumulativeReasoning = cumulativeReasoning
   }
 
   private markFirstTokenIfNeeded() {
@@ -343,7 +346,9 @@ export class AiSdkToChunkAdapter {
         // }
         break
       case 'reasoning-delta':
-        final.reasoningContent += chunk.text || ''
+        final.reasoningContent = this.cumulativeReasoning
+          ? chunk.text || ''
+          : final.reasoningContent + (chunk.text || '')
         if (chunk.text) {
           this.markFirstTokenIfNeeded()
         }

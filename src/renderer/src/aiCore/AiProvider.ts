@@ -18,6 +18,11 @@ import type { AiSdkMiddlewareConfig } from './types/middlewareConfig'
 
 const logger = loggerService.withContext('AiProvider')
 
+function shouldUseCumulativeReasoningAdapter(provider: Provider, model: Model): boolean {
+  const modelId = getLowerBaseModelName(model.id, '/')
+  return modelId === 'minimax-m3' && (provider.id === 'minimax' || provider.id === 'minimax-global')
+}
+
 export type AiProviderConfig = AiSdkMiddlewareConfig & {
   assistant: Assistant
   // topicId for tracing
@@ -258,7 +263,8 @@ export default class AiProvider {
         undefined,
         undefined,
         providerConfig.providerId,
-        middlewareConfig.idleTimeout
+        middlewareConfig.idleTimeout,
+        shouldUseCumulativeReasoningAdapter(this.actualProvider, this.model!)
       )
 
       const streamResult = await executor.streamText({

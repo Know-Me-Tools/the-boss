@@ -352,6 +352,11 @@ describe('model utils', () => {
         expect(isNotSupportTextDeltaModel(createModel({ id: 'QWEN-MT-PLUS' }))).toBe(true)
       })
 
+      it('returns true for MiniMax M3 cumulative stream models', () => {
+        expect(isNotSupportTextDeltaModel(createModel({ id: 'minimax-m3' }))).toBe(true)
+        expect(isNotSupportTextDeltaModel(createModel({ id: 'MiniMax-M3' }))).toBe(true)
+      })
+
       it('returns false for qwen-mt-flash and other models', () => {
         expect(isNotSupportTextDeltaModel(createModel({ id: 'qwen-mt-flash' }))).toBe(false)
         expect(isNotSupportTextDeltaModel(createModel({ id: 'Qwen-MT-Flash' }))).toBe(false)

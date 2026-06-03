@@ -65,6 +65,50 @@ describe('AiSdkToChunkAdapter data-context-management', () => {
     })
   })
 
+  it('treats cumulative reasoning chunks as snapshots when enabled', async () => {
+    const onChunk = vi.fn()
+    const adapter = new AiSdkToChunkAdapter(
+      onChunk,
+      [],
+      false,
+      false,
+      undefined,
+      undefined,
+      'openai-compatible',
+      undefined,
+      true
+    )
+
+    await adapter.processStream({
+      fullStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue({ type: 'reasoning-delta', text: 'abc' } as any)
+          controller.enqueue({ type: 'reasoning-delta', text: 'abcd' } as any)
+          controller.enqueue({ type: 'reasoning-end' } as any)
+          controller.close()
+        }
+      }),
+      text: Promise.resolve('')
+    })
+
+    expect(onChunk).toHaveBeenCalledWith({
+      type: ChunkType.THINKING_DELTA,
+      text: 'abc'
+    })
+    expect(onChunk).toHaveBeenCalledWith({
+      type: ChunkType.THINKING_DELTA,
+      text: 'abcd'
+    })
+    expect(onChunk).toHaveBeenCalledWith({
+      type: ChunkType.THINKING_COMPLETE,
+      text: 'abcd'
+    })
+    expect(onChunk).not.toHaveBeenCalledWith({
+      type: ChunkType.THINKING_COMPLETE,
+      text: 'abcabcd'
+    })
+  })
+
   it('emits skill lifecycle chunks from backend synthetic skill events', async () => {
     const onChunk = vi.fn()
     const adapter = new AiSdkToChunkAdapter(onChunk, [], false, false)

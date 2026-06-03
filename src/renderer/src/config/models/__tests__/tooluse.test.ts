@@ -165,6 +165,11 @@ describe('isFunctionCallingModel', () => {
   })
 
   describe('MiniMax M2.x Models', () => {
+    it('supports minimax-m3 model', () => {
+      expect(isFunctionCallingModel(createModel({ id: 'minimax-m3', provider: 'minimax' }))).toBe(true)
+      expect(isFunctionCallingModel(createModel({ id: 'MiniMax-M3', provider: 'minimax-global' }))).toBe(true)
+    })
+
     it('supports minimax-m2 base model', () => {
       expect(isFunctionCallingModel(createModel({ id: 'minimax-m2', provider: 'minimax' }))).toBe(true)
     })

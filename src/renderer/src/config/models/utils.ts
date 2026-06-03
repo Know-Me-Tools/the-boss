@@ -218,7 +218,7 @@ export const isDeepSeekModel = (model?: Model): boolean => {
   return modelId.includes('deepseek') || modelName.includes('deepseek')
 }
 
-const NOT_SUPPORT_TEXT_DELTA_MODEL_REGEX = new RegExp('qwen-mt-(?:turbo|plus)')
+const NOT_SUPPORT_TEXT_DELTA_MODEL_REGEX = new RegExp('qwen-mt-(?:turbo|plus)|minimax-m3')
 
 export const isNotSupportTextDeltaModel = (model: Model): boolean => {
   const modelId = getLowerBaseModelName(model.id)

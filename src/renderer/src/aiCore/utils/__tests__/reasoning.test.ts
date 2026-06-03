@@ -194,6 +194,60 @@ describe('reasoning utils', () => {
       expect(result).toEqual({ reasoning: { enabled: false, exclude: true } })
     })
 
+    it('should use MiniMax M3 adaptive thinking and reasoning split by default', async () => {
+      const { isReasoningModel } = await import('@renderer/config/models')
+
+      vi.mocked(isReasoningModel).mockReturnValue(true)
+
+      const model: Model = {
+        id: 'MiniMax-M3',
+        name: 'MiniMax-M3',
+        provider: SystemProviderIds.minimax
+      } as Model
+
+      const assistant: Assistant = {
+        id: 'test',
+        name: 'Test',
+        settings: {}
+      } as Assistant
+
+      const result = getReasoningEffort(assistant, model)
+      expect(result).toEqual({
+        reasoning_split: true,
+        thinking: {
+          type: 'adaptive'
+        }
+      })
+    })
+
+    it('should disable MiniMax M3 thinking when reasoning effort is none', async () => {
+      const { isReasoningModel } = await import('@renderer/config/models')
+
+      vi.mocked(isReasoningModel).mockReturnValue(true)
+
+      const model: Model = {
+        id: 'MiniMax-M3',
+        name: 'MiniMax-M3',
+        provider: SystemProviderIds['minimax-global']
+      } as Model
+
+      const assistant: Assistant = {
+        id: 'test',
+        name: 'Test',
+        settings: {
+          reasoning_effort: 'none'
+        }
+      } as Assistant
+
+      const result = getReasoningEffort(assistant, model)
+      expect(result).toEqual({
+        reasoning_split: true,
+        thinking: {
+          type: 'disabled'
+        }
+      })
+    })
+
     it('should handle Qwen models with enable_thinking', async () => {
       const { isReasoningModel, isSupportedThinkingTokenQwenModel, isQwenReasoningModel } = await import(
         '@renderer/config/models'

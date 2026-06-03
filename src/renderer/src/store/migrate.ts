@@ -3436,6 +3436,30 @@ const migrateConfig = {
       logger.error('migrate 208 error', error as Error)
       return state
     }
+  },
+  '209': (state: RootState) => {
+    try {
+      state.llm.providers.forEach((provider) => {
+        if (provider.id === 'minimax' || provider.id === 'minimax-global') {
+          const hasMiniMaxM3 = provider.models.some((model) => model.id.toLowerCase() === 'minimax-m3')
+          const miniMaxM3 = SYSTEM_MODELS[provider.id].find((model) => model.id === 'MiniMax-M3')
+          if (!hasMiniMaxM3 && miniMaxM3) {
+            provider.models.unshift({ ...miniMaxM3 })
+          }
+
+          provider.models.forEach((model) => {
+            if (isNotSupportTextDeltaModel(model)) {
+              model.supported_text_delta = false
+            }
+          })
+        }
+      })
+      logger.info('migrate 209 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 209 error', error as Error)
+      return state
+    }
   }
 }
 
