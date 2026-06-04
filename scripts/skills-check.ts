@@ -10,7 +10,9 @@ import {
   CLAUDE_SKILLS_DIR,
   CLAUDE_SKILLS_GITIGNORE,
   listSkillNames,
+  PROMETHEUS_SKILL_SYSTEM_DIR,
   readFileSafe,
+  REQUIRED_PROMETHEUS_SKILL_PATHS,
   ROOT_DIR
 } from './skills-common'
 
@@ -109,6 +111,28 @@ function checkTrackedFilesAgainstWhitelist(skillNames: string[], errors: string[
   }
 }
 
+function checkPrometheusSkillSystem(errors: string[]) {
+  if (!fs.existsSync(PROMETHEUS_SKILL_SYSTEM_DIR)) {
+    errors.push('resources/skills/prometheus-skill-system is missing')
+    return
+  }
+
+  for (const relativeSkillPath of REQUIRED_PROMETHEUS_SKILL_PATHS) {
+    const skillPath = path.join(PROMETHEUS_SKILL_SYSTEM_DIR, relativeSkillPath)
+    if (!fs.existsSync(skillPath)) {
+      errors.push(`required Prometheus skill is missing: resources/skills/prometheus-skill-system/${relativeSkillPath}`)
+      continue
+    }
+
+    const stat = fs.statSync(skillPath)
+    if (!stat.isFile()) {
+      errors.push(
+        `required Prometheus skill path must be a file: resources/skills/prometheus-skill-system/${relativeSkillPath}`
+      )
+    }
+  }
+}
+
 /**
  * Validates public skills governance:
  * - generated gitignore files are up to date
@@ -140,6 +164,7 @@ function main() {
     checkClaudeSkillSymlink(skillName, errors)
   }
   checkTrackedFilesAgainstWhitelist(skillNames, errors)
+  checkPrometheusSkillSystem(errors)
 
   if (errors.length > 0) {
     console.error('skills:check failed')
@@ -149,7 +174,11 @@ function main() {
     process.exit(1)
   }
 
-  console.log(`skills:check passed (${skillNames.length} public skill${skillNames.length === 1 ? '' : 's'})`)
+  console.log(
+    `skills:check passed (${skillNames.length} public skill${skillNames.length === 1 ? '' : 's'}, ${
+      REQUIRED_PROMETHEUS_SKILL_PATHS.length
+    } required Prometheus skills)`
+  )
 }
 
 main()

@@ -9,6 +9,7 @@ import { Dropdown, Tooltip } from 'antd'
 import type { FC } from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 
 import { DraggableList } from '../DraggableList'
@@ -111,6 +112,7 @@ export const SidebarPinnedApps: FC = () => {
   const { theme } = useTheme()
   const { openMinappKeepAlive } = useMinappPopup()
   const { isTopNavbar } = useNavbarPosition()
+  const navigate = useNavigate()
 
   return (
     <DraggableList list={pinned} onUpdate={updatePinnedMinapps} listStyle={{ marginBottom: 5 }}>
@@ -130,7 +132,13 @@ export const SidebarPinnedApps: FC = () => {
             <Dropdown menu={{ items: menuItems }} trigger={['contextMenu']} overlayStyle={{ zIndex: 10000 }}>
               <Icon
                 theme={theme}
-                onClick={() => openMinappKeepAlive(app)}
+                onClick={() => {
+                  if (app.route) {
+                    navigate(app.route)
+                    return
+                  }
+                  openMinappKeepAlive(app)
+                }}
                 className={`${isActive ? 'active' : ''} ${openedKeepAliveMinapps.some((item) => item.id === app.id) ? 'opened-minapp' : ''}`}>
                 <MinAppIcon size={20} app={app} style={{ borderRadius: 6 }} sidebar />
               </Icon>

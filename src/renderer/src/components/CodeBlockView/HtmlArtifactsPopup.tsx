@@ -1,4 +1,5 @@
 import type { ArtifactRecordDraft } from '@shared/artifacts'
+import { useTranslation } from 'react-i18next'
 
 import ArtifactPopup from './ArtifactPopup'
 
@@ -21,13 +22,15 @@ const HtmlArtifactsPopup = ({
   createLibraryDraft,
   onClose
 }: HtmlArtifactsPopupProps) => {
+  const { t } = useTranslation()
+
   return (
     <ArtifactPopup
       open={open}
       title={title}
       code={html}
       codeLanguage="html"
-      typeLabel="HTML Artifact"
+      typeLabel={t('settings.artifacts.type_html')}
       previewDocument={previewDocument}
       onSave={onSave}
       createLibraryDraft={createLibraryDraft}

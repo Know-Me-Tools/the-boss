@@ -39,13 +39,13 @@
 
 import { loggerService } from '@logger'
 import CodeEditor from '@renderer/components/CodeEditor'
+import type { ArtifactRecordDraft } from '@shared/artifacts'
 import { Button, Modal, Splitter, Tooltip } from 'antd'
-import { SendHorizonal, Save, Wrench, X } from 'lucide-react'
+import { Save, SendHorizonal, Wrench, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
-import type { ArtifactRecordDraft } from '@shared/artifacts'
 import type { ArtifactDesignEvent, ArtifactSourceLanguage } from '../../artifacts/designProtocol'
 import type { EditorState } from '../../artifacts/editorReducer'
 import { initEditorState } from '../../artifacts/editorReducer'

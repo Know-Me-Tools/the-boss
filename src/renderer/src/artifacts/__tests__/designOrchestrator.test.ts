@@ -19,12 +19,12 @@
 
 import { describe, expect, it, vi } from 'vitest'
 
-import type { ArtifactDesignEvent } from '../designProtocol'
-import { versionHash } from '../designProtocol'
 import type { ArtifactOrchestratorDeps, RunDesignTurnInput } from '../designOrchestrator'
 import { buildTurnPrompt, extractJson, runDesignTurn } from '../designOrchestrator'
-import { editorReducer, initEditorState } from '../editorReducer'
+import type { ArtifactDesignEvent } from '../designProtocol'
+import { versionHash } from '../designProtocol'
 import type { EditorState } from '../editorReducer'
+import { editorReducer, initEditorState } from '../editorReducer'
 
 // ---------------------------------------------------------------------------
 // Test helpers

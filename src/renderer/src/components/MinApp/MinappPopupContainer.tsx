@@ -237,7 +237,7 @@ const MinappPopupContainer: React.FC = () => {
 
   /** combine the openedKeepAliveMinapps and openedOneOffMinapp */
   const combinedApps = useMemo(() => {
-    return [...openedKeepAliveMinapps, ...(openedOneOffMinapp ? [openedOneOffMinapp] : [])]
+    return [...openedKeepAliveMinapps, ...(openedOneOffMinapp ? [openedOneOffMinapp] : [])].filter((app) => !app.route)
   }, [openedKeepAliveMinapps, openedOneOffMinapp])
 
   /** get the extra info of the apps */

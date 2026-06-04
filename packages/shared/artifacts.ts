@@ -195,6 +195,17 @@ export const UpdateArtifactMetadataRequestSchema = z.object({
 })
 export type UpdateArtifactMetadataRequest = z.infer<typeof UpdateArtifactMetadataRequestSchema>
 
+export const UpdateArtifactSourceRequestSchema = z.object({
+  id: z.string().min(1),
+  source: z.string().min(1),
+  sourceLanguage: ArtifactSourceLanguageSchema.optional(),
+  runtimeProfileId: ArtifactRuntimeProfileIdSchema.optional(),
+  themeId: ArtifactThemeIdSchema.optional(),
+  accessPolicy: ArtifactAccessPolicySchema.optional(),
+  origin: ArtifactOriginRefSchema.optional()
+})
+export type UpdateArtifactSourceRequest = z.infer<typeof UpdateArtifactSourceRequestSchema>
+
 export const HTML_ARTIFACT_RUNTIME_PROFILES: HtmlArtifactRuntimeProfile[] = [
   {
     id: 'html',

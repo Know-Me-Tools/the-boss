@@ -1,4 +1,10 @@
-import type { ArtifactKind, ArtifactMetadataPatch, ArtifactRecord, ArtifactRecordDraft } from '@shared/artifacts'
+import type {
+  ArtifactKind,
+  ArtifactMetadataPatch,
+  ArtifactRecord,
+  ArtifactRecordDraft,
+  UpdateArtifactSourceRequest
+} from '@shared/artifacts'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export function useArtifactLibrary() {
@@ -33,6 +39,15 @@ export function useArtifactLibrary() {
   const updateMetadata = useCallback(
     async (id: string, patch: ArtifactMetadataPatch) => {
       const record = await window.api.artifacts.updateMetadata(id, patch)
+      await reload()
+      return record
+    },
+    [reload]
+  )
+
+  const updateSource = useCallback(
+    async (request: UpdateArtifactSourceRequest) => {
+      const record = await window.api.artifacts.updateSource(request)
       await reload()
       return record
     },
@@ -88,6 +103,7 @@ export function useArtifactLibrary() {
     reload,
     saveArtifact,
     updateMetadata,
+    updateSource,
     forkArtifact,
     deleteArtifact
   }

@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
     </div>
   )),
   HtmlArtifactsCard: vi.fn(({ onSave, html }) => (
-    <div>
+    <div data-testid="html-artifact-card">
       <div>{html}</div>
       <button type="button" onClick={() => onSave('new html content')}>
         Save HTML
@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
     </div>
   )),
   ReactArtifactsCard: vi.fn(({ onSave, code }) => (
-    <div>
+    <div data-testid="react-artifact-card">
       <div>{code}</div>
       <button type="button" onClick={() => onSave('new react content')}>
         Save React
@@ -233,6 +233,31 @@ describe('CodeBlock', () => {
       })
     })
 
+    it('routes assistant HTML/HTMX artifacts to the HTML artifact card', () => {
+      const htmxProps = {
+        ...defaultProps,
+        className: 'language-htmx',
+        children: '<button hx-get="/status" hx-target="#result">Refresh</button><div id="result"></div>'
+      }
+
+      render(<CodeBlock {...htmxProps} />)
+
+      expect(screen.getByTestId('html-artifact-card')).toBeInTheDocument()
+      expect(mocks.HtmlArtifactsCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: htmxProps.children,
+          origin: {
+            messageBlockId: 'test-msg-block-id',
+            codeBlockId: 'test-code-block-id'
+          },
+          onSave: expect.any(Function)
+        }),
+        undefined
+      )
+      expect(mocks.ReactArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
     it('should route React artifacts to the React artifact card', () => {
       const reactProps = {
         ...defaultProps,
@@ -242,8 +267,30 @@ describe('CodeBlock', () => {
 
       render(<CodeBlock {...reactProps} />)
 
-      expect(mocks.ReactArtifactsCard).toHaveBeenCalledOnce()
+      expect(screen.getByTestId('react-artifact-card')).toBeInTheDocument()
+      expect(mocks.ReactArtifactsCard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: reactProps.children,
+          sourceLanguage: 'tsx',
+          origin: {
+            messageBlockId: 'test-msg-block-id',
+            codeBlockId: 'test-code-block-id'
+          },
+          onSave: expect.any(Function)
+        }),
+        undefined
+      )
       expect(mocks.CodeBlockView).not.toHaveBeenCalled()
+    })
+
+    it('keeps plain code blocks on CodeBlockView without artifact cards', () => {
+      render(<CodeBlock {...defaultProps} />)
+
+      expect(mocks.CodeBlockView).toHaveBeenCalledOnce()
+      expect(mocks.HtmlArtifactsCard).not.toHaveBeenCalled()
+      expect(mocks.ReactArtifactsCard).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('html-artifact-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('react-artifact-card')).not.toBeInTheDocument()
     })
 
     it('should keep jsx-artifact as a compatibility alias', () => {

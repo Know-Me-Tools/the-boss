@@ -80,6 +80,7 @@ export enum IpcChannel {
   Artifact_List = 'artifact:list',
   Artifact_Get = 'artifact:get',
   Artifact_UpdateMetadata = 'artifact:update-metadata',
+  Artifact_UpdateSource = 'artifact:update-source',
   Artifact_Fork = 'artifact:fork',
   Artifact_Delete = 'artifact:delete',
   Artifact_CompileReact = 'artifact:compile-react',

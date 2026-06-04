@@ -1,7 +1,6 @@
+import type { ArtifactSourceLanguage } from '@shared/artifacts'
 import { ArtifactSourceLanguageSchema } from '@shared/artifacts'
 import * as z from 'zod'
-
-import type { ArtifactSourceLanguage } from '@shared/artifacts'
 
 export type { ArtifactSourceLanguage } from '@shared/artifacts'
 

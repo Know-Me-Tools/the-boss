@@ -1,44 +1,76 @@
 {
   "project": "The Boss / Cherry Studio fork",
-  "phase": "minimax-agent-protocol",
-  "status": "planned",
-  "lastUpdated": "2026-05-31",
-  "assessmentPath": ".kbd-orchestrator/phases/minimax-agent-protocol/assessment.md",
-  "planPath": ".kbd-orchestrator/phases/minimax-agent-protocol/plan.md",
-  "executionPath": ".kbd-orchestrator/phases/minimax-agent-protocol/execution.md",
-  "reflectionPath": ".kbd-orchestrator/phases/minimax-agent-protocol/reflection.md",
-  "progressPath": ".kbd-orchestrator/phases/minimax-agent-protocol/progress.json",
-  "openSpecDetected": false,
-  "changeBackend": "native-kbd",
-  "branch": "fix/minimax-agent-protocol-chat",
-  "fixCommit": "f1b024974",
-  "next_pending_change": "minimax-002-install-1.9.7-build",
-  "exact_next_command": "open dist/The-Boss-1.9.7-arm64.dmg  # then live smoke test the MiniMax agent",
-  "nextRecommendedAction": "change-001 (source re-verify) is already green. Execute change-002: install dist/The-Boss-1.9.7-arm64.dmg (right-click Open / xattr quarantine), confirm in-app 1.9.7, then change-003 live smoke test the standard MiniMax provider in an Agent conversation. On green, change-005 pushes the branch + opens a draft PR via gh-create-pr to fork Know-Me-Tools/the-boss main. Do not use v2.",
+  "phase": "artifact-editor-iterative-design-protocol",
+  "status": "reflection_complete",
+  "lastUpdated": "2026-06-04",
+  "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+  "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
+  "executionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/execution.md",
+  "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md",
+  "progressPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json",
+  "openSpecDetected": true,
+  "changeBackend": "openspec",
+  "branch": "feat/artifact-productization-skill-system",
+  "next_pending_change": null,
+  "exact_next_command": "/kbd-new-phase",
+  "nextRecommendedAction": "Reflection complete for artifact-editor-iterative-design-protocol. Advance to the next phase with /kbd-new-phase, or run /kbd-status to inspect the completed phase.",
   "changeList": [
-    { "id": "minimax-001-verify-fix-in-source", "title": "Re-verify fix in source", "type": "verify", "status": "done", "agent": "build-error-resolver" },
-    { "id": "minimax-002-install-1.9.7-build", "title": "Install 1.9.7 build", "type": "delivery", "status": "pending", "agent": "manual" },
-    { "id": "minimax-003-live-smoke-minimax-agent", "title": "Live smoke: MiniMax agent conversation", "type": "verify", "status": "pending", "agent": "user/e2e-runner" },
-    { "id": "minimax-004-regression-responses-providers", "title": "Regression: openai/xai responses + non-agent MiniMax chat", "type": "verify", "status": "pending", "agent": "user/e2e-runner" },
-    { "id": "minimax-005-push-and-open-draft-pr", "title": "Push branch + draft PR", "type": "delivery", "status": "pending", "agent": "gh-create-pr" }
-  ],
-  "completed_phases": [
     {
-      "phase": "upstream-1.9.x-merge-strategy",
-      "status": "complete",
-      "pr": "https://github.com/Know-Me-Tools/the-boss/pull/13",
-      "note": "Upstream Cherry Studio v1.9.7 merged to main; The Boss branding preserved."
+      "id": "artifact-008-storage-version-update",
+      "title": "Persist source edits and append artifact versions",
+      "type": "implementation",
+      "status": "done",
+      "agent": "tdd-guide -> code-reviewer",
+      "openspec": "openspec/changes/artifact-008-storage-version-update"
     },
     {
-      "phase": "multi-runtime-agent-parity-assessment",
-      "status": "complete",
-      "changes": "24/24 DONE",
-      "prs": [
-        "https://github.com/Know-Me-Tools/the-boss/pull/14",
-        "https://github.com/Know-Me-Tools/the-boss/pull/16",
-        "https://github.com/Know-Me-Tools/the-boss/pull/17"
-      ],
-      "note": "Claude/Codex/OpenCode/UAR run on 1.9.x; managed-binary distribution, trust order, sidecar supervisor, and runtime release matrix all landed. Reflection written 2026-05-30."
+      "id": "artifact-009-library-designer-entry",
+      "title": "Open stored artifacts in ArtifactDesigner and save refinements",
+      "type": "implementation",
+      "status": "done",
+      "agent": "frontend-app-builder -> a11y-audit",
+      "openspec": "openspec/changes/artifact-009-library-designer-entry"
+    },
+    {
+      "id": "artifact-010-conversation-entrypoints",
+      "title": "Verify and wire assistant plus agent conversation Edit with AI entries",
+      "type": "implementation",
+      "status": "done",
+      "agent": "chat-ui -> code-reviewer",
+      "openspec": "openspec/changes/artifact-010-conversation-entrypoints"
+    },
+    {
+      "id": "artifact-011-navigation-and-miniapp",
+      "title": "Add first-class artifact library route, sidebar entry, and mini-app surface",
+      "type": "implementation",
+      "status": "done",
+      "agent": "frontend-app-builder -> a11y-audit",
+      "openspec": "openspec/changes/artifact-011-navigation-and-miniapp"
+    },
+    {
+      "id": "artifact-012-prometheus-skill-sync",
+      "title": "Normalize Prometheus skill-system references and runtime availability",
+      "type": "integration",
+      "status": "done",
+      "agent": "dependency-auditor -> code-reviewer",
+      "openspec": "openspec/changes/artifact-012-prometheus-skill-sync"
+    },
+    {
+      "id": "artifact-013-settings-i18n-verification",
+      "title": "Complete artifact settings, labels, and end-to-end verification",
+      "type": "verification",
+      "status": "done",
+      "agent": "code-reviewer -> browser-testing-with-devtools",
+      "openspec": "openspec/changes/artifact-013-settings-i18n-verification"
     }
+  ],
+  "completed_foundation_changes": [
+    "change-001-artifact-design-protocol-types",
+    "change-002-artifact-editor-reducer",
+    "change-003-artifact-build-feedback-seam",
+    "change-004-artifact-design-orchestrator",
+    "change-005-artifact-designer-3pane",
+    "change-006-designer-build-loop-wiring",
+    "change-007-create-path-entry-and-docs"
   ]
 }

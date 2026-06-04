@@ -15,7 +15,8 @@ import {
   type CompileReactArtifactResponse,
   HTML_ARTIFACT_RUNTIME_PROFILES,
   REACT_ARTIFACT_RUNTIME_PROFILES,
-  UpdateArtifactMetadataRequestSchema
+  UpdateArtifactMetadataRequestSchema,
+  UpdateArtifactSourceRequestSchema
 } from '@shared/artifacts'
 import { build } from 'esbuild'
 
@@ -382,6 +383,59 @@ export class ArtifactService {
     }
 
     await this.writeLibrary(artifacts)
+    return updatedRecord
+  }
+
+  async updateArtifactSource(input: unknown): Promise<ArtifactRecord> {
+    const request = UpdateArtifactSourceRequestSchema.parse(input)
+    const library = await this.readLibrary()
+    const timestamp = new Date().toISOString()
+    const versionId = randomUUID()
+    let updatedRecord: ArtifactRecord | null = null
+
+    const artifacts = library.artifacts.map((artifact) => {
+      if (artifact.id !== request.id) {
+        return artifact
+      }
+
+      const sourceLanguage = request.sourceLanguage ?? artifact.sourceLanguage
+      const runtimeProfileId = request.runtimeProfileId ?? artifact.runtimeProfileId
+      const themeId = request.themeId ?? artifact.themeId
+      const accessPolicy = request.accessPolicy ?? artifact.accessPolicy
+      const origin = request.origin ?? artifact.origin
+
+      updatedRecord = {
+        ...artifact,
+        sourceLanguage,
+        runtimeProfileId,
+        latestSource: request.source,
+        themeId,
+        accessPolicy,
+        updatedAt: timestamp,
+        currentVersionId: versionId,
+        versions: [
+          ...artifact.versions,
+          {
+            id: versionId,
+            createdAt: timestamp,
+            source: request.source,
+            sourceLanguage,
+            runtimeProfileId,
+            themeId,
+            accessPolicy,
+            origin
+          }
+        ]
+      }
+
+      return updatedRecord
+    })
+
+    if (!updatedRecord) {
+      throw new Error(`Unknown artifact "${request.id}".`)
+    }
+
+    await this.writeLibrary(artifacts.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)))
     return updatedRecord
   }
 

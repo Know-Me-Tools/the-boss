@@ -7,6 +7,27 @@ export const CLAUDE_SKILLS_DIR = path.join(ROOT_DIR, '.claude', 'skills')
 export const AGENTS_SKILLS_GITIGNORE = path.join(AGENTS_SKILLS_DIR, '.gitignore')
 export const CLAUDE_SKILLS_GITIGNORE = path.join(CLAUDE_SKILLS_DIR, '.gitignore')
 export const PUBLIC_SKILLS_FILE = path.join(AGENTS_SKILLS_DIR, 'public-skills.txt')
+export const PROMETHEUS_SKILL_SYSTEM_DIR = path.join(ROOT_DIR, 'resources', 'skills', 'prometheus-skill-system')
+
+export const REQUIRED_PROMETHEUS_SKILL_PATHS = [
+  'skills/imported/artifact-refiner/SKILL.md',
+  'skills/imported/artifact-refiner/skills/artifact-refiner/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-a2ui/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-content/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-image/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-logo/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-status/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-ui/SKILL.md',
+  'skills/imported/artifact-refiner/skills/refine-validate/SKILL.md',
+  'skills/imported/sycophancy-correction/SKILL.md',
+  'skills/process/kbd-process-orchestrator/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-assess/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-execute/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-init/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-plan/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-reflect/SKILL.md',
+  'skills/process/kbd-process-orchestrator/skills/kbd-status/SKILL.md'
+] as const
 
 const SKILL_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 

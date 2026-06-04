@@ -10,7 +10,8 @@ import type {
   ArtifactRecord,
   ArtifactRecordDraft,
   CompileReactArtifactRequest,
-  CompileReactArtifactResponse
+  CompileReactArtifactResponse,
+  UpdateArtifactSourceRequest
 } from '@shared/artifacts'
 import type { GitBashPathInfo, TerminalConfig, UpgradeChannel } from '@shared/config/constant'
 import type { LogLevel, LogSourceWithContext } from '@shared/config/logger'
@@ -433,6 +434,8 @@ const api = {
     get: (id: string): Promise<ArtifactRecord | null> => ipcRenderer.invoke(IpcChannel.Artifact_Get, id),
     updateMetadata: (id: string, patch: ArtifactMetadataPatch): Promise<ArtifactRecord> =>
       ipcRenderer.invoke(IpcChannel.Artifact_UpdateMetadata, { id, patch }),
+    updateSource: (request: UpdateArtifactSourceRequest): Promise<ArtifactRecord> =>
+      ipcRenderer.invoke(IpcChannel.Artifact_UpdateSource, request),
     fork: (id: string): Promise<ArtifactRecord> => ipcRenderer.invoke(IpcChannel.Artifact_Fork, id),
     delete: (id: string): Promise<boolean> => ipcRenderer.invoke(IpcChannel.Artifact_Delete, id),
     compileReact: (request: CompileReactArtifactRequest): Promise<CompileReactArtifactResponse> =>

@@ -112,6 +112,24 @@ describe('ArtifactService', () => {
     })
     expect(renamed.title).toBe('Weather Widget Renamed')
 
+    const updated = await service.updateArtifactSource({
+      id: saved.id,
+      source: 'export default function App() { return <div>Updated</div> }',
+      origin: {
+        messageBlockId: 'block-2',
+        codeBlockId: 'code-2'
+      }
+    })
+    expect(updated.latestSource).toContain('Updated')
+    expect(updated.versions).toHaveLength(2)
+    expect(updated.currentVersionId).toBe(updated.versions[1].id)
+    expect(updated.versions[0].source).toContain('Hello')
+    expect(updated.versions[1].source).toContain('Updated')
+    expect(updated.versions[1].origin).toEqual({
+      messageBlockId: 'block-2',
+      codeBlockId: 'code-2'
+    })
+
     const forked = await service.forkArtifact(saved.id)
     expect(forked.sourceArtifactId).toBe(saved.id)
     expect(forked.versions).toHaveLength(1)
@@ -123,6 +141,43 @@ describe('ArtifactService', () => {
     expect(deleted).toBe(true)
     const afterDelete = await service.listArtifacts()
     expect(afterDelete).toHaveLength(1)
+
+    await fs.rm(tempDir, { recursive: true, force: true })
+  })
+
+  it('rejects source updates for unknown or invalid artifacts', async () => {
+    const tempDir = await fs.mkdtemp(path.join(process.cwd(), '.artifact-library-'))
+    const service = new ArtifactService({ libraryPath: path.join(tempDir, 'library.json'), useLocking: false })
+
+    await expect(
+      service.updateArtifactSource({
+        id: 'missing-artifact',
+        source: '<main>Missing</main>'
+      })
+    ).rejects.toThrow('Unknown artifact "missing-artifact".')
+
+    const saved = await service.saveArtifact({
+      title: 'HTML Widget',
+      kind: 'html',
+      runtimeProfileId: 'html',
+      sourceLanguage: 'html',
+      source: '<main>Hello</main>',
+      themeId: 'boss-light',
+      accessPolicy: {
+        internetEnabled: true
+      }
+    })
+
+    await expect(
+      service.updateArtifactSource({
+        id: saved.id,
+        source: ''
+      })
+    ).rejects.toThrow()
+
+    const unchanged = await service.getArtifact(saved.id)
+    expect(unchanged?.versions).toHaveLength(1)
+    expect(unchanged?.latestSource).toBe('<main>Hello</main>')
 
     await fs.rm(tempDir, { recursive: true, force: true })
   })

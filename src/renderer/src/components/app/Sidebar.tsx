@@ -17,6 +17,7 @@ import {
   Code,
   FileSearch,
   Folder,
+  GalleryVerticalEnd,
   Languages,
   LayoutGrid,
   MessageSquare,
@@ -132,6 +133,7 @@ const MainMenus: FC = () => {
   const iconMap = {
     assistants: <MessageSquare size={18} className="icon" />,
     agents: <MousePointerClick size={18} className="icon" />,
+    artifacts: <GalleryVerticalEnd size={18} className="icon" />,
     store: <Sparkle size={18} className="icon" />,
     paintings: <Palette size={18} className="icon" />,
     translate: <Languages size={18} className="icon" />,
@@ -146,6 +148,7 @@ const MainMenus: FC = () => {
   const pathMap = {
     assistants: '/',
     agents: '/agents',
+    artifacts: '/artifacts',
     store: '/store',
     paintings: `/paintings/${defaultPaintingProvider}`,
     translate: '/translate',

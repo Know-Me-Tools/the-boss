@@ -7,6 +7,7 @@ import {
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
 import type { ThemeMode } from '@renderer/types'
 import type { ArtifactOriginRef, ArtifactSourceLanguage, ReactArtifactRuntimeProfileId } from '@shared/artifacts'
 import { Button } from 'antd'
@@ -16,8 +17,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
-
-import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
 
 import ArtifactDesigner from './ArtifactDesigner'
 import ArtifactPopup from './ArtifactPopup'
@@ -39,7 +38,7 @@ const getTerminalStyles = (theme: ThemeMode) => ({
   promptColor: theme === 'dark' ? '#7dd3fc' : '#0369a1'
 })
 
-function getReactArtifactTitle(source: string): string {
+function getReactArtifactTitle(source: string): string | undefined {
   const componentName = /export\s+default\s+function\s+([A-Za-z0-9_]+)/.exec(source)?.[1]
   if (componentName) {
     return componentName
@@ -50,7 +49,7 @@ function getReactArtifactTitle(source: string): string {
     return constName
   }
 
-  return 'React/TSX Artifact'
+  return undefined
 }
 
 function buildCompileErrorDocument(title: string, messages: string[]): string {
@@ -97,7 +96,7 @@ const ReactArtifactsCard: FC<Props> = ({
   isStreaming = false
 }) => {
   const { t } = useTranslation()
-  const title = useMemo(() => getReactArtifactTitle(code), [code])
+  const title = useMemo(() => getReactArtifactTitle(code) ?? t('settings.artifacts.type_react'), [code, t])
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [isDesignerOpen, setIsDesignerOpen] = useState(false)
   const [isCompiling, setIsCompiling] = useState(false)
@@ -186,29 +185,33 @@ const ReactArtifactsCard: FC<Props> = ({
    * This is superior to a "loading placeholder" approach because the designer
    * preview pane actually shows the compiled React artifact after each turn.
    */
-  const buildDesignerPreviewDocument = useCallback(async (source: string): Promise<string> => {
-    const settings = await loadArtifactSettings()
-    const overrides = parseArtifactDirectiveOverrides('react', source)
-    const themeId = overrides.themeId ?? settings.defaultThemeId
-    const result = await window.api.artifacts.compileReact({
-      source,
-      baseCss: settings.baseCss,
-      themeCss: getThemeCss(themeId),
-      customCss: settings.customCss,
-      title: getReactArtifactTitle(source)
-    })
+  const buildDesignerPreviewDocument = useCallback(
+    async (source: string): Promise<string> => {
+      const settings = await loadArtifactSettings()
+      const overrides = parseArtifactDirectiveOverrides('react', source)
+      const themeId = overrides.themeId ?? settings.defaultThemeId
+      const artifactTitle = getReactArtifactTitle(source) ?? t('settings.artifacts.type_react')
+      const result = await window.api.artifacts.compileReact({
+        source,
+        baseCss: settings.baseCss,
+        themeCss: getThemeCss(themeId),
+        customCss: settings.customCss,
+        title: artifactTitle
+      })
 
-    if (!result.ok || !result.script) {
-      return buildCompileErrorDocument(getReactArtifactTitle(source), result.diagnostics)
-    }
+      if (!result.ok || !result.script) {
+        return buildCompileErrorDocument(artifactTitle, result.diagnostics)
+      }
 
-    return buildReactArtifactPreviewDocument({
-      title: getReactArtifactTitle(source),
-      script: result.script,
-      settings,
-      overrides
-    })
-  }, [])
+      return buildReactArtifactPreviewDocument({
+        title: artifactTitle,
+        script: result.script,
+        settings,
+        overrides
+      })
+    },
+    [t]
+  )
 
   const loadingDocument = `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.react_compiling')}</body></html>`
 
@@ -299,14 +302,14 @@ const ReactArtifactsCard: FC<Props> = ({
         title={title}
         code={sourceCode}
         codeLanguage={sourceLanguage}
-        typeLabel="React/TSX Artifact"
+        typeLabel={t('settings.artifacts.type_react')}
         previewDocument={previewDocument || loadingDocument}
         createLibraryDraft={async (source) => {
           const settings = await loadArtifactSettings()
           const overrides = parseArtifactDirectiveOverrides('react', source)
 
           return {
-            title: getReactArtifactTitle(source),
+            title: getReactArtifactTitle(source) ?? t('settings.artifacts.type_react'),
             kind: 'react',
             runtimeProfileId,
             sourceLanguage,
@@ -329,7 +332,7 @@ const ReactArtifactsCard: FC<Props> = ({
         title={title}
         initialSource={sourceCode}
         language={sourceLanguage}
-        typeLabel="React/TSX Artifact"
+        typeLabel={t('settings.artifacts.type_react')}
         buildPreviewDocument={buildDesignerPreviewDocument}
         saveArtifact={(draft) => librarySaveArtifact(draft).then((r) => ({ id: r.id }))}
         onClose={() => setIsDesignerOpen(false)}

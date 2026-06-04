@@ -153,6 +153,7 @@ const titleKeyMap = {
   'mcp-servers': 'title.mcp-servers',
   memories: 'title.memories',
   notes: 'title.notes',
+  artifacts: 'title.artifacts',
   paintings: 'title.paintings',
   settings: 'title.settings',
   translate: 'title.translate',
@@ -189,6 +190,7 @@ export const getThemeModeLabel = (key: string): string => {
 const sidebarIconKeyMap = {
   assistants: 'assistants.title',
   agents: 'agent.sidebar_title',
+  artifacts: 'title.artifacts',
   store: 'assistants.presets.title',
   paintings: 'paintings.title',
   translate: 'translate.title',

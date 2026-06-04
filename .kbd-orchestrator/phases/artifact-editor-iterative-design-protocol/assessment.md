@@ -1,150 +1,72 @@
-# Assessment — Artifact Editor: Iterative LLM Design Protocol
+ASSESSMENT: artifact-editor-iterative-design-protocol
 
-**Phase:** artifact-editor-iterative-design-protocol
-**Date:** 2026-05-30
-**Author:** Claude Code (kbd-assess)
-**Priority:** Cornerstone (user-stated) — React.js + HTMX artifacts must work perfectly,
-including post-creation iterative AI design (Lovable / Bolt / Bolt.diy / v0 style).
+Project: The Boss / Cherry Studio fork
+Date: 2026-06-03
+Codebase baseline: A v1 artifact designer exists for chat-rendered HTML/HTMX and React artifacts, but product-level stored-artifact editing, first-class navigation, mini-app/library editing, and complete Prometheus skill-system availability are still partial.
+Cross-tool progress: 7 artifact v1 changes recorded as DONE by claude-code; 2026-06-03 Codex reassessment recorded a broader productization gap.
 
-## Goal (restated)
+## IMPLEMENTATION STATUS
 
-A working **LLM-driven iterative artifact editor**: create an artifact (React or
-HTMX/HTML) → display it → edit it again via natural-language requests → re-display,
-repeating across multiple turns until functional → save to the local library. The
-loop should be driven by **typed, AG-UI-style streaming chunks** that carry the
-patches/content and drive the editor/designer state machine across turns.
+- Chat artifact detection and cards: **DONE** — shared artifact parsing recognizes React and HTML/HTMX aliases; `ReactArtifactsCard` and `HtmlArtifactsCard` expose preview, copy, open/download, and Edit with AI entries.
+- Iterative designer core: **PARTIAL** — `ArtifactDesigner` supports chat/code/preview, multiple model turns, repair loop, build feedback, and a save seam. The code pane is explicitly read-only in v1, save bypasses `artifact_saved` reducer events, and designer saves create new records rather than updating existing stored artifacts.
+- Artifact storage service: **PARTIAL** — `ArtifactService` can save/list/get/fork/delete records and compile React artifacts through IPC. There is no source update or append-version API, so stored-artifact refinement cannot preserve version history as a managed edit workflow.
+- Artifact library management UI: **PARTIAL** — settings library lists/searches/filters/opens/copies/forks/renames/deletes artifacts. It opens `ArtifactPopup`, not `ArtifactDesigner`, and manual preview save only updates local preview state rather than persisting a source version.
+- Assistant conversation entry: **PARTIAL** — normal code-block artifact cards expose Edit with AI, but live assistant end-to-end create-refine-store proof was not rerun in this assessment.
+- Agent conversation entry: **MISSING/PARTIAL** — no evidence that agent-session message rendering has a separate verified path exposing `ArtifactDesigner` from agent outputs.
+- Left navigation: **MISSING** — sidebar icon union and default icon list do not contain an artifact/library route; artifacts are only under settings.
+- Mini-app/library surface: **MISSING** — minapp infrastructure exists, but no artifact library/editor mini-app is registered.
+- Artifact settings/database: **PARTIAL** — artifact settings schema and JSON-backed library exist, but no database-backed source-version update API or designer behavior settings are present.
+- i18n labels: **PARTIAL** — some artifact/designer keys exist, but artifact settings service-access copy still contains hardcoded English and new route/mini-app/version labels are missing.
+- Prometheus skill-system submodules: **PARTIAL** — `resources/skills/prometheus-skill-system` is present with 32 skills and nested artifact-refiner/sycophancy submodules; UAR also embeds another skill-system at a different commit. Source-of-truth and update policy are not resolved.
+- Skill availability in app: **PARTIAL** — built-in skill discovery has tests for nested Prometheus skills and settings expose skill scopes, but this assessment did not verify that every Prometheus skill is installed, synced, enabled, and selectable in global/assistant/agent/session scopes at runtime.
 
-## Method
+## CROSS-TOOL PROGRESS
 
-Static code survey of the artifact surface (renderer + main) and the existing
-AG-UI / typed-streaming substrate. (No runtime repro this pass — the finding is
-structural, see below.)
+- `change-001-artifact-design-protocol-types`: DONE (by claude-code) — typed renderer-local artifact design events and version hash.
+- `change-002-artifact-editor-reducer`: DONE (by claude-code) — editor state machine.
+- `change-003-artifact-build-feedback-seam`: DONE (by claude-code) — React compile/HTML validation feedback.
+- `change-004-artifact-design-orchestrator`: DONE (by claude-code) — structured-output model turn to events.
+- `change-005-artifact-designer-3pane`: DONE (by claude-code) — 3-pane designer UI.
+- `change-006-designer-build-loop-wiring`: DONE (by claude-code) — repair/build/save loop.
+- `change-007-create-path-entry-and-docs`: DONE (by claude-code) — Edit with AI entry from chat cards and docs.
+- `reassessment_2026_06_03`: DONE (by codex) — identified follow-on productization/integration gaps.
 
-## Core Finding (HIGH confidence)
+## SPEC GAP SUMMARY
 
-**The iterative LLM editor does not exist as a designed feature.** What exists today
-is **create-via-chat + display/preview + manual code edit + library save**. The
-"believed broken protocol for patches" is more accurately: **there is no
-artifact-code patch protocol and no editor state machine at all** — so there is
-nothing to fix in place; there is a feature to design and build on top of solid
-existing primitives.
+- Stored artifact versioning: Missing append/update source API and UI to manage versions.
+- Library-to-designer workflow: Missing Edit with AI from stored library rows and mini-app/library surfaces.
+- Agent message integration: Not proven for agent conversations; may need separate renderer wiring.
+- First-class navigation: Missing `/artifacts` route and sidebar icon configuration.
+- Mini-app editing: Missing artifact mini-app registration or route-backed mini-app behavior.
+- Skill-system integration: Submodules exist, but full runtime availability and single source of truth are not verified.
+- Settings/i18n: Missing route/mini-app/version/designer defaults and hardcoded artifact settings text remains.
 
-### What EXISTS (and is reusable)
+## BUILD HEALTH
 
-| Capability | Where | Notes |
-|---|---|---|
-| Artifact **preview** (React + HTML) | `src/renderer/src/artifacts/config.ts` (`buildHtmlArtifactPreviewDocument`, `buildReactArtifactPreviewDocument`); `src/main/services/ArtifactService.ts` (bundling, module resolution, bootstrap) | Solid render path; theming, library URLs, access policy. |
-| Artifact **display cards/popups** | `components/CodeBlockView/{ArtifactPopup,HtmlArtifactsCard,HtmlArtifactsPopup,ReactArtifactsCard,renderArtifactCard}.tsx` | `ArtifactPopup` = split code/preview viewer + **manual** CodeMirror editor (`editable`, `onSave(code)`). No AI panel. |
-| Artifact **library CRUD** | `hooks/useArtifactLibrary.ts` → `window.api.artifacts.{list,save,updateMetadata,fork,delete}` | Note: `ArtifactMetadataPatch` is **metadata** (name/tags), NOT a code diff. |
-| Artifact **settings** | `pages/settings/ArtifactSettings/*`, `hooks/useArtifactSettings.ts`, `config.ts` | Theme/CSS/library config. |
-| **Typed AG-UI streaming substrate** | `src/main/apiServer/protocols/{canonicalEvents,agUiMapper,versions}.ts`, `routes/agents/handlers/messagesAgUi.ts`, `services/agents/interfaces/AgentStreamInterface.ts`, `RuntimeAgentStream`, `SessionStreamBus` | **The exact primitive to build on.** `CanonicalAgentEvent` already models `run_start / text_delta / a2ui_payload / run_complete / run_error / raw_chunk` and maps to AG-UI + A2A. |
+- build check: **UNKNOWN** — no build/test/lint command was run in this assess pass.
+- known violations: active worktree contains unrelated dirty artifact/runtime files; no new implementation edits were made in this pass.
+- test coverage: **PARTIAL** — prior artifact v1 has broad unit coverage; the missing productization surfaces have no tests yet.
 
-### What is MISSING (the actual fault)
+## CONSTRAINT CHECK
 
-1. **No artifact-editor / designer component.** Greps for
-   `ArtifactEditor|ArtifactCreator|ArtifactDesigner|editArtifact|iterateArtifact|artifactPatch`
-   return nothing. `ArtifactPopup` is a viewer + manual editor — no prompt input, no
-   AI iteration, no streaming consumer.
-2. **No artifact code-patch protocol.** Nothing applies an LLM-produced diff/patch to
-   artifact source. The only "patch" is `ArtifactMetadataPatch` (metadata). No
-   choice made between full-rewrite vs unified-diff vs structured edit ops, and no
-   apply/validate/rollback.
-3. **No editor state machine.** No model of the multi-turn cycle
-   (`idle → prompting → streaming → applying → building/validating → preview →
-   error/repair → save`). The AG-UI substrate exists but is wired to **agent
-   sessions**, not to an artifact-design loop.
-4. **No build/validate feedback loop.** `ArtifactService` can bundle/preview, but
-   there's no path that feeds a build/runtime error back into the next LLM turn
-   (the "edit again until functional" core of Lovable/Bolt/v0).
-5. **No typed artifact stream events.** `CanonicalAgentEvent` has no
-   artifact-specific kinds (e.g. `artifact_full`, `artifact_patch`, `build_status`,
-   `artifact_saved`), so the designer cannot consume typed chunks today.
+- AGENTS.md violations: **NONE from this assessment pass**; no Redux or DB schema changes were made. Future implementation must not add Redux slices or database schema changes without explicit approval.
+- constraints.md violations: **UNKNOWN** — not evaluated beyond repo conventions; no code edits were made.
 
-## Reasoning Chain (per the meta-cognition format)
+## GOAL PROGRESS
 
-```
-+-- Layer 1: Symptom — "iterative artifact editor is broken; patches don't work"
-|       ^
-+-- Layer 3: Domain — AG-UI / typed agent streaming (apiServer/protocols, RuntimeAgentStream)
-|   Constraint: a multi-turn generative-UI editor needs a typed event protocol +
-|   a state machine that consumes those events; patches must apply deterministically
-|   to a known base version (optimistic-concurrency / base-hash) or they corrupt state.
-|   Rule: AG-UI separates transport (SSE) from protocol (typed events) from state
-|   (reducer) — the editor must do the same.
-|       v
-+-- Layer 2: Design decision
-    The feature was built as render+manual-edit, skipping the protocol + state-machine
-    layer. Fix = design the artifact-design protocol as artifact-specific
-    CanonicalAgentEvent kinds + an editor reducer, reusing the existing AG-UI mapper
-    and ArtifactService preview/build — not patch a broken patch consumer (there is none).
-```
+- Create HTML/HTMX artifact: **PARTIAL** — rendering/detection exists; live end-to-end proof not rerun.
+- Create React artifact: **PARTIAL** — rendering/compile path exists; live end-to-end proof not rerun.
+- Decide to edit and open editor from assistant conversation: **PARTIAL** — card-level Edit with AI exists for normal artifact cards.
+- Open editor from agent conversation: **NOT MET** — not verified or separately wired.
+- Multiple turns refining artifact: **PARTIAL** — designer supports multiple turns and repair loop, but stored artifact update workflow is incomplete.
+- Store/manage refined artifact: **PARTIAL** — can create new library records, but cannot update existing stored source versions.
+- Left navigation entry: **NOT MET** — no first-class artifact sidebar route.
+- Mini-app/library editing: **NOT MET** — no artifact mini-app/editor from library.
+- Settings/database/language files: **PARTIAL** — existing settings/schema/i18n are incomplete for requested workflow.
+- Update Prometheus skill-system submodule/git references and make all skills available: **PARTIAL** — submodules and scripts exist; full sync/scoping availability is not verified.
 
-## Domain Constraints (why this shape)
+## SYCOPHANCY REVIEW
 
-From the existing AG-UI substrate (`canonicalEvents.ts`, `agUiMapper.ts`):
-- **Typed events over raw text** — the renderer must not regex chat text to find code;
-  the model/agent must emit typed chunks the editor reducer consumes. This is the
-  user's explicit ask and the substrate already supports adding event kinds.
-- **Patch determinism** — applying an LLM edit requires a known **base** (artifact
-  version + content hash). Lovable/Bolt/v0 either send full files or
-  base-anchored diffs and validate before committing. Without a base anchor,
-  streamed patches corrupt state across turns — the most likely "it broke" cause once
-  any patching was attempted.
-- **Build-in-the-loop** — "until functional" requires feeding `ArtifactService`
-  build/runtime errors back as a typed `build_status` event into the next turn.
+Sycophancy detector score: `0.01785714365541935`. One low-severity S-07 note flagged length; no correction was mandatory. Audit saved at `.kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/assess-2026-06-03T18-03-22Z.json`.
 
-## Open Questions
-
-### DECIDED (user, 2026-05-30)
-
-- ✅ **Edit transport:** **Full-file rewrite per turn first** — each turn the model
-  returns the complete artifact file(s); editor swaps + rebuilds. Robust, no
-  base-drift corruption. Base-anchored unified diffs are a LATER token-efficiency
-  optimization, not the first build.
-- ✅ **Edit engine + loop owner:** **Chat model via structured output / tool**,
-  **renderer-orchestrated** loop (apply → preview → build-feedback). Reuse existing
-  model plumbing; model the typed AG-UI-style events on top of this — NOT a dedicated
-  agent-runtime session for v1.
-
-### STILL OPEN (resolve in brainstorming/design)
-
-- [ ] **Single-file vs project:** is a React artifact one file or a small project
-      tree? Determines content payload shape + preview/build. (HTMX likely single-file.)
-- [ ] **Designer surface:** extend `ArtifactPopup` into a 3-pane designer
-      (chat │ code │ preview) vs a dedicated window. (Multi-window infra exists.)
-- [ ] **Typed-event shape:** exact artifact `CanonicalAgentEvent` kinds + whether they
-      flow through the real AG-UI mapper or a lighter renderer-local typed channel
-      (since the loop is renderer-orchestrated, a renderer-local typed event stream
-      may suffice — confirm in design).
-
-## Recommended Next Step
-
-This is a **design-heavy feature build**, not a bug patch — so the Plan phase should
-begin with **brainstorming/design** (resolve the open questions, choose the protocol
-shape) before producing the change list. Proposed direction to validate in Plan:
-
-1. Define artifact-design **typed events** by extending `CanonicalAgentEvent`
-   (`artifact_full`, `artifact_patch{baseHash,ops}`, `build_status`, `artifact_saved`)
-   + AG-UI mapping.
-2. Build an **editor state machine/reducer** in the renderer that consumes those
-   events (idle→streaming→applying→building→preview→repair→save).
-3. Choose patch strategy (recommend **start with full-file rewrite per turn** for
-   correctness, add base-anchored diffs later for token efficiency).
-4. Build the **designer surface** (chat + code + preview) reusing `ArtifactService`
-   preview/build + `useArtifactLibrary` save.
-5. Close the **build-in-the-loop** by feeding build errors back as typed events.
-
-## Effort Estimate
-
-**Medium–high.** The render/preview/library/AG-UI primitives are solid (big head
-start), but the protocol, state machine, designer UI, and build-feedback loop are
-net-new and design-sensitive. Strongly recommend brainstorming → design doc →
-phased change list, built TDD with the two-stage review (this is exactly the
-multi-turn-state class where that loop catches real bugs).
-
-## Gaps / Open Items
-
-- [ ] Confirm with the user the 5 open questions above (Plan/brainstorm phase).
-- [ ] Verify the current "create artifact" path end-to-end (how a chat code block
-      becomes an artifact card today) — read `renderArtifactCard.tsx` + `MainTextBlock`.
-- [ ] Decide reuse vs rebuild of `ArtifactPopup` for the designer surface.
+ASSESSMENT COMPLETE

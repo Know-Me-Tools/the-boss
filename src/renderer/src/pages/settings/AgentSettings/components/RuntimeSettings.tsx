@@ -1174,11 +1174,11 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
               return (
                 <div
                   key={sidecar.id}
-                  className="border-foreground-200 flex flex-col gap-2 rounded-md border p-3"
+                  className="flex flex-col gap-2 rounded-md border border-foreground-200 p-3"
                   data-testid={`supervised-sidecar-${sidecar.id}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{sidecar.name}</span>
+                      <span className="font-medium text-sm">{sidecar.name}</span>
                       <Tag color={getSupervisedStateColor(sidecar.state)}>
                         {getSupervisedStateLabel(sidecar.state, t)}
                       </Tag>
@@ -1210,7 +1210,7 @@ const RuntimeSettings: FC<AgentOrSessionSettingsProps> = ({ agentBase, update })
                       </Popconfirm>
                     </div>
                   </div>
-                  <div className="text-foreground-500 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-foreground-500 text-xs">
                     <span>
                       {t('agent.settings.runtime.supervisor.pid', 'PID')}: {formatPid(sidecar.pid)}
                     </span>

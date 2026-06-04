@@ -532,6 +532,8 @@ export type MinAppType = {
   supportedRegions?: MinAppRegion[]
   logo?: string
   url: string
+  /** Internal app route. Route-backed apps navigate inside the React app instead of opening a webview. */
+  route?: string
   // FIXME: It should be `bordered`
   bodered?: boolean
   background?: string
@@ -694,6 +696,7 @@ export const isAutoDetectionMethod = (method: string): method is AutoDetectionMe
 export type SidebarIcon =
   | 'assistants'
   | 'agents'
+  | 'artifacts'
   | 'store'
   | 'paintings'
   | 'translate'

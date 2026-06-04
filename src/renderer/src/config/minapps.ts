@@ -93,6 +93,16 @@ const loadCustomMiniApp = async (): Promise<MinAppType[]> => {
 // 初始化默认小应用
 const ORIGIN_DEFAULT_MIN_APPS: MinAppType[] = [
   {
+    id: 'artifacts',
+    name: 'Artifacts',
+    nameKey: 'minapps.artifacts',
+    url: '/artifacts',
+    route: '/artifacts',
+    logo: ApplicationLogo,
+    bodered: true,
+    supportedRegions: ['CN', 'Global']
+  },
+  {
     id: 'openai',
     name: 'ChatGPT',
     url: 'https://chatgpt.com/',

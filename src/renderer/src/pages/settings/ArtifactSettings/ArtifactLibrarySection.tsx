@@ -4,6 +4,7 @@ import {
   getThemeCss,
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
+import ArtifactDesigner from '@renderer/components/CodeBlockView/ArtifactDesigner'
 import ArtifactPopup from '@renderer/components/CodeBlockView/ArtifactPopup'
 import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
 import type {
@@ -13,7 +14,7 @@ import type {
   HtmlArtifactRuntimeProfileId
 } from '@shared/artifacts'
 import { Button, Input, Modal, Select, Space, Tag } from 'antd'
-import { Copy, Eye, GitFork, Pencil, Trash2 } from 'lucide-react'
+import { Copy, Eye, GitFork, Pencil, Sparkles, Trash2 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
@@ -62,9 +63,20 @@ interface Props {
 
 const ArtifactLibrarySection = ({ theme, settings }: Props) => {
   const { t } = useTranslation()
-  const { artifacts, loading, search, setSearch, kind, setKind, updateMetadata, forkArtifact, deleteArtifact } =
-    useArtifactLibrary()
+  const {
+    artifacts,
+    loading,
+    search,
+    setSearch,
+    kind,
+    setKind,
+    updateMetadata,
+    updateSource,
+    forkArtifact,
+    deleteArtifact
+  } = useArtifactLibrary()
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactRecord | null>(null)
+  const [designerArtifact, setDesignerArtifact] = useState<ArtifactRecord | null>(null)
   const [previewSource, setPreviewSource] = useState('')
   const [previewDocument, setPreviewDocument] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -170,9 +182,37 @@ const ArtifactLibrarySection = ({ theme, settings }: Props) => {
         setPreviewSource('')
         setPreviewDocument('')
       }
+      if (designerArtifact?.id === artifact.id) {
+        setDesignerArtifact(null)
+      }
       window.toast.success(t('settings.artifacts.library.delete_success'))
     },
-    [deleteArtifact, selectedArtifact, t]
+    [deleteArtifact, designerArtifact, selectedArtifact, t]
+  )
+
+  const handleDesignerSave = useCallback(
+    async (artifact: ArtifactRecord, draft: ArtifactRecordDraft) => {
+      const record = await updateSource({
+        id: artifact.id,
+        source: draft.source,
+        sourceLanguage: artifact.sourceLanguage,
+        runtimeProfileId: artifact.runtimeProfileId,
+        themeId: artifact.themeId,
+        accessPolicy: artifact.accessPolicy,
+        origin: artifact.origin
+      })
+
+      setDesignerArtifact(record)
+      if (selectedArtifact?.id === record.id) {
+        setSelectedArtifact(record)
+        setPreviewSource(record.latestSource)
+        const document = await buildPreviewDocument(record, record.latestSource)
+        setPreviewDocument(document)
+      }
+
+      return { id: record.id }
+    },
+    [buildPreviewDocument, selectedArtifact?.id, updateSource]
   )
 
   const libraryRows = useMemo(() => {
@@ -191,6 +231,9 @@ const ArtifactLibrarySection = ({ theme, settings }: Props) => {
         <LibraryActions>
           <Button size="small" icon={<Eye size={14} />} onClick={() => void openArtifact(artifact)}>
             {t('common.open')}
+          </Button>
+          <Button size="small" icon={<Sparkles size={14} />} onClick={() => setDesignerArtifact(artifact)}>
+            {t('settings.artifacts.designer.edit_with_ai')}
           </Button>
           <Button size="small" icon={<Copy size={14} />} onClick={() => void handleCopySource(artifact)}>
             {t('common.copy')}
@@ -272,7 +315,9 @@ const ArtifactLibrarySection = ({ theme, settings }: Props) => {
           title={selectedArtifact.title}
           code={previewSource}
           codeLanguage={selectedArtifact.kind === 'html' ? 'html' : 'tsx'}
-          typeLabel={selectedArtifact.kind === 'html' ? 'HTML Artifact' : 'React/TSX Artifact'}
+          typeLabel={
+            selectedArtifact.kind === 'html' ? t('settings.artifacts.type_html') : t('settings.artifacts.type_react')
+          }
           previewDocument={
             previewLoading
               ? `<!doctype html><html><body style="margin:0;padding:24px;font-family:system-ui;background:#0f172a;color:#e2e8f0;">${t('settings.artifacts.library.preview_loading')}</body></html>`
@@ -298,6 +343,21 @@ const ArtifactLibrarySection = ({ theme, settings }: Props) => {
             setPreviewSource('')
             setPreviewDocument('')
           }}
+        />
+      )}
+
+      {designerArtifact && (
+        <ArtifactDesigner
+          open={!!designerArtifact}
+          title={designerArtifact.title}
+          initialSource={designerArtifact.latestSource}
+          language={designerArtifact.sourceLanguage}
+          typeLabel={
+            designerArtifact.kind === 'html' ? t('settings.artifacts.type_html') : t('settings.artifacts.type_react')
+          }
+          buildPreviewDocument={(source) => buildPreviewDocument(designerArtifact, source)}
+          saveArtifact={(draft) => handleDesignerSave(designerArtifact, draft)}
+          onClose={() => setDesignerArtifact(null)}
         />
       )}
     </>

@@ -21,7 +21,10 @@ const AppsPage: FC = () => {
 
   const filteredApps = search
     ? minapps.filter(
-        (app) => app.name.toLowerCase().includes(search.toLowerCase()) || app.url.includes(search.toLowerCase())
+        (app) =>
+          app.name.toLowerCase().includes(search.toLowerCase()) ||
+          app.url.includes(search.toLowerCase()) ||
+          app.route?.includes(search.toLowerCase())
       )
     : minapps
 

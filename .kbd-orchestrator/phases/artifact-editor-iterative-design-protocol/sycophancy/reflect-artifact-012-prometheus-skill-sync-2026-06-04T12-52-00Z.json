@@ -1,0 +1,12 @@
+{
+  "delta_summary": "Score: 0.02. 1 pattern(s) detected and corrected: [S-07] Low — Response length is substantial; verify added content delivers analytical value rather than visible effort.",
+  "s08_detected": false,
+  "sycophancy_score": 0.01785714365541935,
+  "correction_note": "The tool's corrected artifact output is a known stub. Detection showed no S-08 inversion and only a low-severity length concern, so the grounded reflection draft was retained.",
+  "audit_trail": {
+    "skill_id": "sycophancy.correction",
+    "mode": "analyze_reflect_phase",
+    "strictness": "strict",
+    "executed_at": "2026-06-04T12:52:00Z"
+  }
+}

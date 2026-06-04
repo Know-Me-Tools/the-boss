@@ -6,6 +6,7 @@ import {
   parseArtifactDirectiveOverrides
 } from '@renderer/artifacts/config'
 import { useTheme } from '@renderer/context/ThemeProvider'
+import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
 import type { ThemeMode } from '@renderer/types'
 import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import type { ArtifactOriginRef, HtmlArtifactRuntimeProfileId } from '@shared/artifacts'
@@ -16,8 +17,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipLoader } from 'react-spinners'
 import styled, { keyframes } from 'styled-components'
-
-import { useArtifactLibrary } from '@renderer/hooks/useArtifactLibrary'
 
 import ArtifactDesigner from './ArtifactDesigner'
 import HtmlArtifactsPopup from './HtmlArtifactsPopup'
@@ -46,13 +45,14 @@ function buildLoadingDocument(message: string): string {
 const HtmlArtifactsCard: FC<Props> = ({
   html,
   runtimeProfileId = 'html',
-  typeLabel = 'HTML Artifact',
+  typeLabel,
   origin,
   onSave,
   isStreaming = false
 }) => {
   const { t } = useTranslation()
-  const title = extractHtmlTitle(html) || 'HTML Artifacts'
+  const title = extractHtmlTitle(html) || t('settings.artifacts.type_html')
+  const resolvedTypeLabel = typeLabel ?? t('settings.artifacts.type_html')
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const [isDesignerOpen, setIsDesignerOpen] = useState(false)
   const { theme } = useTheme()
@@ -251,7 +251,7 @@ const HtmlArtifactsCard: FC<Props> = ({
         title={title}
         initialSource={htmlContent}
         language="html"
-        typeLabel={typeLabel}
+        typeLabel={resolvedTypeLabel}
         buildPreviewDocument={buildDesignerPreviewDocument}
         saveArtifact={(draft) => librarySaveArtifact(draft).then((r) => ({ id: r.id }))}
         onClose={() => setIsDesignerOpen(false)}

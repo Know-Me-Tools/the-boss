@@ -86,6 +86,13 @@ export const useMinappPopup = () => {
   /** Open a minapp (popup shows and minapp loaded) */
   const openMinapp = useCallback(
     (app: MinAppType, keepAlive: boolean = false) => {
+      if (app.route) {
+        if (NavigationService.navigate) {
+          NavigationService.navigate(app.route)
+        }
+        return
+      }
+
       if (keepAlive) {
         // Always refresh the cached config. Some apps, such as OpenClaw, use
         // short-lived URLs with auth tokens and must not reuse a stale entry.
@@ -172,6 +179,13 @@ export const useMinappPopup = () => {
   /** Smart open minapp that adapts to navbar position */
   const openSmartMinapp = useCallback(
     (config: MinAppType, keepAlive: boolean = false) => {
+      if (config.route) {
+        if (NavigationService.navigate) {
+          NavigationService.navigate(config.route)
+        }
+        return
+      }
+
       if (isTopNavbar) {
         // Refresh temporary app config so dynamic URLs such as OpenClaw's
         // dashboard token are propagated when the tab already exists.

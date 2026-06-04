@@ -3,14 +3,14 @@
   "objective": "Deliver a working LLM-driven iterative artifact editor (React + HTMX) — create → display → edit again via natural language → re-display across turns → save to local library — driven by typed AG-UI-style streaming chunks and an editor state machine.",
   "type": "design-heavy feature build (not a bug patch)",
   "priority": "cornerstone (user-stated)",
-  "status": "phase_complete",
+  "status": "reflection_complete",
   "assessment_complete": true,
   "planning_complete": true,
   "execution_ready": true,
   "execution_complete": true,
-  "execution_backend": "native-tool (claude-code, subagent-driven TDD)",
-  "changes_total": 7,
-  "changes_completed": 7,
+  "execution_backend": "openspec",
+  "changes_total": 13,
+  "changes_completed": 13,
   "changes": {
     "change-001-artifact-design-protocol-types": "DONE",
     "change-002-artifact-editor-reducer": "DONE",
@@ -18,17 +18,21 @@
     "change-004-artifact-design-orchestrator": "DONE",
     "change-005-artifact-designer-3pane": "DONE",
     "change-006-designer-build-loop-wiring": "DONE",
-    "change-007-create-path-entry-and-docs": "DONE"
+    "change-007-create-path-entry-and-docs": "DONE",
+    "artifact-008-storage-version-update": "DONE",
+    "artifact-009-library-designer-entry": "DONE",
+    "artifact-010-conversation-entrypoints": "DONE",
+    "artifact-011-navigation-and-miniapp": "DONE",
+    "artifact-012-prometheus-skill-sync": "DONE",
+    "artifact-013-settings-i18n-verification": "DONE"
   },
   "current_change": null,
-  "feature_branch": "feat/artifact-iterative-designer",
-  "last_updated": "2026-05-30",
-  "last_updated_by": "claude-code",
+  "feature_branch": "feat/artifact-productization-skill-system",
+  "last_updated": "2026-06-04T11:53:17Z",
+  "last_updated_by": "codex",
   "branch_policy": {
     "base": "current-1.9.x",
-    "do_not_use": [
-      "v2"
-    ],
+    "do_not_use": ["v2"],
     "notes": "Per CLAUDE.md, build on the 1.9.x line; never use v2."
   },
   "decisions": {
@@ -41,23 +45,23 @@
     "event_channel": "renderer-local typed channel + reducer; kinds mirror CanonicalAgentEvent so later AG-UI promotion is mechanical; no main-process changes in v1"
   },
   "decided_by": "user (2026-05-30)",
-  "openSpecDetected": false,
-  "change_backend": "native-kbd",
+  "openSpecDetected": true,
+  "change_backend": "openspec",
   "plan": {
     "designPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/design.md",
     "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
     "executionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/execution.md",
-    "change_count": 7,
+    "change_count": 6,
     "change_order": [
-      "change-001-artifact-design-protocol-types",
-      "change-002-artifact-editor-reducer",
-      "change-003-artifact-build-feedback-seam",
-      "change-004-artifact-design-orchestrator",
-      "change-005-artifact-designer-3pane",
-      "change-006-designer-build-loop-wiring",
-      "change-007-create-path-entry-and-docs"
+      "artifact-008-storage-version-update",
+      "artifact-009-library-designer-entry",
+      "artifact-010-conversation-entrypoints",
+      "artifact-011-navigation-and-miniapp",
+      "artifact-012-prometheus-skill-sync",
+      "artifact-013-settings-i18n-verification"
     ],
-    "next_pending_change": null
+    "next_pending_change": "artifact-013-settings-i18n-verification",
+    "backend": "openspec"
   },
   "change_log": [
     {
@@ -151,7 +155,7 @@
     "progress": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json",
     "reflection": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md"
   },
-  "nextRecommendedAction": "Phase complete (7/7, reflection written). Live-verify one real model turn (pnpm dev, Node 24), then open a PR via gh-create-pr for feat/artifact-iterative-designer. Start the next phase with /kbd-new-phase. Do not use v2.",
+  "nextRecommendedAction": "Reflection complete for artifact-editor-iterative-design-protocol. Advance to the next phase with /kbd-new-phase, or run /kbd-status to inspect the completed phase.",
   "session_note": "Resumed session: Node default is v20 (repo requires >=24.11.1). Use `nvm use 24` before running pnpm test/lint. progress.json had been truncated by a hook/rollback and was rebuilt.",
   "change_log_007": {
     "id": "change-007-create-path-entry-and-docs",
@@ -172,5 +176,279 @@
   },
   "reflection_complete": true,
   "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md",
-  "goal_achievement": "~95% — v1 goal MET; all assessment gaps closed; base-anchored diffs + real AG-UI mapper + live-model smoke intentionally deferred"
+  "goal_achievement": "~95% — v1 goal MET; all assessment gaps closed; base-anchored diffs + real AG-UI mapper + live-model smoke intentionally deferred",
+  "reassessment_2026_06_03": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-assess",
+    "trigger": "Full artifact creation/editing/storage/management workflow plus Prometheus skill-system availability",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessment.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/assess-2026-06-03T18-03-22Z.json",
+    "finding": "v1 artifact designer foundation exists, but full product workflow still needs stored-artifact version persistence, library-to-designer editing, first-class navigation/mini-app access, agent-conversation proof, and skill-system sync/scoping.",
+    "recommended_next_phase": "artifact-library-productization-and-skill-system-integration"
+  },
+  "replan_2026_06_03": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "kbd-plan",
+    "backend": "openspec",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plan.md",
+    "next_pending_change": "artifact-008-storage-version-update",
+    "change_order": [
+      "artifact-008-storage-version-update",
+      "artifact-009-library-designer-entry",
+      "artifact-010-conversation-entrypoints",
+      "artifact-011-navigation-and-miniapp",
+      "artifact-012-prometheus-skill-sync",
+      "artifact-013-settings-i18n-verification"
+    ],
+    "notes": "Re-plan adds productization/integration work after the completed v1 artifact designer foundation. Redux state-shape and DB schema changes remain approval-gated."
+  },
+  "change_log_008": {
+    "id": "artifact-008-storage-version-update",
+    "status": "DONE",
+    "files": [
+      "packages/shared/artifacts.ts",
+      "packages/shared/IpcChannel.ts",
+      "src/main/services/ArtifactService.ts",
+      "src/main/ipc.ts",
+      "src/preload/index.ts",
+      "src/renderer/src/hooks/useArtifactLibrary.ts",
+      "src/main/services/__tests__/ArtifactService.test.ts"
+    ],
+    "openspec": "openspec/changes/artifact-008-storage-version-update",
+    "qa_gate": ".refiner/artifacts/artifact-008-storage-version-update/refinement_log.md",
+    "tests": "ArtifactService 6/6; shared artifacts 7/7; full pnpm test 5177 passed / 72 skipped",
+    "quality": "pnpm typecheck, pnpm lint, pnpm test, and pnpm format passed on Node 24.16.0",
+    "decision": "Preserved existing JSON artifact library schema and Redux shape; updateSource appends to versions and updates latest source metadata."
+  },
+  "reflection_artifact_008": {
+    "reflection_complete": true,
+    "reflected_by": "codex",
+    "skill": "kbd-reflect",
+    "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflections/artifact-008-storage-version-update.md",
+    "note": "Change-level reflection only. The phase remains execution_in_progress with artifact-009-library-designer-entry as the next pending change."
+  },
+  "assessment_artifact_009": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "kbd-assess",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessments/artifact-009-library-designer-entry.md",
+    "finding": "Stored library artifacts still open ArtifactPopup and only update local preview state. ArtifactDesigner is not wired from the library, and saves do not call updateSource yet.",
+    "next_pending_change": "artifact-009-library-designer-entry"
+  },
+  "plan_artifact_009": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "kbd-plan",
+    "backend": "openspec",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-009-library-designer-entry.md",
+    "openspec": "openspec/changes/artifact-009-library-designer-entry",
+    "next_pending_change": "artifact-009-library-designer-entry",
+    "notes": "Plan keeps ArtifactPopup preview behavior intact and adds a separate stored-artifact ArtifactDesigner flow that saves via updateSource."
+  },
+  "change_log_009": {
+    "id": "artifact-009-library-designer-entry",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/pages/settings/ArtifactSettings/ArtifactLibrarySection.tsx",
+      "src/renderer/src/pages/settings/ArtifactSettings/__tests__/ArtifactLibrarySection.test.tsx"
+    ],
+    "openspec": "openspec/changes/artifact-009-library-designer-entry",
+    "qa_gate": ".refiner/artifacts/artifact-009-library-designer-entry/refinement_log.md",
+    "tests": "ArtifactLibrarySection 4/4; full pnpm test 5181 passed / 72 skipped",
+    "quality": "pnpm typecheck, pnpm lint, pnpm test, and pnpm format passed on Node 24.16.0",
+    "decision": "Stored library artifacts now open ArtifactDesigner through a separate state path; designer saves call updateSource for the selected artifact and preserve existing preview popup behavior."
+  },
+  "reflection_artifact_009": {
+    "reflection_complete": true,
+    "reflected_by": "codex",
+    "skill": "kbd-reflect",
+    "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflections/artifact-009-library-designer-entry.md",
+    "note": "Change-level reflection only. The phase remains execution_in_progress with artifact-010-conversation-entrypoints as the next pending change."
+  },
+  "assessment_artifact_010": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-assess",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessments/artifact-010-conversation-entrypoints.md",
+    "finding": "Assistant and agent session conversations both route assistant text through the shared Markdown/CodeBlock artifact-card path, and agent Read/Write tools already use renderArtifactCard. Remaining work is focused regression coverage and any small fixes exposed by those tests.",
+    "next_pending_change": "artifact-010-conversation-entrypoints"
+  },
+  "plan_artifact_010": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-plan",
+    "backend": "openspec",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-010-conversation-entrypoints.md",
+    "openspec": "openspec/changes/artifact-010-conversation-entrypoints",
+    "next_pending_change": "artifact-010-conversation-entrypoints",
+    "notes": "Plan is verification-first because assessment shows shared artifact rendering is already wired for assistant and agent session text. Add focused regressions and make only fixes exposed by those tests."
+  },
+  "change_log_010": {
+    "id": "artifact-010-conversation-entrypoints",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/pages/home/Markdown/__tests__/CodeBlock.test.tsx",
+      "src/renderer/src/pages/home/Messages/Tools/__tests__/MessageAgentTools.test.tsx",
+      "src/renderer/src/pages/agents/components/__tests__/AgentSessionMessages.test.tsx"
+    ],
+    "openspec": "openspec/changes/artifact-010-conversation-entrypoints",
+    "qa_gate": ".refiner/artifacts/artifact-010-conversation-entrypoints/refinement_log.md",
+    "tests": "Targeted renderer tests 46/46; full pnpm test 5187 passed / 72 skipped",
+    "quality": "pnpm lint, pnpm test, pnpm format, and openspec validate --strict passed on Node 24.16.0",
+    "decision": "No production routing changes were needed. Assistant code fences, agent session messages, and agent Read/Write outputs are now locked with focused regression coverage through the shared artifact-card paths."
+  },
+  "assessment_artifact_011": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-assess",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessments/artifact-011-navigation-and-miniapp.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/assess-artifact-011-navigation-and-miniapp-2026-06-03T22-41-39Z.json",
+    "finding": "Artifact library/editing works under settings, but there is no standalone /artifacts route, sidebar entry, sidebar migration/backfill, or internal mini-app/library entry. Mini-app support is the main design risk because current default minapps are external webview entries.",
+    "next_pending_change": "artifact-011-navigation-and-miniapp"
+  },
+  "plan_artifact_011": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-plan",
+    "backend": "openspec",
+    "model_class": "medium/frontier coding model",
+    "complexity": "M",
+    "customer_value": "HIGH",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-011-navigation-and-miniapp.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/plan-artifact-011-navigation-and-miniapp-2026-06-04T08-47-30Z.json",
+    "openspec": "openspec/changes/artifact-011-navigation-and-miniapp",
+    "next_pending_change": "artifact-011-navigation-and-miniapp",
+    "notes": "Plan uses a thin route-ready artifact library page, adds sidebar route/config/migration support, and keeps mini-app access route-backed to avoid broad webview infrastructure changes."
+  },
+  "change_log_011": {
+    "id": "artifact-011-navigation-and-miniapp",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/pages/artifacts/ArtifactsPage.tsx",
+      "src/renderer/src/Router.tsx",
+      "src/renderer/src/config/sidebar.ts",
+      "src/renderer/src/config/minapps.ts",
+      "src/renderer/src/components/MinApp/MinApp.tsx",
+      "src/renderer/src/components/app/Sidebar.tsx",
+      "src/renderer/src/store/migrate.ts",
+      "src/renderer/src/i18n/locales/en-us.json"
+    ],
+    "openspec": "openspec/changes/artifact-011-navigation-and-miniapp",
+    "qa_gate": ".refiner/artifacts/artifact-011-navigation-and-miniapp/refinement_log.md",
+    "tests": "Targeted renderer tests 6/6; full pnpm test 5193 passed / 72 skipped",
+    "quality": "pnpm lint, pnpm test, pnpm format, and openspec validate --strict passed on Node 24.16.0",
+    "decision": "Artifacts now have a standalone /artifacts route, left-sidebar support with migration backfill, and a route-backed internal mini-app entry that navigates inside the React app instead of entering the webview pool."
+  },
+  "reflection_artifact_011": {
+    "reflection_complete": true,
+    "reflected_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-reflect",
+    "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflections/artifact-011-navigation-and-miniapp.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/reflect-artifact-011-navigation-and-miniapp-2026-06-04T10-25-00Z.json",
+    "note": "Change-level reflection only. The phase remains execution_in_progress with artifact-012-prometheus-skill-sync as the next pending change."
+  },
+  "assessment_artifact_012": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-assess",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessments/artifact-012-prometheus-skill-sync.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/assess-artifact-012-prometheus-skill-sync-2026-06-04T11-21-10Z.json",
+    "finding": "Prometheus nested skills are present and the built-in installer can recursively discover them, but skills:sync/check do not govern nested Prometheus requirements, tests do not prove artifact-refiner/KBD/sycophancy discovery or scope availability, and app/UAR Prometheus references are divergent.",
+    "next_pending_change": "artifact-012-prometheus-skill-sync"
+  },
+  "plan_artifact_012": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-plan",
+    "backend": "openspec",
+    "model_class": "medium/frontier coding model",
+    "complexity": "M",
+    "customer_value": "MEDIUM",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-012-prometheus-skill-sync.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/plan-artifact-012-prometheus-skill-sync-2026-06-04T11-28-35Z.json",
+    "openspec": "openspec/changes/artifact-012-prometheus-skill-sync",
+    "next_pending_change": "artifact-012-prometheus-skill-sync",
+    "notes": "Plan uses the existing recursive built-in skill installer and adds ref alignment, Prometheus nested skill governance in skills:check, built-in discovery coverage, and scoped availability tests without changing Redux or database schema."
+  },
+  "change_log_012": {
+    "id": "artifact-012-prometheus-skill-sync",
+    "status": "DONE",
+    "files": [
+      "scripts/skills-common.ts",
+      "scripts/skills-check.ts",
+      "src/main/__tests__/builtinSkills.test.ts",
+      "src/main/services/agents/skills/__tests__/SkillScopeService.test.ts",
+      "openspec/changes/artifact-012-prometheus-skill-sync/specs/prometheus-skill-sync/spec.md"
+    ],
+    "openspec": "openspec/changes/artifact-012-prometheus-skill-sync",
+    "qa_gate": ".refiner/artifacts/artifact-012-prometheus-skill-sync/refinement_log.md",
+    "tests": "skills:check passed with 17 required Prometheus skills; targeted main tests 11/11; full pnpm test 5194 passed / 72 skipped",
+    "quality": "pnpm lint, pnpm test, pnpm format, and openspec validate --strict passed on Node 24.16.0",
+    "decision": "resources/skills/prometheus-skill-system is the packaged runtime source of truth for artifact workflow skills. UAR embedded Prometheus refs remain documented drift because the packaged app resource already contains the required skills and updating UAR would pull unrelated runtime changes."
+  },
+  "reflection_artifact_012": {
+    "reflection_complete": true,
+    "reflected_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-reflect",
+    "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflections/artifact-012-prometheus-skill-sync.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/reflect-artifact-012-prometheus-skill-sync-2026-06-04T12-52-00Z.json",
+    "note": "Change-level reflection only. The phase remains execution_in_progress with artifact-013-settings-i18n-verification as the next pending change."
+  },
+  "assessment_artifact_013": {
+    "assessment_complete": true,
+    "assessed_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-assess",
+    "assessmentPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/assessments/artifact-013-settings-i18n-verification.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/assess-artifact-013-settings-i18n-verification-2026-06-04T11-50-48Z.json",
+    "finding": "Most artifact workflow surfaces are implemented, but ArtifactSettings service-access copy still has hardcoded English, ArtifactSettings page lacks focused settings/i18n tests, artifact-013 has no OpenSpec delta, and final pnpm dev smoke has not been recorded.",
+    "next_pending_change": "artifact-013-settings-i18n-verification"
+  },
+  "plan_artifact_013": {
+    "planning_complete": true,
+    "planned_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-plan",
+    "backend": "openspec",
+    "model_class": "medium/frontier coding model",
+    "complexity": "M",
+    "customer_value": "HIGH",
+    "planPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-013-settings-i18n-verification.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/plan-artifact-013-settings-i18n-verification-2026-06-04T11-53-17Z.json",
+    "openspec": "openspec/changes/artifact-013-settings-i18n-verification",
+    "next_pending_change": "artifact-013-settings-i18n-verification",
+    "notes": "Final verification plan localizes remaining ArtifactSettings service-access copy, adds focused settings/i18n tests, adds the missing OpenSpec delta, reruns repo checks, and records pnpm dev smoke for HTML/HTMX and React artifact workflows."
+  },
+  "change_log_013": {
+    "id": "artifact-013-settings-i18n-verification",
+    "status": "DONE",
+    "files": [
+      "src/renderer/src/pages/settings/ArtifactSettings/index.tsx",
+      "src/renderer/src/pages/settings/ArtifactSettings/__tests__/ArtifactSettings.test.tsx",
+      "src/renderer/src/components/CodeBlockView/HtmlArtifactsCard.tsx",
+      "src/renderer/src/components/CodeBlockView/HtmlArtifactsPopup.tsx",
+      "src/renderer/src/components/CodeBlockView/ReactArtifactsCard.tsx",
+      "src/renderer/src/pages/settings/ArtifactSettings/ArtifactLibrarySection.tsx",
+      "src/renderer/src/i18n/locales/en-us.json",
+      "src/renderer/src/i18n/locales/zh-cn.json",
+      "src/renderer/src/i18n/locales/zh-tw.json",
+      "src/renderer/src/i18n/translate/*.json",
+      "openspec/changes/artifact-013-settings-i18n-verification/specs/artifact-settings-i18n/spec.md"
+    ],
+    "openspec": "openspec/changes/artifact-013-settings-i18n-verification",
+    "qa_gate": ".refiner/artifacts/artifact-013-settings-i18n-verification/refinement_log.md",
+    "tests": "Targeted artifact settings/card tests 24/24; full pnpm test 5196 passed / 72 skipped",
+    "quality": "pnpm i18n:check, openspec validate --strict, pnpm lint, pnpm test, and pnpm format passed on Node 24.16.0",
+    "smoke": "pnpm dev built and launched Electron; renderer returned HTTP 200 at http://localhost:5173/. Plain-browser Playwright loaded title The Boss but could not exercise full artifact refinement because Electron preload APIs and configured model credentials are required.",
+    "decision": "No Redux or database schema changes were needed. Existing artifact settings state already covers service and projected-tool access; artifact settings and type-label prose are localized while technical/data labels remain unchanged."
+  },
+  "reflection_artifact_013": {
+    "reflection_complete": true,
+    "reflected_by": "codex",
+    "skill": "prometheus-skill-pack:kbd-reflect",
+    "reflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflections/artifact-013-settings-i18n-verification.md",
+    "phaseReflectionPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/reflection.md",
+    "sycophancyAuditPath": ".kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/sycophancy/reflect-artifact-013-settings-i18n-verification-2026-06-04T12-11-19Z.json",
+    "note": "Final change-level reflection and full phase reflection are complete. The phase is 13/13 DONE; remaining work is optional manual real-model smoke or next-phase planning."
+  }
 }

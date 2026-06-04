@@ -15,10 +15,10 @@
  * cannot go through the reducer's turn-scoped artifact_saved path.
  */
 
+import type { ArtifactRecordDraft } from '@shared/artifacts'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { ArtifactRecordDraft } from '@shared/artifacts'
 import type { ArtifactDesignEvent, ArtifactSourceLanguage } from '../../../artifacts/designProtocol'
 import type { EditorState } from '../../../artifacts/editorReducer'
 import { initEditorState } from '../../../artifacts/editorReducer'

@@ -1,85 +1,106 @@
-# Plan — Artifact Editor: Iterative LLM Design Protocol
+# Plan — Artifact Editor Productization and Skill-System Integration
 
 **Phase:** artifact-editor-iterative-design-protocol
-**Date:** 2026-05-30
-**Author:** Claude Code (kbd-plan)
-**Backend:** native KBD change files (`.kbd-orchestrator/changes/*`)
-**Inputs:** [assessment.md](./assessment.md) · [design.md](./design.md) · [progress.json](./progress.json)
-**Base:** current 1.9.x line (per CLAUDE.md — never v2). Work on a feature branch off `main`.
+**Date:** 2026-06-03
+**Author:** Codex (kbd-plan)
+**Backend:** OpenSpec change records (`openspec/changes/*`)
+**Inputs:** [assessment.md](./assessment.md) · [progress.json](./progress.json)
+**Base:** current 1.9.x line. Do not use `v2`.
 
-## Backend decision
+## Backend Decision
 
-OpenSpec is **not** active here. `openspec/` exists but is empty scaffolding
-(`openspec/changes/archive/` only, no `project.md`, no specs). The waypoint and
-`progress.json` both record `openSpecDetected: false`, and all prior changes in
-this repo use native KBD change files. → **Use native KBD change files** for
-consistency with the phase's recorded backend. No evolver (`.evolver/` absent) → no
-bridge file.
+OpenSpec is active for this planning pass because `openspec/` exists at the
+project root. The prior v1 artifact plan used native KBD change files and is
+already complete; this re-plan creates OpenSpec records for the broader product
+workflow requested in the 2026-06-03 assessment.
+
+No evolver plan was found under `.evolver/`, so no evolver bridge is needed.
 
 ## Strategy
 
-Bottom-up, protocol-first. Build the **pure, testable spine** (types → reducer →
-build seam → orchestrator) before any UI, then assemble the 3-pane designer on the
-proven spine, then close the loop and finish create-path entry + docs. Every change
-is TDD with two-stage review; pure changes (002, 003) must be unit-tested first.
+Keep the existing v1 designer spine and add the missing product workflow around
+it. The implementation order starts with persistence because every editing
+surface needs a durable update/version API. It then wires stored-library editing,
+conversation entry points, navigation/mini-app access, Prometheus skill-system
+availability, and finally settings/i18n/end-to-end verification.
 
-Recommended feature branch: `feat/artifact-iterative-designer`.
+Any Redux state-shape or database schema change is explicitly approval-gated by
+AGENTS.md. Prefer existing persisted settings, existing `minapps` state, current
+artifact JSON library storage, and existing IPC surfaces unless the user approves
+a broader schema change in writing.
 
-## Ordered change list
+Recommended working branch: `feat/artifact-productization-skill-system`.
+
+## Ordered Change List
 
 | # | Change ID | Title | Depends on | Recommended agent |
 |---|---|---|---|---|
-| 1 | `change-001-artifact-design-protocol-types` | Renderer-local typed event union + version-hash anchor | — | tdd-guide → typescript-reviewer |
-| 2 | `change-002-artifact-editor-reducer` | Pure editor state machine (idle→…→save) | 001 | tdd-guide → typescript-reviewer |
-| 3 | `change-003-artifact-build-feedback-seam` | React compile + HTML validate → `build_status` | 001 | tdd-guide → typescript-reviewer |
-| 4 | `change-004-artifact-design-orchestrator` | Renderer loop: structured-output turn → events | 001,002,003 | tdd-guide → code-reviewer |
-| 5 | `change-005-artifact-designer-3pane` | Extend `ArtifactPopup` → chat│code│preview | 002,004 | tdd-guide → typescript-reviewer + a11y-architect |
-| 6 | `change-006-designer-build-loop-wiring` | Close build-in-the-loop + save new version | 003,004,005 | tdd-guide → code-reviewer |
-| 7 | `change-007-create-path-entry-and-docs` | "Iterate" entry from artifact cards + docs/i18n | 005,006 | code-reviewer → doc-updater |
+| 1 | `artifact-008-storage-version-update` | Persist source edits and append artifact versions | — | tdd-guide -> code-reviewer |
+| 2 | `artifact-009-library-designer-entry` | Open stored artifacts in `ArtifactDesigner` and save refinements | 008 | frontend-app-builder -> a11y-audit |
+| 3 | `artifact-010-conversation-entrypoints` | Verify and wire assistant plus agent conversation Edit with AI entries | 008,009 | chat-ui -> code-reviewer |
+| 4 | `artifact-011-navigation-and-miniapp` | Add first-class artifact library route, sidebar entry, and mini-app surface | 009 | frontend-app-builder -> a11y-audit |
+| 5 | `artifact-012-prometheus-skill-sync` | Normalize Prometheus skill-system references and runtime availability | — | dependency-auditor -> code-reviewer |
+| 6 | `artifact-013-settings-i18n-verification` | Complete artifact settings, labels, and end-to-end verification | 008,009,010,011,012 | code-reviewer -> browser-testing-with-devtools |
 
-### change-001 — artifact-design-protocol-types (P0, foundation) — DONE
-Renderer-local `ArtifactDesignEvent` union (kinds mirror `CanonicalAgentEvent`),
-the structured-output `ArtifactDesignTurnPayloadSchema`, and a pure `versionHash`
-anchor. Consumed by every later change. **Status: DONE** (27/27 tests).
+## Change Details
 
-### change-002 — artifact-editor-reducer (P0, pure)
-Pure reducer (`idle→prompting→streaming→applying→building→preview→repair→saving→idle`
-+ `error`). Consumes `ArtifactDesignEvent`; records `versionHash` per mutation;
-rejects a turn whose `baseVersionHash` ≠ current head (stale-turn guard).
+### artifact-008-storage-version-update
 
-### change-003 — artifact-build-feedback-seam (P0)
-Thin renderer module: React → `compileReactArtifact` mapping `{ diagnostics, errors }`;
-HTML → light validation. Emits `build_status`. IPC injected/mockable.
+Add an update/append-version path to `ArtifactService`, shared request schemas,
+IPC handlers, preload/api wrappers, and focused tests. Preserve the existing
+record shape and `versions` array where possible. Do not introduce Dexie,
+SQLite, or Redux shape changes without separate approval.
 
-### change-004 — artifact-design-orchestrator (P1)
-Renderer loop: NL request + current source → chat model via structured output/tool →
-translate into `ArtifactDesignEvent`s driving the reducer (full-file rewrite per turn);
-one turn = prompt → `artifact_full` → reducer applies → 003 builds → `build_status`.
+### artifact-009-library-designer-entry
 
-### change-005 — artifact-designer-3pane (P1, UI)
-Extend `ArtifactPopup` into 3 panes behind `mode="designer"` (existing viewer
-untouched). Chat pane → orchestrator; code pane = CodeMirror; preview = iframe. i18n +
-a11y.
+Let stored artifacts open directly in `ArtifactDesigner` from the library. A
+refinement should update the selected artifact source through change 008 instead
+of creating an unrelated new record. The library should refresh after save and
+make version state visible enough for management.
 
-### change-006 — designer-build-loop-wiring (P1)
-Failed `build_status` surfaces + seeds next turn; accept → save new `ArtifactVersion`
-via `useArtifactLibrary`; cancel leaves library untouched.
+### artifact-010-conversation-entrypoints
 
-### change-007 — create-path-entry-and-docs (P2)
-"Edit with AI" entry from artifact cards opening the designer; docs + i18n; verify
-end-to-end create→iterate→save.
+Ensure assistant and agent conversation renderers both expose the artifact Edit
+with AI workflow for HTML/HTMX and React artifacts. Add regression coverage for
+the card/entry behavior and verify agent outputs do not fall through to plain
+code-only rendering.
 
-## Cross-cutting constraints (CLAUDE.md)
+### artifact-011-navigation-and-miniapp
 
-- Build on 1.9.x; never use v2. Feature branch off `main`.
-- Logging via `loggerService`; never `console.log`. All UI strings via i18next.
-- No new Redux slices / no Dexie schema change.
-- Per-change completion gate: `pnpm lint && pnpm test` (+ `pnpm format`); Node >=24.11.1.
-- PRs via the `gh-create-pr` skill; sign commits (`--signoff`); Conventional Commits.
+Add a first-class artifact library/editor surface reachable outside settings:
+route, sidebar icon configuration, and a registered mini-app/library entry. Reuse
+existing sidebar/minapp store shapes and migration patterns.
 
-## Milestones
+### artifact-012-prometheus-skill-sync
 
-- **M1 (spine):** changes 001–004 — protocol + reducer + build seam + orchestrator,
-  unit-tested, zero UI. (001 DONE.)
-- **M2 (designer):** changes 005–006 — 3-pane designer + closed build loop + save.
-- **M3 (entry + docs):** change 007.
+Resolve the single source of truth for `resources/skills/prometheus-skill-system`
+and related embedded references, then ensure artifact-refiner, KBD process
+skills, and shared utilities are discoverable through the app's built-in skill
+sync/check paths. Add tests around nested skill discovery and scope availability.
+
+### artifact-013-settings-i18n-verification
+
+Complete user-visible labels for all new artifact surfaces and remove hardcoded
+artifact settings copy. Add or update settings for artifact workflow behavior
+only through existing settings mechanisms unless approval is granted for a shape
+change. Finish with targeted tests, `pnpm lint`, `pnpm test`, and `pnpm format`;
+then run a live `pnpm dev` smoke for create -> edit -> refine -> store.
+
+## OpenSpec Records
+
+- `openspec/changes/artifact-008-storage-version-update`
+- `openspec/changes/artifact-009-library-designer-entry`
+- `openspec/changes/artifact-010-conversation-entrypoints`
+- `openspec/changes/artifact-011-navigation-and-miniapp`
+- `openspec/changes/artifact-012-prometheus-skill-sync`
+- `openspec/changes/artifact-013-settings-i18n-verification`
+
+## Completion Gates
+
+- Stay on the current 1.9.x base; never use `v2`.
+- No new Redux slices and no database schema changes without explicit approval.
+- All logging through `loggerService`; no `console.log`.
+- All user-visible strings through i18next.
+- Per change: focused tests first, then relevant targeted checks.
+- Before completion: `pnpm lint`, `pnpm test`, and `pnpm format`.
+- Commits must be signed off and use Conventional Commit messages.

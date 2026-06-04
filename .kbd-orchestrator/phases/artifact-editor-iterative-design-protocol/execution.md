@@ -1,53 +1,67 @@
-# Execution — Artifact Editor: Iterative LLM Design Protocol
+EXECUTION: artifact-editor-iterative-design-protocol
+Project: The Boss / Cherry Studio fork
+Date: 2026-06-04
+Selected backend: openspec
+Dispatched to: SELF
+Backend rationale: OpenSpec change exists and the plan requires traceable settings/i18n verification, targeted artifact settings coverage, full repo checks, and dev smoke evidence.
+Backend entrypoint: /kbd-execute artifact-013-settings-i18n-verification
+OpenSpec available: YES
+Source plan: .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/plans/artifact-013-settings-i18n-verification.md
 
-**Phase:** artifact-editor-iterative-design-protocol
-**Date:** 2026-05-30
-**Author:** Claude Code (kbd-execute)
-**Inputs:** [assessment.md](./assessment.md) · [design.md](./design.md) · [plan.md](./plan.md)
+EXECUTION SCOPE
 
-## Backend selection
+- artifact-013-settings-i18n-verification: Complete artifact settings service-access i18n, localize remaining artifact type-label prose, add focused settings tests, make the OpenSpec change strict-valid, and record final validation/smoke evidence.
 
-**Backend: `native-tool` (claude-code, subagent-driven TDD).**
+DISPATCH CONTRACTS
 
-| Candidate | Verdict |
-|---|---|
-| `openspec` | Rejected — `openspec/` is empty scaffolding; phase backend is native KBD (`openSpecDetected: false`). |
-| `native-tool` (claude-code) | **Selected** — explicit per-change planning (7 native change files), inspectable `progress.json`, TDD renderer/TS code driven by claude-code subagents (tdd-guide + two-stage review). |
-| `hybrid` | Rejected — no spec-execution layer to gain from OpenSpec. |
-| `manual` | Rejected — fully automatable. |
+- artifact-013-settings-i18n-verification -> SELF
+  Entry: Implement `openspec/changes/artifact-013-settings-i18n-verification/tasks.md` against the 1.9.x codebase.
+  Model class: medium/frontier coding model
+  Concrete model: Codex session model
+  Model rationale: Focused verification/change slice touching renderer settings, i18n catalogs, targeted tests, OpenSpec records, and KBD state; no new persistence schema required.
+  Progress file: .kbd-orchestrator/phases/artifact-editor-iterative-design-protocol/progress.json
+  Handoff: Report completion by updating progress.json, waypoint files, OpenSpec tasks, and QA log.
 
-## Dispatch contract
+APPROVAL GATES
 
-- **Source of truth:** `.kbd-orchestrator/`. `progress.json` tracks change status;
-  `change-NNN/change.md` holds the per-change task checklist.
-- **Branch:** `feat/artifact-iterative-designer` off `main` (1.9.x line; never v2).
-- **Per-change loop:** tdd-guide (RED→GREEN→REFACTOR) → two-stage review (recommended
-  agent per change) → gate `pnpm lint && pnpm test` (Node >=24.11.1) → mark `DONE` →
-  artifact-refiner QA gate (unless <3 files / docs-only / `--skip-qa`) → archive on PASS.
-- **PRs:** via `gh-create-pr`; commits `--signoff`, Conventional Commits.
+- Do not add Redux slices or database schema changes.
+- Stay on the current 1.9.x codebase; do not use v2.
+- Keep all user-visible artifact labels in i18next unless they are technical/data identifiers.
 
-## Environment note (resumed session)
+FALLBACK CONDITIONS
 
-The default shell Node is v20.18.1 but the repo requires **>=24.11.1**. Use
-`nvm use 24` (v24.16.0 available) or `fnm use 24` before `pnpm test`/`lint`/`format`.
-Biome and tsgo run fine under either.
+- If real model-backed artifact create/edit/refine turns cannot run locally, record the exact blocker and complete all automatable launch, renderer, i18n, OpenSpec, lint, test, and format checks.
 
-## Build order
+VERIFICATION RESULTS
 
-- **M1 spine:** change-001 (DONE) → 002 → 003 → 004 (unit-tested, zero UI).
-- **M2 designer:** change-005 → 006.
-- **M3 entry+docs:** change-007.
+- Targeted artifact settings/card tests: PASS, 24/24.
+- `pnpm i18n:check`: PASS.
+- `pnpm i18n:hardcoded`: exits 0; still reports 11 pre-existing unrelated `ServicesSettings/index.tsx` placeholders and no artifact settings findings.
+- `pnpm exec openspec validate artifact-013-settings-i18n-verification --strict`: PASS.
+- `pnpm lint`: PASS on Node 24.16.0; command printed existing warnings but exited 0 after typecheck, i18n check, and format.
+- `pnpm test`: PASS, 347 files, 5196 tests passed, 72 skipped.
+- `pnpm format`: PASS.
+- `pnpm dev`: PASS for build/launch. Main, preload, and renderer built; Electron launched; API server started; renderer returned HTTP 200 at `http://localhost:5173/`. Plain-browser Playwright loaded title `The Boss` but cannot fully exercise the app because Electron preload APIs are absent in that context. Full real-model HTML/HTMX and React create -> Edit with AI -> refine -> store turns remain dependent on interactive Electron window/model credentials.
 
-## Progress
+PROGRESS LEDGER
 
-- **change-001 — protocol types: DONE.** `src/renderer/src/artifacts/designProtocol.ts`
-  + test. 27/27 tests (Node 24), Biome clean, no `console.*`, tsgo clean. Two-stage
-  review (tdd-guide → typescript-reviewer) applied: HIGH `readonly` on `build_status`,
-  LOW named-type for `language`, LOW pinned-hash test, MEDIUM doc notes. QA gate
-  skipped (2 files < 3-file threshold).
-- **Next:** change-002-artifact-editor-reducer.
+- [DONE] artifact-013-settings-i18n-verification — SELF
 
-## QA constraints
+OUTPUTS
 
-See [.kbd-orchestrator/constraints.md](../../constraints.md) — the artifact-refiner
-QA gate reads it.
+- Localized artifact settings service-access and projected-tool copy.
+- Localized artifact HTML/React type-label prose while preserving technical runtime/source-language labels.
+- Synced i18n locale and translate files.
+- Added focused `ArtifactSettings` renderer tests for i18n key rendering and existing access-policy updater behavior.
+- Added OpenSpec delta for settings i18n, existing settings state, and final verification evidence.
+- Added QA log for artifact-013.
+
+BLOCKERS
+
+- No code blocker. Full end-to-end model-turn smoke could not be automated in a plain browser because the app requires Electron preload APIs and configured model credentials for assistant/agent artifact refinement turns.
+
+REFLECTION HANDOFF
+
+- kbd-reflect should consume the OpenSpec tasks checklist, QA log, validation results, targeted settings test, i18n scan outcome, and the smoke limitation noted above.
+
+EXECUTION COMPLETE

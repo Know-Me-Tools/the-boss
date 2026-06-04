@@ -2850,6 +2850,7 @@
   },
   "minapps": {
     "ant-ling": "Ant Ling",
+    "artifacts": "Artifacts",
     "baichuan": "Baichuan",
     "baidu-ai-search": "Baidu AI Search",
     "chatglm": "ChatGLM",
@@ -4215,7 +4216,9 @@
     },
     "artifacts": {
       "add_service": "Add Service",
+      "allowed": "Allowed",
       "base_css": "Base CSS",
+      "blocked": "Blocked",
       "custom_css": "Custom CSS",
       "default_grant": "Default Grant",
       "default_html_runtime": "Default HTML Runtime",
@@ -4251,6 +4254,7 @@
         "untitled": "Untitled artifact"
       },
       "internet_default": "Internet Enabled By Default",
+      "legacy_service_access": "Legacy Service Access",
       "library": {
         "delete_success": "Artifact deleted",
         "description": "Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
@@ -4270,14 +4274,25 @@
         "versions": "{{count}} version",
         "versions_other": "{{count}} versions"
       },
+      "loading_service_tools": "Loading shared service tools...",
+      "loading_services": "Loading shared services...",
+      "no_projected_service_tools": "No projected shared service tools are available yet.",
+      "no_registered_services": "No shared services are registered yet.",
       "no_services": "No service profiles configured yet.",
+      "open_services": "Open Services",
       "package_kind": "Kind",
       "package_name": "Package",
       "package_registry_description": "Approved libraries and managed components available to artifact runtimes.",
       "package_registry_title": "Package Registry",
       "package_runtime": "Runtime",
       "package_version": "Version",
+      "projected_service_tools": "Projected Service Tools",
+      "projected_service_tools_description": "Allow the specific shared tools that HTML and React artifacts may call through `artifactServices.invokeTool(...)`.",
+      "projected_tools_count": "{{count}} projected tool",
+      "projected_tools_count_other": "{{count}} projected tools",
       "react_compiling": "Compiling React/TSX artifact...",
+      "service_access_description": "Artifacts can still allow full service access for legacy operation calls and subscriptions, but projected service tools are the preferred default for scoped runtime access.",
+      "service_access_title": "Shared Service Access",
       "service_label": "Profile Label",
       "services_description": "Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
       "services_title": "Service Profiles",
@@ -4287,7 +4302,9 @@
       "supabase_anon_key": "Supabase ANON Key",
       "supabase_service_role_key": "Supabase Service Role Key (Optional)",
       "supabase_url": "Supabase URL",
-      "title": "Artifacts"
+      "title": "Artifacts",
+      "type_html": "HTML Artifact",
+      "type_react": "React/TSX Artifact"
     },
     "assistant": {
       "icon": {
@@ -6433,6 +6450,7 @@
   },
   "title": {
     "apps": "Apps",
+    "artifacts": "Artifacts",
     "code": "Code",
     "files": "Files",
     "home": "Home",

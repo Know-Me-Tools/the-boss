@@ -32,12 +32,12 @@
  *    events array is a frozen snapshot.
  */
 
+import type { CompileReactFn } from './buildFeedback'
+import { runBuildFeedback } from './buildFeedback'
 import type { ArtifactDesignEvent, ArtifactSourceLanguage } from './designProtocol'
 import { ArtifactDesignTurnPayloadSchema } from './designProtocol'
-import { runBuildFeedback } from './buildFeedback'
-import type { CompileReactFn } from './buildFeedback'
-import { editorReducer } from './editorReducer'
 import type { EditorState } from './editorReducer'
+import { editorReducer } from './editorReducer'
 
 // ---------------------------------------------------------------------------
 // Public types

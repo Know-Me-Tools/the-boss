@@ -7,6 +7,7 @@ import type { SidebarIcon } from '@renderer/types'
 export const DEFAULT_SIDEBAR_ICONS: SidebarIcon[] = [
   'assistants',
   'agents',
+  'artifacts',
   'store',
   'paintings',
   'translate',
@@ -24,3 +25,26 @@ export const DEFAULT_SIDEBAR_ICONS: SidebarIcon[] = [
  * 抽取为参数方便未来扩展
  */
 export const REQUIRED_SIDEBAR_ICONS: SidebarIcon[] = ['assistants']
+
+export function backfillArtifactsSidebarIcon(sidebarIcons: { visible?: string[]; disabled?: string[] } | undefined) {
+  if (!sidebarIcons?.visible || !Array.isArray(sidebarIcons.visible)) {
+    return
+  }
+
+  const disabled = Array.isArray(sidebarIcons.disabled) ? sidebarIcons.disabled : []
+  const hasArtifacts = sidebarIcons.visible.includes('artifacts') || disabled.includes('artifacts')
+
+  if (hasArtifacts) {
+    return
+  }
+
+  const anchors = ['minapp', 'files', 'notes']
+  const anchorIndex = anchors.map((anchor) => sidebarIcons.visible!.indexOf(anchor)).find((index) => index !== -1)
+
+  if (anchorIndex !== undefined && anchorIndex !== -1) {
+    sidebarIcons.visible.splice(anchorIndex + 1, 0, 'artifacts')
+    return
+  }
+
+  sidebarIcons.visible.push('artifacts')
+}

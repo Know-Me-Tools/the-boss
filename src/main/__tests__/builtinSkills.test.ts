@@ -229,23 +229,27 @@ describe('installBuiltinSkills', () => {
   })
 
   it('should discover and install nested skills from the Prometheus built-in skill pack', async () => {
+    const requiredPrometheusSkillPaths = [
+      'skills/process/kbd-process-orchestrator',
+      'skills/process/kbd-process-orchestrator/skills/kbd-assess',
+      'skills/process/kbd-process-orchestrator/skills/kbd-execute',
+      'skills/process/kbd-process-orchestrator/skills/kbd-plan',
+      'skills/process/kbd-process-orchestrator/skills/kbd-reflect',
+      'skills/process/kbd-process-orchestrator/skills/kbd-status',
+      'skills/imported/artifact-refiner',
+      'skills/imported/artifact-refiner/skills/refine-validate',
+      'skills/imported/sycophancy-correction'
+    ]
+
     vi.mocked(fs.access).mockResolvedValueOnce(undefined)
     vi.mocked(fs.readdir).mockResolvedValueOnce([{ name: 'prometheus-skill-system', isDirectory: () => true }] as any)
     vi.mocked(findSkillMdPath).mockResolvedValueOnce(null)
-    vi.mocked(findAllSkillDirectories).mockResolvedValueOnce([
-      {
-        folderPath: path.join(resourceSkillsPath, 'prometheus-skill-system', 'skills/process/kbd-process-orchestrator'),
-        sourcePath: 'skills/process/kbd-process-orchestrator'
-      },
-      {
-        folderPath: path.join(
-          resourceSkillsPath,
-          'prometheus-skill-system',
-          'skills/process/kbd-process-orchestrator/skills/kbd-execute'
-        ),
-        sourcePath: 'skills/process/kbd-process-orchestrator/skills/kbd-execute'
-      }
-    ])
+    vi.mocked(findAllSkillDirectories).mockResolvedValueOnce(
+      requiredPrometheusSkillPaths.map((sourcePath) => ({
+        folderPath: path.join(resourceSkillsPath, 'prometheus-skill-system', sourcePath),
+        sourcePath
+      }))
+    )
     vi.mocked(fs.readFile).mockRejectedValue(new Error('ENOENT'))
     vi.mocked(fs.mkdir).mockResolvedValue(undefined as any)
     vi.mocked(fs.cp).mockResolvedValue(undefined)
@@ -260,33 +264,21 @@ describe('installBuiltinSkills', () => {
       path.join(globalSkillsPath, 'prometheus-skill-system__skills__process__kbd-process-orchestrator'),
       { recursive: true }
     )
-    expect(fs.cp).toHaveBeenCalledWith(
-      path.join(
-        resourceSkillsPath,
-        'prometheus-skill-system',
-        'skills/process/kbd-process-orchestrator/skills/kbd-execute'
-      ),
-      path.join(
-        globalSkillsPath,
-        'prometheus-skill-system__skills__process__kbd-process-orchestrator__skills__kbd-execute'
-      ),
-      { recursive: true }
-    )
-    expect(mockRepo.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        folder_name: 'prometheus-skill-system__skills__process__kbd-process-orchestrator',
-        source: 'builtin',
-        source_url: 'git@github.com:Prometheus-AGS/prometheus-skill-system.git#skills/process/kbd-process-orchestrator'
-      })
-    )
-    expect(mockRepo.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        folder_name: 'prometheus-skill-system__skills__process__kbd-process-orchestrator__skills__kbd-execute',
-        source: 'builtin',
-        source_url:
-          'git@github.com:Prometheus-AGS/prometheus-skill-system.git#skills/process/kbd-process-orchestrator/skills/kbd-execute'
-      })
-    )
+    for (const sourcePath of requiredPrometheusSkillPaths) {
+      const folderName = `prometheus-skill-system__${sourcePath.replaceAll('/', '__')}`
+      expect(fs.cp).toHaveBeenCalledWith(
+        path.join(resourceSkillsPath, 'prometheus-skill-system', sourcePath),
+        path.join(globalSkillsPath, folderName),
+        { recursive: true }
+      )
+      expect(mockRepo.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          folder_name: folderName,
+          source: 'builtin',
+          source_url: `git@github.com:Prometheus-AGS/prometheus-skill-system.git#${sourcePath}`
+        })
+      )
+    }
     expect(mockEnableForAllAgents).toHaveBeenCalledWith(
       'prometheus-skill-id',
       'prometheus-skill-system__skills__process__kbd-process-orchestrator'

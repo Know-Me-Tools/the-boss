@@ -37,9 +37,7 @@ export async function runDesignTurnDefault(
       // (it swallows the error). Surface an actionable message instead of the
       // orchestrator's generic "Model returned empty response".
       if (response === '') {
-        throw new Error(
-          'No response from the model — check that a default model and its API key are configured.'
-        )
+        throw new Error('No response from the model — check that a default model and its API key are configured.')
       }
       return response
     },

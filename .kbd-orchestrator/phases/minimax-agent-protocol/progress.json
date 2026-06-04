@@ -4,10 +4,10 @@
   "assessment_complete": true,
   "planning_complete": true,
   "execution_complete": false,
-  "last_updated": "2026-05-31",
-  "last_updated_by": "claude-code",
-  "change_backend": "native-kbd",
-  "execution_backend": "hybrid",
+  "last_updated": "2026-06-03",
+  "last_updated_by": "codex",
+  "change_backend": "openspec",
+  "execution_backend": "manual-hybrid",
   "branch": "fix/minimax-agent-protocol-chat",
   "fix_commit": "f1b024974",
   "changes_total": 5,
@@ -20,8 +20,9 @@
     },
     {
       "id": "minimax-002-install-1.9.7-build",
-      "status": "pending",
-      "owner": "user"
+      "status": "dispatched",
+      "owner": "user",
+      "evidence": "DMG opened and mounted at /Volumes/The Boss 1.9.7-arm64; mounted app Info.plist reports 1.9.7; install and running-app version confirmation still pending."
     },
     {
       "id": "minimax-003-live-smoke-minimax-agent",
@@ -41,7 +42,23 @@
     }
   ],
   "next_pending_change": "minimax-002-install-1.9.7-build",
-  "summary": "change-001 re-verified green. Manual changes 002-004 await live test on the 1.9.7 build with a real MiniMax key. change-005 (push + draft PR) HELD pending change-003 pass (or user go-ahead).",
+  "summary": "kbd-execute dispatched change-002 on 2026-06-03: opened the 1.9.7 DMG, confirmed it mounted, and verified mounted app metadata reports 1.9.7. Manual install/running-app proof is still required before change-003 live MiniMax smoke testing. change-005 remains held pending change-003 pass or explicit user override.",
+  "planning_refreshed": true,
+  "planning_refreshed_at": "2026-06-03",
+  "openSpecDetected": true,
+  "openspec_changes": [
+    "openspec/changes/minimax-001-verify-fix-in-source",
+    "openspec/changes/minimax-002-install-1.9.7-build",
+    "openspec/changes/minimax-003-live-smoke-minimax-agent",
+    "openspec/changes/minimax-004-regression-responses-providers",
+    "openspec/changes/minimax-005-push-and-open-draft-pr"
+  ],
+  "execution_dispatched": true,
+  "execution_dispatched_at": "2026-06-03",
+  "executionPath": ".kbd-orchestrator/phases/minimax-agent-protocol/execution.md",
   "interim_reflection": true,
-  "reflection_status": "interim (phase open; 002-005 pending)"
+  "reflection_status": "task/interim (phase open; 002 install proof, 003 live smoke, 004 regression, 005 PR pending)",
+  "reflection_updated_at": "2026-06-03",
+  "reflectionPath": ".kbd-orchestrator/phases/minimax-agent-protocol/reflection.md",
+  "phase_close_eligible": false
 }

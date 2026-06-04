@@ -11,6 +11,7 @@ import {
   Code,
   FileSearch,
   Folder,
+  GalleryVerticalEnd,
   Languages,
   LayoutGrid,
   MessageSquareQuote,
@@ -119,6 +120,7 @@ const SidebarIconsManager: FC<SidebarIconsManagerProps> = ({
       ({
         assistants: <MessageSquareQuote size={16} />,
         agents: <MousePointerClick size={16} />,
+        artifacts: <GalleryVerticalEnd size={16} />,
         store: <Sparkle size={16} />,
         paintings: <Palette size={16} />,
         translate: <Languages size={16} />,

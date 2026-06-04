@@ -2850,6 +2850,7 @@
   },
   "minapps": {
     "ant-ling": "Ant Ling",
+    "artifacts": "[to be translated]:Artifacts",
     "baichuan": "百小應",
     "baidu-ai-search": "百度AI検索",
     "chatglm": "ChatGLM",
@@ -4215,7 +4216,9 @@
     },
     "artifacts": {
       "add_service": "[to be translated]:Add Service",
+      "allowed": "[to be translated]:Allowed",
       "base_css": "[to be translated]:Base CSS",
+      "blocked": "[to be translated]:Blocked",
       "custom_css": "[to be translated]:Custom CSS",
       "default_grant": "[to be translated]:Default Grant",
       "default_html_runtime": "[to be translated]:Default HTML Runtime",
@@ -4251,6 +4254,7 @@
         "untitled": "[to be translated]:Untitled artifact"
       },
       "internet_default": "[to be translated]:Internet Enabled By Default",
+      "legacy_service_access": "[to be translated]:Legacy Service Access",
       "library": {
         "delete_success": "[to be translated]:Artifact deleted",
         "description": "[to be translated]:Browse, rename, fork, and reopen locally saved artifacts. Saved artifacts are snapshots with source references, ready for later A2UI export work.",
@@ -4270,14 +4274,25 @@
         "versions": "[to be translated]:{{count}} version",
         "versions_other": "[to be translated]:{{count}} versions"
       },
+      "loading_service_tools": "[to be translated]:Loading shared service tools...",
+      "loading_services": "[to be translated]:Loading shared services...",
+      "no_projected_service_tools": "[to be translated]:No projected shared service tools are available yet.",
+      "no_registered_services": "[to be translated]:No shared services are registered yet.",
       "no_services": "[to be translated]:No service profiles configured yet.",
+      "open_services": "[to be translated]:Open Services",
       "package_kind": "[to be translated]:Kind",
       "package_name": "[to be translated]:Package",
       "package_registry_description": "[to be translated]:Approved libraries and managed components available to artifact runtimes.",
       "package_registry_title": "[to be translated]:Package Registry",
       "package_runtime": "[to be translated]:Runtime",
       "package_version": "[to be translated]:Version",
+      "projected_service_tools": "[to be translated]:Projected Service Tools",
+      "projected_service_tools_description": "[to be translated]:Allow the specific shared tools that HTML and React artifacts may call through `artifactServices.invokeTool(...)`.",
+      "projected_tools_count": "[to be translated]:{{count}} projected tool",
+      "projected_tools_count_other": "[to be translated]:{{count}} projected tools",
       "react_compiling": "[to be translated]:Compiling React/TSX artifact...",
+      "service_access_description": "[to be translated]:Artifacts can still allow full service access for legacy operation calls and subscriptions, but projected service tools are the preferred default for scoped runtime access.",
+      "service_access_title": "[to be translated]:Shared Service Access",
       "service_label": "[to be translated]:Profile Label",
       "services_description": "[to be translated]:Manage brokered service profiles such as Supabase REST access. Service-role keys remain in the main process and are not injected into artifacts by default.",
       "services_title": "[to be translated]:Service Profiles",
@@ -4287,7 +4302,9 @@
       "supabase_anon_key": "[to be translated]:Supabase ANON Key",
       "supabase_service_role_key": "[to be translated]:Supabase Service Role Key (Optional)",
       "supabase_url": "[to be translated]:Supabase URL",
-      "title": "[to be translated]:Artifacts"
+      "title": "[to be translated]:Artifacts",
+      "type_html": "[to be translated]:HTML Artifact",
+      "type_react": "[to be translated]:React/TSX Artifact"
     },
     "assistant": {
       "icon": {
@@ -6433,6 +6450,7 @@
   },
   "title": {
     "apps": "アプリ",
+    "artifacts": "[to be translated]:Artifacts",
     "code": "Code",
     "files": "ファイル",
     "home": "ホーム",

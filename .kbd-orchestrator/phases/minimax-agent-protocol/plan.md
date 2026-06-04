@@ -1,60 +1,119 @@
-# KBD Plan — Phase: `minimax-agent-protocol`
+# KBD Plan - MiniMax Agent Protocol
 
-**Backend:** native KBD (no evolver). OpenSpec note: `openspec/` exists at root but is **dormant** — `openspec/changes/` holds only `archive`, `openspec/specs/` is empty, and no `project.json` sets `change_backend: openspec`. Prior phases all used native KBD changes, so this phase continues with native KBD for consistency.
-**Branch:** `fix/minimax-agent-protocol-chat` (off `main` `6f9180116`)
-**Date:** 2026-05-31
-**Source of plan:** `.kbd-orchestrator/phases/minimax-agent-protocol/assessment.md`
+**Phase:** minimax-agent-protocol
+**Date:** 2026-06-03
+**Author:** Codex (kbd-plan)
+**Backend selected by kbd-plan:** OpenSpec, because `openspec/` exists at the project root.
+**Compatibility note:** This phase already had native KBD change files. They are preserved, and matching OpenSpec change structures were added for this planning run.
+**Branch:** `fix/minimax-agent-protocol-chat`
+**Base rule:** Stay on current 1.9.x. Do not use `v2`.
 
-## Context (from assessment)
+## Goal
 
-The MiniMax 404 (`wss://api.minimax.io/v1/responses`) in Agent conversations is **already fixed in source** (commit `f1b024974`: `resolveLiterLlmProtocol` + guardrail + `endpoint_type` plumbing; tests 7/7, runtime suite 137/137; tsgo/biome clean). Firecrawl + HTTP probes confirmed **no upstream MiniMax change** — `/v1/responses` never existed; the documented surface is chat-completions only. The failing instance is a **stale 1.9.4 install** that predates the fix.
+Prove that the fixed 1.9.7 build routes MiniMax Agent conversations through Chat Completions (`protocol: "chat"`) instead of the nonexistent MiniMax Responses endpoint (`/v1/responses`), then ship the branch through a draft PR.
 
-Therefore this phase is **delivery + proof + merge**, not new feature code. The change list is short and ordered by dependency.
+## Current Status
+
+- Source fix is already present and verified.
+- `pnpm build:mac:arm64` completed on 2026-06-03 using ad-hoc signing because two local Apple Development identities share the same display name.
+- Artifacts exist:
+  - `dist/The-Boss-1.9.7-arm64.dmg`
+  - `dist/The-Boss-1.9.7-arm64.zip`
+  - `dist/The-Boss-1.9.7-arm64.zip.blockmap`
+- Remaining work is delivery and live proof with a real MiniMax key, not new source work unless smoke testing finds another route emitting `auto`.
 
 ## Ordered Change List
 
-| # | Change ID | Title | Type | Depends on | Recommended agent | Gate |
+| Order | Change ID | Title | Type | Owner / Agent | Status | OpenSpec command |
 |---|---|---|---|---|---|---|
-| 1 | `change-001-verify-fix-in-source` | Re-verify the fix is intact on branch (tests + typecheck + biome + no stray `auto`) | verify | — | build-error-resolver (only if red) | `pnpm test:main` runtime suite green; tsgo clean; biome clean |
-| 2 | `change-002-install-1.9.7-build` | Install the unsigned 1.9.7 build that contains the fix; confirm in-app version | delivery | 1 | — (manual / user) | App reports 1.9.7; launches past Gatekeeper |
-| 3 | `change-003-live-smoke-minimax-agent` | Live smoke test: standard MiniMax provider in an Agent conversation streams normally; **no** `/v1/responses` request | verify (the real proof) | 2 | e2e-runner (assist) / user | Normal streamed reply; zero `wss://…/v1/responses`; UAR config shows `protocol: "chat"` |
-| 4 | `change-004-regression-responses-providers` | Regression: an OpenAI/xAI agent model still uses `responses`; non-agent MiniMax chat still works | verify | 2 | e2e-runner (assist) / user | OpenAI/xAI agent path unaffected; normal MiniMax chat unaffected |
-| 5 | `change-005-push-and-open-draft-pr` | Push `fix/minimax-agent-protocol-chat`; open **draft** PR via `gh-create-pr` to fork `Know-Me-Tools/the-boss` **main** (not upstream, not v2) | delivery | 1,3 | gh-create-pr skill | PR open, template complete, CI green |
+| 1 | `minimax-001-verify-fix-in-source` | Re-verify fix in source | verify | build-error-resolver if red | done | `/opsx:new minimax-001-verify-fix-in-source` |
+| 2 | `minimax-002-install-1.9.7-build` | Install the 1.9.7 build | delivery | manual/user | pending | `/opsx:new minimax-002-install-1.9.7-build` |
+| 3 | `minimax-003-live-smoke-minimax-agent` | Live smoke: MiniMax Agent conversation | verify | user / e2e-runner assist | pending | `/opsx:new minimax-003-live-smoke-minimax-agent` |
+| 4 | `minimax-004-regression-responses-providers` | Regression: responses providers and MiniMax chat | verify | user / e2e-runner assist | pending | `/opsx:new minimax-004-regression-responses-providers` |
+| 5 | `minimax-005-push-and-open-draft-pr` | Push branch and open draft PR | delivery | gh-create-pr | held until change-003 passes | `/opsx:new minimax-005-push-and-open-draft-pr` |
 
-> Changes 2–4 are user/manual verification gates (they need the running app + a real MiniMax API key). Change 1 and 5 are agent-executable. No new source edits are planned unless change 3 surfaces a second `auto`-emitting code path (none found in static analysis).
+## Change Details
 
-## Per-change detail
+### minimax-001-verify-fix-in-source
 
-### change-001 — Re-verify the fix in source (idempotent)
-- `fnm use 24 && pnpm test:main src/main/services/agents/services/runtime/` → expect 137/137 (incl. 7 protocol tests).
-- `pnpm exec tsgo --noEmit -p tsconfig.node.json` → no errors from the 3 changed files.
-- `pnpm exec biome check` on the 3 files → clean.
-- `grep` for `protocol: "auto"` in `src/`+`packages/` → only the negative test assertion remains.
-- **No code changes expected.** If red → build-error-resolver, minimal diff, re-run.
+Reconfirm the source generator no longer emits `protocol: "auto"` for MiniMax and that runtime tests still pass.
 
-### change-002 — Install 1.9.7
-- Open `dist/The-Boss-1.9.7-arm64.dmg`, drag to Applications.
-- Unsigned: right-click → Open, or `xattr -dr com.apple.quarantine "/Applications/The Boss.app"`.
-- Confirm **Settings/About shows 1.9.7** (the prior failing app was 1.9.4).
+Tasks:
 
-### change-003 — Live smoke (definition of done for the bug)
-- Configure the **standard built-in MiniMax provider** (Global / `api.minimax.io`) with a real key.
-- Start an **Agent** conversation on a MiniMax model; send a message.
-- **Pass:** normal streamed reply; **no** `wss://…/v1/responses`; the generated UAR config shows `protocol: "chat"` (and the upstream call is `/v1/chat/completions`).
-- **Fail:** any reconnect loop → capture the generated UAR config + provider id/endpoint_type and re-open assessment (look for a second `auto` source).
+- [x] Run runtime protocol tests.
+- [x] Run node typecheck for touched runtime files.
+- [x] Run formatter/linter checks for touched runtime files.
+- [x] Grep source/packages for live `protocol: "auto"` literals.
 
-### change-004 — Regression
-- OpenAI or xAI agent model still resolves to `responses` (allowlist intact).
-- A non-agent (normal chat) MiniMax conversation still works.
+Done gate: source remains green; only the negative test assertion contains `protocol: "auto"`.
 
-### change-005 — Push + draft PR
-- `git push -u origin fix/minimax-agent-protocol-chat`.
-- Use **`gh-create-pr`** skill; target **fork `Know-Me-Tools/the-boss` `main`**; **draft**; fill every template section; exclude unrelated stashed `RuntimeSettings.tsx`.
+### minimax-002-install-1.9.7-build
 
-## Risks (carried from assessment)
-- **R1 Stale-install confusion** — MUST verify in-app 1.9.7 before testing (change-002 gate).
-- **R3 Allowlist scope** — `responses` only for openai/xai; document for future providers.
-- **R4 Unsigned/Gatekeeper** — operational only; quarantine bypass noted.
+Install the build artifact that contains the source fix.
 
-## Exit criteria for the phase
-All five changes DONE: source verified green, 1.9.7 installed, MiniMax agent smoke test passes with no `/v1/responses`, regressions clean, draft PR open with green CI. Then `/kbd-reflect`.
+Tasks:
+
+- [ ] Open `dist/The-Boss-1.9.7-arm64.dmg`.
+- [ ] Drag/install `The Boss.app` into `/Applications` or the desired test install path.
+- [ ] If needed, bypass Gatekeeper with right-click Open or remove quarantine.
+- [ ] Launch the app and confirm the UI reports version `1.9.7`.
+
+Done gate: the running app is confirmed to be 1.9.7, not the stale 1.9.4 install.
+
+### minimax-003-live-smoke-minimax-agent
+
+Run the real user-visible proof against the built-in MiniMax standard provider.
+
+Tasks:
+
+- [ ] Configure the built-in MiniMax standard/global provider with a real key.
+- [ ] Start an Agent conversation using a MiniMax model.
+- [ ] Send a simple prompt and observe a normal streamed reply.
+- [ ] Confirm generated UAR/liter-llm config uses `protocol: "chat"`.
+- [ ] Confirm no request targets `wss://api.minimax.io/v1/responses` or `/v1/responses`.
+
+Done gate: MiniMax Agent conversation streams normally through Chat Completions.
+
+### minimax-004-regression-responses-providers
+
+Verify the protocol resolver did not break providers that intentionally support Responses.
+
+Tasks:
+
+- [ ] Verify OpenAI or xAI agent models still resolve to `responses` where expected.
+- [ ] Verify normal non-agent MiniMax assistant chat still works.
+- [ ] Capture failures with provider id, endpoint, model id, endpoint type, and generated protocol.
+
+Done gate: responses-capable providers still use Responses, and non-agent MiniMax chat still works.
+
+### minimax-005-push-and-open-draft-pr
+
+Publish the branch only after the live MiniMax smoke test passes or the user explicitly overrides the gate.
+
+Tasks:
+
+- [ ] Push `fix/minimax-agent-protocol-chat`.
+- [ ] Use the `gh-create-pr` skill.
+- [ ] Target `Know-Me-Tools/the-boss` `main`; do not target `v2`.
+- [ ] Open as a draft PR.
+- [ ] Fill PR template with source verification, live smoke evidence, and any known signing/build notes.
+
+Done gate: draft PR exists, points at 1.9.x `main`, and includes smoke-test evidence.
+
+## Exact Next Step
+
+```sh
+open dist/The-Boss-1.9.7-arm64.dmg
+```
+
+Then install and confirm the app reports `1.9.7`; after that, run the MiniMax Agent live smoke test.
+
+## Risks
+
+- Stale install risk: testing `/Applications/travisjames.ai/The Boss.app` or any 1.9.4 bundle will reproduce the old failure.
+- Signing risk: the local mac arm64 build was ad-hoc signed due duplicate Apple Development identities. This is fine for smoke testing but should be called out for distribution.
+- Live-key risk: change-003 requires a real MiniMax key; without it the phase cannot be fully closed.
+
+## No Evolver Bridge
+
+No `.evolver/` plan was found, so no `evolver-bridge.json` was created.

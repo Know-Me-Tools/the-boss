@@ -1,42 +1,42 @@
 # Current KBD Waypoint
 
 **Project:** The Boss / Cherry Studio fork
-**Active phase:** `minimax-agent-protocol`
-**Status:** planned (change-001 already green)
-**Branch:** `fix/minimax-agent-protocol-chat` · **Fix commit:** `f1b024974`
-**Backend:** native KBD · **Date:** 2026-05-31
+**Active phase:** `artifact-editor-iterative-design-protocol`
+**Status:** reflection complete
+**Branch:** `feat/artifact-productization-skill-system`
+**Backend for latest kbd-plan:** OpenSpec detected from root `openspec/`
+**Date:** 2026-06-04
 
-> Backend note: `openspec/` exists at root but is **dormant** (`changes/` holds
-> only `archive`, `specs/` empty, no `project.json` change_backend). All prior
-> phases used native KBD changes, so this phase continues with native KBD.
+## What This Phase Adds
 
-## What this phase fixes
-
-MiniMax **Agent** conversations 404-looped on `wss://api.minimax.io/v1/responses`.
-Root cause: the UAR config generator hard-coded liter-llm `protocol: "auto"`,
-which auto-selects the OpenAI **Responses API** for the `/v1` host; MiniMax is
-chat-completions-only. Fixed by `resolveLiterLlmProtocol` (defaults chat-only
-providers to `chat`; `responses` only for openai/xai; model `endpoint_type`
-precedence). **No upstream MiniMax change** — confirmed via firecrawl (docs are
-chat-completions only) + HTTP probes (`/v1/responses` 404, `/v1/chat/completions`
-401). The failing install was a stale **1.9.4** build.
+The v1 artifact designer foundation is complete, but the full product workflow
+still needs durable stored-artifact source updates, library-to-designer editing,
+assistant and agent conversation entry points, first-class navigation/mini-app
+access, Prometheus skill-system availability, settings/i18n completion, and
+end-to-end verification.
 
 ## Ordered Changes
 
-1. ✅ `minimax-001-verify-fix-in-source` — tests 137/137, tsgo/biome clean (DONE)
-2. ⏳ `minimax-002-install-1.9.7-build` — install `dist/The-Boss-1.9.7-arm64.dmg`, confirm 1.9.7
-3. ⏳ `minimax-003-live-smoke-minimax-agent` — MiniMax agent convo streams; no `/v1/responses`
-4. ⏳ `minimax-004-regression-responses-providers` — openai/xai still `responses`; normal chat OK
-5. ⏳ `minimax-005-push-and-open-draft-pr` — push + draft PR (gh-create-pr → fork `main`, **not v2**)
+1. ✅ `artifact-008-storage-version-update` - persist source edits and append artifact versions.
+2. ✅ `artifact-009-library-designer-entry` - open stored artifacts in `ArtifactDesigner` and save refinements.
+3. ✅ `artifact-010-conversation-entrypoints` - verify and wire assistant plus agent conversation Edit with AI entries.
+4. ✅ `artifact-011-navigation-and-miniapp` - add first-class artifact library route, sidebar entry, and mini-app surface.
+5. ✅ `artifact-012-prometheus-skill-sync` - normalize Prometheus skill-system references and runtime availability.
+6. ✅ `artifact-013-settings-i18n-verification` - complete artifact settings, labels, and end-to-end verification.
 
-## Exact next command
+## Exact Next Command
 
+```sh
+/kbd-new-phase
 ```
-open dist/The-Boss-1.9.7-arm64.dmg   # install, confirm 1.9.7, then live smoke test the MiniMax agent
-```
 
-## Next recommended action
+Advance to the next KBD phase. Run `/kbd-status` first if you want to inspect
+the completed artifact-editor phase.
 
-Execute **change-002** (install 1.9.7) → **change-003** (live smoke test the
-standard MiniMax provider in an Agent conversation). On green → **change-005**
-push + draft PR via `gh-create-pr`. Per CLAUDE.md, never use `v2`.
+## Key Constraints
+
+- Stay on the current 1.9.x codebase.
+- Do not use `v2`.
+- Do not add Redux slices or change database schemas without explicit user approval.
+- Keep all user-visible labels in i18next.
+- Run `pnpm lint`, `pnpm test`, and `pnpm format` before implementation completion.

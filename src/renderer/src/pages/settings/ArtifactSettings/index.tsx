@@ -235,23 +235,20 @@ const ArtifactSettings = () => {
 
       <SettingGroup theme={theme}>
         <SettingTitle>
-          <span>Shared Service Access</span>
+          <span>{t('settings.artifacts.service_access_title')}</span>
           <Link to="/settings/services">
             <Button icon={<ExternalLink size={14} />} size="small" type="primary">
-              Open Services
+              {t('settings.artifacts.open_services')}
             </Button>
           </Link>
         </SettingTitle>
-        <SettingDescription>
-          Artifacts can still allow full service access for legacy operation calls and subscriptions, but projected
-          service tools are the preferred default for scoped runtime access.
-        </SettingDescription>
+        <SettingDescription>{t('settings.artifacts.service_access_description')}</SettingDescription>
         <SettingDivider />
-        <SectionHeading>Legacy Service Access</SectionHeading>
+        <SectionHeading>{t('settings.artifacts.legacy_service_access')}</SectionHeading>
         {servicesLoading ? (
-          <SettingDescription>Loading shared services...</SettingDescription>
+          <SettingDescription>{t('settings.artifacts.loading_services')}</SettingDescription>
         ) : services.length === 0 ? (
-          <SettingDescription>No shared services are registered yet.</SettingDescription>
+          <SettingDescription>{t('settings.artifacts.no_registered_services')}</SettingDescription>
         ) : (
           services.map((service) => {
             const isEnabled = settings.accessPolicy.serviceIds.includes(service.serviceId)
@@ -264,14 +261,14 @@ const ArtifactSettings = () => {
                   <ServiceMeta>
                     <Tag>{service.kind}</Tag>
                     <span>{service.endpoint}</span>
-                    <span>{projectedCount} projected tools</span>
+                    <span>{t('settings.artifacts.projected_tools_count', { count: projectedCount })}</span>
                   </ServiceMeta>
                 </div>
                 <Space>
                   <Switch
                     checked={isEnabled}
-                    checkedChildren="Allowed"
-                    unCheckedChildren="Blocked"
+                    checkedChildren={t('settings.artifacts.allowed')}
+                    unCheckedChildren={t('settings.artifacts.blocked')}
                     onChange={(checked) =>
                       void updateSettings((prev) => ({
                         ...prev,
@@ -290,15 +287,12 @@ const ArtifactSettings = () => {
           })
         )}
         <SettingDivider />
-        <SectionHeading>Projected Service Tools</SectionHeading>
-        <SettingDescription>
-          Allow the specific shared tools that HTML and React artifacts may call through
-          `artifactServices.invokeTool(...)`.
-        </SettingDescription>
+        <SectionHeading>{t('settings.artifacts.projected_service_tools')}</SectionHeading>
+        <SettingDescription>{t('settings.artifacts.projected_service_tools_description')}</SettingDescription>
         {serviceToolsLoading ? (
-          <SettingDescription>Loading shared service tools...</SettingDescription>
+          <SettingDescription>{t('settings.artifacts.loading_service_tools')}</SettingDescription>
         ) : serviceTools.length === 0 ? (
-          <SettingDescription>No projected shared service tools are available yet.</SettingDescription>
+          <SettingDescription>{t('settings.artifacts.no_projected_service_tools')}</SettingDescription>
         ) : (
           Object.entries(groupedServiceTools).map(([serviceName, tools]) => (
             <ServiceToolGroup key={serviceName}>
@@ -319,8 +313,8 @@ const ArtifactSettings = () => {
                     <Space>
                       <Switch
                         checked={isEnabled}
-                        checkedChildren="Allowed"
-                        unCheckedChildren="Blocked"
+                        checkedChildren={t('settings.artifacts.allowed')}
+                        unCheckedChildren={t('settings.artifacts.blocked')}
                         onChange={(checked) =>
                           void updateSettings((prev) => ({
                             ...prev,

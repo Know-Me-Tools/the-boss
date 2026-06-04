@@ -349,6 +349,38 @@ describe('MessageAgentTools', () => {
       expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
     })
 
+    it('renders WriteTool .htm files as HTML artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Write', name: 'Write', description: 'Write a file', type: 'provider' },
+        status: 'done',
+        arguments: {
+          file_path: '/tmp/summary.htm',
+          content: '<main><h1>Summary</h1></main>'
+        }
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('html-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
+    it('renders WriteTool JSX files as React artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Write', name: 'Write', description: 'Write a file', type: 'provider' },
+        status: 'done',
+        arguments: {
+          file_path: '/tmp/Panel.jsx',
+          content: 'export default function Panel() { return <section>Panel</section> }'
+        }
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('react-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
     it('renders ReadTool TSX files as React artifact cards', () => {
       const toolResponse = createToolResponse({
         tool: { id: 'Read', name: 'Read', description: 'Read a file', type: 'provider' },
@@ -360,6 +392,20 @@ describe('MessageAgentTools', () => {
       render(<MessageAgentTools toolResponse={toolResponse} />)
 
       expect(screen.getByTestId('react-artifact-card')).toBeInTheDocument()
+      expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
+    })
+
+    it('renders ReadTool SVG files as HTML artifact cards', () => {
+      const toolResponse = createToolResponse({
+        tool: { id: 'Read', name: 'Read', description: 'Read a file', type: 'provider' },
+        status: 'done',
+        arguments: { file_path: '/tmp/logo.svg' },
+        response: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>'
+      })
+
+      render(<MessageAgentTools toolResponse={toolResponse} />)
+
+      expect(screen.getByTestId('html-artifact-card')).toBeInTheDocument()
       expect(screen.queryByTestId('code-viewer')).not.toBeInTheDocument()
     })
 

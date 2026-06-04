@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { versionHash } from '../designProtocol'
 import type { ArtifactDesignEvent } from '../designProtocol'
-import { editorReducer, initEditorState } from '../editorReducer'
+import { versionHash } from '../designProtocol'
 import type { EditorPhase, EditorState } from '../editorReducer'
+import { editorReducer, initEditorState } from '../editorReducer'
 
 // ---------------------------------------------------------------------------
 // Helpers

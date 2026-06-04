@@ -45,6 +45,12 @@ const MinApp: FC<Props> = ({ app, onClick, size = 60, isLast }) => {
   const displayName = isLast ? t('settings.miniapps.custom.title') : app.nameKey ? t(app.nameKey) : app.name
 
   const handleClick = () => {
+    if (app.route) {
+      navigate(app.route)
+      onClick?.()
+      return
+    }
+
     if (isTopNavbar) {
       // 顶部导航栏：导航到小程序页面
       navigate(`/apps/${app.id}`)

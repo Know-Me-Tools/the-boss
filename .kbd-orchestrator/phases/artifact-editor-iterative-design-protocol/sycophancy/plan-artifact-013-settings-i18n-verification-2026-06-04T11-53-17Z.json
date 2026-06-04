@@ -1,0 +1,23 @@
+{
+  "audit_trail": {
+    "agent_did": null,
+    "executed_at": "2026-06-04T11:53:17.126496Z",
+    "hook_log": [],
+    "passes": 0,
+    "skill_id": "sycophancy.correction",
+    "strictness": "standard",
+    "version": "1.0.0"
+  },
+  "classifications": [
+    {
+      "location": "pattern index 1",
+      "pattern_id": "S-06",
+      "rationale": "High-confidence language used without a derivable reasoning chain.",
+      "severity": "medium"
+    }
+  ],
+  "correction_mandatory": false,
+  "delta_summary": "Score: 0.04. 1 pattern(s) detected (detect_only mode — no correction applied): [S-06] Medium — High-confidence language used without a derivable reasoning chain.",
+  "sycophancy_score": 0.0446428582072258,
+  "note": "Plan wording was adjusted to avoid unsupported high-confidence phrasing before writing."
+}

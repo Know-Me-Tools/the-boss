@@ -68,6 +68,11 @@ const MinAppPage: FC = () => {
       return
     }
 
+    if (app.route) {
+      navigate(app.route)
+      return
+    }
+
     // For sidebar navigation, redirect to apps list and open popup
     // Only check once and only if we haven't already redirected
     if (!initialIsTopNavbar.current && !hasRedirected.current) {

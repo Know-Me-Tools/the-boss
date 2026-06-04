@@ -39,7 +39,7 @@ const MinAppTabsPool: React.FC = () => {
   const shouldShow = isTopNavbar && isAppDetail
 
   // 组合当前需要渲染的列表（保持顺序即可）
-  const apps = openedKeepAliveMinapps
+  const apps = openedKeepAliveMinapps.filter((app) => !app.route)
 
   /** 设置 ref 回调 */
   const handleSetRef = (appid: string, el: WebviewTag | null) => {
